@@ -1,4 +1,5 @@
 """Live game engine: holds the situation, his in-game memory, every prediction and its result."""
+import threads  # noqa: F401  (first: pins OpenMP/BLAS before numpy and sklearn load)
 import copy
 import json
 import logging

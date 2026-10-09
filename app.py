@@ -1,4 +1,5 @@
 """Localhost server for the Shadow Play-Caller.  Run:  python app.py  then open http://localhost:5050"""
+import threads  # noqa: F401  (first: pins OpenMP/BLAS before numpy and sklearn load)
 import json
 import logging
 import os
