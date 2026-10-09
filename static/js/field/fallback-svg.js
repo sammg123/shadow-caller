@@ -6,8 +6,12 @@
  */
 import { clear, setAttr, svgEl } from "../ui/dom.js";
 
-export const STAGE_LAYERS = Object.freeze(["residue", "ghosts", "lines", "last", "play", "ball", "tags"]);
-/** Tag groups inside a stage's tags layer: the down and distance, the ghost percentages, the play's labels. */
+/** The live stage, back to front: residue, the lines, the last play, the play drawing now, the ball, the shadow plays
+ * (over the ball they come out of before a snap), then every word. */
+export const STAGE_LAYERS = Object.freeze(["residue", "lines", "last", "play", "ball", "ghosts", "tags"]);
+/** The review stage: the same layers, with what he predicted under the play that happened. */
+export const REVIEW_LAYERS = Object.freeze(["residue", "lines", "ghosts", "last", "play", "ball", "tags"]);
+/** Tag groups inside a stage's tags layer: the down and distance, the shadow plays' words, the play's words. */
 export const TAG_GROUPS = Object.freeze(["tagSit", "tagGhost", "tagPlay"]);
 /**
  * Optional custom properties a world sets on #field (or an ancestor), in px ("456px"), so the field clears the HUD
@@ -18,15 +22,17 @@ export const INSET_PROPS = Object.freeze({ top: "--sc-field-safe-top", right: "-
 const TEXT_EM = 0.6;
 const FALLBACK_FONT_PX = 14;
 const PX_RE = /^\s*(\d+(?:\.\d+)?)px\s*$/;
-/** Which tags keep their spot when labels collide: the play's own words, the down and distance, then the zones. */
+/** Which tags keep their spot when labels collide: the play's own words, the down and distance, then the shadows'. */
 const TAG_PRIORITY = Object.freeze(["tagPlay", "tagSit", "tagGhost"]);
 const SPREAD = Object.freeze({ gap: 2, tries: 6 });
 
+/** Entrances (never under reduced motion: the engine adds no class then): words fade in; a shadow play grows out of
+ * the line of scrimmage (its transform-origin, set per element), fading up to its own opacity. */
 const SHEET = [
   "svg[data-sc-fb] .sc-fb-in { animation: sc-fb-in var(--sc-fb-in, 300ms) ease-out both; }",
-  "svg[data-sc-fb] .sc-fb-scan { animation: sc-fb-scan var(--sc-fb-in, 400ms) steps(10, jump-end) both; }",
+  "svg[data-sc-fb] .sc-fb-grow { animation: sc-fb-grow var(--sc-fb-in, 300ms) cubic-bezier(0.2, 0.7, 0.2, 1) both; }",
   "@keyframes sc-fb-in { from { opacity: 0; } }",
-  "@keyframes sc-fb-scan { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }",
+  "@keyframes sc-fb-grow { from { opacity: 0; transform: scale(0.15); } }",
 ].join("\n");
 
 /** Set every attribute of a patch (null removes it). */
@@ -79,11 +85,11 @@ export function fitTags(root) {
   }
 }
 
-function stage(svg, name) {
+function stage(svg, name, order) {
   const root = svgEl("g", { "data-layer": name });
   const group = (layer) => svgEl("g", { "data-layer": `${name}-${layer}` });
-  const layers = Object.fromEntries(STAGE_LAYERS.map((layer) => [layer, group(layer)]));
-  for (const layer of STAGE_LAYERS) root.appendChild(layers[layer]);
+  const layers = Object.fromEntries(order.map((layer) => [layer, group(layer)]));
+  for (const layer of order) root.appendChild(layers[layer]);
   const tags = Object.fromEntries(TAG_GROUPS.map((g) => [g, svgEl("g", { "data-layer": `${name}-${g}` })]));
   for (const g of TAG_GROUPS) layers.tags.appendChild(tags[g]);
   svg.appendChild(root);
@@ -111,8 +117,8 @@ export function createSurface(host, doc) {
   const sheet = svgEl("style", {});
   sheet.textContent = SHEET;
   svg.appendChild(sheet);
-  const live = stage(svg, "live");
-  const review = stage(svg, "review");
+  const live = stage(svg, "live", STAGE_LAYERS);
+  const review = stage(svg, "review", REVIEW_LAYERS);
   setAttr(review.root, "display", "none");
   const parent = host ?? doc.body;
   parent.appendChild(base);
@@ -148,22 +154,33 @@ export function readInsets(host, getStyle) {
 const hits = (a, b, gap) => a.x < b.x + b.width + gap && b.x < a.x + a.width + gap
   && a.y < b.y + b.height + gap && b.y < a.y + a.height + gap;
 
+/** The x move that keeps a box inside [left, right]: none when it fits, centered when it is wider. */
+function slideInto(x, width, left, right) {
+  if (width >= right - left) return (left + right) / 2 - (x + width / 2);
+  if (x < left) return left - x;
+  return x + width > right ? right - (x + width) : 0;
+}
+
 /**
- * Pure: vertical moves that keep boxes (in priority order) from overlapping, each tried at 0, then one step down,
- * one up, two down, and so on, inside [top, bottom]. A box with no free spot is hidden. Returns [{ dy, hidden }].
+ * Pure: moves that keep boxes (in priority order) on screen and apart: each slides inside [left, right] (a long
+ * label near an end zone), then tries a vertical move of 0, one step down, one up, two down, and so on, inside
+ * [top, bottom]. A box with no free spot is hidden. Returns [{ dx, dy, hidden }].
  */
-export function spreadBoxes(boxes, { top = -Infinity, bottom = Infinity, gap = SPREAD.gap, tries = SPREAD.tries } = {}) {
+export function spreadBoxes(boxes, { top = -Infinity, bottom = Infinity, left = -Infinity, right = Infinity,
+  gap = SPREAD.gap, tries = SPREAD.tries } = {}) {
   const placed = [];
-  return boxes.map((b) => {
+  return boxes.map((raw) => {
+    const dx = Number.isFinite(left) || Number.isFinite(right) ? slideInto(raw.x, raw.width, left, right) : 0;
+    const b = { ...raw, x: raw.x + dx };
     const step = b.height + gap;
     const away = (k) => (k % 2 === 0 ? 1 : -1) * step * (Math.floor(k / 2) + 1);
     const options = [0, ...Array.from({ length: tries }, (_, k) => away(k))];
     const fits = (dy) => b.y + dy >= top && b.y + dy + b.height <= bottom
       && placed.every((p) => !hits({ ...b, y: b.y + dy }, p, gap));
     const dy = options.find(fits);
-    if (dy === undefined) return { dy: 0, hidden: true };
+    if (dy === undefined) return { dx: 0, dy: 0, hidden: true };
     placed.push({ ...b, y: b.y + dy });
-    return { dy, hidden: false };
+    return { dx, dy, hidden: false };
   });
 }
 
@@ -173,7 +190,8 @@ function boxOfTag(tag) {
   return { x: n("x"), y: n("y"), width: n("width"), height: n("height") };
 }
 
-/** Move a stage's colliding tags apart (fitTags first); tags fading out don't count. */
+/** Move a stage's tags on screen and apart (fitTags first); tags fading out don't count. `bounds` is { top, bottom,
+ * left?, right? } in px. */
 export function declutter(stage, bounds) {
   const tags = TAG_PRIORITY.flatMap((group) => [...stage[group].querySelectorAll(".sc-fb-tag")])
     .filter((tag) => tag.style?.getPropertyValue?.("opacity") !== "0");
@@ -181,8 +199,8 @@ export function declutter(stage, bounds) {
     setAttr(tag, "transform", null);
     setAttr(tag, "display", null);
   }
-  spreadBoxes(tags.map(boxOfTag), bounds).forEach(({ dy, hidden }, i) => {
+  spreadBoxes(tags.map(boxOfTag), bounds).forEach(({ dx, dy, hidden }, i) => {
     if (hidden) setAttr(tags[i], "display", "none");
-    else if (dy) setAttr(tags[i], "transform", `translate(0 ${Math.round(dy)})`);
+    else if (dx || dy) setAttr(tags[i], "transform", `translate(${Math.round(dx)} ${Math.round(dy)})`);
   });
 }

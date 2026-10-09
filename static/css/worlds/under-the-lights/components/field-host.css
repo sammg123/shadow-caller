@@ -1,0 +1,23 @@
+/* Under the Lights: the field host (ui/field-host.js; DESIGN.md Layout "Field legend" and Components "Toasts,
+   connection banner, review banner, boot screen"; owner W2). The bowl itself is the scene; the host is the night-sky
+   ground until the engine's first frame. The legend, "Ball shown mid-field; ESPN gives no hash.", is a small LED tag
+   at the bottom left of the field's free area (layout.css places it), in small dim type, sentence case, always there:
+   it is the drawing's honesty note. A notice the shell leaves when no engine could start is an LED board too. */
+
+:where(:root[data-world="under-the-lights"]) .sc-field { background: var(--sc-bg); }
+:where(:root[data-world="under-the-lights"]) .sc-field-legend {
+  padding: 5px var(--sc-space-2) 4px;
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-field > .sc-region-notice {
+  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+}

@@ -20,7 +20,7 @@ function realState(body) {
 
 test("the table mounts every component of 9.1, in order", () => {
   assert.deepEqual(COMPONENTS.map((c) => c.name), ["boot-screen", "conn-banner", "toast", "masthead", "feed-bar",
-    "scoreboard", "situation-strip", "field-host", "review-banner", "watch-transport", "prediction", "entry-pad",
+    "scoreboard", "situation-strip", "field-host", "review-banner", "watch-transport", "scrub", "prediction", "entry-pad",
     "last-play", "shorthand", "flag-panel", "play-feed", "drive-chart", "win-prob", "scorecard", "box-score",
     "tendencies", "play-log"]);
   assert.ok(Object.isFrozen(COMPONENTS) && COMPONENTS.every(Object.isFrozen));

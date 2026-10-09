@@ -1,0 +1,37 @@
+/* Under the Lights: the toast (ui/toast.js; DESIGN.md Components "Toasts, connection banner, review banner, boot
+   screen"; owner W2). An LED strip that steps in above the lower ribbon, centered on the field's free area
+   (layout.css places it): an amber lamp (info) or a tally-red lamp (error) and the message in body type, sentence
+   case. It holds 2.6 s (FI 4.5) and goes dark at once. It hides by opacity only, never display, so its live region
+   stays in the accessibility tree (A9). Centering uses the translate property, so the LED step can own transform. */
+
+:where(:root[data-world="under-the-lights"]) .toast {
+  gap: var(--sc-space-3);
+  padding: 12px var(--sc-space-4) 11px;
+  border: 0;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-regular) var(--uls-size-body) / 1.3 var(--sc-font-text);
+  letter-spacing: 0.01em;
+  transform: none;
+  translate: -50% 0;
+  transition: none;
+}
+:where(:root[data-world="under-the-lights"]) .toast.show {
+  transform: none;
+  animation: uls-step-in var(--uls-step-ms) var(--uls-step) both;
+}
+:where(:root[data-world="under-the-lights"]) .toast:is(.err, [data-tone="error"]) {
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-toast .sc-lamp { background: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-toast:is(.err, [data-tone="error"]) .sc-lamp {
+  background: var(--uls-tally-red);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :where(:root[data-world="under-the-lights"]) .toast.show { animation: none; }
+}
+:where(:root[data-world="under-the-lights"][data-motion="reduced"]) .toast.show { animation: none; }

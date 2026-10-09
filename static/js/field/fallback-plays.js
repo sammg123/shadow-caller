@@ -1,30 +1,35 @@
 /**
- * One timeline row on the 2D field (ui-architecture.md 2.5 and 6.2, owner A6): every step of its field/paths.js
- * Drawing as SVG parts with the geometry to draw them part way, so the engine can animate a play by progress (a
- * stroke grows along its path; a lane grows with the ball; marks, areas and bands pop or fade in). Arcs are seen
- * from above at a slight tilt: the ground track stays on the turf and the flight bows toward the far sideline by its
- * apex (fallback-draw OBLIQUE), so a kick reads as a kick and its length stays true. Pure.
+ * One timeline row on the 2D field (docs/design/play-drawing.md, binding; ui-architecture.md 2.5, 6.2 and 16.5,
+ * owner A6): every step of its field/paths.js Drawing as SVG parts with the geometry to draw them part way, so the
+ * engine can animate a play by progress (a stroke grows from the line of scrimmage along its path; marks pop in),
+ * plus the play's words (drawing.label: "Deep pass left · +21") at the spot paths.js chose beside the end of the play.
+ * Arcs are seen from above: the ground track stays on the turf and the flight bows toward the far sideline, a pass
+ * by its whole apex (fallback-steps PASS_LIFT) so even a short throw reads as an arch, a kick by the slight tilt of
+ * fallback-draw OBLIQUE; either way its length stays true. Pure.
  *
  * Colors (DESIGN.md "The Light Core Rule"): every path has a light core (the team color mixed toward the look's core)
- * and carries the team color on its edge. Approximate steps take the look's approx style (dashed, hatch, soft or
- * pixel); ghosted steps (a no-play) take the stroke's ghostedOpacity and stay dashed: visibly not counted.
+ * and carries the team color on its edge. The real play draws solid; approximate steps (a kick's estimated landing,
+ * a loose ball's runback) take the look's approx style (dashed, hatch, soft or pixel); ghosted steps (a no-play) take
+ * the stroke's ghostedOpacity and stay dashed: visibly not counted.
  */
 import { deepFreeze } from "../core/domain.js";
 import { verdictText } from "../model/verdict.js";
 import { liftToLuminance, mixHex } from "../theme/team-colors.js";
+import { FIELD } from "./coords.js";
 import { r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
-import { stepParts, subPath } from "./fallback-steps.js";
+import { shownHeight, stepParts, subPath } from "./fallback-steps.js";
 import { ballAt } from "./timing.js";
 
 const CORE_MIX = 0.65;
 const WIDTH = Object.freeze({ min: 2, max: 10, edgeMin: 2, edgeK: 0.6, fallback: 4 });
-const LABEL_LIFT_YD = 2.6;
-const CHIP_DROP_PX = 22;
+const CHIP_DROP_PX = 24;
 const MAX_RESIDUE = 240;
 const TRAIL_SAMPLES = 8;
 const TRAIL_GLOW = 0.08;
-const STROKE_OF = Object.freeze({ arc: "arc", ground: "ground", corridor: "corridor", area: "area", band: "band",
-  mark: "mark" });
+const STROKE_OF = Object.freeze({ arc: "arc", ground: "ground", mark: "mark" });
+/** Steps after which the other team has the ball: a lost ball, an interception, a kick's flight. */
+const FLIP_MARKS = new Set(["turnover", "int"]);
+const FLIP_ARCS = new Set(["punt", "kickoff"]);
 const VERDICT_TONE = Object.freeze({ top1: "good", top3: "warn", miss: "bad" });
 
 const clamp01 = (u) => Math.min(1, Math.max(0, u));
@@ -68,29 +73,20 @@ export function strokeStyle(ctx, kind, team, { approx = false, ghosted = false, 
 // ---------------------------------------------------------------- partial geometry
 const pt2 = (p) => `${r2(p.px)} ${r2(p.py)}`;
 
-function laneAt(geom, k) {
-  if (geom.kind === "cells") {
-    return { visibility: "visible", d: geom.cells.filter((c) => c.t <= k + 1e-9).map((c) => c.d).join("") };
-  }
-  const cur = geom.ax + (geom.bx - geom.ax) * k;
-  return { visibility: "visible", x: r2(Math.min(geom.ax, cur)), width: r2(Math.abs(cur - geom.ax)) };
-}
-
 function scaleAbout(cx, cy, s) {
   return `translate(${r2(cx)} ${r2(cy)}) scale(${r2(s)}) translate(${r2(-cx)} ${r2(-cy)})`;
 }
 
 /**
  * Attributes of a part at progress u (0 to 1) of its step: hidden before it starts, the full static part at 1.
- * Kinds: path (grows along its geometry), lane (a box growing from its start, or cells lit in travel order),
- * pop (scales up and fades in about its center), fade, end (appears when its step completes).
+ * Kinds: path (grows along its geometry from where the step starts), pop (scales up and fades in about its center),
+ * fade, end (appears when its step completes).
  */
 export function partAt(part, u) {
   const k = clamp01(u);
   const kind = part.anim.kind;
   if (k <= 0 || (kind === "end" && k < 1)) return { visibility: "hidden" };
   if (kind === "path") return { visibility: "visible", d: subPath(part.anim.geom, k) };
-  if (kind === "lane") return laneAt(part.anim.geom, k);
   if (kind === "pop") {
     const s = 0.6 + 0.4 * (1 - (1 - k) ** 3);
     const transform = k >= 1 ? null : scaleAbout(part.anim.cx, part.anim.cy, s);
@@ -101,64 +97,85 @@ export function partAt(part, u) {
 }
 
 // ---------------------------------------------------------------- who has the ball
-/** The team carrying (or kicking) on each step: possession flips after a turnover mark and after a kick's flight. */
+/** The team carrying (or kicking) on each step: possession flips after a turnover or INT mark and after a kick's
+ * flight, so an interception's return and a punt's return take the other team's color. */
 export function carriersOf(row, drawing) {
   const other = (t) => (t === row.team ? row.opp : row.team) ?? t;
   const start = row.kind === "kickoff" ? (row.kick?.by ?? row.opp ?? row.team) : row.team;
   return drawing.steps.reduce((acc, step) => {
-    const flips = (step.t === "mark" && step.role === "turnover")
-      || (step.t === "arc" && (step.role === "punt" || step.role === "kickoff"));
+    const flips = (step.t === "mark" && FLIP_MARKS.has(step.role)) || (step.t === "arc" && FLIP_ARCS.has(step.role));
     return { team: flips ? other(acc.team) : acc.team, out: [...acc.out, acc.team] };
   }, { team: start, out: [] }).out;
 }
 
 // ---------------------------------------------------------------- labels
 const showsTags = (ctx) => ctx.look.labels.renderer !== "none";
+/** The play's words show unless the look turns them off (labels.result: false, or no tags at all). */
+const showsWords = (ctx) => showsTags(ctx) && ctx.look.labels.result !== false;
+const BAD_WORDS = /intercepted|\u00b7 INT\b|fumble lost|muffed, lost|\u00b7 blocked|no good|\u00b7 safety/;
+const WARN_WORDS = /^(No play|Flag)\b/;
 
-function toneOfResult(text) {
-  if (/INT|FUMBLE|TURNOVER|BLOCKED|MISSED|SAFETY/.test(text)) return "bad";
-  return text === "FLAG" ? "warn" : "ink";
+/** The words' tone: a turnover, a block, a miss or a safety reads bad; a flag that wiped or replaced the play, warn. */
+export function toneOfLabel(text) {
+  if (BAD_WORDS.test(text)) return "bad";
+  return WARN_WORDS.test(text) ? "warn" : "ink";
 }
 
-function labelSpec(drawing, ctx) {
-  const label = drawing.resultLabel;
-  if (!label || !ctx.look.labels.result || !showsTags(ctx)) return null;
-  const at = ctx.pt(label.at.x, label.at.y + LABEL_LIFT_YD);
-  const tag = tagNode({ at, text: label.text, tone: toneOfResult(label.text), size: tagSize(ctx, "s"),
-    part: "result-label", cls: ctx.look.labels.className });
-  return { text: label.text, at, node: tag };
+/**
+ * Which way the words sit from the end of the play on screen (paths.js chose the spot beside its anchor, the
+ * resultLabel's): 1 below it, -1 above. Without an anchor, by the center line the next ball rests on.
+ */
+function wordsSide(drawing) {
+  const label = drawing.label;
+  const anchor = drawing.resultLabel?.at;
+  if (!label) return 1;
+  if (anchor && label.at.y !== anchor.y) return label.at.y < anchor.y ? 1 : -1;
+  return label.at.y < FIELD.CENTER_Y ? 1 : -1;
 }
 
-function verdictSpec(drawing, ctx, verdict) {
+function labelSpec(drawing, ctx, side) {
+  const label = drawing.label;
+  if (!label?.text || !showsWords(ctx)) return null;
+  const at = ctx.pt(label.at.x, label.at.y);
+  const tag = tagNode({ at, text: label.text, tone: toneOfLabel(label.text), size: tagSize(ctx, "s"),
+    part: "play-label", cls: `${ctx.look.labels.className} sc-fb-play-label` });
+  const marked = { ...tag, attrs: { ...tag.attrs, "data-approx": String(Boolean(label.approx)) } };
+  return { text: label.text, at, side, node: marked };
+}
+
+function verdictSpec(label, ctx, verdict) {
   const text = verdictText(verdict);
-  if (!text || !drawing.resultLabel || !showsTags(ctx)) return null;
-  const base = ctx.pt(drawing.resultLabel.at.x, drawing.resultLabel.at.y + LABEL_LIFT_YD);
-  const at = { px: base.px, py: base.py + CHIP_DROP_PX };
+  if (!text || !label) return null;
+  const at = { px: label.at.px, py: label.at.py + label.side * CHIP_DROP_PX };
   return tagNode({ at, text, tone: VERDICT_TONE[verdict], size: tagSize(ctx, "xs"), part: "verdict",
     cls: `${ctx.look.labels.className} sc-fb-verdict` });
 }
 
 // ---------------------------------------------------------------- the play
-function stepSpec(step, index, team, ctx) {
+/** `badge` is the screen direction a lettered mark (TD, INT) sits from its spot: away from the play's words. */
+function stepSpec(step, index, team, ctx, badge) {
   const kind = STROKE_OF[step.t] ?? "mark";
   const style = strokeStyle(ctx, kind, team, { approx: Boolean(step.approx), ghosted: Boolean(step.ghosted),
     role: step.role });
   return { index, t: step.t, role: step.role, ghosted: Boolean(step.ghosted), approx: Boolean(step.approx), team,
-    opacity: style.opacity, parts: stepParts(step, ctx, style) };
+    opacity: style.opacity, parts: stepParts(step, ctx, { ...style, badge }) };
 }
 
 /**
  * The 2D drawing of a row: { seq, drive, team, steps: [{ index, t, role, ghosted, approx, team, opacity, parts }],
- * label: { text, at, node } | null, verdictNode }. A part is { role, tag, attrs (its finished state), anim }.
- * Never mutates the row or the drawing.
+ * label: { text, at, side, node } | null (drawing.label at its spot; `side` 1 when it sits below the end of the play
+ * on screen, -1 above), verdictNode (on the far side of the words from the play). A part is { role, tag, attrs (its
+ * finished state), anim }. Never mutates the row or the drawing.
  */
 export function playSpec(drawing, row, ctx, { verdict = null } = {}) {
   const carriers = carriersOf(row, drawing);
+  const side = wordsSide(drawing);
+  const label = labelSpec(drawing, ctx, side);
   return {
     seq: drawing.seq, drive: row.drive ?? null, team: drawing.team,
-    steps: drawing.steps.map((step, i) => stepSpec(step, i, carriers[i], ctx)),
-    label: labelSpec(drawing, ctx),
-    verdictNode: verdictSpec(drawing, ctx, verdict),
+    steps: drawing.steps.map((step, i) => stepSpec(step, i, carriers[i], ctx, -side)),
+    label,
+    verdictNode: verdictSpec(label, ctx, verdict),
   };
 }
 
@@ -178,13 +195,20 @@ export function restingBall(drawing, plan) {
   return end ? { x: end.x, y: end.y, h: 0 } : null;
 }
 
+/** The ball at tMs as the 2D field draws it: its height scaled to the arc it rides (fallback-steps shownHeight). */
+export function shownBall(drawing, plan, tMs) {
+  const b = ballAt(drawing, plan, tMs);
+  const step = b && b.index >= 0 ? drawing.steps[b.index] : null;
+  return b && step ? { ...b, h: shownHeight(step, b.h) } : b;
+}
+
 /** The ball's trail behind it at tMs (look.ball.trail), as one stroke. */
 export function trailNodes(drawing, plan, tMs, ctx, team) {
   const trail = ctx.look.ball.trail;
   if (trail.kind === "none" || !(trail.fadeMs > 0) || !(trail.widthPx > 0)) return [];
   const back = (k) => trail.fadeMs * (1 - k / (TRAIL_SAMPLES - 1));
   const times = Array.from({ length: TRAIL_SAMPLES }, (_, k) => Math.max(0, tMs - back(k)));
-  const pts = times.map((t) => ballAt(drawing, plan, t)).filter(Boolean).map((b) => ctx.pt(b.x, b.y, b.h));
+  const pts = times.map((t) => shownBall(drawing, plan, t)).filter(Boolean).map((b) => ctx.pt(b.x, b.y, b.h));
   if (pts.length < 2) return [];
   const color = trail.color === "team" ? liftToLuminance(paintOf(ctx, team).edge, TRAIL_GLOW) : trail.color;
   const d = pts.map((p, i) => `${i ? "L" : "M"}${pt2(p)}`).join("");

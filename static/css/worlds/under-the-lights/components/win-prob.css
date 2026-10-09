@@ -1,0 +1,71 @@
+/* Under the Lights: the caller's win probability at the right end of the lower ribbon (ui/win-prob.js; DESIGN.md
+   Components "Lower ribbon: drive chart and win probability"; owner W2). "DAL 63%" in label caps, warm white, beside
+   an LED line of the game so far: the chart's own SVG masked onto the 4 px pitch over a plain panel, so every cell of
+   the plot is a pixel: unlit cells for the ground, the 50% line in a dim row, the game's line in lit cells, a score in
+   amber and a turnover in tally red, the newest point a 2 x 2 warm-white block. No team color lights it (the areas
+   above and below 50% stay dark). Hand-entered games show the WP copy in small dim type. */
+
+:where(:root[data-world="under-the-lights"]) .sc-winprob { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) :is(.sc-wp-team, .sc-wp-value) {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--sc-size-s) / 1 var(--sc-font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-wp-team { color: var(--sc-ink-muted); }
+/* Below 40 px there is no Doto, so this readout has no unlit cells behind it (The 40 Pixel Rule). */
+:where(:root[data-world="under-the-lights"]) .sc-wp-value.sc-digits { display: inline-block; padding: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-wp-value.sc-digits::before,
+:where(:root[data-world="under-the-lights"]) .sc-wp-value.sc-digits::after { content: none; }
+
+/* ---------------------------------------------------------------- the LED line */
+:where(:root[data-world="under-the-lights"]) .sc-wp-plot { background: var(--uls-led-panel); }
+:where(:root[data-world="under-the-lights"]) .sc-wp-svg {
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+:where(:root[data-world="under-the-lights"]) .sc-wp-bg { fill: var(--uls-segment-unlit); }
+:where(:root[data-world="under-the-lights"]) .sc-wp-q {
+  stroke: color-mix(in srgb, var(--uls-led-dim) 30%, var(--uls-led-panel));
+  stroke-width: 2;
+}
+:where(:root[data-world="under-the-lights"]) .sc-wp-even {
+  stroke: color-mix(in srgb, var(--uls-led-dim) 38%, var(--uls-led-panel));
+  stroke-width: var(--uls-cell);
+  stroke-dasharray: none;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-wp-area-caller, .sc-wp-area-opp) { fill: none; }
+:where(:root[data-world="under-the-lights"]) .sc-wp-line {
+  stroke: var(--sc-ink);
+  stroke-width: 5;
+  stroke-linejoin: miter;
+  stroke-linecap: square;
+}
+:where(:root[data-world="under-the-lights"]) .sc-wp-mark {
+  stroke: var(--uls-led-amber);
+  stroke-width: 8;
+  stroke-linecap: square;
+}
+:where(:root[data-world="under-the-lights"]) .sc-wp-mark[data-kind="turnover"] { stroke: var(--uls-tally-red); }
+:where(:root[data-world="under-the-lights"]) .sc-wp-now {
+  stroke: var(--sc-ink);
+  stroke-width: 8;
+  stroke-linecap: square;
+}
+
+/* ---------------------------------------------------------------- words around it */
+:where(:root[data-world="under-the-lights"]) :is(.sc-wp-evenlabel, .sc-wp-axis) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-wp-note {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.15 var(--sc-font-text);
+}
+/* The stat board and the phone show the chart at height; the ribbon fits it to its 40 / 56 px (layout.css). */
+:where(:root[data-world="under-the-lights"]) .sc-winprob > .sc-panel-title {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}

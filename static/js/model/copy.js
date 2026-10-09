@@ -315,6 +315,17 @@ export const REVIEW = Object.freeze({
   live: "Back to live",
 });
 
+// v1.4 (W5): the replay scrub (ui/scrub.js, model/vm-scrub.js): the game so far as one strip you drag to review a
+// play. Review only: it moves the client's review cursor and never the server's game. Its keys reuse REVIEW's names.
+export const SCRUB = Object.freeze({
+  label: "Replay",
+  track: "Review a play",
+  live: "Live",
+  review: "Review",
+  none: "No plays yet",
+  play: (when, team, what) => [when, team, what].filter(Boolean).join(" · "),
+});
+
 export const FIELD = Object.freeze({
   label: "Football field",   // v1.2 (A9): #field's name before a game is loaded
   legend: "Ball shown mid-field; ESPN gives no hash.",

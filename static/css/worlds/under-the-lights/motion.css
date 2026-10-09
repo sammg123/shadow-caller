@@ -1,0 +1,104 @@
+/* Under the Lights: motion (DESIGN.md Motion grammar; owner W3). Motion is what stadium hardware does between
+   states, never a crawl, a crossfade, a bounce or a pulse:
+   - LED steps (12 fps): copy steps in from the right in 5 discrete frames of 83 ms (--uls-step, 415 ms) and holds.
+   - Scanline fade-up: the video board's call, an unrolled board and the expanded board appear row by row, top to
+     bottom, in 10 steps over 400 ms (--uls-scan). An unrolling drive list scans bottom to top, as it rises.
+   - Segment snap: digits change with no tween (--uls-segment-snap: 0ms); a leader lamp relights with one 83 ms blink.
+   - Hardware: the control-room drawer runs out on rails in 240 ms (--uls-rail-ms, --sc-ease-out); steel never
+     bounces, fades or scales.
+   The light dip (20% for 300 ms) and the camera moves belong to the scene (W1 moments, the engine); their timings are
+   here as tokens so the HUD and the bowl keep one clock. Every item is an instant state change under reduced motion
+   (prefers-reduced-motion or html[data-motion="reduced"]), and the engine skips world moments there. */
+
+:root[data-world="under-the-lights"] {
+  --uls-frame-ms: 83ms;
+  --uls-step: steps(5, jump-end);
+  --uls-step-ms: 415ms;
+  --uls-step-from: 2.5em;
+  --uls-scan: steps(10, jump-end);
+  --uls-scan-ms: 400ms;
+  --uls-segment-snap: 0ms;
+  --uls-blink-ms: 83ms;
+  --uls-rail-ms: 240ms;
+  --uls-dip-ms: 300ms;
+  --uls-dip-level: 0.8;
+  --uls-settle-ms: 1100ms;
+}
+
+/* ---------------------------------------------------------------- keyframes */
+@keyframes uls-step-in {
+  from { transform: translateX(var(--uls-step-from)); }
+  to { transform: none; }
+}
+/* Two names for the same scan, so a component that flips data-enter="a|b" replays it on every new call. */
+@keyframes uls-scan-down-a {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes uls-scan-down-b {
+  from { clip-path: inset(0 0 100% 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes uls-scan-up {
+  from { clip-path: inset(100% 0 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+@keyframes uls-rails-in {
+  from { inset-inline-start: calc(-1 * var(--uls-drawer-w)); }
+  to { inset-inline-start: 0; }
+}
+/* One LED frame dark, then lit: a lamp that changes meaning relights (component skins apply it). */
+@keyframes uls-blink {
+  0%, 49.9% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
+/* ---------------------------------------------------------------- where the HUD moves */
+/* The newest play steps onto the upper ribbon (a new row is a new node, so it steps in once, then holds). */
+:where(#app[data-layout="uls"] .uls-ribbon) .sc-pf-row[data-newest="true"] .sc-pf-btn {
+  animation: uls-step-in var(--uls-step-ms) var(--uls-step) both;
+}
+
+/* A new next call scans onto the video board, row by row. */
+:where(#app[data-layout="uls"] .uls-board) .sc-call[data-enter="a"] .sc-call-top {
+  animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
+}
+:where(#app[data-layout="uls"] .uls-board) .sc-call[data-enter="b"] .sc-call-top {
+  animation: uls-scan-down-b var(--uls-scan-ms) var(--uls-scan) both;
+}
+
+/* The play feed unrolls down from the ribbon; the drive chart unrolls up from the lower ribbon. */
+#app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :focus-within) > * {
+  animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
+}
+#app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :focus-within) > * {
+  animation: uls-scan-up var(--uls-scan-ms) var(--uls-scan) both;
+}
+
+/* The drawer runs out on its rails (closing is instant: the cabinet is simply put away). */
+#app[data-layout="uls"][data-booth-open="true"] .uls-drawer {
+  animation: uls-rails-in var(--uls-rail-ms) var(--sc-ease-out) both;
+}
+
+/* Digits snap: a ticking number never tweens (The Ticking Number Rule). */
+:where(#app[data-layout="uls"]) .sc-digits {
+  transition-duration: var(--uls-segment-snap);
+}
+
+/* ---------------------------------------------------------------- reduced motion: instant state changes */
+@media (prefers-reduced-motion: reduce) {
+  #app[data-layout="uls"] .uls-drawer,
+  #app[data-layout="uls"] .uls-ribbon #rg-plays > *,
+  #app[data-layout="uls"] .uls-lower #rg-drives > *,
+  #app[data-layout="uls"] .uls-ribbon .sc-pf-btn,
+  #app[data-layout="uls"] .uls-board .sc-call-top {
+    animation: none !important;
+  }
+}
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-drawer,
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon #rg-plays > *,
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-lower #rg-drives > *,
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon .sc-pf-btn,
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-board .sc-call-top {
+  animation: none !important;
+}

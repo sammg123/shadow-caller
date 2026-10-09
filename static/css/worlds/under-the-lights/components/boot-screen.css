@@ -1,0 +1,65 @@
+/* Under the Lights: the boot screen (ui/boot-screen.js; DESIGN.md Components "Toasts, connection banner, review
+   banner, boot screen"; owner W2). The stadium before the lights come on: the night-sky ground and one centered LED
+   board in a steel cabinet, its painted plate naming the app beside a lamp (amber while loading, tally red when the
+   server can't be reached or must restart), the heading in ribbon caps, and the command (bash start.sh) in its own
+   LED window. */
+
+:where(:root[data-world="under-the-lights"]) .sc-boot { background: var(--sc-bg); color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-boot-board {
+  justify-items: stretch;
+  gap: var(--sc-space-3);
+  width: min(36rem, 100%);
+  max-width: none;
+  padding: 0 0 var(--sc-space-4);
+  border: var(--uls-frame) solid var(--uls-steel);
+  border-top: 0;
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-face);
+  text-align: start;
+}
+/* The plate across the cabinet's top, then the LED face carries the words. */
+:where(:root[data-world="under-the-lights"]) .sc-boot-plate {
+  justify-self: stretch;
+  gap: var(--sc-space-2);
+  min-height: var(--uls-plate-h);
+  margin-inline: calc(-1 * var(--uls-frame));
+  padding: 0 var(--sc-space-3);
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-bottom: 1px solid var(--uls-steel-seam);
+  background: var(--uls-steel-raised);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot .sc-lamp { background: var(--uls-unlit); }
+:where(:root[data-world="under-the-lights"]) .sc-boot[data-phase="loading"] .sc-lamp {
+  background: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot:is([data-phase="failed"], [data-phase="restart"]) .sc-lamp {
+  background: var(--uls-tally-red);
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot-board > :not(.sc-boot-plate) {
+  margin-inline: var(--uls-face-pad);
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot-heading {
+  margin-top: var(--sc-space-2);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-ribbon) / 1.1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot-text {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot-text strong {
+  padding: 1px 6px;
+  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-panel);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) 1em / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-boot-retry { justify-self: start; }

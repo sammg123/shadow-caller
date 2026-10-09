@@ -1,0 +1,155 @@
+/* Under the Lights: the booth (DESIGN.md "Control-room drawer", "Keys, lamps and LED inputs", Layout;
+   ui-architecture.md 4.4, 8.2, 17; owner W4). The control-room drawer (B) is W3's steel rack (layout.css); this
+   sheet fits the booth's own hardware into it and into the desk:
+   - lamp switches: every checkbox in the booth and on the desk (Touchdown, Turnover, automatic 1st down, the two
+     settings) is a painted steel switch with a lamp, lit when on;
+   - console pushbuttons: the manual keypad and the retag keys, a lit LED window over a painted name;
+   - the FLAGS rack is painted flag yellow while the flag panel is out, and X opens the drawer to it (booth.js);
+   - the SETTINGS rack holds the light dip and room lights switches (booth.js);
+   - the open drawer is HUD: the camera keeps the line of scrimmage clear of it (--sc-field-safe-left);
+   - the entry line is never hidden: while the desk is being typed in, the open video board keeps its height.
+   Flat hardware: no shadows (the focus gutter is the one), no gradients but the LED pixel grid, no fades. */
+
+/* ---------------------------------------------------------------- lamp switches */
+:where(#app[data-layout="uls"]) .sc-check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-2);
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* The checkbox is the lamp itself: unlit (a dark lens in its steel socket) or lit amber. It stays the real control,
+   so the label, Space and a click on the lamp all toggle it. */
+:where(#app[data-layout="uls"]) .sc-check input[type="checkbox"] {
+  appearance: none;
+  flex: none;
+  width: var(--uls-lamp);
+  height: var(--uls-lamp);
+  margin: 0;
+  border: 1px solid var(--uls-steel-edge);
+  border-radius: 50%;
+  background: var(--uls-led-panel);
+  cursor: pointer;
+}
+:where(#app[data-layout="uls"]) .sc-check input[type="checkbox"]:checked {
+  border-color: var(--uls-led-amber);
+  background: var(--uls-led-amber);
+}
+:where(#app[data-layout="uls"]) .sc-check:is(:hover, :has(input:checked)) { color: var(--sc-ink); }
+:where(#app[data-layout="uls"]) .sc-check-key { color: var(--sc-ink-muted); letter-spacing: 0; }
+/* Focus rings the whole switch, not the small lamp. */
+:where(#app[data-layout="uls"]) .sc-check input[type="checkbox"]:focus-visible { outline: none; box-shadow: none; }
+:where(#app[data-layout="uls"]) .sc-check:has(input:focus-visible) {
+  outline: var(--sc-focus-w) solid var(--sc-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--sc-bg);
+}
+
+/* ---------------------------------------------------------------- pushbuttons (the keypad, the retag keys) */
+/* A console pushbutton: its keyboard key in a lit-window LED face across the top, its name painted on the steel
+   under it. The window prints the letter in the key's tone (--sc-tone, set by each component) and lights in it. */
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) { --uls-pad-window: calc(var(--uls-size-key) + 4px); }
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "cap" "name";
+  align-content: center;
+  justify-items: stretch;
+  gap: 3px;
+  flex: 1 1 auto;
+  min-width: calc(var(--uls-pad-window) + 6px);
+  min-height: 0;
+  padding: 3px 3px 5px;
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink-muted);
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+  transition: none;
+}
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key-cap {
+  grid-area: cap;
+  display: grid;
+  place-items: center;
+  width: auto;
+  min-width: 0;
+  height: var(--uls-pad-window);
+  padding: 0;
+  border: 0;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-tone);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+}
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key-name {
+  grid-area: name;
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key:hover:not(:disabled) { color: var(--sc-ink); }
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key:hover:not(:disabled) .sc-key-cap {
+  color: var(--sc-tone);
+}
+
+/* A touch screen has no keyboard to learn (A9's caps step aside there): the letter goes, the window stays as a lamp
+   strip over the name, so a picked key still lights. */
+@media (hover: none) and (pointer: coarse) {
+  :where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key-cap {
+    height: 8px;
+    overflow: hidden;
+    color: transparent;
+    font-size: 0;
+  }
+}
+
+/* ---------------------------------------------------------------- the drawer's racks */
+/* X opens the drawer to the FLAGS rack (booth.js scrolls it in): it stops just under the drawer's top padding. */
+:where(#app[data-layout="uls"]) .uls-rack { scroll-margin-block-start: var(--sc-space-4); }
+/* FLAGS: the plate is painted flag yellow, black caption (14.7:1), like the flag on the turf. */
+#app[data-layout="uls"] [data-rack="flags"] > .uls-plate {
+  background: var(--uls-line-to-gain);
+  color: var(--uls-caption-dark);
+}
+
+/* SETTINGS: two lamp switches, each with its note in small type. */
+:where(#app[data-layout="uls"]) .uls-booth { display: grid; gap: var(--sc-space-3); }
+:where(#app[data-layout="uls"]) .uls-setting { display: grid; justify-items: start; gap: 6px; min-width: 0; }
+:where(#app[data-layout="uls"]) .uls-switch-note {
+  max-width: 60ch;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / var(--sc-leading-body) var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+
+/* ---------------------------------------------------------------- the stadium: insets and the entry line */
+@media (min-width: 1200px) and (min-height: 640px) {
+  /* The open drawer is HUD like the board column: the field's free area starts at its open side, so the camera keeps
+     the line of scrimmage and the shadow plays clear of it (W3's watcher announces the change, sc:hud-insets). */
+  #app[data-layout="uls"][data-booth-open="true"] { --sc-field-safe-left: var(--uls-drawer-w); }
+
+  /* The entry line stays visible whenever manual entry is possible (ui-architecture 4.4): while Yards or the
+     shorthand bar has focus (a play key or a play clicked on the board puts focus in Yards), the open video board
+     still grows left but keeps its height and scrolls inside, so a resting pointer never covers the desk. */
+  #app[data-layout="uls"]:has(.uls-desk input:focus) .uls-board { height: var(--uls-board-h); }
+}

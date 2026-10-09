@@ -17,6 +17,7 @@ import { mastheadVm } from "../model/vm-masthead.js";
 import { playsVm } from "../model/vm-plays.js";
 import { predictionVm } from "../model/vm-prediction.js";
 import { reviewVm } from "../model/vm-review.js";
+import { scrubVm } from "../model/vm-scrub.js";
 import { scoreboardVm } from "../model/vm-scoreboard.js";
 import { scorecardVm } from "../model/vm-scorecard.js";
 import { situationVm } from "../model/vm-situation.js";
@@ -30,6 +31,12 @@ const MS_PER_S = 1000;
 export function inputModeDeps(s) {
   const watch = s.version?.watch ?? s.presented?.watch ?? null;
   return [watch?.state ?? null, Boolean(s.version?.feed?.on ?? s.presented?.feed?.on)];
+}
+
+/** v1.4 (W5): the freshest watch's state and total, as values (the scrub's strip runs to the session's total). */
+export function watchTotalDeps(s) {
+  const watch = s.version?.watch ?? s.presented?.watch ?? null;
+  return [watch?.state ?? null, watch?.total ?? null];
 }
 
 /** The seconds a retry countdown shows ("Retrying in N s"), 0 while none is pending: a dep that changes when the
@@ -94,6 +101,11 @@ export const COMPONENTS = Object.freeze([
     deps: (s) => [s.view.review, s.timeline, s.anim.drawnThrough] }),
   entry({ name: "watch-transport", region: "transport", root: "#rg-transport", label: "Watch controls",
     load: () => import("../ui/watch-transport.js"), select: transportVm, deps: (s) => [s.version, s.presented, s.prefs] }),
+  // v1.4 (W5): the replay scrub appends after the transport in its region (as the review banner does beside the
+  // field); it reads the drawn rows, the review cursor and the watch's state and total, nothing else.
+  entry({ name: "scrub", region: "transport", root: "#rg-transport", label: "Replay scrub",
+    load: () => import("../ui/scrub.js"), select: scrubVm,
+    deps: (s) => [s.timeline, s.anim.drawnThrough, s.view.review, ...watchTotalDeps(s)] }),
   entry({ name: "prediction", region: "call", root: "#heroArea", label: "Next call",
     load: () => import("../ui/prediction.js"), select: predictionVm,
     deps: (s) => [s.presented, s.view.pick, s.view.hoverLeaf, ...inputModeDeps(s)] }),

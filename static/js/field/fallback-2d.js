@@ -1,10 +1,12 @@
 /**
- * The 2D field engine (ui-architecture.md 2.5 Engine and 6.2; owner A6): the whole Engine interface on one SVG
+ * The 2D field engine (ui-architecture.md 2.5 Engine, 6.2 and 16.5; owner A6): the whole Engine interface on one SVG
  * (svg[data-testid="field-svg"]), top-down through coords.toPlane, the caller's end zone on the left. Used when
  * there is no WebGL2, with ?scene=2d, when the WebGL engine fails to start, and when it fails at run time (the
- * conductor swaps this in). It draws the same facts as the 3D field from the same pure geometry: the situation, the
- * prediction zones (field/ghosts.js), every play step (field/paths.js) with approximations drawn as approximations,
- * residue per look, and the active look's colors and styles, so it reads as the same world seen from straight above.
+ * conductor swaps this in). It draws the same facts as the 3D field from the same pure geometry, in Sam's grammar
+ * (docs/design/play-drawing.md): every play from the line of scrimmage (field/paths.js: a pass an arc, an
+ * incompletion an arc and an X, a run a straight line on the turf) with its words on the field, his top 2 plays as
+ * dashed, translucent shadow plays before his snap (field/shadows.js), the situation, residue per look, and the
+ * active look's colors and styles, so it reads as the same world seen from straight above.
  *
  * DOM side. Animation runs only while a play draws (render on demand: no frames while idle). Every public call is
  * guarded: a failure is reported (opts.onError, else globalThis.reportError) and emitted as "error", and playRow
@@ -15,6 +17,7 @@ import { resolveLook } from "../theme/look-schema.js";
 import { NEUTRAL_LOOK } from "../theme/neutral-look.js";
 import { setAttr } from "../ui/dom.js";
 import { r2, layoutPlane, sceneContext } from "./fallback-draw.js";
+import { shownLeaves } from "./fallback-ghosts.js";
 import { cancelFades } from "./fallback-layers.js";
 import { PLAYS_EMPTY } from "./fallback-plays.js";
 import { createPlayer } from "./fallback-player.js";
@@ -167,11 +170,10 @@ function setCamera(s, id) {
   if (id === CAMERA_MODES[0].id) emit(s, "camera", { id });
 }
 
+/** The #field data-ghosts hook: the shadow plays on the field (his top 2, the hovered extra aside), in rank order. */
 function visibleGhosts(s) {
-  if (s.review) return s.review.ghosts ? s.review.ghosts.shapes.map((x) => x.leaf) : [];
-  const g = s.ghosts;
-  if (!g?.set) return [];
-  return (g.phase === "aftersnap" ? g.set.shapes.slice(0, 1) : g.set.shapes).map((x) => x.leaf);
+  if (s.review) return shownLeaves(s.review.ghosts);
+  return shownLeaves(s.ghosts?.input ?? null);
 }
 
 function debugState(s) {

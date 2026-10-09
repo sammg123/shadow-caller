@@ -1,12 +1,14 @@
 /**
- * What the 2D engine shows and how it changes (ui-architecture.md 2.5 and 3.4; owner A6). DOM side. The engine
+ * What the 2D engine shows and how it changes (ui-architecture.md 2.5, 3.4 and 16.5; owner A6). DOM side. The engine
  * (fallback-2d.js) owns the state `s` and its lifecycle; this module runs the parts the conductor drives: plays
- * (animated through fallback-player.js on the frame loop, or drawn at once), the situation, the prediction zones
- * (deferred while a play runs: the last call wins; faint after a caller snap), review, verdicts and relabels.
+ * (animated through fallback-player.js on the frame loop, or drawn at once), the situation, the shadow plays before
+ * a caller snap (docs/design/play-drawing.md 4: deferred while a play runs, the last call wins; gone when the next
+ * play draws, while the previous play stays dimmed until then), review, verdicts and relabels.
  * Frames are requested only while something moves; every change counts one painted frame and emits "frame".
  */
 import { verdictOf } from "../model/verdict.js";
 import { setAttr } from "../ui/dom.js";
+import { shadowInput } from "./fallback-ghosts.js";
 import { clearStage, renderField, renderGhosts, renderPlays, renderSituation } from "./fallback-layers.js";
 import { foldPlays, restingBall, retireLast } from "./fallback-plays.js";
 import { buildDrawing, situationFromRow } from "./paths.js";
@@ -56,21 +58,29 @@ export function onFrame(s, now) {
 }
 
 // ---------------------------------------------------------------- drawing the state
+/** What the live shadows' words keep clear of: the previous play, still on the field (dimmed) before the snap. */
+const liveAvoid = (s) => (s.plays.last ? [s.plays.last.drawing] : []);
+
+function drawLiveGhosts(s) {
+  renderGhosts(s, s.surface.live, s.ghosts, { avoid: liveAvoid(s) });
+}
+
 export function drawLive(s) {
   const stage = s.surface.live;
   const playing = s.players.live.active();
   renderPlays(s, stage, s.plays, { exclude: playing?.entry ?? null, dim: s.dim });
-  renderGhosts(s, stage, s.ghosts);
+  drawLiveGhosts(s);
   renderSituation(s, stage, s.situation, s.ball, { withBall: !playing });
 }
 
+/** A past row replayed: the real play with its words, and the shadows of what he predicted before it. */
 export function drawReview(s) {
   const r = s.review;
   if (!r) return;
   const stage = s.surface.review;
   const playing = s.players.review.active();
   renderPlays(s, stage, { last: r.entry, residue: [] }, { exclude: playing?.entry ?? null });
-  renderGhosts(s, stage, r.ghosts ? { set: r.ghosts, phase: "presnap" } : null);
+  renderGhosts(s, stage, r.ghosts ? { input: r.ghosts } : null, { avoid: [r.entry.drawing] });
   renderSituation(s, stage, r.sit, null, { withBall: !playing });
 }
 
@@ -118,18 +128,24 @@ export function settleStage(s, name, completed) {
   flushPending(s);
 }
 
-function begin(s, row, entry) {
-  if (row.offense_is_caller && s.ghosts?.set) s.ghosts = { ...s.ghosts, phase: "aftersnap" };
+/** A play that draws something: the shadows fade out (play-drawing.md 4) and it becomes the last play, solid. */
+function drew(s) {
+  s.ghosts = null;
+  s.dim = false;
+}
+
+/** A row that draws nothing (a timeout) leaves the shadows for the snap still to come, and the previous play dimmed. */
+function begin(s, entry) {
+  if (entry.drawing.steps.length) drew(s);
   s.plays = foldPlays(s.plays, entry, s.look);
   s.drawnSeq = Math.max(s.drawnSeq, Number.isInteger(entry.seq) ? entry.seq : 0);
-  s.dim = false;
 }
 
 function startPlay(s, row, opts, resolve) {
   const token = opts?.token ?? 0;
   settleStage(s, "live", true);
   const entry = entryOf(row);
-  begin(s, row, entry);
+  begin(s, entry);
   if (!animates(s, opts?.durationMs, entry) || s.review) {
     if (entry.drawing.steps.length) s.ball = restOf(s, entry);
     drawLive(s);
@@ -173,8 +189,10 @@ export function drawRowsInstant(s, rows) {
       s.env.onError(err);
     }
   }
-  if (rest) s.ball = restOf(s, rest);
-  s.dim = false;
+  if (rest) {
+    s.ball = restOf(s, rest);
+    drew(s);
+  }
   drawLive(s);
   painted(s);
 }
@@ -189,14 +207,18 @@ export function showSituation(s, sit) {
   painted(s);
 }
 
+/**
+ * His shadow plays for the next snap (fallback-ghosts shadowInput: a GhostSet from the conductor, ShadowPlays or a
+ * { source, situation } request); null clears them. While a play runs the call waits (the last one wins).
+ */
 export function showGhosts(s, set) {
-  const next = set && Array.isArray(set.shapes) && set.shapes.length ? set : null;
   if (s.players.live.active()) {
-    s.pending = next;
+    s.pending = set ?? null;
     return;
   }
-  if (next && s.ghosts?.set?.key === next.key && s.ghosts.phase === "presnap") return;
-  s.ghosts = next ? { set: next, phase: "presnap" } : null;
+  const next = shadowInput(set, s.situation);
+  if (next && s.ghosts?.input?.key === next.key) return;
+  s.ghosts = next ? { input: next } : null;
   if (next && s.look.lastPlay.keep === "until-presnap") s.plays = retireLast(s.plays, s.look);
   else if (next) s.dim = true;
   drawLive(s);
@@ -206,7 +228,7 @@ export function showGhosts(s, set) {
 export function highlightGhost(s, leaf) {
   s.highlight = typeof leaf === "string" && leaf ? leaf : null;
   if (s.review) drawReview(s);
-  else renderGhosts(s, s.surface.live, s.ghosts);
+  else drawLiveGhosts(s);
   painted(s);
 }
 
@@ -229,7 +251,8 @@ export function showReview(s, row, ghosts) {
   settleStage(s, "live", true);
   s.players.review.finish();
   const entry = { ...entryOf(row), verdict: verdictOf(row.pred).key };
-  s.review = { entry, sit: situationFromRow(row), ghosts: Array.isArray(ghosts?.shapes) ? ghosts : null };
+  const sit = situationFromRow(row);
+  s.review = { entry, sit, ghosts: shadowInput(ghosts, sit) };
   setAttr(s.surface.live.root, "display", "none");
   setAttr(s.surface.review.root, "display", null);
   clearStage(s.surface.review);
@@ -245,17 +268,28 @@ export function showReview(s, row, ghosts) {
 }
 
 // ---------------------------------------------------------------- labels
+/** The entry for an updated row: a retag renames the play ("Play-action deep pass left · +21"), so its drawing (and
+ * so its words) is rebuilt; a row that no longer draws keeps the old drawing and is reported. */
+function redrawn(s, entry, row) {
+  try {
+    return { ...entry, row, drawing: buildDrawing(row) };
+  } catch (err) {
+    s.env.onError(err);
+    return { ...entry, row };
+  }
+}
+
 export function refreshLabels(s, rows) {
   const bySeq = new Map((Array.isArray(rows) ? rows : []).filter((r) => Number.isInteger(r?.seq)).map((r) => [r.seq, r]));
   if (!bySeq.size) return;
   const swap = (e) => {
     const row = e ? bySeq.get(e.seq) : undefined;
-    return row ? { ...e, row, verdict: e.verdict ? verdictOf(row.pred).key : null } : e;
+    return row ? { ...redrawn(s, e, row), verdict: e.verdict ? verdictOf(row.pred).key : null } : e;
   };
   s.plays = { last: swap(s.plays.last), residue: s.plays.residue.map(swap) };
   if (s.review && bySeq.has(s.review.entry.seq)) {
     const row = bySeq.get(s.review.entry.seq);
-    s.review = { ...s.review, entry: { ...s.review.entry, row, verdict: verdictOf(row.pred).key } };
+    s.review = { ...s.review, entry: { ...redrawn(s, s.review.entry, row), verdict: verdictOf(row.pred).key } };
   }
   drawLive(s);
   drawReview(s);

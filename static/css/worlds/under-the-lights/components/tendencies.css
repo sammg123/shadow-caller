@@ -1,0 +1,103 @@
+/* Under the Lights: his tendencies on the stat board (ui/tendencies.js; DESIGN.md Components "Stat board (G)"; owner
+   W2). An LED forest plot: each term's row is its own strip of LED cells (the row's SVG masked onto the 4 px pitch
+   over a plain panel cell, the row's ::before), the 90% interval a lit row of cells, the estimate a 3 x 3 block, filled
+   when the interval excludes zero and hollow (its center unlit) otherwise; pass terms warm white, run terms amber,
+   zero a dim column; "more run" and "more pass" under it. Then his play-type mix against what the league would call,
+   and the held-out check, as LED rows. */
+
+:where(:root[data-world="under-the-lights"]) .sc-tendencies { gap: var(--sc-space-3); color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-tend-sub {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-ghead {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- one term: its label and its LED strip */
+:where(:root[data-world="under-the-lights"]) .sc-tend-row {
+  --sc-tend-tone: var(--sc-pass);
+  min-height: calc(5 * var(--uls-cell) + 4px);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-row[data-sign="run"] { --sc-tend-tone: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-tend-row::before {
+  content: "";
+  grid-area: 1 / 2;
+  align-self: center;
+  height: calc(5 * var(--uls-cell));
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-label {
+  grid-area: 1 / 1;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-row[data-sure="false"] .sc-tend-label {
+  color: var(--sc-ink-muted);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-svg {
+  grid-area: 1 / 2;
+  height: calc(5 * var(--uls-cell));
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-zero {
+  stroke: color-mix(in srgb, var(--uls-led-dim) 40%, var(--uls-led-panel));
+  stroke-width: var(--uls-cell);
+  stroke-dasharray: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-ci {
+  stroke: var(--sc-tend-tone);
+  stroke-width: var(--uls-cell);
+  stroke-linecap: butt;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-row[data-sure="false"] .sc-tend-ci {
+  stroke: color-mix(in srgb, var(--sc-tend-tone) 55%, var(--uls-led-panel));
+  stroke-opacity: 1;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-dot {
+  stroke: var(--sc-tend-tone);
+  stroke-width: 12;
+  stroke-linecap: square;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-hole {
+  stroke: var(--uls-led-panel);
+  stroke-width: var(--uls-cell);
+  stroke-linecap: square;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-axis {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-run { color: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-tend-pass { color: var(--sc-pass); }
+
+/* ---------------------------------------------------------------- the mix and the held-out check */
+:where(:root[data-world="under-the-lights"]) .sc-tend-mix {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.15 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-mix tr + tr { border-top: 1px solid var(--uls-steel-seam); }
+:where(:root[data-world="under-the-lights"]) .sc-tend-mix th {
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-strong);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-his {
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-display);
+}
+:where(:root[data-world="under-the-lights"]) .sc-tend-mix tr[data-family="run"] .sc-tend-his { color: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-tend-mix tr[data-family="rpo"] .sc-tend-his { color: var(--sc-rpo); }
+:where(:root[data-world="under-the-lights"]) .sc-tend-exp { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) :is(.sc-tend-note, .sc-tend-heldout) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--sc-size-xs) / var(--sc-leading-body) var(--sc-font-text);
+}

@@ -1,0 +1,32 @@
+/* Under the Lights: the review banner (ui/review-banner.js; DESIGN.md Components "Toasts, connection banner, review
+   banner, boot screen"; owner W2). An LED tag at the top left of the field's free area (layout.css): an amber lamp,
+   REVIEWING DAL, Q2 8:41, PASS SHORT RIGHT. ESC RETURNS TO LIVE. in ribbon caps, and the earlier, later and live keys
+   (steel caps printing ←, → and Esc) so a mouse or a phone can step and leave review too. */
+
+:where(:root[data-world="under-the-lights"]) .sc-review {
+  gap: var(--sc-space-2) var(--sc-space-3);
+  padding: 6px var(--sc-space-2) 6px var(--sc-space-3);
+  border: 0;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-review .sc-lamp { background: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-review-text {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.15 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-review-keys { gap: var(--sc-space-1); }
+:where(:root[data-world="under-the-lights"]) .sc-review-key {
+  min-height: calc(var(--uls-key-h) - 8px);
+  padding-inline-end: var(--sc-space-2);
+  font-size: var(--sc-size-xs);
+}
+:where(:root[data-world="under-the-lights"]) .sc-review-key .sc-key-cap {
+  height: calc(var(--uls-key-h) - 16px);
+  min-width: calc(var(--uls-key-h) - 16px);
+  font-size: var(--sc-size-m);
+}

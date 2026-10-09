@@ -1,0 +1,203 @@
+/* Under the Lights: SHADOW v LEAGUE, the scoreboard band's second row, and tonight's scorecard on the stat board (G)
+   (ui/scorecard.js; DESIGN.md Components "Scoreboard band and SHADOW v LEAGUE" and "Stat board (G)"; owner W2).
+   On the band (layout.css shows the plate and exactly three pairs: called right, actual play in his top 3, pass vs
+   run log loss): a steel plate "SHADOW V LEAGUE", then each pair as a painted caption over two LED windows in amber
+   segments (Doto, over their unlit 8s), a small "v" between them and an amber leader lamp beside the side that leads
+   (both unlit when even). Only pairs the scorecard computes exist (no league top-pick or tilt count, ever). On the
+   stat board the same pairs and the FI groups read as LED rows with their labels. */
+
+/* ---------------------------------------------------------------- shared: the pair */
+:where(:root[data-world="under-the-lights"]) .sc-scorecard { color: inherit; }
+/* The caption across the top; the two windows, the "v" and the snap count under it. The caption spans a last 1fr
+   track too, so a caption wider than the windows widens only that track, never the gap around the "v". */
+:where(:root[data-world="under-the-lights"]) .sc-card-pair {
+  grid-template-columns: auto auto auto minmax(0, 1fr);
+  grid-template-areas: "label label label label" "shadow vs league basis";
+  align-items: center;
+  justify-content: start;
+  gap: 3px var(--sc-space-2);
+  padding-block: 0;
+  border: 0;
+}
+:where(:root[data-world="under-the-lights"]) .sc-card-basis { grid-area: basis; justify-self: start; align-self: end; }
+:where(:root[data-world="under-the-lights"]) :is(.sc-card-plabel, .sc-card-basis) {
+  color: inherit;
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(:root[data-world="under-the-lights"]) .sc-card-basis {
+  padding-bottom: 3px;
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-card-vs {
+  color: inherit;
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-card-side { gap: 6px; color: inherit; }
+/* "Shadow" and "League" stay for assistive tech: the plate already says which side is which. */
+:where(:root[data-world="under-the-lights"]) .sc-card-sidecap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* The value: an LED window of amber segments. The scoreboard shows the brief form (".421"), never more precision. */
+:where(:root[data-world="under-the-lights"]) .sc-card-num {
+  --uls-win-x: 6px;
+  --uls-win-y: 3px;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--uls-segment-lit);
+  font-family: var(--uls-led-num);
+  font-size: var(--uls-size-led-readout);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.8;
+}
+:where(:root[data-world="under-the-lights"]) .sc-card-side > .sc-card-full { display: none; }
+:where(:root[data-world="under-the-lights"]) .sc-card-side > .sc-card-brief { display: inline-grid; }
+:where(:root[data-world="under-the-lights"]) .sc-card-side[data-lead="true"] .sc-card-num {
+  font-weight: var(--sc-weight-display);
+}
+/* The leader lamp: unlit but visible on both sides; amber beside the side that leads; none lit when even. */
+:where(:root[data-world="under-the-lights"]) .sc-card-lamp {
+  width: var(--uls-lamp);
+  height: var(--uls-lamp);
+  border: 0;
+  border-radius: 50%;
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-card-side[data-lead="true"] .sc-card-lamp {
+  background: var(--uls-led-amber);
+  border: 0;
+  animation: uls-blink var(--uls-blink-ms) linear 1;
+}
+
+/* ---------------------------------------------------------------- the band's row two */
+/* The plate: painted steel with white caps, the model's own scoreboard. */
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairs > .sc-card-sub {
+  display: grid;
+  align-content: center;
+  min-height: calc(var(--uls-size-caption) + var(--uls-size-led-readout) * 0.8 + 9px);
+  padding: 0 var(--sc-space-3);
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairs {
+  flex-wrap: nowrap;
+  gap: var(--sc-space-5);
+}
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairlist {
+  flex-wrap: nowrap;
+  gap: var(--sc-space-2) var(--sc-space-6);
+}
+/* Before the first logged snap: one LED tag says so, in dim caps. */
+:where(:root[data-world="under-the-lights"]) .sc-card-empty {
+  justify-self: start;
+  padding: 6px var(--sc-space-3) 5px;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--uls-size-ribbon) / 1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- the stat board (G): tonight's scorecard */
+:where(#app[data-layout="uls"][data-scorecard-open="true"]) .sc-scorecard {
+  gap: var(--sc-space-4);
+  padding: 0;
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-sub {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pairs {
+  gap: var(--sc-space-2);
+}
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pairlist {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+  gap: var(--sc-space-4) var(--sc-space-5);
+}
+/* On the stat board the snap count rides on the caption's line, so a pair is only as wide as its two readouts. */
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pair {
+  grid-template-areas: "label label label basis" "shadow vs league .";
+}
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-basis {
+  align-self: center;
+  padding-bottom: 0;
+}
+:where(:root[data-world="under-the-lights"])
+  .sc-scorecard[data-expanded="true"] :is(.sc-card-plabel, .sc-card-basis, .sc-card-vs) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-num {
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-lamp {
+  background: var(--uls-unlit);
+}
+:where(:root[data-world="under-the-lights"])
+  .sc-scorecard[data-expanded="true"] .sc-card-side[data-lead="true"] .sc-card-lamp {
+  background: var(--uls-led-amber);
+}
+/* The FI groups: rows of LED readouts, each with its label; log loss lit green (better) or red (worse), with words. */
+:where(:root[data-world="under-the-lights"]) .sc-card-group + .sc-card-group {
+  border-top: 1px solid var(--uls-steel-seam);
+}
+:where(:root[data-world="under-the-lights"]) .sc-kpi-label {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.25 var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-kpi-value {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-ribbon) / 1 var(--sc-font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-kpi-value:is(.better, [data-tone="better"]) { color: var(--sc-good); }
+:where(:root[data-world="under-the-lights"]) .sc-kpi-value:is(.worse, [data-tone="worse"]) { color: var(--sc-bad); }
+:where(:root[data-world="under-the-lights"]) :is(.sc-card-note, .sc-card-legend) {
+  max-width: 70ch;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+
+/* ---------------------------------------------------------------- reduced motion: the lamp lights at once */
+@media (prefers-reduced-motion: reduce) {
+  :where(:root[data-world="under-the-lights"]) .sc-card-side[data-lead="true"] .sc-card-lamp { animation: none; }
+}
+:where(:root[data-world="under-the-lights"][data-motion="reduced"]) .sc-card-side[data-lead="true"] .sc-card-lamp {
+  animation: none;
+}
+
+/* ---------------------------------------------------------------- the phone: each pair on its own line */
+@media (max-width: 760px) {
+  :where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairs {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  :where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairlist {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

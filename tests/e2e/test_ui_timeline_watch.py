@@ -9,7 +9,7 @@ import pytest
 from playwright.sync_api import expect
 from ui_helpers import (EVENT, TOTAL_ROWS, answer_dialogs, api_get, api_post, blur, command,
                         ensure_finished, expect_log_rows, expect_toast, finished, full_timeline, load, quiet,
-                        record_requests, reset_game, state, stop_watch, until, version, wait_idle)
+                        record_requests, reset_game, show, state, stop_watch, until, version, wait_idle)
 
 pytestmark = pytest.mark.e2e
 
@@ -206,7 +206,7 @@ def test_watch_start_from_the_page(upage, wsrv):
     load(upage, base)
     asked = answer_dialogs(upage, accept=True)
     sent = record_requests(upage, "/api/watch/start")
-    upage.locator('[data-watch="start"]:visible').first.click()
+    show(upage, '[data-watch="start"]').click()          # v1.4 (W5): a world may keep it in its booth (the drawer)
     expect(upage.locator("#app")).to_have_attribute("data-watch-state", "playing")
     assert asked == [f"Watch ESPN game {EVENT} from the start? Your game is backed up first and comes back when you "
                      "stop."]

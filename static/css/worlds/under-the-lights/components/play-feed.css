@@ -1,0 +1,259 @@
+/* Under the Lights: the play feed on the upper LED ribbon (ui/play-feed.js; DESIGN.md Components "Ribbon boards";
+   owner W2). The ribbon holds one message, the newest play (layout.css hides the rest), on one line in ribbon caps:
+   time, offense, the result and, on the caller's snaps, the verdict with its pixel glyph (TOP PICK and a check in warm
+   white, IN HIS TOP 3 and a 3 in amber, MISS and an X in tally red), then ESPN's text. A message longer than the face
+   pages a screenful at a time (play-feed.js writes --sc-page-x on the row; it never crawls and never shrinks), and the
+   new message steps in (motion.css). On hover or keyboard focus the feed unrolls into a replay board of recent plays,
+   newest first, each drive under a steel plate, every row a button that shows its play on the field. On LED the
+   caller is warm white and the opponent amber; team colors never light the ribbon. */
+
+/* ---------------------------------------------------------------- the message on the ribbon */
+:where(#app[data-layout="uls"] .uls-ribbon) .sc-pf-empty {
+  padding-inline: var(--sc-space-2);
+  overflow: hidden;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-feed { gap: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-pf-row { --sc-pf-tone: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-caller="true"] { --sc-pf-tone: var(--sc-ink); }
+
+/* The ribbon's one line: the button becomes a row of words, paged by --sc-page-x (0 until the pager moves it). */
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-btn {
+  display: flex;
+  align-items: center;
+  gap: 0 var(--sc-space-3);
+  width: 100%;
+  height: var(--uls-ribbon-h);
+  padding: 0 var(--sc-space-2);
+  overflow: hidden;
+  border: 0;
+  background: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-ribbon) / 1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-btn > * {
+  flex: none;
+  translate: var(--sc-page-x, 0px) 0;
+}
+/* A paged message shows whole words only: the face is cut after the page's last whole word (--sc-page-cut) and
+   before its first (the words shifted off to the left never show in the padding). */
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-row[data-pages] .sc-pf-btn {
+  clip-path: inset(0 max(0px, calc(100% - var(--sc-page-cut, 100%) - var(--sc-space-2) - 2px)) 0
+    calc(var(--sc-space-2) - 1px));
+}
+/* Each page steps in from the right like a new message (two names, so every page replays it). */
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within))
+  .sc-pf-row[data-page-phase="a"] .sc-pf-btn > * {
+  animation: uls-page-a var(--uls-step-ms) var(--uls-step) both;
+}
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within))
+  .sc-pf-row[data-page-phase="b"] .sc-pf-btn > * {
+  animation: uls-page-b var(--uls-step-ms) var(--uls-step) both;
+}
+@keyframes uls-page-a {
+  from { transform: translateX(var(--uls-step-from)); }
+  to { transform: none; }
+}
+@keyframes uls-page-b {
+  from { transform: translateX(var(--uls-step-from)); }
+  to { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-pf-row[data-page-phase] .sc-pf-btn > * { animation: none; }
+}
+:where(:root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon) .sc-pf-row[data-page-phase] .sc-pf-btn > * {
+  animation: none;
+}
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) :is(.sc-pf-meta, .sc-pf-call) {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0 var(--sc-space-3);
+  font: inherit;
+}
+/* Order on the ribbon: the facts first (time, team, result, verdict), so the first page always says how it went. */
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-meta { order: 1; }
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-result {
+  order: 2;
+  align-self: center;
+}
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-call { order: 3; }
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within)) .sc-pf-text {
+  order: 4;
+  font: inherit;
+}
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :focus-within))
+  :is(.sc-pf-sit, .sc-pf-callname, .sc-pf-retagged) {
+  display: none;
+}
+
+/* ---------------------------------------------------------------- the words, wherever the feed shows them */
+:where(:root[data-world="under-the-lights"]) .sc-pf-meta { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-time { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-team {
+  color: var(--sc-pf-tone);
+  font-weight: var(--sc-weight-display);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-noplay { color: var(--uls-line-to-gain); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-display);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-text { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-nullified="true"] .sc-pf-text {
+  color: var(--sc-ink-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--uls-line-to-gain);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-kind="admin"] :is(.sc-pf-btn, .sc-pf-text) {
+  color: var(--sc-ink-muted);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-callname { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-retagged { color: var(--sc-ink-muted); font-style: normal; }
+
+/* The verdict: words plus a 9 x 9 pixel glyph in the same light (a second cue, never the only one). */
+:where(:root[data-world="under-the-lights"]) .sc-pf-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  font-weight: var(--sc-weight-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-verdict:not(:empty)::before {
+  content: "";
+  flex: none;
+  width: var(--uls-glyph);
+  height: var(--uls-glyph);
+  background: currentColor;
+  -webkit-mask: var(--uls-pf-glyph, none) center / contain no-repeat;
+  mask: var(--uls-pf-glyph, none) center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-verdict="top1"] .sc-pf-verdict {
+  --uls-pf-glyph: url("/static/img/worlds/under-the-lights/check.svg");
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-verdict="top3"] .sc-pf-verdict {
+  --uls-pf-glyph: url("/static/img/worlds/under-the-lights/three.svg");
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-verdict="miss"] .sc-pf-verdict {
+  --uls-pf-glyph: url("/static/img/worlds/under-the-lights/x.svg");
+  color: var(--uls-tally-red);
+}
+/* A result glyph before the result word (data-result, play-feed.js v1.4): the referee's touchdown signal for any
+   touchdown, the change of possession for a turnover, the penalty flag in flag yellow for a flag. */
+:where(:root[data-world="under-the-lights"])
+  .sc-pf-row:is([data-result="td"], [data-result="turnover"], [data-result="flag"])
+  .sc-pf-result::before {
+  content: "";
+  flex: none;
+  width: var(--uls-glyph);
+  height: var(--uls-glyph);
+  background: currentColor;
+  -webkit-mask: var(--uls-pf-result) center / contain no-repeat;
+  mask: var(--uls-pf-result) center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-result="td"] {
+  --uls-pf-result: url("/static/img/worlds/under-the-lights/ref-touchdown.svg");
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-result="turnover"] {
+  --uls-pf-result: url("/static/img/worlds/under-the-lights/turnover.svg");
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-result="flag"] {
+  --uls-pf-result: url("/static/img/worlds/under-the-lights/flag.svg");
+}
+/* Points (a touchdown, a field goal, a safety) light amber, the scoreboard's own digits' light. */
+:where(:root[data-world="under-the-lights"]) .sc-pf-row:is([data-scoring="true"], [data-result="td"]) .sc-pf-result {
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-row[data-result="flag"] .sc-pf-result {
+  color: var(--uls-line-to-gain);
+}
+
+/* ---------------------------------------------------------------- unrolled: the replay board of recent plays */
+:where(:root[data-world="under-the-lights"]) .sc-pf-group { gap: 0; }
+/* Each drive under a painted steel plate: the offense, how it ended (or that it is still going), its summary. */
+:where(:root[data-world="under-the-lights"]) .sc-pf-ghead {
+  align-items: center;
+  gap: 0 var(--sc-space-2);
+  margin-top: var(--sc-space-2);
+  padding: 5px var(--sc-space-2) 4px;
+  border: 0;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-steel-raised);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-gteam { padding: 0; border: 0; font-weight: inherit; }
+:where(:root[data-world="under-the-lights"]) .sc-pf-gresult {
+  color: var(--uls-led-amber);
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-group[data-complete="false"] .sc-pf-gresult {
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-gsum {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-rows { gap: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-pf-row + .sc-pf-row { border-top: 1px solid var(--uls-steel-seam); }
+:where(:root[data-world="under-the-lights"]) .sc-pf-btn {
+  gap: 2px var(--sc-space-2);
+  padding: 6px var(--sc-space-2);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.15 var(--sc-font-text);
+  letter-spacing: 0.01em;
+  transition: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-meta {
+  font-size: var(--sc-size-xs);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-text {
+  font: var(--sc-weight-regular) var(--uls-size-body) / 1.25 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-pf-call { font-size: var(--sc-size-xs); }
+/* The row under the pointer wears the warm-white frame; the row shown on the field stays framed in amber. */
+:where(:root[data-world="under-the-lights"]) button.sc-pf-btn:hover:not(:focus-visible) {
+  outline: var(--sc-border-w) solid var(--sc-ink);
+  outline-offset: -2px;
+  background: none;
+}
+:where(:root[data-world="under-the-lights"]) button.sc-pf-btn[aria-pressed="true"] {
+  outline: var(--sc-border-w) solid var(--uls-led-amber);
+  outline-offset: -2px;
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) button.sc-pf-btn:focus-visible { outline-offset: -3px; }
+:where(:root[data-world="under-the-lights"]) .sc-pf-unlinked {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+}
+
+/* ---------------------------------------------------------------- the TV: ribbon glyphs at three pixels a pixel */
+@media (min-width: 1700px) and (min-height: 900px) {
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-pf-row { --uls-glyph: 27px; }
+}

@@ -1,0 +1,193 @@
+/* Under the Lights: the scoreboard band's first row, the game (ui/scoreboard.js; DESIGN.md Components "Scoreboard
+   band and SHADOW v LEAGUE"; owner W2), and the digit windows every skin shares (.sc-digits[data-ghost]).
+   The band is paint in the offense's exact ESPN color (layout.css); captions are painted in its ink
+   (--sc-team-off-ink); everything that lights is an LED window: the logos (ESPN's dark-background variant), the
+   scores, the quarter, the clock, down and distance, ball on. Digits are Doto in amber segments over their unlit 8s,
+   and they snap (motion.css). Lamps: possession and timeouts in amber, unlit but visible when off. Team colors never
+   light anything: the paint is the only team color here. */
+
+/* ---------------------------------------------------------------- digit windows (shared) */
+/* The Ticking Number Rule: an unlit pattern (data-ghost: "88", "88:88", "8.888") sits behind the value, right-aligned,
+   hidden from assistive tech. The ghost paints under the lit digits (z -1 in the window's own stacking context), and a
+   hidden copy of it sets the cell's width, so a one-digit score sits in the right-hand cell with an unlit 8 beside it.
+   Windows set --uls-win-x / --uls-win-y (their padding) so the ghost lines up with the value inside it. */
+:where(:root[data-world="under-the-lights"]) .sc-digits[data-ghost] {
+  position: relative;
+  z-index: 0;
+  display: inline-grid;
+  justify-items: end;
+  padding: var(--uls-win-y, 0px) var(--uls-win-x, 0px);
+  font-variant-numeric: normal;
+  letter-spacing: 0;
+}
+:where(:root[data-world="under-the-lights"]) .sc-digits[data-ghost]::before {
+  content: attr(data-ghost) / "";
+  position: absolute;
+  inset: var(--uls-win-y, 0px) var(--uls-win-x, 0px) auto auto;
+  z-index: -1;
+  color: var(--uls-ghost);
+  white-space: pre;
+}
+:where(:root[data-world="under-the-lights"]) .sc-digits[data-ghost]::after {
+  content: attr(data-ghost) / "";
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  white-space: pre;
+}
+:where(:root[data-world="under-the-lights"]) .sc-digits > .sc-digits-value { grid-area: 1 / 1; }
+
+/* An LED window on the paint: the panel with its unlit pixels, square corners, no frame of its own. */
+:where(:root[data-world="under-the-lights"]) :is(.sc-sb-logo, .sc-sb-fact > .sc-sb-value, .sc-sb-fact > .sc-digits,
+  .sc-sb-score) {
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+}
+
+/* ---------------------------------------------------------------- the row */
+:where(:root[data-world="under-the-lights"]) .sc-scoreboard {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--sc-space-5);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: inherit;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-teams { flex-wrap: nowrap; gap: var(--sc-space-6); }
+
+/* ---------------------------------------------------------------- a team: logo window, name, score, lamps */
+:where(:root[data-world="under-the-lights"]) .sc-sb-team {
+  grid-template-columns: auto minmax(0, auto) auto auto;
+  grid-template-areas: "logo who score poss" "logo tos score poss";
+  column-gap: var(--sc-space-2);
+  row-gap: 6px;
+  padding: 0;
+  border: 0;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-logo {
+  width: var(--uls-logo, 48px);
+  height: var(--uls-logo, 48px);
+  padding: 4px;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-mono {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: 0.04em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-who { align-self: end; }
+:where(:root[data-world="under-the-lights"]) :is(.sc-sb-name, .sc-sb-abbr, .sc-sb-cap) {
+  color: inherit;
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+/* The score: amber segments in an LED window, over their unlit 88. */
+:where(:root[data-world="under-the-lights"]) .sc-sb-score {
+  --uls-win-x: 6px;
+  --uls-win-y: 3px;
+  min-width: 0;
+  color: var(--uls-segment-lit);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.8;
+}
+
+/* Lamps: possession and the three timeouts, amber when on, unlit and still visible when off. */
+:where(:root[data-world="under-the-lights"]) .sc-sb-poss {
+  align-self: center;
+  width: var(--uls-lamp);
+  height: var(--uls-lamp);
+  border: 0;
+  border-radius: 50%;
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-poss[data-on="true"] { background: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-sb-tos { align-self: start; gap: 5px; }
+:where(:root[data-world="under-the-lights"]) .sc-sb-to {
+  width: calc(var(--uls-lamp) - 2px);
+  height: calc(var(--uls-lamp) - 2px);
+  border-radius: 50%;
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-to[data-on="true"] { background: var(--uls-led-amber); }
+
+/* ---------------------------------------------------------------- the facts: QTR, TIME, DOWN, BALL ON */
+:where(:root[data-world="under-the-lights"]) .sc-sb-facts {
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: var(--sc-space-4);
+  margin-inline-start: auto;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-fact {
+  grid-template-columns: auto auto;
+  grid-template-areas: "cap tag" "value value";
+  align-items: end;
+  justify-items: start;
+  column-gap: var(--sc-space-1);
+  row-gap: 3px;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-cap { grid-area: cap; color: inherit; }
+/* Down and distance and ball on are letter fields: Doto in an LED window, with no ghost. */
+:where(:root[data-world="under-the-lights"]) .sc-sb-fact > :is(.sc-sb-value, .sc-digits) {
+  --uls-win-x: 6px;
+  --uls-win-y: 3px;
+  grid-area: value;
+  min-height: 0;
+  padding: var(--uls-win-y) var(--uls-win-x);
+  color: var(--uls-segment-lit);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.8;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+/* Nothing to say (between possessions, after the final whistle): the window stays, unlit. */
+:where(:root[data-world="under-the-lights"]) .sc-sb-fact > .sc-sb-value:empty {
+  min-width: 1.4em;
+  min-height: calc(0.8em + 2 * var(--uls-win-y));
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-fact > .sc-sb-value:empty::before { content: none; }
+/* EST (an estimated clock) and FINAL: small LED tags beside the caption, yellow and warm white. */
+:where(:root[data-world="under-the-lights"]) :is(.sc-sb-est, .sc-sb-final) {
+  grid-area: tag;
+  justify-self: end;
+  padding: 2px 4px 1px;
+  background: var(--uls-led-panel);
+  color: var(--uls-line-to-gain);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-sb-final { color: var(--sc-ink); }
+
+/* ---------------------------------------------------------------- the TV and the phone */
+@media (min-width: 1700px) and (min-height: 900px) {
+  :root[data-world="under-the-lights"] { --uls-logo: 64px; }
+}
+@media (max-width: 760px) {
+  :where(:root[data-world="under-the-lights"]) .sc-scoreboard {
+    flex-wrap: wrap;
+    gap: var(--sc-space-3);
+    padding-block: var(--sc-space-2);
+  }
+  :where(:root[data-world="under-the-lights"]) .sc-sb-teams {
+    width: 100%;
+    justify-content: space-between;
+    gap: var(--sc-space-3);
+  }
+  :where(:root[data-world="under-the-lights"]) .sc-sb-facts {
+    flex-wrap: wrap;
+    width: 100%;
+    margin-inline-start: 0;
+    justify-content: flex-start;
+    gap: var(--sc-space-3) var(--sc-space-4);
+  }
+  :root[data-world="under-the-lights"] { --uls-logo: 40px; }
+}

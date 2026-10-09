@@ -1,0 +1,107 @@
+/* Under the Lights: the scorer's strip (ui/situation-strip.js; DESIGN.md Layout "Manual mode" and Components "LED
+   input"; owner W2). A row of LED input windows on painted steel: each window an LED face in a 2 px steel-edge frame
+   with warm-white figures and an amber caret, its caption painted beside it in dim caps. A rejected value keeps what
+   was typed and turns its frame tally red (FI 4.4). The side chip is a window too: the caller's side in warm white,
+   the opponent's in amber. The end-of-drive keys are steel caps. Layout (layout.css) hangs it under the ribbon in
+   manual entry and in the drawer's SITUATION rack otherwise. */
+
+:where(:root[data-world="under-the-lights"]) .sc-strip { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-strip .sc-strip-label {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-strip-dash, .sc-strip-amp) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- LED input windows */
+:where(:root[data-world="under-the-lights"]) .sc-strip-input {
+  min-height: var(--uls-key-h);
+  padding: 2px var(--sc-space-2) 0;
+  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  caret-color: var(--uls-led-amber);
+  font: var(--sc-weight-strong) var(--uls-size-key) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-strip-input::placeholder { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-strip-input:hover { border-color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-strip-input:focus {
+  border-color: var(--sc-ink);
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .sc-strip-input:is(.bad, [aria-invalid="true"]) {
+  border-color: var(--uls-tally-red);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-est {
+  color: var(--uls-line-to-gain);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- Ball on: the side window joined to the yard */
+:where(:root[data-world="under-the-lights"]) .sc-side {
+  gap: 6px;
+  min-height: var(--uls-key-h);
+  padding: 2px var(--sc-space-2) 0;
+  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border-inline-end: 0;
+  border-radius: var(--sc-radius-m) 0 0 var(--sc-radius-m);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-side:is(.opp, [data-side="opp"]) {
+  background: var(--uls-led-face);
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-side:hover { border-color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-side-glyph { color: var(--sc-ink-muted); opacity: 1; }
+:where(:root[data-world="under-the-lights"]) .sc-spot .sc-strip-input {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+}
+
+/* ---------------------------------------------------------------- the drive line and the end-of-drive keys */
+:where(:root[data-world="under-the-lights"]) .sc-strip-drive { border-color: var(--uls-steel-seam); }
+:where(:root[data-world="under-the-lights"]) .sc-drive-info {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.15 var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-drive-info[data-cue="true"] { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-end {
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-3);
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-plate) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-end:hover { color: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-end:active { background: var(--uls-steel); }
+:where(:root[data-world="under-the-lights"]) .sc-strip-note {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+
+/* Under the ribbon (manual entry), the windows fit the strip's height. */
+:where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"]) #rg-situation)
+  :is(.sc-strip-input, .sc-side, .sc-end) {
+  min-height: calc(var(--uls-strip-h) - 14px);
+}

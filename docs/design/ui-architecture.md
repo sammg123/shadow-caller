@@ -73,6 +73,121 @@ in the app: the field host (A9, 12) mirrors `debugState()`, whose `ready` now me
 W3 sets `--sc-field-safe-*` for Under the Lights (and `--sc-font-display`, which the field's numerals and end-zone
 names are painted in). Thirteen new A5 files (1.1).
 
+**v1.4 (Under the Lights layout, typography and motion, 2026-10-09, W3).** Additive; details in section 15. The world
+loads before W1 lands: `theme/worlds/under-the-lights/index.js` takes W1's `look.js`, `props.js` and `moments.js` when
+they exist and a palette-only look on `NEUTRAL_LOOK` until then. `arrange.js` hangs whole regions in the stadium's
+fixtures in tab order (ribbon, drawer, bowl, video board, desk, lower ribbon, band, stat board); state moves regions by
+CSS alone. HUD insets (surface brief, unresolved #1): `layout.css` registers `--sc-field-safe-top|right|bottom|left` as
+`<length>` (`@property`), so the computed values are pixels both engines already read; `hudInsets(read)` /
+`readHudInsets(doc)` are the getter, and `#app` dispatches `sc:hud-insets` (detail: the insets) when they change without
+a resize. One-line ask (A0, `main.js`): `app.addEventListener("sc:hud-insets", () => rt.engine?.setSafeArea?.(null))`,
+so the camera re-reads them at once. Ask (W2, W4, W5): list each new stylesheet in the world's `css` in `index.js`
+(a node test fails while a stylesheet in the folder is unlisted).
+
+**v1.4 (play drawing as built, 2026-10-09, field geometry: `paths`, `grammar`, `timing`, `ghosts`, new `play-label`
+and `shadows`).** Implements `docs/design/play-drawing.md`; details and the renderer checklist in section 16. The
+Drawing shape and the step vocabulary (`arc`, `ground`, `mark`) stay, but every scrimmage play now starts at the line
+of scrimmage on the center line: no `snap` step, and paths no longer emits `corridor`, `band` or `area`. New mark roles
+`catch` (the catch dot), `incomplete` (the X) and `int`; every mark carries `approx`. A run or scramble is one `ground`
+line from the line of scrimmage to the end spot, angled to its gap. `approx` means "drawn as an estimate"; since the
+review fixes below a real pass never is (see that note). Additive `drawing.label = { text, at,
+approx }` ("Deep pass left · +21", from `play-label.js` `playLabel(row)`), beside the end of the play; `resultLabel` is
+kept. `shadows.js`: `buildShadowPlays(source, situation, { count = 2, leafNames, leafOrder, avoid })`,
+`shadowForLeaf(leaf, p, situation, rank, { name, leafNames, avoid })`, `shadowCandidates(source, opts)`,
+`LEAF_NAMES`, `SHADOW_COUNT`; `ghosts.js` is `@deprecated` and unchanged. `timing.js`: no corridor track, the catch dot
+takes 0 ms. `grammar.js` drops the backfield and band constants and adds the label and `SHADOW_*` ones.
+`static-rules.test.mjs` lists the two new pure modules; `tests/js/field-rows.mjs` gains `rowBySeq`.
+
+**v1.4 (play drawing, review fixes, 2026-10-09).** Additive except where marked; details in section 16. (1) The real
+play draws solid (play-drawing.md 4 and 5): a real pass's arc and its `catch`, `incomplete` and `int` marks are never
+`approx` now (changed); its label's depth word carries the estimate and `drawing.label.approx` says so. Only kicks
+with an estimated landing, a missed field goal's flight and a loose ball's runback stay `approx`; a no-play stays
+`ghosted`. (2) `drawing.label.at` is chosen clear of the play's own strokes as the default cameras show them (an arc
+rises up the screen, grammar.js `ARC_SCREEN_LIFTS`): outward first (a kick toward the near sideline), then the other
+side, then a line further out. (3) The shared label model lives in `play-label.js`: `LABEL_METRICS`, `LABEL_PX`,
+`labelMetrics(project, at, { charPx, linePx, padPx })` (a view's metrics from its projection), `resolveLabelMetrics`,
+`labelBox`, `labelFootprint`, `placeLabelText`. (4) `buildShadowPlays` takes `hover` (the hovered play joins the top
+2 and every label is laid out against every stroke) and `metrics` (the view's, so css2d text never overlaps in the end
+zone camera or on a phone); `avoid` takes the previous play's Drawing (its strokes, marks and words) as well as
+labels and ShadowPlays; each ShadowPlay carries `hovered`; a shadow's `drawing.ballStart` is null (changed: the real
+ball rests there). `shadowForLeaf` takes `metrics` and marks its result `hovered`. (5) A flag on a play that stands
+walks from its enforcement spot (`penalty.at_x`), not the end of the play (changed).
+
+**v1.4 (2D field in Sam's grammar, 2026-10-09, A6).** Details in 13.4. The 2D engine draws
+`docs/design/play-drawing.md`: every play from the line of scrimmage (a pass an arc that bows by its whole height,
+`fallback-steps` `PASS_LIFT`, kicks keeping the 0.45 tilt; an incompletion an arc ending in an X; a run one straight
+line on the turf, grown from the line with the ball at its tip), the catch dot, the INT glyph (the return in the
+defense's color: `carriersOf` flips on `int`), and `drawing.label` as the play's words (`[data-part="play-label"]`,
+`data-approx`; the verdict chip sits past them, away from the play). Before a caller snap `showGhosts(set)` draws his
+top 2 as dashed, translucent shadow plays (`field/shadows.js`, laid out in this view's label metrics with the world's
+label font measured) with their words underneath; the hovered play is lit, and drawn when outside the top 2; the
+previous play stays dimmed with its words until the next play draws; a play that draws fades the shadows out.
+`showGhosts` and `showReview` take the conductor's GhostSet unchanged, ShadowPlays, or `{ source, situation?,
+leafNames?, leafOrder? }` (fallback-ghosts `shadowInput`), so the conductor can move off `ghosts.js` with no engine
+change. Changed: `debugState().ghosts` (so `#field[data-ghosts]`) lists the shadow plays drawn, his top 2 in rank
+order, not 3 zones, and is empty once a play draws; `tests/e2e/test_ui_checklist_field.py` checks that the hook starts
+with the top 2 (one assertion, either engine). Removed: the zone, lane, catch-area and band paths (`ghostLayer`,
+`ghostFill`, `ghostDefs`, the corridor, area and band builders, the pixel turf-cell helpers, `.sc-fb-scan`).
+`refreshLabels` rebuilds the drawing, so a retag renames the play on the field.
+
+**v1.4 (Under the Lights booth controls, 2026-10-09, W4).** Additive; details in section 17. New world module
+`theme/worlds/under-the-lights/booth.js`, called by `arrange.js` (one line, after W3's insets watcher): `mountBooth(app)`
+fills the drawer's SETTINGS rack with two lamp switches, **Light dip in live games** (`sc:uls:dip-live`, `"on"`/`"off"`,
+ON by default) and **Room lights** (`<html data-ambient>` `room`/`dark`), and scrolls the FLAGS rack into view each
+time `#flagPanel` appears (X opens the drawer to it). Room lights go to the app first: a cancelable `sc:booth-ambient`
+event on `#app` (detail `{ value }`); with no listener the booth writes `<html data-ambient>` through `applyRootAttrs`
+and keeps `sc:ambient` itself. One-line ask (A0, `main.js`), so the store's `prefs.ambient` follows:
+`app.addEventListener("sc:booth-ambient", (e) => { e.preventDefault(); actions.setAmbient(e.detail.value); })`. For W1's
+presnap moment: `dipInLiveGames()`, `dipFor(mode, on)` and `shouldDipNow(doc)` (Watch this game always dips). Booth CSS:
+`booth.css` (lamp switches, console pushbuttons, the FLAGS plate in flag yellow, the open drawer as a left HUD inset,
+the board kept off the entry line) and four skins in `components/` (entry pad, flag panel, last play, shorthand); the
+world's `css` lists them after W2's (`W4_BOOTH` in `index.js`).
+
+**v1.4 (Under the Lights HUD skins, 2026-10-09, W2).** Additive; details in section 18. Seventeen component skins in
+`css/worlds/under-the-lights/components/` (listed as `W2_SKINS` in the world's `index.js`, after W3's sheets, the shared
+keys and lamps first) and twelve 9 x 9 pixel glyphs in `img/worlds/under-the-lights/` (SVG masks lit by CSS). Two
+additive changes in `ui/play-feed.js` (A8): **ribbon paging** (surface brief unresolved #7): when the newest row's words
+overflow its own button, it pages whole words at a time, `PAGE_HOLD_MS` (2.4 s) a page, once through, then rests on the
+first, writing `--sc-page-x` and `--sc-page-cut` (px) on the button and `data-page`, `data-pages`, `data-page-phase`
+(`a`/`b`) on the row; exports `pagesFor(spans, width)` (pure), `createPager({ timers, measure, apply })`, `PAGE_HOLD_MS`;
+`ctx.timers` and `ctx.measureRibbon` are test injections; where rows wrap nothing pages. And **`li[data-result]`** on
+every play row: `resultKind(word)` gives `td` (any touchdown), `turnover` (INT, FUMBLE, TURNOVER), `flag` or `inc` from
+the row's result word, else no attribute. Not built: the board toggle (unresolved #6) needs a `D` intent in A2's keymap
+(hover and focus open the board, and a focused play opens it, so keyboard users reach every play); a referee pictogram
+on the board after a touchdown or turnover needs a last-result field in `predictionVm` (A3); a `1ST` glyph needs a
+first-down field on play rows. Found and fixed in the skins: the open stat board's `#rg-box` and `#rg-log` had 0 px rows
+(layout.css's `overflow-x: auto` on those regions made them scroll containers in a fixed-height grid).
+
+**v1.4 (Watch transport and replay scrub, 2026-10-09, W5).** Additive; details in section 19. New component
+`ui/scrub.js` (W5) with its pure view model `model/vm-scrub.js` (W5; `scrubVm(pv)`, `describePlay(row)`,
+`seqAtFraction(vm, f)`, `stepFrom(vm, delta, { byDrive })`): the game so far as one strip of slots (one per timeline
+row; during a watch it runs to `watch.total`, the part not yet played unlit), drawn drives in their team's tone,
+scores, turnovers and quarter starts as marks, and a knob on the reviewed play or at the live edge, with ← (Left) and
+LIVE (Esc) keys and a readout of the play under the knob or the pointer (`describePlay`, field/play-label.js words).
+Review only: it calls `actions.reviewAt(seq)` (null for live), `actions.review(-1)` and `actions.exitReview()`, never
+a watch step, pause or restart (3.8). Additive changes outside W5's files: `shell/bindings.js` (A0) mounts it after the
+transport in `#rg-transport` (it appends, as the review banner does beside the field) with deps `timeline`,
+`anim.drawnThrough`, `view.review` and the watch's state and total (`watchTotalDeps`); `index.html` (A0) links
+`css/components/scrub.css` after the transport's sheet (9.4's ask); `model/copy.js` (A3) gains `SCRUB`; the world's
+`index.js` (W3) lists `W5_DECK` (`components/watch-transport`, `components/scrub`) after W4's; A0's
+`tests/js/shell-bindings.test.mjs` names the new entry, and A11's `test_watch_start_from_the_page` finds Watch this game
+with `show()` (it opens the booth, where this world keeps it).
+
+**v1.4 (the action layer as built, 2026-10-09, A5 part 2).** Details in section 20. `field/layers.js`
+`LAYER_FACTORIES` now points at `player.js`, `ghost-layer.js`, `overlays.js` and `residue.js` (part 1's placeholders
+are gone; `scene.js`'s contract in 14.4 is unchanged). Plays draw per `docs/design/play-drawing.md` from the parts of
+the new pure `field/play-style.js` (strokes as continuous strips, `play-strip.js`, so a translucent stroke has no beads
+at its joints). Changed: `debugState().ghosts`, so `#field[data-ghosts]`, is what the 2D field reports since A6's v1.4
+note: the shadow plays drawn, his top 2 in rank order (a hovered play outside them aside), empty once the ball is
+snapped (`scene.js` reads `layers.ghosts.shown()`, else the call's leaves). `showGhosts` and `showReview` take a
+GhostSet, ShadowPlays or `{ source, situation?, leafNames?, leafOrder?, key? }`, as A6's engine does
+(`play-style.shadowInputOf`). Additive: the camera rig's `goalPose()` (`cameras.js`): the pose it is settling on, which
+the shadows' text is laid out for (it waits until the camera is within 1.5 yd of it). New optional Look group
+`look.world.plays` (20.4). Field labels are styled in `components/field-host.css` (A9's file, additive, tokens only):
+`.sc-field-label > span` plates, `.sc-play-label` (`.is-dim`; `.is-approx` is left to the world, as the words
+already say how sure they are, play-drawing.md 5), `.sc-shadow-label` (`.rank-N`,
+`.is-hovered`, `.is-muted`), `.sc-verdict-chip` (`.is-top1|top3|miss`).
+
 The visual world (palette, type, HUD composition, materials, lighting) is **not chosen**. Nothing in this architecture picks a color, a font, a size or a placement. Every visual decision enters through the theme layer (section 2.7). The app ships with a deliberately plain `neutral` world so it is usable and testable before a world exists.
 
 ---
@@ -176,14 +291,18 @@ static/
       vm-flags.js vm-last-play.js vm-scorecard.js vm-tendencies.js vm-log.js
       vm-scoreboard.js vm-plays.js vm-drives.js vm-wp.js vm-box.js
       vm-transport.js vm-field.js vm-review.js vm-conn.js verdict.js        A3  pure
+      vm-scrub.js                                                           W5  pure (v1.4: the replay scrub's view model, 19)
     field/
       coords.js grammar.js paths.js ghosts.js timing.js camera-plan.js      A4  pure
+      play-label.js shadows.js                                               A4  pure (v1.4: play-drawing.md, 16)
       scene.js renderer.js lighting.js post.js field-mesh.js cameras.js
       materials.js player.js ghost-layer.js overlays.js residue.js
       labels.js dispose.js webgl-support.js                                  A5  three.js
       stage.js layers.js moments.js lines.js turf.js decals.js structures.js
       shaders.js                                                             A5  three.js (v1.2: the stage's parts, 14.1)
       field-spec.js stage-math.js engine-state.js                            A5  pure (v1.2, 14.1)
+      play-art.js play-strip.js play-ball.js play-glyphs.js                  A5  three.js (v1.4: the action layer's parts, 20)
+      play-style.js                                                          A5  pure (v1.4: how a play looks, 20)
       fallback-2d.js fallback-draw.js                                        A6  DOM (SVG)
       fallback-runtime.js fallback-layers.js fallback-player.js fallback-svg.js   A6  DOM (v1.2: the engine's parts, 13.1)
       fallback-ghosts.js fallback-plays.js fallback-steps.js fallback-pixels.js fallback-bowl.js   A6  pure (v1.2;
@@ -1915,6 +2034,9 @@ Node tests: `tests/js/fallback-{2d, draw, ghosts, plays, pixels, bowl, svg}.test
 
 ### 13.2 What it draws
 
+> v1.4 (A6, 2026-10-09): Sam's grammar replaces the prediction zones, lanes, catch areas, bands and result words
+> below; 13.4 is the 2D field as it now draws.
+
 - **One camera, `top`.** The whole field from straight above through `coords.toPlane`, the caller's end zone on the
   left, true proportions, fitted with a 4 yd apron inside the host minus the safe-area insets (ignored when they would
   leave less than 40% of either side). One SVG unit is one CSS pixel; `resize` and an internal ResizeObserver relayout.
@@ -1972,6 +2094,42 @@ Node tests: `tests/js/fallback-{2d, draw, ghosts, plays, pixels, bowl, svg}.test
 - Every other public call is guarded the same way; `opts.onError` (default `globalThis.reportError`) receives errors.
 - `opts` may inject `raf`, `cancelRaf`, `now`, `setTimeout`, `clearTimeout`, `getComputedStyle` and `ResizeObserver`
   (node tests); all are called bare.
+
+### 13.4 v1.4: Sam's grammar on the 2D field (A6, 2026-10-09)
+
+Binding source: `docs/design/play-drawing.md`; the pure geometry is section 16, unchanged.
+
+- **Files.** `fallback-steps.js`: arc, ground, mark only; `PASS_LIFT` (1), `liftOf(step)`, `shownHeight(step, h)`.
+  `fallback-plays.js`: `toneOfLabel(text)`, `shownBall(drawing, plan, tMs)`. `fallback-ghosts.js` (the shadow plays):
+  `shadowInput(set, situation)`, `shownLeaves(request)`, `viewMetrics(ctx, ballX, labelPx)`, `shadowPlaysFor(request,
+  ctx, { hover, avoid, labelPx })`, `shadowPaint(ctx, team)`, `shadowLayer(shadows, ctx)`, `SHADOW_HOVER_OPACITY`.
+  `fallback-pixels.js`: the glyphs only, `glyphCols(name)`, a lettered `int`. `fallback-svg.js`: `STAGE_LAYERS`,
+  `REVIEW_LAYERS`, `spreadBoxes` also returns `dx`. `fallback-draw.js`: `TAG_PAD`.
+- **Plays.** A pass is a true-length arc that bows by its apex times `PASS_LIFT` (kicks keep `OBLIQUE`, 0.45), its ground
+  track dashed under it; the ball and its trail ride the arc as drawn (`shownBall`). An incompletion ends in an X (two
+  strokes in the throw's edge and light core); a completion has a catch dot (radius 3.5 to 6 px), then the YAC; an
+  interception the INT glyph (bad tone), then the return in the defense's color. INT and TD sit beside their spot like
+  a badge, on the side away from the words, so the end of the play stays in view. A run, scramble, sack, kneel, YAC,
+  return or penalty walk is one straight line with an arrowhead (a run for no gain is a dot at the line); kicks are
+  unchanged. Each stroke grows with the ball at its tip (the step's easing: a run slows into the tackle).
+- **Words.** `drawing.label` at its spot (`tagSize` s), toned bad for a turnover, block, miss or safety and warn for a
+  no-play or a flag, `data-approx` when the spot is an estimate; `labels.result: false` or `renderer: "none"` hides them.
+  The verdict chip sits 24 px past them on the far side from the end of the play (paths.js's anchor, `resultLabel.at`).
+  They fade in when the play lands; while the next call is up they stay at
+  65% with the play at `lastPlay.dimOpacity` (an `until-presnap` look still retires it). Residue stays a look setting
+  (DESIGN.md: the drive's earlier plays at 20%).
+- **Shadow plays.** `buildShadowPlays(source, situation, { hover, avoid: [the previous play's drawing], metrics })` with
+  this view's metrics (`labelMetrics` over `ctx.pt`, lifts `[OBLIQUE, PASS_LIFT]`, the label font measured on a hidden
+  probe tag; `LABEL_PX` where nothing is laid out). Each is `g.sc-fb-shadow[data-leaf][data-rank][data-hovered]`, its
+  parts `[data-stroke]`, every stroke dashed edge and core alike, square-ended (`look.ghost.style` picks the dash),
+  tinted by `look.ghost.fill` (team, the field's paint or a color, with a darker edge), at 50% and 35%; the hovered one
+  85%, the rest 60% of theirs. They grow out of the line of scrimmage (`.sc-fb-grow`, `ghostInMs`) and fade out when a
+  play draws (`ghostOutMs`). Words: `[data-part="shadow-label"].sc-ghost-label.rank-N.sc-fb-shadow-label[data-leaf]
+  [data-hovered]` on a dashed plate, 75% while another play is hovered. Live they draw over the ball they come out of;
+  in review under the play that happened (`REVIEW_LAYERS`), beside its words and verdict.
+- **Hooks.** `debugState().ghosts` is `shownLeaves(request)`: his top 2 in rank order (a hovered extra aside), empty once
+  a play draws or with no request; `highlight` as before. `declutter` slides a tag inside the free area's sides before
+  spreading tags vertically, so long words near an end zone stay on screen.
 
 ---
 
@@ -2199,3 +2357,566 @@ Node (`tests/js`, three.js through `three-env.mjs`): `field-spec`, `stage-math`,
 page bindings, font) and `scene-engine` (the facade on a WebGL-free stage with spy layers: timing, tokens, instant
 paths, finishNow, ghost deferral, follow camera, ball hand-off, review, moments, hooks, dispose). The renderer, the
 turf shader, canvas glyphs and post-processing are checked in the browser at 1440x900, 1920x1080 and 390x844.
+
+---
+
+## 15. v1.4: Under the Lights layout, typography and motion as built (W3, 2026-10-09)
+
+Additive to 2.7, 5.2, 8.2 and 9.4; DESIGN.md (Layout, Typography, Motion grammar) is the source. Where this section is
+more specific, it is how the world's files work.
+
+### 15.1 Files
+
+| File | Role |
+| --- | --- |
+| `theme/worlds/under-the-lights/index.js` | The WorldModule: id, label, look (W1's `look.js` export `look`, `LOOK` or `default`; else `FALLBACK_LOOK.partial`: night-sky clear and background, bowl-haze fog, DESIGN.md turf and paint, LOS `#4a90ff` and LTG `#ffd400` at 0.4 yd, team colors checked against turf and night), W1's `props` and `moments` when their files exist, `css`, `fonts`, `arrange`, `booth: { holds: ["feed", "situation", "flags"] }`, `ambient: "dark"`. A W1 file that is missing is skipped quietly; one that throws is reported (`reportError`) and skipped. Named exports: `LOOK_SOURCE` (`"w1"` or `"fallback"`), `FALLBACK_LOOK`, `hudInsets`, `readHudInsets`, `INSET_EVENT`, `LAYOUT_ID` |
+| `theme/worlds/under-the-lights/arrange.js` | `PLAN` (the fixtures in DOM order), `regionOrder`, `arrange(app, regions)` (idempotent; sets `#app[data-layout="uls"]`), `hudInsets`, `readHudInsets`, `watchInsets` |
+| `css/worlds/under-the-lights/tokens.css` | Every required token (DESIGN.md token map), the `--uls-*` palette, type roles, geometry and LED face, the four `@font-face` rules (with the "ULS LED Punct" patch: Big Shoulders Display for U+002E and U+003A), phone sizes, reduced-motion zeros |
+| `css/worlds/under-the-lights/layout.css` | The fixtures, their states, the registered HUD insets, the phone column |
+| `css/worlds/under-the-lights/motion.css` | `--uls-step` (`steps(5, jump-end)`, 415 ms), `--uls-scan` (`steps(10, jump-end)`, 400 ms), `--uls-segment-snap` (0 ms), `--uls-blink-ms`, `--uls-rail-ms` (240 ms), `--uls-dip-ms` / `--uls-dip-level` (300 ms, 0.8, for W1's moments), keyframes `uls-step-in`, `uls-scan-down-a|b`, `uls-scan-up`, `uls-rails-in`, `uls-blink`, and where the HUD uses them; all off under reduced motion |
+| `fonts/under-the-lights/` | `big-shoulders-display/` (wght 700 to 800), `big-shoulders-text/` (500 to 800), `doto/` (static wght 800, ROND 60): latin woff2 from the Google Fonts CSS2 API, each beside its `OFL.txt`; `SOURCES.txt` has URLs, sizes and SHA-256 |
+
+### 15.2 Fixtures (`PLAN`, DOM order = tab order)
+
+| Fixture (`div`, `data-fixture`) | Regions | Stadium box, 1440x900 / 1920x1080 | z |
+| --- | --- | --- | --- |
+| `.uls-ribbon` | `plays`, `masthead` | 0, 0, full width x 44 / 56: nameplate, play message, masthead keys, feed lamp | 20 |
+| `.uls-drawer` (racks `[data-rack="feed|situation|flags|settings"]`, `role="group"`, plates `.uls-plate#uls-plate-<rack>`) | `feed`, `situation`, `flags`; `settings` has an empty `.uls-rack-body` for the booth | closed: `display: contents`; open: x 0, from the HUD top to the band, 400 / 520 wide | 40 |
+| `#rg-field` (bare) | `field` | fixed, full viewport | 0 |
+| `.uls-board` | `call` | right 24 / 48, top = HUD top + 20 / 24, 416 x 324 / 560 x 430; open 600 x 560 / 800 x 746 | 11, open 35 |
+| `.uls-desk` | `transport` (watch mode only), `entry` | under the board, same width, down to 16 px above the lower ribbon; scrolls, entry line sticky | 10 |
+| `.uls-lower` | `drives`, `wp` (264 / 352 wide) | 40 / 56 tall, 4 px above the band | 10 |
+| `.uls-band` | `scoreboard` (row one) | bottom, full width x 140 / 180 | 10 |
+| `.uls-statboard` | `score`, `tendencies`, `box`, `log` | closed: `display: contents`, its `score` region is the band's row two (z 12); open: the free area (24 to 984 x 64 to 700 at 1440) | 30 |
+
+The ribbon reads nameplate, play message, masthead keys, feed lamp: the masthead stays one element and lends its plate
+and its keys to the ribbon's grid (`display: contents`), and the play feed comes first in the DOM so Tab meets the
+plays, the keys and the feed in their visual order (the plate holds no control). DESIGN.md's order had the feed lamp
+before the keys; the swap keeps the tab order equal to the visual order.
+
+### 15.3 State, by CSS alone (selectors on `#app[data-layout="uls"]`)
+
+- **Manual entry** (`[data-mode="normal"|"flag"]`): `#rg-situation` is the 52 / 64 px strip under the ribbon, and
+  `--uls-hud-top` (so the board, desk, drawer, stat board and the top inset) moves down by it. Feed or watch: the
+  strip lives in the open drawer's SITUATION rack.
+- **Drawer closed** (`[data-booth-open]` not `"true"`): `#rg-feed` shows compact at the ribbon's right end (the feed key
+  with its lamp, the status line; the id box, Replay, Watch and the background message wait for the drawer), plates,
+  `#rg-flags` and the settings body are hidden. **Open:** a steel rack, racks under plates, FLAGS only while
+  `#flagPanel` is shown, SETTINGS only once its body has content; it runs out on rails (`uls-rails-in`).
+- **Stat board** (`[data-scorecard-open="true"]`): the score region moves from the band to the board at full size,
+  with tendencies, box and log; the night scrim covers only the bowl's free area (`#field::after`).
+- **Ribbons hold one message**: the play feed shows `[data-newest="true"]` and unrolls on `:hover` / `:focus-within`
+  into a replay board under itself; the drive chart shows the current drive (else the last) and unrolls upward, clear
+  of the board column.
+- **Video board**: grows from its top-right corner, at once, on `:hover`, `:focus-within` and for
+  `#app[data-board-open="true"]` (a future D key, v1.2 ask 5).
+- **Band row two**: the SHADOW V LEAGUE plate (`.sc-card-sub`) and exactly `called_right`, `top3`, `passrun_logloss`.
+  With no team colors (`--sc-team-off` is the neutral team gray), the band is neutral scoreboard steel (a style
+  container query; elsewhere the gray shows).
+- **Phone, tablet and small or short windows** (below 1200 x 640): one scrolling column in DOM order, plate first;
+  the masthead keys scroll sideways inside their row; the field is a 13 / 10 band (390 x 300 at 390); the open drawer
+  and stat board stay in the flow (DESIGN.md's full-screen sheets would cover the B and G keys, the only way to close
+  them without a keyboard). The insets are 0.
+
+### 15.4 HUD insets (surface brief, unresolved #1)
+
+- **CSS:** `@property --sc-field-safe-top|right|bottom|left { syntax: "<length>"; inherits: true; initial-value: 0px }`,
+  set on `#app[data-layout="uls"]`: top = `--uls-hud-top` (44 / 56, plus the strip in manual entry), right =
+  gutter + board width + 16 (456 / 624), bottom = lower ribbon + 4 + band (184 / 240), left 0; all 0 in the phone
+  column. Registered, they compute to pixels, which is what `stage.js` and `fallback-svg.js` parse.
+- **JS:** `hudInsets(read)` (pure: `read(name)` returns a computed value; non-px or negative reads 0) and
+  `readHudInsets(doc)` (`getComputedStyle(#field)`, zeros without a window), both exported by `arrange.js` and
+  `index.js`; the world object also carries `hudInsets()` (dropped by `checkWorld` today; A10 may pass it through).
+- **Event:** `arrange` starts one watcher per `#app` (MutationObserver on `data-mode`, `data-booth-open`,
+  `data-scorecard-open`, plus window `resize`) and dispatches `sc:hud-insets` (`bubbles`, detail
+  `{ top, right, bottom, left }`) on `#app` only when the values change. Engines read the properties on every resize
+  already; the mode change that adds or removes the strip needs the A0 line in v1.4 (`setSafeArea(null)` re-reads them).
+
+### 15.5 For the component skins (W2, W4, W5)
+
+- Load order: the world's `css` list is W3's three sheets, then each component skin as it lands (add its href in
+  `index.js`; `tests/js/uls-world.test.mjs` fails while a stylesheet in the folder is unlisted or a listed one is
+  missing).
+- Inside a fixture, layout.css removes a component's neutral panel chrome (border, radius, background) and fits a
+  region to its slot (one-line ribbon message, compact feed, one-row strip, band row two, the WP readout and line)
+  with `:where(<fixture>) <component selector>`, the component's own specificity: a later skin wins on equal terms.
+  The compact visibility rules (which row, which drive, which pairs) carry the region id; override them with the same.
+- World type roles for skins: `--uls-led-font` (with `font-variation-settings: var(--uls-led-variation)`; Doto only at
+  `--sc-size-call`, `--sc-size-xl` or `--uls-size-led-readout`, 40 px and up), `--uls-size-caption`, `--uls-size-plate`,
+  `--uls-size-key`, `--uls-size-ribbon`, `--uls-size-body`, tracking `--uls-tracking-caption|plate|ribbon`, the LED face
+  `--uls-led-face`, geometry `--uls-ribbon-h`, `--uls-lower-h`, `--uls-band-h`, `--uls-strip-h`, `--uls-plate-h`,
+  `--uls-key-h`, `--uls-lamp`, `--uls-face-pad`. `--sc-logo-variant: dark` is set for the world (LED windows use ESPN's
+  dark logos in both room settings).
+
+### 15.6 Tests
+
+Node: `tests/js/uls-arrange.test.mjs` (the plan places every region once, tab order, fixtures and racks, ids kept,
+idempotent, missing regions, no window; `hudInsets`, `readHudInsets`, the watcher's change-only events and stop) and
+`tests/js/uls-world.test.mjs` (`checkWorld`, the look either way, the stylesheet list against the folder, real woff2
+with OFL, `tokenProblems` empty, DESIGN.md values, 4.5:1 text on every HUD surface, reduced-motion zeros, the punct
+patch, the Flat Hardware Rule, registered insets, LED steps and scans, Doto at 40 px and up). Browser: Playwright at
+1440x900, 1920x1080 and 390x844 on `?world=under-the-lights` (manual drive, finished game, feed on, watch, drawer, flag
+panel, stat board, unrolled ribbons, expanded board).
+
+## 16. v1.4: play drawing as built (field geometry, 2026-10-09; review fixes the same day)
+
+Binding source: `docs/design/play-drawing.md`. Everything here is pure (`static/js/field/`), node-tested, and the 2D
+and 3D renderers consume it unchanged in shape; section 16.5 lists what they adapt.
+
+### 16.1 Drawing (`paths.js`)
+
+```ts
+type Step = (
+  | { t: "arc",    role: "pass" | "punt" | "kickoff" | "fg", from: Pt, to: Pt, apex: number, endH: number, approx: boolean }
+  | { t: "ground", role: "run" | "scramble" | "kneel" | "sack" | "yac" | "return" | "march" | "hold", from: Pt, to: Pt,
+      approx: boolean }
+  | { t: "mark",   role: "catch" | "incomplete" | "int" | "td" | "turnover" | "flag" | "sack" | "safety" | "fg_good"
+      | "fg_miss" | "touchback" | "fair_catch" | "downed" | "oob" | "muffed" | "blocked", at: Pt, approx: boolean }
+) & { ghosted: boolean }
+type Drawing = { seq, id, kind, team, dir, offenseIsCaller, ghosted, steps: Step[], ballStart: Pt | null,
+  ballEnd: Pt | null, resultLabel: { at: Pt, text: string } | null,      // the play feed's word, at the action's end
+  label: { text: string, at: Pt, approx: boolean } | null,               // v1.4: the words drawn on the field
+  bounds: { x0, x1, y0, y1, h } | null }
+```
+
+| Row | Steps (from the line of scrimmage `(x0, 26.667)`) |
+| --- | --- |
+| completion | `arc pass` → `(x_catch, side lane)`, `mark catch`, `ground yac` → `(x_end, same lane)` when he gained after the catch |
+| incompletion | `arc pass` → the target, `mark incomplete`: `x_catch` (ESPN's estimate), else the air yards, else the depth word's median (`AIR_DEPTH_YD`), else 5; kept 1 yd inside the end line; the ball goes back to `x0` |
+| interception | `arc pass` → `(x_catch, lane)`, `mark int`, `ground return` → `x_end` (none when he went down where he caught it) |
+| run, scramble | one `ground run` / `ground scramble` → `(x_end, gap lane)`; a no-gain run up the middle has zero length |
+| sack | `ground sack` → `x_end`, `mark sack` |
+| kneel, other / spike | `ground kneel` → `x_end` when the ball moved / no steps |
+| TD, safety, lost fumble | `mark td` at the end; `mark safety`; `mark turnover` then the defense's `ground return` (approx) |
+| no play | the same steps with `ghosted: true`, `mark flag` at the enforcement spot, `ground march` `x0` → `x_next` |
+| penalty, no snap | `mark flag`, `ground march` |
+| flag on a play that stands | the play, `mark flag` at `penalty.at_x`, `ground march` from there (else from the end of the play) to `x_next` |
+| kicks | unchanged; a field goal keeps its `hold` step, since the kick's true length starts at the hold |
+
+Lanes: pass side `LATERAL_PASS` (left / middle / right = 12 / 0 / -12 yd toward the offense's left), run gap
+`LATERAL_GAP`, a typed run's leaf `runLateralOfLeaf`. `approx` means "drawn as an estimate" (the look's approx
+style). A real pass never is: the real play draws solid (play-drawing.md 4) and its words carry the estimate (5), so a
+pass arc and its `catch`, `incomplete` and `int` marks are `approx: false` even when `x_catch` is ESPN's estimate. Only
+a kick landing with no `land_x`, a missed field goal's flight and a loose ball's runback are `approx`; a no-play's
+action is `ghosted` (dimmed and dashed).
+`label.at`: candidates beside the end of the play (an incompletion's X, a no-play's flag, a field goal's posts),
+`LABEL_GAP_YD` (5) outward from the center line first (a play ending on it toward the far side; a kick toward the
+near side), then the other side, then 3.5 and 7 yd further out each way, never within 5 yd of the center line; the
+first whose box (`LABEL_METRICS`) is clear of the play's own `labelFootprint` (its lines; each arc's flight lifted up
+the screen by `ARC_SCREEN_LIFTS` 2 to 3.1, the cameras that show plays by default; its marks as glyphs) and of both
+balls wins. Every TB at DAL label lands 5 yd from its play. `label.approx`: the spot the words describe is an
+estimate (an incompletion's target or a returnless interception at an estimated spot; a loose ball's runback).
+
+### 16.2 Labels (`play-label.js`)
+
+`playLabel(row) -> string` (`""` for admin rows): `<what it was> · <result>` with `LABEL_SEP` (" · ") and the true minus
+`MINUS` (U+2212); `signedYards(n)` gives "+8", "−11", "no gain". Every example in play-drawing.md 3 is a test on its real
+row. Pass words: ESPN's depth word (`call.depth`) and side (`geo.lat`); run words: `geo.gap` ("Inside run (left
+guard)", "Off-tackle left", "Outside run right"); typed rows: the leaf ("Inside run", "Play-action short pass",
+"Intermediate pass"); a retag on the caller's play wins for the play type (`pred.family` and `pred.leaf`: "Play-action
+deep pass left", "Screen", "RPO handoff", "RPO throw"). Results: yards, "incomplete", "TD", "INT" (picked screens and RPO
+throws), "fumble lost", "safety", "returned for TD"; interceptions read "Pass intercepted · short middle". Kicks: "Punt ·
+53 yds · out of bounds", "FG 41 yds · good | no good | blocked", "Kickoff · touchback | return to DAL 30 | fumble lost".
+Flags: "No play · defensive offside on TB", "Flag · false start on TB · −5", and a flag on a play that stands appends
+"flag: face mask on DAL".
+
+The label model (paths.js and shadows.js lay every field label out with it):
+
+```ts
+type LabelMetrics = { charYd: number, lineYd: number, padYd: number,   // one character, one line, the plate's padding
+  down: { x: 0, y: ±1 } | { x: ±1, y: 0 },                            // the field axis pointing down the screen
+  lifts: number[] }                                                   // yards of `down` a yard of height reads as
+const LABEL_METRICS: LabelMetrics      // { 0.8, 3.5, 0, { x: 0, y: -1 }, ARC_SCREEN_LIFTS }: the default cameras
+const LABEL_PX = { char: 7.2, line: 26, pad: 12 }   // a 22 px plate of 14 px text, 4 px between stacked plates
+function labelMetrics(project: (p: { x, y, h }) => { x, y } /* canvas px, y down */, at: Pt,
+  px?: { charPx?, linePx?, padPx? }): Readonly<LabelMetrics>         // LABEL_METRICS when the view is degenerate
+function resolveLabelMetrics(m): LabelMetrics                       // every field checked, defaults for bad ones
+function labelBox(label: { text, at }, m?): { u, v, hw, hh }         // along the text, down the screen, half sizes
+function labelFootprint(steps: Step[], m?): Pt[]   // lines, arcs lifted per `lifts` (a range), marks as glyphs
+function placeLabelText(text, candidates: Pt[], { boxes?, points?, metrics?, strict? }): Pt | null
+```
+
+`placeLabelText` takes the first candidate whose box is clear of `boxes` and `points` (each slid along its text to stay
+whole on the field); with none clear, `null` when `strict`, else the first clear of the other text, else the first.
+Footprint points sit at most a third of a line apart, so no box slips between two samples of a steep arc.
+
+### 16.3 Shadow plays (`shadows.js`)
+
+```ts
+type ShadowPlay = { rank: number | null, leaf: string, family: string, p: number, name: string, key: string,
+  stack: number,                                                 // earlier shadows with the very same shape
+  hovered: boolean,                                              // the play the prediction panel hovers or focuses
+  label: { text: string, at: Pt, approx: true },                 // "1 · Deep shot (20+) · 31%"
+  drawing: Drawing & { kind: "shadow", dashed: true, opacity: number,   // steps carry dashed: true and opacity too
+                       seq: null, id: "shadow:<leaf>", ballStart: null, ballEnd: null, resultLabel: null } }
+function buildShadowPlays(source, situation, opts?: { count?: number /* 2 */, leafNames?, leafOrder?,
+  avoid?: Array<Drawing | ShadowPlay | { text, at }>, hover?: string | null, metrics?: LabelMetrics })
+  : ReadonlyArray<ShadowPlay>                                    // [] without a snap situation or usable odds
+function shadowForLeaf(leaf, p, situation, rank, opts?: { name?, leafNames?, avoid?, metrics? }): ShadowPlay | null
+function shadowCandidates(source, opts?: { leafNames?, leafOrder? }): ReadonlyArray<{ leaf, p, rank, name }>
+```
+
+`source` is `/api/state` `prediction` (`top` order, then `families`), a row's `pred` (`top3`, odds from `dist.his_l` in
+`leafOrder`), or a field view model's ghost input (`{ leaves }`). Names come from the source, else `leafNames`, else
+`LEAF_NAMES` (the engine's names, pinned to the timeline meta by a test). Geometry (play-drawing.md 4): passes and
+play-action to the middle lane at 6 / 14 / 25 air yards, `rpo_throw` 6; runs and `rpo_run` a line 4 yd downfield ending
+0 / ±4 / ±9 yd wide; the screen an arc 1 yd behind the line and 10 yd toward the near sideline; everything kept 1 yd
+inside the end line. A shadow whose arc matches an earlier one exactly (play-action short and dropback short) flies
+`SHADOW_STACK_LIFT` (60%) higher per match, so both stay visible; lengths and lanes stay true. Opacity 0.5 for #1 and
+0.35 for the rest (a hovered play included).
+`hover`: a leaf outside the top `count` joins them (its own rank, `hovered: true`); a top play that is hovered is only
+marked. Strokes are laid out first, so every label knows every stroke: a top play's text steps down a line to clear a
+hovered stroke (126 of the game's 708 hovers), so place labels from each result.
+Text sits underneath its shadow (a gap below its lowest point, centered on it, in the view `metrics`) and takes the
+first line down (then up) clear of every label, every shadow stroke, the ball and everything in `avoid`. Within the
+first three lines it may sit over the previous play's dimmed strokes (never over text, a shadow or a mark) rather than
+drift toward the sideline (5 of the 59 Dallas snaps). Percentages round as the prediction panel shows them: `pct` for
+the top line's three, `pct1` beyond.
+
+### 16.4 Timing (`timing.js`)
+
+No snap phase: the first step leaves the line of scrimmage at t = 0. Tracks are `arc`, `line` or `still` (no `path`).
+A `catch` mark takes 0 ms, so the YAC grows the moment the arc lands; an `incomplete` X pops in over `markMs` where the
+arc lands; run lines ease out (slow into the tackle); `hold` and `march` ease in and out. Rows still fit 2 to 4 s at 1x
+and `fitPlan` is unchanged. A shadow's `drawing` plans like any drawing (it has no `ballStart`; `ballAt` gives null
+before its stroke starts).
+
+### 16.5 What the renderers adapt (A5 part 2, A6, the conductor and `vm-field`)
+
+- Draw `drawing.label` (text at `at`, above every stroke) instead of the `resultLabel` word.
+- Dash a step when it is `ghosted` or a shadow's (`dashed: true`); give `approx` steps the look's approx style. A real
+  pass is never `approx` now, so the incompletion's arc and X draw solid with no renderer change.
+- New marks: `catch` (a small dot), `incomplete` (an X), `int` (INT). The 2D fallback draws unknown roles as a square
+  today (`fallback-steps.js` `MARKS`), and `fallback-plays.carriersOf` flips possession only on `turnover`, so the INT
+  return still takes the offense's color until `int` flips it too. `corridor`, `band` and `area` builders are dead code.
+- A no-gain run is a zero-length `ground` line at the line of scrimmage: draw a dot or nothing (the label says "no gain").
+- Before a caller snap: `buildShadowPlays(ghostInput | prediction | pred, situation, { avoid: [previousDrawing],
+  hover: hoveredLeaf, metrics })` replaces `buildGhostSet`; draw each `drawing.steps` dashed at its `opacity`, the
+  `hovered` one lit, with `label` underneath; fade them at the snap; keep the previous play dimmed until the next play
+  draws. Rebuild on a hover change (`highlightGhost(leaf)`), a camera change (V) and a resize.
+- css2d text is screen-sized, so pass the view: `metrics = labelMetrics(project, { x: situation.ballX, y: 26.667 })`
+  with `project` the camera's field-to-canvas-pixel projection (`{ x, y, h }` to `{ x, y }`, y down; the 2D field
+  wraps `ctx.pt`) and `charPx`, `linePx`, `padPx` from the world's label CSS. Decal text painted on the turf passes
+  its own sizes in yards. Measured against the camera presets: no shadow text on other text in any camera at 1440x900,
+  1920x1080 or 390x844 except 1 or 2 of 59 snaps in the end-zone camera (36 to 59 before); none on a stroke in the
+  broadcast, high and Under the Lights wide cameras.
+- Tests that pin the old grammar (no longer true): `tests/js/fallback-plays.test.mjs` lines 34, 51, 67, 77, 89, 99 and
+  135 (the snap step, the band, the catch area, the corridor lane, the INT carrier).
+- v1.4 (A6, 2026-10-09): the 2D fallback does all of the above (13.4); those seven tests are rewritten to the grammar.
+
+### 16.6 Tests
+
+Node: `play-label.test.mjs` (18), `shadows.test.mjs` (22), `paths.test.mjs` and `paths-flags.test.mjs` (34),
+`grammar.test.mjs` (11), `timing.test.mjs` (18); `ghosts.test.mjs` (12) unchanged. Lines and functions 100%, branches
+85% to 100% over the six modules. Sweeps: every row's label clear of its own play; every Dallas snap with each of the 14
+plays hovered and the previous play kept (826 layouts): no text on text, a shadow or a mark, and over a dimmed stroke
+only within three lines of its shadow. Visual: `node scripts/play-sheet.mjs [--out dir]` writes an SVG contact sheet
+(one real row of every play kind with its label, then shadow plays for real Dallas predictions, laid out in the
+sheet's own label metrics, hovers and a dimmed previous play included), rendered to PNG with Playwright.
+
+## 17. v1.4: the Under the Lights booth as built (W4, 2026-10-09)
+
+Additive to 2.7, 4.4, 8.2, 11 and 15. DESIGN.md (Control desk, Control-room drawer, Keys, lamps and LED inputs) is the
+source; where this section is more specific, it is how the world's booth works.
+
+### 17.1 Files
+
+| File | Role |
+| --- | --- |
+| `theme/worlds/under-the-lights/booth.js` | `mountBooth(app, { storage })`, called by `arrange.js` after it hangs the racks (idempotent per `#app`; `null` without a SETTINGS rack). Builds `.uls-booth[data-booth="settings"]` in `[data-rack="settings"] > .uls-rack-body`: two `.uls-setting`, each a `label.sc-check.uls-switch[data-setting="dip"\|"room"]` (`input#ulsDipLive` / `input#ulsRoomLights`, checkboxes drawn as lamps, plus `.uls-switch-label`) and its note (`p.uls-switch-note#ulsDipNote` / `#ulsRoomNote`, the input's `aria-describedby`). Watches `<html data-ambient>` (the room switch always shows it, whoever set it) and `#flagPanel[hidden]` (each time the panel appears, its rack scrolls into view, block start). Returns `{ node, dip, room, stop() }`. Exports `DIP_KEY` (`sc:uls:dip-live`), `AMBIENT_KEY` (`sc:ambient`), `AMBIENT_EVENT` (`sc:booth-ambient`), `BOOTH_COPY`, `dipInLiveGames(storage)`, `setDipInLiveGames(on, storage)`, `dipFor(mode, on)` (pure: `watch` always dips) and `shouldDipNow(doc, storage)` (reads `#app[data-mode]`). Storage never throws; a blocked one keeps the choice for the visit. |
+| `css/worlds/under-the-lights/booth.css` | Lamp switches (every `.sc-check`: Touchdown, Turnover, automatic 1st down, the settings), console pushbuttons (`:is(.sc-keypad, .sc-retag) .sc-key`), the racks' scroll margin, the FLAGS plate in flag yellow, the open drawer as a left HUD inset, the board's height while a desk input has focus |
+| `css/worlds/under-the-lights/components/entry-pad.css` | The manual desk: plate, the pinned entry line, the two-row keypad console, the hint, the dimmed pad |
+| `css/worlds/under-the-lights/components/flag-panel.css` | The flag panel in the FLAGS rack |
+| `css/worlds/under-the-lights/components/last-play.css` | The desk in feed and watch modes: the last play's LED board and the retag keys |
+| `css/worlds/under-the-lights/components/shorthand.css` | The shorthand bar: an LED input and a Run key |
+
+### 17.2 The desk
+
+- **Plates.** `.sc-pad-title` ("WHAT DID HE CALL?", manual) and `.sc-last-heading` ("LAST PLAY FROM ESPN", feed and
+  watch) are painted plates like the board's (raised steel, white plate caps, a seam under them).
+- **Manual entry line** (sticky at the desk's top, ui-architecture 4.4): a grid, `"chosen chosen chosen yards"` over
+  `"td to log log"`: the chosen play on an LED readout (caps; the next tap under it in small type; "PICK THE PLAY"
+  dim), Yards as an LED input (Display 800 digits, amber caret), Touchdown and Turnover as lamp switches, Log play as the
+  widest key, lit amber with an `Enter` window (CSS `content` with empty alt text) once something is picked, unlit and
+  dim while disabled. While Yards or the shorthand bar has focus the open video board keeps its normal height and
+  scrolls inside (it still grows left), so a resting pointer never covers the entry line.
+- **Keypad console.** Two rows (`.sc-keypad` grid: run and pass, then RPO and result), each key a pushbutton: the
+  keyboard letter in an LED window across its top, the name painted under it. Letters and lit windows take the family
+  tone through `--sc-tone` (run amber, pass warm white, RPO gold; results warm white, lit amber; X yellow, lit yellow
+  while the flag panel is open). The family words (`aria-hidden`) and the per-key hints are hidden on the stadium desk
+  (the hints stay for screen readers; the chosen line says the next tap); a phone (420 px and under) gets one family per
+  row. At 1440 every key shows; at 1920 the second row scrolls under the pinned entry line (DESIGN.md: the desk scrolls).
+  Off the field the pad dims to 0.62 (`--sc-entry-dim`, no fade).
+- **Feed.** The last play is an LED board (`#lastPlay` carries the pixel face): the play in Display caps, the yards in
+  amber, ESPN's text in body type, clamped to three lines in the stadium layout (the ribbon and the play feed hold all
+  of it; a screen reader hears it all). The retag keys are one row of the same pushbuttons; `.cur` (the play's type)
+  carries a 2 px warm-white frame drawn by `::after` (no shadow). The row is sticky at the desk's foot inside the last
+  play.
+- **Watch this game.** The transport fills the desk's top, so the retag row is fixed to the desk's foot (inside its
+  frame) and the desk gains the row's height as bottom padding.
+- **After each caller play** (`#lastPlay[data-fresh="true"]`, A7, 8 s): every retag window lights amber and the board
+  steps the new play in (`uls-step-in`, 5 frames); then the windows rest unlit and visible. Reduced motion: no step.
+
+### 17.3 The drawer
+
+- **X** opens the booth (it holds `flags`) and booth.js scrolls the FLAGS rack to the drawer's top; its plate is painted
+  flag yellow with a black caption. The panel drops its own frame: the note (an LED strip) beside Close (Esc), then the
+  defense and offense columns (one column at 720 px and under) of foul keys (the flag-mode letter in a yellow window,
+  lit yellow under the pointer or focus; the foul in caps; its enforcement in small type), Other on each team with the
+  automatic 1st down lamp switch, Offsetting (W) and the hint. The panel's title is visually hidden; it still names the
+  region. Escape or X closes both; a booth opened with B stays open.
+- **SETTINGS**: the two lamp switches (17.1), each with its note.
+- **The open drawer is HUD** in the stadium layout: `--sc-field-safe-left: var(--uls-drawer-w)` (400 / 520 px). W3's
+  watcher announces it (`sc:hud-insets`); the camera re-frames once A0 adds W3's one-line listener (v1.4, section 15.4).
+  Until then the drawer covers the field's left edge, the line of scrimmage included when it sits there.
+
+### 17.4 Tests
+
+Node: `tests/js/uls-booth.test.mjs` (14: the dip rule, storage that throws, `shouldDipNow`, arrange hanging the
+booth, idempotence, the switches, the room lights handshake with and without an answer, the `<html data-ambient>`
+watcher, the FLAGS rack scroll; booth.js 99% of lines). E2E: A11's input files run on this world with
+`ui_helpers.WORLD` set to `under-the-lights` (a pytest plugin outside the repo patches it): entry, flags, shorthand and
+drive, feed and replay, strip, keys and A7's input surfaces, 128 of 140 pass. The 12 that fail look for things this
+world keeps elsewhere by design, none in W4's surfaces: the play log in the closed stat board (`#logArea`, #69, #89,
+#91, #105), the feed's id box and Replay in the closed drawer (`#feedEvent`, `#replayBtn`, #49, #101, #104, #106, #109;
+A11's `show()` opens the booth, these tests don't call it), a play button in the collapsed board and the families at
+760 px (A7's hover test and #7, W2's board), and the smoke test's 404s for W1's scene modules. The booth flows (B, X,
+Escape, the FLAGS scroll, the left inset, the board kept off the entry line, the two switches across a reload, the 8 s
+light during a watch) are checked in Playwright.
+
+## 18. v1.4: the Under the Lights HUD skins as built (W2, 2026-10-09)
+
+Additive to 5, 8.2, 10.2, 11.3, 12.3 and 15.5. DESIGN.md (Components, Named Rules) is the source; where this section is
+more specific, it is how the world's skins work. Every skin styles the hooks of sections 10 to 12 at the component's own
+specificity (`:where(:root[data-world="under-the-lights"])` or `:where(#app[data-layout="uls"] <fixture>)` before the
+component selector), so load order decides against the neutral component CSS and W3's fitting rules.
+
+### 18.1 Files
+
+| File | Skins |
+| --- | --- |
+| `components/masthead.css` | Every key on the page (`.sc-key`: raised steel cap, LED window for the key letter, lit amber when on, dark when disabled) and lamp (`.sc-lamp`); the nameplate and keys on the ribbon. Holds the shared LED primitives (18.2) and the `"ULS LED Pct"` face |
+| `components/prediction.css` | The video board: plate, call name, Doto figure over its unlit `88%`, tilt tag, then-line, LED split bar and family bars with league notches, pixel hot arrows; the open board (two family columns over their plays, why lines, legend); the off-field face with an unlit `88%` |
+| `components/scoreboard.css` | Band row one (logo windows, captions in the paint's ink, amber Doto scores and facts over unlit 8s, possession and timeout lamps, EST and FINAL tags) and the shared digit windows (`.sc-digits[data-ghost]`) |
+| `components/scorecard.css` | Band row two (steel SHADOW V LEAGUE plate, three pairs: caption, two amber readouts, `v`, leader lamp, snap count) and tonight's scorecard on the stat board |
+| `components/play-feed.css` | The ribbon's one-line message (time, team, result, verdict glyph, ESPN's text; paging), the unrolled replay board (steel drive plates, LED rows) |
+| `components/drive-chart.css`, `components/win-prob.css` | The lower ribbon: the drive as LED cells on the 100-yard scale (unrolls into the drive list), the win probability as an LED line |
+| `components/situation-strip.css`, `components/feed-bar.css` | LED input windows on steel; the ESPN key and its tally lamp, the status, the drawer's FEED rack, the G12 line |
+| `components/box-score.css`, `components/tendencies.css`, `components/play-log.css` | The stat board's panels under steel plates: LED tables, the LED forest plot |
+| `components/toast.css`, `components/conn-banner.css`, `components/boot-screen.css`, `components/review-banner.css`, `components/field-host.css` | The LED strips and tags around the bowl, the boot board, the field legend |
+| `img/worlds/under-the-lights/*.svg` | 9 x 9 masks: `check`, `three`, `x` (verdicts), `td`, `inc`, `first` (the down marker), `flag`, `turnover`, `hot-up`, `hot-down`, `ref-touchdown`, `ref-turnover` (referee signals) |
+
+Used today: the verdict glyphs on the ribbon and the replay board, `ref-touchdown` / `turnover` / `flag` before a play's
+result (`data-result`) and a drive's result (`data-result` of the drive chart), the hot arrows on the board. `td`, `inc`,
+`first` and `ref-turnover` are there for hooks that do not exist yet (v1.4 W2 note) and for W1's turf lettering.
+
+### 18.2 Shared world primitives (defined in `components/masthead.css`)
+
+- `--uls-led-num`: `"ULS LED Punct", "ULS LED Pct", Doto, …`. Doto draws `%` as two dot pairs and a diagonal that reads
+  `28X` across a room, so `"ULS LED Pct"` takes U+0025 from Big Shoulders Display (W3's file, already preloaded), like
+  W3's period and colon. Only at `--sc-size-call`, `--sc-size-xl` or `--uls-size-led-readout` (the 40 Pixel Rule, tested).
+- `--uls-cell` (4 px), `--uls-lit` (the lit-cell mask: round dots on the panel's 4 px pitch), `--uls-track` (a bar's
+  unlit cells, a step warmer than the panel's grid), `--uls-glyph` (18 px; 27 px for ribbon glyphs on the TV).
+- `--uls-ghost`: segment-unlit taken toward the panel for the unlit 8s behind segment digits, so `7` beside its unlit
+  `8` never reads `87` across a room (the board's figure uses `--uls-unlit`).
+- LED bars and charts are their own elements masked with `--uls-lit` over a plain panel (a bar's padding rows, or a
+  `::before` in the SVG's grid area), so lit and unlit pixels share one grid. Digit windows stack the ghost behind the
+  value (`::before`, z −1) with a hidden copy (`::after`) setting the cell's width; `--uls-win-x|y` is the padding.
+
+### 18.3 Tests
+
+Node: `tests/js/uls-skins.test.mjs` (every skin registered in order and under 400 lines; the Flat Hardware Rule; no raw
+hex, named hue or `--sc-team-*` in a skin; Doto only at LED sizes; every `url()` resolves; animations are hardware
+steps with both reduced-motion states; LED inks clear 4.5:1 on the panel; the glyphs are clean 9 x 9 masks) and
+`tests/js/play-feed-pager.test.mjs` (`pagesFor`, the pager's holds, rest and reset, `resultKind`, `data-result` on the
+real game, the feed paging only its newest row). Browser: Playwright at 1440x900, 1920x1080 and 390x844 in replay
+(manual drive, finished game, feed on with the drawer, stat board, review, toast, offline, boot failure) and in Watch
+this game (paused and playing, the board open, the ribbon paging).
+
+## 19. v1.4: the Watch transport and the replay scrub as built (W5, 2026-10-09)
+
+Additive to 2.6, 3.8, 4.3, 5.4, 9.1, 12 and 15. DESIGN.md ("Watch transport", "Control desk", "Keys, lamps and LED
+inputs") is the source; where this section is more specific, it is how the deck works.
+
+### 19.1 Files
+
+| File | Role |
+| --- | --- |
+| `model/vm-scrub.js` (pure) | `scrubVm(pv)`: `{available, empty, session, total, lastSeq, liveSeq, reviewSeq, reviewing, knobSeq, knobAt, headAt, plays: {seq, drive, head, label, text}[], drives: {idx, team, caller, first, last, from, to}[], marks: {key, kind: "quarter"\|"score"\|"turnover", seq, team, caller, at, text}[], readout: {state: "live"\|"review"\|"empty", word, title, head, label, text}, value: {now, max, text}, canEarlier, canLive}`, frozen. A slot per timeline row in seq order; `total` is `watch.total` during a session (the count is already on the transport; no row past the field is read, DC E5), else the last drawn seq. `from`, `to`, `at`, `knobAt` and `headAt` are fractions of the strip (5 decimals). `describePlay(row)`: "Q2 8:41 · DAL · Deep pass left · +21" (when and whose, then `playLabel(row)`), memoized by row. `seqAtFraction(vm, f)`: the drawable play nearest the slot under `f` (the one before wins a tie; admin rows never), `null` past the newest drawn row (the live detent). `stepFrom(vm, delta, { byDrive })`: -1 an earlier play (from live, the newest, like Left), +1 a later one (past the newest: `null`; live stays live, so the scrub never steps the server), ±Infinity the first play or live; `byDrive` the start of this drive or the one before, the next drive's start or live |
+| `ui/scrub.js` | The component (appends to `#rg-transport`). Markup in reading and tab order: `p.sc-scrub-readout[data-show]` (`.sc-scrub-title`, `.sc-scrub-word`, `.sc-scrub-head`, `.sc-scrub-label`), `.sc-key.sc-scrub-key.sc-scrub-earlier[data-scrub="earlier"]` (cap ←, `REVIEW.earlier`, `aria-keyshortcuts="ArrowLeft"`), `.sc-scrub-track[role="slider"][tabindex="0"][data-testid="scrub-track"]` (`aria-valuemin/max/now/valuetext`, `aria-disabled` while empty; children `.sc-scrub-face` > `ol.sc-scrub-drives`, `ol.sc-scrub-marks`, `.sc-scrub-veil`; `.sc-scrub-ghost`, `.sc-scrub-knob`), `.sc-key.sc-scrub-key.sc-scrub-live[data-scrub="live"]` (cap Esc, a `.sc-lamp.sc-scrub-live-lamp[data-on]`, the word `SCRUB.live`, `aria-label` `REVIEW.live`). Root `.sc-scrub[data-testid="scrub"][data-state][data-session][data-dragging]`, `role="group"`, `aria-label` `SCRUB.label`. Positions are custom properties: `--sc-scrub-from`/`--sc-scrub-to` on drives, `--sc-scrub-at` on marks, `--sc-scrub-knob`, `--sc-scrub-head`, `--sc-scrub-hover` on the track |
+| `css/components/scrub.css` | Structure and tokens (neutral): one grid, the readout on top, then ←, the strip and LIVE; drives in the runtime team colors; the strip full width under 520 px |
+| `css/worlds/under-the-lights/components/watch-transport.css` | The transport on the desk (19.3) |
+| `css/worlds/under-the-lights/components/scrub.css` | The strip, the board and the keys on the desk (19.3) |
+
+### 19.2 Behavior
+
+- **Review only.** A press, a drag, a key or ← asks `actions.reviewAt(seq)` (null: live), `actions.review(-1)` or
+  `actions.exitReview()`; the same target is never asked for twice in a row. Nothing posts to `/api/watch/*`: Right at
+  the live edge stays live on the strip (the page's Right still steps a paused watch, 4.3).
+- **Pointer.** The strip is a slider. A main-button press reviews the play under it (`seqAtFraction`), a drag follows
+  it (pointer capture), the part of a watched game not played yet is the live detent, and release keeps the play on the
+  field. `pointerdown` and `mousedown` are prevented, so a mouse scrub never moves keyboard focus and the page's
+  shortcuts keep working; `touch-action: pan-y` lets a phone scroll the page vertically. Hover (no press) previews the
+  play under the pointer on the readout (`data-show="hover"`) and with a dashed ghost knob, and asks for nothing.
+- **Keys on the focused strip** (a slider, so the keymap leaves it alone, 4.1 guard 3): Left/Down and Right/Up a play,
+  Page Up/Down a drive, Home the first play, End live, Esc live (only while reviewing); Space plays or pauses and 1 to 4
+  set the speed, as everywhere else. Keys with Alt, Ctrl or Meta, and every other key, pass through.
+- **Focus.** A key activated from the keyboard that the new state disables (LIVE after going live, ← on the first play)
+  hands focus to the strip; a mouse click leaves focus alone.
+- **The readout** follows the knob (`Review` with the reviewed play, `Live` with the newest), a hovered play while the
+  pointer is over the strip, and during a watch it carries the mode's name (`WATCH.start`) as `title`.
+
+### 19.3 Under the Lights
+
+- **The desk in watch mode is four rows**, so they fit above the retag keys W4 fixes to the desk's foot (1440: 184 of
+  226 px; 1920: 208 of 217 px, the rows 4 px apart there, 6 px on the laptop): (1) an LED message board and the play
+  counter; (2) Space play/pause, → Step, Stop; (3) the four speeds, one lit; (4) ←, the strip, LIVE.
+- **The board** is the scrub's readout, absolutely placed in the transport's first row on the stadium's desk
+  (`#rg-transport` is its positioning box): two lines of LED caps. Live: the mode's name (`WATCH THIS GAME`) over the
+  newest play's words, dim (the band already says when and whose ball). Review: `REVIEW` (amber), when and whose, then
+  the play in warm white. Hover: the hovered play. The
+  transport's own painted plate (`::before`, `content: attr(aria-label) / ""`) stands down there; in the phone column
+  the plate shows and the board sits in the flow above the strip, without the title.
+- **The counter** (`.sc-transport-progress`): Doto (`--uls-led-num`) at `--uls-size-led-readout`, amber segments over
+  `888/888` in `--uls-ghost` (the spaces close up: `word-spacing: -0.6em`), its width the shared token
+  `--uls-deck-count-w` (seven Doto cells and the window's padding), which the board subtracts.
+- **The keys** are the world's (W2's `masthead.css`); the transport lights the pause key's window amber while a game
+  plays (the play key is unlit while paused) and puts the error's words beside a tally-red lamp. ← prints its key only
+  (its name stays for assistive tech); LIVE keeps its word and lights its lamp tally red at the live edge, on air.
+- **The strip** is an LED face: the drives' lane is W2's unlit track (`--uls-track`), each drawn drive lit through
+  W2's mask (`--uls-lit`) in its LED tone (the caller warm white, the opponent amber), quantized to the 4 px pitch with
+  `round()` (a plain `calc()` before it for older engines), one unlit column between drives; score cells above in the
+  scorer's tone, turnovers in tally red, quarter ticks below in LED dim. The knob is a 2 px warm-white frame three cells
+  wide (amber while held), riding the front of the lit strip at the live edge; the veil dims the drawn plays after a
+  reviewed one; the ghost is a dashed dim frame. No transitions: everything changes state at once.
+- **Not changed:** the stadium shows the transport only in watch mode (W3's layout), so Watch this game starts from
+  the drawer's FEED rack (B) at the stored speed; 1 to 4 change it once the game plays.
+
+### 19.4 Tests
+
+Node: `tests/js/vm-scrub.test.mjs` (18, the real TB at DAL captures: slots, drives, marks, a watch's spoiler-free strip,
+review, empty, the caller without team colors, `seqAtFraction`, `stepFrom`, copy), `tests/js/scrub.test.mjs` (16: hooks
+and tab order, keys and names, keyed renders, ← and LIVE, keys on the strip, pointer press, drag and the live detent,
+hover, the board after a drag, empty, an unmeasurable strip, the focus handoff, destroy; both modules 100% of lines) and
+`tests/js/uls-deck.test.mjs` (8: registration and order, flat hardware, tokens only, Doto only at LED sizes, no
+motion, the counter's ghost and width, the board's geometry, contrast). E2E: `tests/e2e/test_ui_timeline_watch.py`
+17/17 on both worlds (`ui_helpers.WORLD` patched by a pytest plugin outside the repo for Under the Lights). On Under
+the Lights, `test_ui_chrome.py`'s two watch tests pick a speed on the idle transport before starting, which this world
+keeps off the desk until a game plays (by DESIGN.md); they stay neutral-only. Browser: Watch this game at 10x from the
+drawer through pause, step, scrub, live, done, review of the finished game and Back to my game, at 1440x900 and
+1920x1080, plus 390x844.
+
+## 20. v1.4: the action layer as built (A5 part 2, 2026-10-09)
+
+Additive to 2.5 and 14.4. The binding source is `docs/design/play-drawing.md`; DESIGN.md's "Plays on the field" rules
+(the tracer head, The Light Core Rule, the drive's residue) apply where they don't conflict with it. `scene.js` drives
+these layers exactly as 14.4 says; they reach each other through `stage.layers` (20.3).
+
+### 20.1 Files
+
+| File | Kind | Role |
+| --- | --- | --- |
+| `player.js` | three.js | layer `player`: the live play, animated from its plan (`start` → job) or whole (`placeAll`); the play on display, dimmed when the next call is up; its words; the hand-over to residue; `review` (to residue), `relabel`, `verdict` (to overlays) |
+| `ghost-layer.js` | three.js | layer `ghosts`: the shadow plays (`shadows.buildShadowPlays`), their text in the view's label metrics, hover, the snap fade; `shown()` (the `data-ghosts` hook) |
+| `overlays.js` | three.js | layer `overlays`: the painted situation (`current()`), the verdict chips (slots `live`, `review`) |
+| `residue.js` | three.js | layer `residue`: past plays, faint, merged per material; Left/Right review (one past play replayed) |
+| `play-style.js` | pure | a Drawing or a ShadowPlay as frozen parts (stroke, track, arrow, mark) with every color, width, dash and opacity from the Look; `carriersOf`, `pathOf`, `revealAt`, `shadowInputOf`, `resolvePlayLook` |
+| `play-art.js` | three.js | parts → meshes revealed by step progress (`buildArt`), field-label helpers, `playEnv` (team paints and the page's tones, kept a second), `drawingOrNull`, `warmUpPrograms` (every action-layer shader compiled at boot) |
+| `play-strip.js` | three.js | the stroke primitive: a path as one continuous strip (screen px or turf yards) with a reveal distance, dashes in yards, an inner cut (the edge ring), per-vertex alpha and color, anti-aliased sides |
+| `play-ball.js` | three.js | the ball in play: football, tracer head, contact shadow, trail (`look.ball.trail`), the hold's slide to the next spot |
+| `play-glyphs.js` | three.js (canvas) | the marks' alpha masks (core, and an edge ring cut out of it), letters with `fillText` only |
+
+### 20.2 What it draws
+
+- **Every scrimmage play starts on the line of scrimmage**, on the center line. A pass is a true 3D arc (an edge ring in
+  the team color around a light core, The Light Core Rule) that grows with the ball, a thin dashed ground track under
+  it, then a catch dot and the yards after the catch as a straight line on the turf; an incompletion's arc ends in an X;
+  an interception in an INT plate and the defense's return; a run, scramble, sack (its edge in the `bad` tone), kneel,
+  return or penalty walk (dashed line-to-gain yellow) is one straight flat line grown from its start with an arrowhead;
+  kicks fly their true length (a field goal's check or X stands at the crossbar as a billboard); a touchdown ends in
+  TD. A no-play draws dimmed and dashed (60% toward gray at `ghostedOpacity`) under its flag. Estimates take the look's
+  approx style (`dashed`, `hatch`, `pixel`: dashes; `soft`: 55%). No 3D runner, no routes, no ball behind the line.
+- **Timing** (the facade's fitted plan): flights move at ground speed, carries ease out into the tackle (the stroke's
+  tip is the ball, `revealAt`), the catch dot lands at once, other marks pop in over `markMs`, an arrowhead lands with
+  its line, the play's words step in when the last step lands; during the hold the ball slides to the next snap's spot
+  (`drawing.ballEnd`), where the facade's resting ball takes over. The ball's nose follows its velocity (a spiral on
+  passes and punts, end over end on kickoffs and field goals); its head is the arc's light core times
+  `world.plays.headGlow` (additive: it blooms when the look has bloom); its trail is the carrier's light core.
+- **The play on display** keeps its words (`drawing.label`, a `.sc-play-label` plate centered on `label.at`) until the
+  next play draws. When the next call goes up it dims to `lastPlay.dimOpacity` over `ghostInMs` and its words go muted
+  (`.is-dim`), or it retires at once for `lastPlay.keep: "until-presnap"`. A verdict (`markVerdict`) adds a chip under
+  its words ("Top pick", "In his top 3", "Miss"; `.sc-verdict-chip.is-<key>`, dropped a plate by CSS).
+- **Residue** (`look.residue`: `none`, `drive` = the current drive's earlier plays, `game`): strokes, arrowheads and turf
+  marks at `residue.opacity`, no words, no ground tracks and no kick flights (a 22-yard-high punt would hang over every
+  later snap), merged by shape with each path's own color and opacity as vertex attributes: a drive costs about 10 draw
+  calls, a whole game 34.
+- **Shadow plays** before a caller snap: his top 2 (`buildShadowPlays`), plus the play the prediction panel hovers or
+  focuses. Each is a dashed stroke in the ghost tint (`ghost.fill`: `team` the team's light core, `neutral` the
+  `ghost.stroke` color, or a color) at the shadow's own opacity (0.5, 0.35; the hovered one `hoverOpacity`, the others
+  `dimOthers` times theirs while one is hovered), `shadowWidth` times the real core, grown out of the line of scrimmage
+  over `ghostInMs`, then where it ends: a dashed target ring where a pass is aimed, a chevron on a run. The text
+  (`.sc-shadow-label.rank-N`, dashed plate; `.is-hovered`, `.is-muted`) is laid out underneath by `shadows.js` in this
+  view's label metrics: `labelMetrics` through a camera at the rig's `goalPose()` and the plate measured from the
+  world's CSS once per canvas size; it avoids the play on display, its words and its chip. It waits until the camera is
+  within 1.5 yd of that pose (after a rebuild the camera glides in from the whole field) and is laid out again on a
+  camera mode, canvas or safe-area change, a hover, a verdict or a relabel. At the snap (`fade(afterSnapOpacity,
+  ghostOutMs)`) the text fades out and the strokes fade to `ghost.afterSnapOpacity` (0 removes them), a trace the ball
+  flies through or past. Only the caller's offense: the conductor sends a call only on his drives.
+- **Review** (Left/Right): the live plays, words, chip and residue step aside; the reviewed row replays from its line of
+  scrimmage at its normal length (at once under reduced motion) with its words and its grade (`review` chip slot) while
+  the facade shows its own shadows and situation; Esc restores the live state.
+
+### 20.3 Interfaces between the action layers (`stage.layers`; additions to 14.4)
+
+- `player`: `lastDrawing()` (the play on display, for the shadows' layout), `dimLast()` (the ghost layer calls it when a
+  call goes up, not during review), `isLive()` (false while reviewing), `glyphs`.
+- `residue`: `addMany(items, { drive })` (the player's hand-over; keep rules relative to the drive now in force),
+  `review(item | null)`, `reviewDrawing()`, `relabel(rows)`, `count()`.
+- `overlays`: `situation(sit)`, `current()`, `verdict({ seq, key, label }, { slot, visible })`,
+  `relabel(slot, { row, label })`, `clearVerdict(slot)`, `setVisible(slot, on)`, `chip(slot)`.
+- `ghosts`: `relayout()` (after a verdict or a relabel), `shown()` (the hook).
+- `cameras.js` (A5, additive): `rig.goalPose()`.
+
+### 20.4 The Look keys a world supplies
+
+Existing schema keys, all read: `strokes.arc`, `strokes.ground`, `strokes.mark` (`geometry`: `line2` draws screen-wide
+strips of `widthPx`, `ribbon`, `decal` and `tube` turf-wide strips of `widthYd`; `core`; `edge` `team`, `team-alt` or a
+color; `opacity`; `dash`; `ghostedOpacity`; `approx`; `mark.widthYd` is the glyph size), `lines.ltg.color` (the flag,
+the walk), `ball` (`kind`, `color`, `accent`, `scale`, `trail.kind|color|widthPx|fadeMs`), `ghost` (`fill`, `stroke`,
+`afterSnapOpacity`, `labels`), `lastPlay` (`keep`, `dimOpacity`), `residue` (`keep`, `opacity`), `labels` (`renderer`,
+`className`, `result`), `motion` (`markMs`, `ghostInMs`, `ghostOutMs` and the plan's speeds), `teamColor` (through the
+kit's team paints). The page's `--sc-good`, `--sc-bad`, `--sc-warn` tokens color the marks' tones, and the label
+plates take `--sc-surface-2`, `--sc-ink`, `--sc-ink-muted`, `--sc-rule-strong`, `--sc-focus`, `--sc-font-text`,
+`--sc-size-s|xs`, `--sc-weight-strong`, `--sc-tracking-label`, `--sc-case-label`, `--sc-radius-s`, `--sc-dur-med|slow`,
+`--sc-ease-out`, `--sc-space-1`. Optional, new: `look.world.plays` (`play-style.PLAY_LOOK`; each key checked, a bad
+value takes its default): `headGlow` 2.5, `headYd` 1.3, `trackOpacity` 0.28, `trackWidthPx` 1.5, `trackDash` [0.5, 0.9],
+`arrowYd` 1.6 (0: none), `hoverOpacity` 0.9, `dimOthers` 0.5, `shadowDash` [1.2, 0.8], `shadowWidth` 1.25, `targetYd`
+1.1, `tones` `{ good, bad, warn }` (else the page's tokens, else `TONE_FALLBACK`).
+
+### 20.5 Budget as measured (`?debug=1`, Watch this game at 4x, 12 s, plays 95 to 103; Chromium on the Apple M4 Max)
+
+| Size, DPR | Frame interval p50 / p95 / p99 / max | Frames over 20 ms | Engine CPU p50 / p95 / max | Draw calls max | Triangles |
+| --- | --- | --- | --- | --- | --- |
+| 1440x900, 2 | 16.7 / 16.8 / 16.8 / 16.8 ms | 0 of 718 | 0.4 / 0.6 / 8.0 ms | 51 | 4.3k |
+| 1920x1080, 1 | 16.7 / 16.8 / 16.8 / 16.8 ms | 0 of 719 | 0.4 / 0.6 / 7.4 ms | 51 | 4.3k |
+| 1440x900, 2, from the first snap | 16.7 / 16.7 / 16.8 / 33.4 ms | 1 of 723 | 0.5 / 0.6 / 9.7 ms | 50 | 4.3k |
+| 1440x900, 2, rows 20 times the demo pace (`SHADOW_WATCH_SCALE=0.05`) | 16.7 / 16.7 / 16.8 / 16.8 ms | 0 of 719 | 0.3 / 0.4 / 0.6 ms | 45 | 5.0k |
+
+The worst engine frame is a play's first (its meshes built and uploaded). Before `warmUpPrograms` (shaders compiled
+mid-play) and the trail's per-frame bounds and color, the same runs dropped 2 frames (up to 50 ms) at 1440 and 1 (117
+ms) at 1920, with an engine CPU p95 of 2.3 ms. Playwright's default headless
+Chromium renders with SwiftShader (tier `low`); `channel: "chromium"` gets the GPU, as these numbers do. Idle frames stay
+0 (the e2e render-on-demand test passes). Budget (6.1): 16.7 ms, 150 draw calls, 300k triangles, 12 live labels
+(the action layers keep at most 7: the play's words and its chip, three shadow texts, and during a review the
+reviewed play's words and chip while the live ones are hidden).
+
+### 20.6 Tests
+
+Node: `play-style.test.mjs` (14), `play-art.test.mjs` (9), `play-glyphs.test.mjs` (4), `action-layers.test.mjs` (12),
+`ghost-layer.test.mjs` (10), on `tests/js/action-stage.mjs` (a WebGL-free stage with the real kit, rig and paint, a
+recording label layer and a hand-cranked frame clock). Lines 97 to 100%, branches 80 to 98% and functions 98 to
+100% on the nine modules. `stage-parts.test.mjs` lost part 1's two placeholder tests; `scene-engine.test.mjs`'s
+spies leave `shown` unanswered.
+E2E: `test_ui_checklist_field.py`, `test_ui_keys_offline.py` (idle frames, draw budget, the leak check, context loss),
+`test_ui_timeline_watch.py`, `test_ui_checklist_prediction.py`, `test_ui_game_surfaces.py`. Browser: every play kind
+mid-flight and landed, pre-snap shadows, hover, review, at 1440x900 (DPR 2), 1920x1080 and 390x844, both worlds.

@@ -1,0 +1,51 @@
+/* Under the Lights: the shorthand bar on the desk (ui/shorthand.js in [data-mount="shorthand"]; DESIGN.md "Control
+   desk", "LED input"; FI 1.8, 2.6; owner W4). A full-width LED input in its steel frame (warm white text, amber
+   caret, ESPN-style examples as the dim placeholder) and a Run key. Enter in the box runs the line and never logs the
+   picked play (#84); while a line is out the Run key's words dim (aria-busy). */
+
+:where(#app[data-layout="uls"]) .sc-short {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sc-space-1);
+  min-width: 0;
+}
+:where(#app[data-layout="uls"]) .sc-short-input {
+  min-width: 0;
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  caret-color: var(--uls-led-amber);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+}
+:where(#app[data-layout="uls"]) .sc-short-input::placeholder { color: var(--sc-ink-muted); opacity: 1; }
+:where(#app[data-layout="uls"]) .sc-short-input:focus {
+  border-color: var(--uls-led-warm);
+  background: var(--uls-led-face);
+}
+:where(#app[data-layout="uls"]) .sc-short-input::selection {
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+}
+/* Run: a steel key with no window. */
+:where(#app[data-layout="uls"]) .sc-short-run {
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-4);
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) .sc-short-run:hover {
+  border-color: var(--uls-steel-edge);
+  background: var(--uls-steel-edge);
+}
+:where(#app[data-layout="uls"]) .sc-short-run[aria-busy="true"] { color: var(--sc-ink-muted); cursor: progress; }

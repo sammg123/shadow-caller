@@ -4,10 +4,126 @@
 // is a button (G18): it shows that play on the field (actions.reviewAt), and pressing the reviewed row again goes
 // back to live. Rows are reconciled by seq, so new plays never rebuild old rows and a focused row keeps focus.
 // Text only (G27): ESPN's play text goes in through textContent.
+// v1.4 (W2; surface brief unresolved #7): ribbon paging. A world that sets the newest play on one line (Under the
+// Lights' LED ribbon) cuts it at the face's edge; when the newest row's words overflow its own button, the row pages a
+// screenful at a time, whole words only: --sc-page-x (px) shifts the words, --sc-page-cut (px) is the visible width of
+// the page's whole words, data-page / data-pages count, and data-page-phase flips "a" / "b" so a world can step each
+// page in. Each page holds PAGE_HOLD_MS; after the last page it returns to the first and rests. Where rows wrap (the
+// neutral world, an unrolled feed) nothing overflows and nothing pages. ctx.timers and ctx.measureRibbon are for tests.
 import { el, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
 
 const ROW_PARTS = new WeakMap();
 const GROUP_PARTS = new WeakMap();
+
+export const PAGE_HOLD_MS = 2400;
+const PAGE_EPS_PX = 1;
+const browserTimers = Object.freeze({
+  setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
+  clearTimeout: (id) => globalThis.clearTimeout(id),
+});
+
+/**
+ * Pages for words at [left, right] px from the first word's edge in a face `width` px wide (pure): a page starts at
+ * the first word that would not fit whole and ends at its last whole word. A word wider than the face is a page alone.
+ * @param {Array<[number, number]>} spans
+ * @param {number} width
+ * @returns {Array<{ start: number, end: number }>}
+ */
+export function pagesFor(spans, width) {
+  const sorted = [...spans].sort((a, b) => a[0] - b[0]);
+  const pages = [{ start: 0, end: 0 }];
+  for (const [left, right] of sorted) {
+    const page = pages[pages.length - 1];
+    const fits = !(width > 0) || right - page.start <= width + PAGE_EPS_PX || left <= page.start;
+    if (fits) pages[pages.length - 1] = { start: page.start, end: Math.max(page.end, right) };
+    else pages.push({ start: left, end: right });
+  }
+  return pages;
+}
+
+/** The words of a row's button as px spans from its content edge, and the content width; null without layout. */
+function measureWords(control) {
+  const doc = control.ownerDocument;
+  const view = doc?.defaultView;
+  const hasLayout = Boolean(view?.NodeFilter) && typeof doc.createRange === "function"
+    && typeof doc.createTreeWalker === "function";
+  if (!hasLayout) return null;
+  const style = view.getComputedStyle(control);
+  const padStart = parseFloat(style.paddingLeft) || 0;
+  const width = control.clientWidth - padStart - (parseFloat(style.paddingRight) || 0);
+  if (control.scrollWidth <= control.clientWidth + PAGE_EPS_PX) return { width, spans: [] };
+  const origin = control.getBoundingClientRect().left + padStart;
+  const walker = doc.createTreeWalker(control, view.NodeFilter.SHOW_TEXT);
+  const range = doc.createRange();
+  const spans = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    for (const word of node.data.matchAll(/\S+/g)) {
+      range.setStart(node, word.index);
+      range.setEnd(node, word.index + word[0].length);
+      const box = range.getBoundingClientRect();
+      if (box.width > 0) spans.push([box.left - origin, box.right - origin]);
+    }
+  }
+  return { width, spans };
+}
+
+/**
+ * One row paged at a time. measure(control) gives { width, spans } (or null: no layout, one page); apply(control,
+ * { page, pages, shift, cut, phase }) writes it. start(control) restarts on a new row and resets the old one.
+ */
+export function createPager({ timers, measure, apply }) {
+  const s = { control: null, pages: [{ start: 0, end: 0 }], page: 0, phase: "b", timer: null };
+  const stop = () => {
+    if (s.timer !== null) timers.clearTimeout(s.timer);
+    s.timer = null;
+  };
+  const show = (page, phase) => {
+    const p = s.pages[page];
+    const many = s.pages.length > 1;
+    s.page = page;
+    const shift = many && p.start ? -p.start : 0;
+    apply(s.control, { page, pages: s.pages.length, shift, cut: many ? p.end - p.start : null, phase });
+  };
+  const tick = () => {
+    s.timer = null;
+    s.phase = s.phase === "a" ? "b" : "a";
+    const next = s.page + 1 < s.pages.length ? s.page + 1 : 0;
+    show(next, s.phase);
+    if (next !== 0) s.timer = timers.setTimeout(tick, PAGE_HOLD_MS);
+  };
+  return {
+    start(control) {
+      stop();
+      if (s.control && s.control !== control) {
+        s.pages = [{ start: 0, end: 0 }];
+        show(0, null);
+      }
+      s.control = control;
+      s.pages = [{ start: 0, end: 0 }];
+      show(0, null);
+      const m = measure(control);
+      s.pages = m ? pagesFor(m.spans, m.width) : s.pages;
+      s.phase = "b";
+      show(0, null);
+      if (s.pages.length > 1) s.timer = timers.setTimeout(tick, PAGE_HOLD_MS);
+    },
+    stop,
+  };
+}
+
+function applyPage(control, p) {
+  const li = control.parentNode;
+  const many = p.pages > 1;
+  if (li) {
+    setData(li, "pages", many ? p.pages : null);
+    setData(li, "page", many ? p.page : null);
+    setData(li, "pagePhase", many ? p.phase : null);
+  }
+  for (const [name, px] of [["--sc-page-x", p.shift], ["--sc-page-cut", p.cut]]) {
+    if (many && Number.isFinite(px)) control.style.setProperty(name, `${Math.round(px)}px`);
+    else control.style.removeProperty(name);
+  }
+}
 
 function onRowPress(li, actions) {
   const item = ROW_PARTS.get(li)?.item;
@@ -44,12 +160,29 @@ function createRow(item, ctx) {
   return li;
 }
 
+const TURNOVER_WORDS = Object.freeze(["INT", "FUMBLE", "TURNOVER"]);
+
+/**
+ * v1.4 (W2): the kind of a row's result word (format.resultText's vocabulary), a hook for a world's result glyphs:
+ * "td" (any touchdown, a return included), "turnover", "flag", "inc", else null.
+ * @param {unknown} word
+ * @returns {"td" | "turnover" | "flag" | "inc" | null}
+ */
+export function resultKind(word) {
+  const text = typeof word === "string" ? word.trim() : "";
+  if (/(^|\s)TD$/.test(text)) return "td";
+  if (TURNOVER_WORDS.includes(text)) return "turnover";
+  if (text === "FLAG") return "flag";
+  return text === "INC" ? "inc" : null;
+}
+
 function updateRow(li, item, newest, copy) {
   const p = ROW_PARTS.get(li);
   ROW_PARTS.set(li, { ...p, item });            // the click handler reads the newest item
   for (const key of ["seq", "id", "kind", "team", "caller", "verdict", "nullified", "retagged", "scoring", "reviewing"]) {
     setData(li, key, item[key]);
   }
+  setData(li, "result", resultKind(item.result));
   setData(li, "newest", item.seq === newest);
   setText(p.time, item.time);
   setText(p.team, item.team);
@@ -95,9 +228,29 @@ function updateGroup(li, group, ctx, newest) {
     update: (node, r) => updateRow(node, r, newest, copy) });
 }
 
+/** v1.4 (W2): page the newest row when another row becomes the newest (a re-render of the same row keeps its pages);
+ * measure again once the fonts have loaded, since a fallback face sets the words at other widths. */
+function pageNewest(list, newest, paged, pager) {
+  const control = newest === null ? null : list.querySelector(`[data-seq="${newest}"]`)?.firstChild ?? null;
+  if (control === paged.control) return;
+  paged.control = control;
+  if (!control) {
+    pager.stop();
+    return;
+  }
+  pager.start(control);
+  const fonts = list.ownerDocument?.fonts;
+  if (fonts?.status === "loading" && typeof fonts.ready?.then === "function") {
+    fonts.ready.then(() => {
+      if (paged.control === control && control.isConnected) pager.start(control);
+    }).catch((err) => globalThis.reportError?.(err));   // a throw here is reported, never swallowed
+  }
+}
+
 /**
  * @param {HTMLElement} root  #rg-plays
- * @param {{ actions: object, copy: object }} ctx
+ * @param {{ actions: object, copy: object, timers?: object, measureRibbon?: Function }} ctx
+ *   timers, measureRibbon: injected by tests (v1.4, W2); the page uses the browser's timers and layout
  * @returns {{ update(vm: object): void, destroy(): void }}
  */
 export function mount(root, ctx) {
@@ -107,6 +260,16 @@ export function mount(root, ctx) {
   const empty = el("p", { cls: "sc-pf-empty", text: copy.empty });
   const list = el("ol", { cls: "sc-pf-feed", attrs: { "aria-label": copy.heading }, data: { testid: "play-feed" } });
   const box = el("div", { cls: "sc-plays" }, [title, note, empty, list]);
+  const timers = ctx.timers ?? browserTimers;
+  const pager = createPager({ timers, measure: ctx.measureRibbon ?? measureWords, apply: applyPage });
+  const paged = { control: null };
+  // When the pointer or focus leaves (a world may unroll the feed under them), measure the newest play again on the
+  // next task, once the row is back on its one line.
+  const settle = () => timers.setTimeout(() => {
+    if (paged.control?.isConnected) pager.start(paged.control);
+  }, 0);
+  root.addEventListener("pointerleave", settle);
+  root.addEventListener("focusout", settle);
   root.appendChild(box);
   return {
     update(vm) {
@@ -118,8 +281,12 @@ export function mount(root, ctx) {
       const newest = vm.rows.length ? vm.rows[0].seq : null;
       reconcile(list, vm.groups, { key: groupKey, create: () => createGroup(),
         update: (node, g) => updateGroup(node, g, ctx, newest) });
+      pageNewest(list, newest, paged, pager);
     },
     destroy() {
+      root.removeEventListener("pointerleave", settle);
+      root.removeEventListener("focusout", settle);
+      pager.stop();
       box.remove();
     },
   };

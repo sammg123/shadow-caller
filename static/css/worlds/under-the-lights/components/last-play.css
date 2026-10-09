@@ -1,0 +1,140 @@
+/* Under the Lights: the last play and its retag keys on the desk (ui/last-play.js on #lastPlay; DESIGN.md "Control
+   desk"; FI 1.7, 2.8, 3.6; G19; owner W4). With the ESPN feed on and during Watch this game the desk is a small LED
+   board under a painted plate ("LAST PLAY FROM ESPN"): the play in caps, its yards ("8 yds · retagged") and ESPN's
+   own text (three lines on the stadium desk; the ribbon and the play feed hold all of it), then the retag keys
+   A N O P (a pass) or O J K L (a run) as one row of console pushbuttons, the one matching the play's type framed in
+   warm white. Retagging is the desk's primary action, so the keys stay pinned at the desk's foot when the desk
+   scrolls (Watch this game puts the transport above them). After each caller play (data-fresh, 8 s) the new play
+   steps onto the board and every retag window lights amber, then they rest unlit and visible. */
+
+:where(#app[data-layout="uls"]) #lastPlay {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow-x: clip;
+  background: var(--uls-led-face);
+}
+/* The plate: same paint as the board's and the manual desk's. */
+:where(#app[data-layout="uls"]) .sc-last-heading {
+  display: flex;
+  align-items: center;
+  min-height: var(--uls-plate-h);
+  padding: 0 var(--sc-space-3);
+  border-bottom: 1px solid var(--uls-steel-seam);
+  background: var(--uls-steel-raised);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) #lastPlay[data-kind="waiting"] .sc-last-heading {
+  color: var(--uls-caption-white);
+  font-size: var(--uls-size-plate);
+  text-transform: uppercase;
+}
+
+/* The board: the play, its yards, ESPN's text (sentence case, as ESPN wrote it). */
+:where(#app[data-layout="uls"]) .sc-last-name {
+  padding: var(--sc-space-3) var(--sc-space-3) 0;
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1.05 var(--sc-font-display);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) .sc-last-yards {
+  padding: 4px var(--sc-space-3) 0;
+  color: var(--uls-led-amber);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) .sc-last-text {
+  max-width: none;
+  margin: var(--sc-space-2) var(--sc-space-3) var(--sc-space-3);
+  padding: 0;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(#app[data-layout="uls"]) #lastPlay[data-kind="waiting"] .sc-last-text { margin-top: var(--sc-space-3); }
+
+/* ---------------------------------------------------------------- the retag keys, pinned at the desk's foot */
+/* One row of console pushbuttons (booth.css), the same hardware as the manual keypad: the letter in its window in the
+   play type's tone (pass warm white, run amber, RPO gold), the retag under it. */
+:where(#app[data-layout="uls"]) .sc-retag {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: var(--sc-space-1);
+  padding: var(--sc-space-2) 0 0;
+  background: var(--uls-steel);
+}
+:where(#app[data-layout="uls"]) .sc-retag .sc-key { position: relative; }
+:where(#app[data-layout="uls"]) .sc-retag .sc-key-name { font-size: var(--sc-size-xs); }
+/* The key that matches the play's type: a lit warm-white frame (aria-current), never a shadow. */
+:where(#app[data-layout="uls"]) .sc-retag .sc-key.cur {
+  border-color: var(--uls-steel-edge);
+  box-shadow: none;
+  color: var(--sc-ink);
+}
+:where(#app[data-layout="uls"]) .sc-retag .sc-key.cur::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: var(--sc-border-w) solid var(--uls-led-warm);
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* Fresh (8 s after each caller play): every retag window lights amber, the board steps the new play in. */
+:where(#app[data-layout="uls"]) #lastPlay[data-fresh="true"] .sc-retag .sc-key-cap {
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+}
+:where(#app[data-layout="uls"]) #lastPlay[data-fresh="true"] .sc-retag .sc-key { color: var(--sc-ink); }
+:where(#app[data-layout="uls"]) #lastPlay[data-fresh="true"] :is(.sc-last-name, .sc-last-yards, .sc-last-text) {
+  animation: uls-step-in var(--uls-step-ms) var(--uls-step) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(#app[data-layout="uls"]) #lastPlay[data-fresh] :is(.sc-last-name, .sc-last-yards, .sc-last-text) {
+    animation: none;
+  }
+}
+:where(:root[data-motion="reduced"] #app[data-layout="uls"]) #lastPlay[data-fresh] :is(.sc-last-name, .sc-last-yards,
+  .sc-last-text) {
+  animation: none;
+}
+
+/* ---------------------------------------------------------------- the stadium desk */
+@media (min-width: 1200px) and (min-height: 640px) {
+  /* Three lines of ESPN's text; the upper ribbon and the play feed carry all of it (a screen reader hears it all). */
+  :where(#app[data-layout="uls"]) #lastPlay[data-kind="play"] .sc-last-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+  /* Watch this game: the transport fills the top of the desk, so the retag keys are bolted to the desk's foot (a
+     sticky row can't climb out of the last play's own box), and the desk keeps room for them under its content. */
+  #app[data-layout="uls"][data-mode="watch"] #lastPlay[data-kind="play"] .sc-retag {
+    position: fixed;
+    inset: auto calc(var(--sc-gutter) + var(--uls-frame)) calc(var(--uls-hud-bottom) + var(--uls-stack-gap)) auto;
+    z-index: 12;
+    width: calc(var(--uls-board-w) - 2 * var(--uls-frame));
+    padding-bottom: var(--uls-frame);
+  }
+  #app[data-layout="uls"][data-mode="watch"]:has(#lastPlay[data-kind="play"]:not([hidden])) .uls-desk {
+    padding-bottom: calc(var(--uls-frame) + var(--uls-size-key) + var(--sc-size-xs) + 23px);
+  }
+}
+
+/* ---------------------------------------------------------------- one column (phones, small windows) */
+@media (max-width: 1199px), (max-height: 639px) {
+  :where(#app[data-layout="uls"]) .sc-retag { position: static; }
+}
+@media (max-width: 420px) {
+  :where(#app[data-layout="uls"]) .sc-retag { flex-wrap: wrap; }
+  :where(#app[data-layout="uls"]) .sc-retag .sc-key { flex-basis: calc(50% - var(--sc-space-1)); }
+}

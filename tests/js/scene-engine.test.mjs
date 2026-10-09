@@ -81,7 +81,10 @@ function makeFakeStage(clock) {
 
 /** Layers that record every call (and run a play by its plan, as part 2's player will). */
 function spyLayers(log) {
-  const record = (layer) => new Proxy({}, { get: (_, name) => (...args) => { log.push([layer, name, ...args]); } });
+  // v1.4: `shown` is a query (the data-ghosts hook), not a command: the spies don't answer it, so the hook falls back
+  // to the call's own leaves.
+  const record = (layer) => new Proxy({}, { get: (_, name) => (name === "shown" ? undefined
+    : (...args) => { log.push([layer, name, ...args]); }) });
   return {
     residue: () => record("residue"),
     overlays: () => record("overlays"),

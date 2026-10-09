@@ -31,6 +31,9 @@ const WARM_UP_MS = 3000;
 const message = (err) => (err && typeof err.message === "string" ? err.message : String(err));
 
 // ---------------------------------------------------------------- hooks and anim state
+/** data-ghosts: the shadow plays drawn (v1.4: his top 2, none once the ball is snapped), else the call's leaves. */
+const ghostsShown = (c) => c.layers.ghosts.shown?.() ?? ghostLeaves(c.st.ghostSet);
+
 function animState(c) {
   return animStateOf({ rebuilding: c.st.rebuilding, playing: Boolean(c.st.playing), reviewing: c.st.review !== null });
 }
@@ -39,7 +42,7 @@ function animState(c) {
 function writeHooks(c) {
   if (c.st.disposed || !c.hooks) return;
   const attrs = hostAttrs({ ready: c.st.sceneReady, animState: animState(c), playingSeq: c.st.playing?.seq ?? null,
-    camera: c.stage.cams.mode(), frames: c.stage.rig.frames(), ghosts: ghostLeaves(c.st.ghostSet),
+    camera: c.stage.cams.mode(), frames: c.stage.rig.frames(), ghosts: ghostsShown(c),
     highlight: c.st.highlight, reviewSeq: c.st.review, hooks: c.st.hooks });
   for (const [name, value] of Object.entries(attrs)) {
     if (c.st.written[name] === value) continue;
@@ -297,7 +300,7 @@ function debugState(c) {
   const s = c.stage;
   const info = s.rig.info();
   return debugRecord({ ready: c.st.sceneReady, frames: s.rig.frames(), animState: animState(c),
-    playingSeq: c.st.playing?.seq ?? null, ghosts: ghostLeaves(c.st.ghostSet), highlight: c.st.highlight,
+    playingSeq: c.st.playing?.seq ?? null, ghosts: ghostsShown(c), highlight: c.st.highlight,
     camera: s.cams.mode(), situation: c.st.review === null ? c.st.live.situation : c.st.reviewSituation, info,
     dpr: s.rig.dpr(), extra: { tier: c.tier, gpu: c.gpu, shot: s.cams.activeMode(), pose: s.cams.pose(),
       lens: s.cams.lens(), reviewSeq: c.st.review, running: s.rig.running(), programs: info.programs, cpuMs: info.cpuMs } });

@@ -1,0 +1,18 @@
+Under the Lights fonts (G28: self-hosted, no runtime Google Fonts). Retrieved 2026-10-09 through the Google Fonts
+CSS2 API with a desktop Chrome User-Agent; latin subset only (unicode-range U+0000-00FF and the usual punctuation).
+Each family is SIL Open Font License 1.1: its OFL.txt sits beside the font file (from github.com/google/fonts/ofl).
+
+big-shoulders-display/big-shoulders-display-latin.woff2   35,520 B   variable, wght 700 to 800
+  css2?family=Big+Shoulders+Display:wght@700..800   (fonts.gstatic.com/s/bigshouldersdisplay/v24)
+  sha256 203dd8ba4ae61b19cd2e00c66708f0d0f6d8484cdfdb1d7e8be37260d36a99b1
+
+big-shoulders-text/big-shoulders-text-latin.woff2         36,268 B   variable, wght 500 to 800
+  css2?family=Big+Shoulders+Text:wght@500..800   (fonts.gstatic.com/s/bigshoulderstext/v28)
+  sha256 515f89ce25108571e51c619f187816e1eef47d7420ee04415c4ee2c51553453d
+
+doto/doto-latin-800-rond60.woff2                            5,096 B   static instance, wght 800, ROND 60
+  css2?family=Doto:wght,ROND@800,60   (fonts.gstatic.com/s/doto/v3)
+  sha256 b10ffe4082bea476a9e9212c9ffe041ca716447339dd2a368a6502fdbb8c60d9
+
+Declared in static/css/worlds/under-the-lights/tokens.css, including the "ULS LED Punct" patch face (Big Shoulders
+Display mapped to U+002E and U+003A only, so Doto's plus-shaped period and colon read as square dots).

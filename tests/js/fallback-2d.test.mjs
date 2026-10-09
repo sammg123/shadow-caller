@@ -6,6 +6,7 @@ import { CAMERA_MODES, createFallbackEngine } from "../../static/js/field/fallba
 import { buildGhostSet, ghostInputFromPred } from "../../static/js/field/ghosts.js";
 import { situationFromRow } from "../../static/js/field/paths.js";
 import { resolveLook } from "../../static/js/theme/look-schema.js";
+import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
 import { createDocument, withDocument } from "./fake-dom.mjs";
 import { capture, rowById } from "./field-rows.mjs";
 
@@ -56,6 +57,14 @@ function setup(t, { look = {}, reducedMotion = false } = {}) {
 const layer = (s, name) => s.host.querySelector(`[data-layer="${name}"]`);
 const frame = (s) => s.engine.setGameFrame(T.field, T.teams, T.team_order);
 const ghostsFor = (r) => buildGhostSet(ghostInputFromPred(r.pred), situationFromRow(r));
+/** The shadows a row's prediction draws: his top 2, in his order. */
+const top2 = (r) => ghostsFor(r).shapes.slice(0, 2).map((x) => x.leaf);
+const texts = (el) => [...el.querySelectorAll("text")].map((t) => t.textContent);
+/** Up to the next caller snap: the situation, then his shadows. */
+const presnap = (s, r) => {
+  s.engine.showSituation(situationFromRow(r));
+  s.engine.showGhosts(ghostsFor(r));
+};
 
 test("the engine implements every Engine method, draws one SVG in the host, and has one camera, Top", (t) => {
   const s = setup(t);
@@ -134,6 +143,28 @@ test("an animated play runs frame by frame, moves the ball, then lands as the la
   assert.ok(s.engine.debugState().frames > 3);
 });
 
+test("a run's line grows from the line of scrimmage with the ball at its tip, slowing into the tackle", (t) => {
+  const s = setup(t);
+  frame(s);
+  s.engine.playRow(row(95), { durationMs: 2000, token: 1 });
+  const tipAndBall = () => {
+    const core = layer(s, "live-play").querySelector('[data-role="run"]').childNodes[1];
+    const tip = Number(core.getAttribute("d").match(/L(-?[\d.]+)/)[1]);
+    const ring = layer(s, "live-ball").querySelector('[data-part="ball"]').querySelector("circle");
+    return [tip, Number(ring.getAttribute("cx"))];
+  };
+  s.c.step(16);
+  const seen = [];
+  for (let i = 0; i < 6; i += 1) {
+    s.c.step(150);
+    const [tip, ball] = tipAndBall();
+    assert.ok(Math.abs(tip - ball) <= 1, `frame ${i}: the line's tip ${tip} is where the ball is ${ball}`);
+    seen.push(tip);
+  }
+  const steps = seen.slice(1).map((x, i) => Math.abs(x - seen[i]));
+  assert.ok(steps[0] > steps[steps.length - 1], `it slows into the tackle: ${steps.map(Math.round)}`);
+});
+
 test("an admin row (a timeout) draws nothing and leaves the ball where the last play put it", async (t) => {
   const s = setup(t);
   frame(s);
@@ -167,25 +198,77 @@ test("finishNow completes the running play at once", async (t) => {
   assert.equal(s.engine.debugState().animState, "idle");
 });
 
-test("ghosts: shown before the snap, deferred while a play runs (last call wins), faint after a caller snap", async (t) => {
+test("shadows: his top 2 before the snap with their words, deferred while a play runs, gone at his snap", async (t) => {
   const s = setup(t);
   frame(s);
   const first = row(2);
-  s.engine.showSituation(situationFromRow(first));
-  s.engine.showGhosts(ghostsFor(first));
-  assert.deepEqual(s.engine.debugState().ghosts, ["run_inside", "pa_short", "dropback_short"]);
+  presnap(s, first);
+  assert.deepEqual(s.engine.debugState().ghosts, ["run_inside", "pa_short"]);
+  const shadows = layer(s, "live-ghosts").querySelectorAll(".sc-fb-shadow");
+  assert.deepEqual([...shadows].map((g) => g.getAttribute("data-leaf")), ["run_inside", "pa_short"]);
+  assert.deepEqual([...shadows].map((g) => g.style.getPropertyValue("opacity")), ["0.5", "0.35"]);
+  assert.deepEqual(texts(layer(s, "live-tagGhost")), ["1 · Inside run (A/B gap) · 27%", "2 · PA short (0–9) · 16%"]);
   const playing = s.engine.playRow(first, { durationMs: 900, token: 1 });
-  assert.deepEqual(s.engine.debugState().ghosts, ["run_inside"], "after the caller's snap only the top call stays");
+  assert.deepEqual(s.engine.debugState().ghosts, [], "his snap: the shadows go");
+  assert.ok([...layer(s, "live-ghosts").childNodes].every((g) => g.style.getPropertyValue("opacity") === "0"),
+    "they fade out");
   s.engine.showGhosts(null);
   s.engine.showGhosts(ghostsFor(row(3)));
-  assert.deepEqual(s.engine.debugState().ghosts, ["run_inside"], "deferred until the play ends");
+  assert.deepEqual(s.engine.debugState().ghosts, [], "deferred until the play ends");
   s.engine.finishNow();
   await playing;
-  assert.deepEqual(s.engine.debugState().ghosts, ghostsFor(row(3)).shapes.map((x) => x.leaf), "the last call wins");
+  assert.deepEqual(s.engine.debugState().ghosts, top2(row(3)), "the last call wins");
   s.engine.highlightGhost("pa_short");
   assert.equal(s.engine.debugState().highlight, "pa_short");
   s.engine.clearGhosts();
   assert.deepEqual(s.engine.debugState().ghosts, []);
+});
+
+test("the previous play stays on the field, dimmed with its words, while his shadows show", async (t) => {
+  const s = setup(t);
+  frame(s);
+  await s.engine.playRow(row(2), { durationMs: 0, token: 1 });
+  const words = () => layer(s, "live-tagPlay").querySelector('[data-part="play-label"]');
+  assert.deepEqual(texts(words()), ["Short pass middle · incomplete"]);
+  assert.equal(words().getAttribute("opacity"), "1");
+  presnap(s, row(3));
+  const last = layer(s, "live-last").querySelector(".sc-fb-play");
+  assert.equal(last.getAttribute("opacity"), String(NEUTRAL_LOOK.lastPlay.dimOpacity), "dimmed, still there");
+  assert.ok(Number(words().getAttribute("opacity")) < 1, "its words dim with it");
+  assert.equal(layer(s, "live-ghosts").querySelectorAll(".sc-fb-shadow").length, 2);
+  await s.engine.playRow(row(3), { durationMs: 0, token: 2 });
+  assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("data-seq"), "3");
+  assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("opacity"), "1", "the real play: solid");
+  assert.deepEqual(texts(words()), ["Short pass middle · +8"]);
+});
+
+test("a timeout before his snap leaves his shadows up and the previous play dimmed", async (t) => {
+  const s = setup(t);
+  frame(s);
+  await s.engine.playRow(row(2), { durationMs: 0, token: 1 });
+  presnap(s, row(3));
+  const admin = T.rows.find((r) => r.kind === "admin" && r.seq > 3);
+  await s.engine.playRow(admin, { durationMs: 0, token: 2 });
+  assert.deepEqual(s.engine.debugState().ghosts, top2(row(3)), "his shadows stay up");
+  const last = layer(s, "live-last").querySelector(".sc-fb-play");
+  assert.equal(last.getAttribute("opacity"), String(NEUTRAL_LOOK.lastPlay.dimOpacity), "still dimmed");
+  s.engine.drawRowsInstant([]);
+  assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("opacity"),
+    String(NEUTRAL_LOOK.lastPlay.dimOpacity), "nothing new drawn: still dimmed");
+});
+
+test("hovering a play outside the top 2 draws its shadow, lit; leaving it takes it away", (t) => {
+  const s = setup(t);
+  frame(s);
+  presnap(s, row(2));
+  s.engine.highlightGhost("screen");
+  const shadows = () => [...layer(s, "live-ghosts").querySelectorAll(".sc-fb-shadow")];
+  assert.deepEqual(shadows().map((g) => g.getAttribute("data-leaf")), ["run_inside", "pa_short", "screen"]);
+  assert.equal(shadows()[2].getAttribute("data-hovered"), "true");
+  assert.ok(texts(layer(s, "live-tagGhost")).includes("10 · Screen · 2.8%"));
+  assert.deepEqual(s.engine.debugState().ghosts, ["run_inside", "pa_short"], "the hook keeps the top 2");
+  s.engine.highlightGhost(null);
+  assert.deepEqual(shadows().map((g) => g.getAttribute("data-leaf")), ["run_inside", "pa_short"]);
 });
 
 test("setGameFrame clears plays, ghosts and the situation", (t) => {
@@ -211,7 +294,10 @@ test("review replays a past row with its own ghosts over a hidden live field; nu
   assert.equal(layer(s, "review").getAttribute("display"), null);
   assert.equal(layer(s, "live").getAttribute("display"), "none");
   assert.equal(layer(s, "review-last").querySelector(".sc-fb-play").getAttribute("data-seq"), "2");
-  assert.equal(layer(s, "review-ghosts").childNodes.length, 3);
+  assert.equal(layer(s, "review-ghosts").childNodes.length, 2, "what he predicted, as shadows");
+  assert.deepEqual(texts(layer(s, "review-tagPlay")), ["Short pass middle · incomplete", "In his top 3"],
+    "and what happened, graded");
+  assert.deepEqual(s.engine.debugState().ghosts, ["run_inside", "pa_short"]);
   s.engine.showReview(null, null);
   assert.equal(s.engine.debugState().animState, "idle");
   assert.equal(layer(s, "review").getAttribute("display"), "none");
@@ -226,11 +312,30 @@ test("markVerdict puts the grade under the last play's result; refreshLabels reg
   s.engine.markVerdict({ seq: 81, key: "miss" });
   const chip = () => layer(s, "live-tagPlay").querySelector('[data-part="verdict"]');
   assert.equal(chip().querySelector("text").textContent, "Miss");
-  const retagged = { ...snap, pred: { ...snap.pred, leaf_rank: 1 } };
+  const retagged = { ...snap, pred: { ...snap.pred, leaf_rank: 1, family: "pa", leaf: "pa_deep", retagged: true } };
   s.engine.refreshLabels([retagged]);
   assert.equal(chip().querySelector("text").textContent, "Top pick");
+  const words = layer(s, "live-tagPlay").querySelector('[data-part="play-label"]');
+  assert.deepEqual(texts(words), ["Play-action deep pass middle · +48"], "Sam's retag names the play");
   s.engine.markVerdict({ seq: 999, key: "top1" });
   assert.equal(chip().querySelector("text").textContent, "Top pick", "a verdict for another row changes nothing");
+});
+
+test("refreshLabels renames a reviewed play; a row that no longer draws keeps its drawing and is reported", (t) => {
+  const s = setup(t, { reducedMotion: true });
+  frame(s);
+  s.engine.drawRowsInstant(rows(1, 5));
+  const snap = row(2);
+  s.engine.showReview(snap, ghostsFor(snap));
+  const words = () => texts(layer(s, "review-tagPlay").querySelector('[data-part="play-label"]'));
+  assert.deepEqual(words(), ["Short pass middle · incomplete"]);
+  s.engine.refreshLabels([{ ...snap, pred: { ...snap.pred, family: "pa", leaf: "pa_short", retagged: true } }]);
+  assert.deepEqual(words(), ["Play-action short pass middle · incomplete"], "the review follows the retag");
+  const broken = { ...snap, get geo() { throw new Error("no geometry"); } };
+  s.engine.refreshLabels([broken]);
+  assert.deepEqual(s.errors.map((e) => e.message), ["no geometry", "no geometry"], "reported for each copy: the drive's "
+    + "residue and the review");
+  assert.deepEqual(words(), ["Play-action short pass middle · incomplete"], "the drawing it had stays");
 });
 
 test("a hidden engine or reduced motion draws every play instantly", async (t) => {
@@ -274,14 +379,15 @@ test("camera, resize, safe area and listeners", (t) => {
   assert.equal(typeof s.engine.on("nonsense", () => {}), "function");
 });
 
-test("a world look draws in its own style (pixel ghosts and strokes)", (t) => {
-  const look = resolveLook({ ghost: { style: "pixel", fill: "#fff3d1" }, strokes: { corridor: { approx: "pixel" } } });
+test("a world look draws its shadows in its own tint and dash (still dashed)", (t) => {
+  const look = resolveLook({ ghost: { style: "pixel", fill: "#fff3d1" } });
   const s = setup(t, { look });
   frame(s);
-  s.engine.showSituation(situationFromRow(row(2)));
-  s.engine.showGhosts(ghostsFor(row(2)));
-  const zone = layer(s, "live-ghosts").querySelector('[data-leaf="run_inside"]');
-  assert.equal(zone.querySelector("path").getAttribute("fill"), "#fff3d1");
+  presnap(s, row(2));
+  const core = layer(s, "live-ghosts").querySelector('[data-leaf="run_inside"]').querySelector('[data-stroke="core"]');
+  assert.equal(core.getAttribute("stroke"), "#fff3d1");
+  assert.ok(core.getAttribute("stroke-dasharray"));
+  assert.equal(core.getAttribute("stroke-linecap"), "butt", "a pixel look's square dashes");
 });
 
 test("setGameFrame's optional game: a day kickoff merges look.world.day over the look (as the WebGL engine does)", (t) => {
@@ -407,11 +513,10 @@ test("review animates the past play when motion is on, then holds it", (t) => {
 test("cleared ghosts fade out, then leave the layer", (t) => {
   const s = setup(t);
   frame(s);
-  s.engine.showSituation(situationFromRow(row(2)));
-  s.engine.showGhosts(ghostsFor(row(2)));
+  presnap(s, row(2));
   s.engine.clearGhosts();
   const zones = layer(s, "live-ghosts").childNodes;
-  assert.equal(zones.length, 3, "still there while they fade");
+  assert.equal(zones.length, 2, "still there while they fade");
   assert.ok([...zones].every((z) => z.style.getPropertyValue("opacity") === "0"));
   s.c.step(400);
   assert.equal(layer(s, "live-ghosts").childNodes.length, 0);

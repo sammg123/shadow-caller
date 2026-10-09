@@ -43,3 +43,44 @@
 @media (max-width: 420px) {
   .sc-field { min-height: 10rem; }
 }
+
+/* v1.4 (A5 part 2, ui-architecture 20): words on the 3D field. labels.js puts each one in .sc-field-labels >
+   .sc-field-label > span, text only; the engine centers it on its spot and the world's tokens style it. The play's
+   words are a plate; a shadow play's words the same plate with a dashed edge (a shadow, not a fact); a verdict chip
+   drops one plate below the play's words. Text and plate are opaque, so contrast never depends on the turf. Fades the
+   engine drives (a shadow's words at the snap) are inline opacity, so the entry animation fills backwards only. */
+.sc-field-labels { z-index: 1; }
+.sc-field-label > span {
+  display: block;
+  padding: calc(var(--sc-space-1) / 2) calc(var(--sc-space-1) * 1.5);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-text);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  line-height: 1.2;
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+  white-space: nowrap;
+  animation: sc-field-label-in var(--sc-dur-med) var(--sc-ease-out) backwards;
+}
+.sc-field-label > .sc-play-label.is-dim { color: var(--sc-ink-muted); }
+.sc-field-label > .sc-shadow-label { border-style: dashed; animation-duration: var(--sc-dur-slow); }
+.sc-field-label > .sc-shadow-label:not(.rank-1),
+.sc-field-label > .sc-shadow-label.is-muted { color: var(--sc-ink-muted); }
+.sc-field-label > .sc-shadow-label.is-hovered { border-style: solid; border-color: var(--sc-focus); color: var(--sc-ink); }
+.sc-field-label > .sc-verdict-chip {
+  transform: translateY(calc(100% + var(--sc-space-1)));
+  border-inline-start-width: var(--sc-space-1);
+  font-size: var(--sc-size-xs);
+}
+.sc-field-label > .sc-verdict-chip.is-top1 { border-inline-start-color: var(--sc-good); }
+.sc-field-label > .sc-verdict-chip.is-top3 { border-inline-start-color: var(--sc-warn); }
+.sc-field-label > .sc-verdict-chip.is-miss { border-inline-start-color: var(--sc-bad); }
+
+@keyframes sc-field-label-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

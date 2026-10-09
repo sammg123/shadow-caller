@@ -1,27 +1,33 @@
 /**
- * Draws the 2D engine's state into its SVG layers (ui-architecture.md 6.2, owner A6). DOM side. The engine
+ * Draws the 2D engine's state into its SVG layers (ui-architecture.md 6.2 and 16.5, owner A6). DOM side. The engine
  * (fallback-2d.js) owns the state `s`; these functions read it and write only the layers they are given: the static
- * field, the situation (lines, down and distance, ball), the prediction zones with their fades, and the drawn plays
- * (residue, the last play, its result label and verdict chip). Lists are keyed (ui/dom.js reconcile), so a zone
- * that stays keeps its element and fades between opacities instead of popping.
+ * field, the situation (lines, down and distance, ball), the shadow plays before a caller snap with their words
+ * (docs/design/play-drawing.md 4), and the drawn plays (residue, the last play with its words and verdict chip).
+ * Lists are keyed (ui/dom.js reconcile), so a shadow or a label that stays keeps its element and fades between
+ * opacities instead of popping; a new one grows out of the line of scrimmage (shadows) or fades in (words).
  */
 import { clear, reconcile, setAttr, setClass } from "../ui/dom.js";
 import { bowlNodes } from "./fallback-bowl.js";
-import { fieldNodes, situationNodes } from "./fallback-draw.js";
-import { ghostDefs, ghostLayer } from "./fallback-ghosts.js";
+import { TAG_PAD, fieldNodes, situationNodes, tagNode, tagSize } from "./fallback-draw.js";
+import { shadowLayer, shadowPlaysFor } from "./fallback-ghosts.js";
 import { playNode, playSpec } from "./fallback-plays.js";
 import { buildNode, declutter, fitTags, renderInto } from "./fallback-svg.js";
 
 const BALL_PARTS = Object.freeze(["ball", "ball-shadow", "ball-halo"]);
+/** The previous play's words while his shadows show: dimmed with it, still readable (4.5:1 on either world's plate). */
+const LABEL_DIM = 0.65;
+/** Measured on this text: what the shadows' words look like (a rank, a name, a percentage). */
+const PROBE_TEXT = "1 · Inside run (A/B gap) · 27%";
+const LINE_GAP_PX = 4;
 const ids = new WeakMap();
 /** A pending fade-out removal per stage. */
 const fades = new WeakMap();
 let nextId = 0;
 
-/** Keep a stage's labels apart, inside the area the HUD leaves free. */
+/** Keep a stage's labels apart and on screen, inside the area the HUD leaves free. */
 function settleTags(s, stage) {
   const { free } = s.ctx.layout;
-  declutter(stage, { top: free.y, bottom: free.y + free.h });
+  declutter(stage, { top: free.y, bottom: free.y + free.h, left: free.x, right: free.x + free.w });
 }
 
 /** A stable key per drawn entry (seqs can repeat across a replay; objects never do). */
@@ -39,7 +45,7 @@ export function specOf(s, entry) {
 /** The static field: ground, the bowl (night looks), turf, end zones, paint, posts, the light on the turf. */
 export function renderField(s) {
   const bowl = bowlNodes(s.ctx);
-  renderInto(s.surface.field, fieldNodes(s.ctx, { under: [...ghostDefs(s.ctx), ...bowl.under], over: bowl.over }));
+  renderInto(s.surface.field, fieldNodes(s.ctx, { under: bowl.under, over: bowl.over }));
 }
 
 /** Empty every layer of a stage (a new layout rebuilds them). */
@@ -60,7 +66,7 @@ export function renderSituation(s, stage, sit, ball, { withBall = true } = {}) {
   if (withBall) renderInto(stage.ball, of(BALL_PARTS));
 }
 
-// ---------------------------------------------------------------- ghosts
+// ---------------------------------------------------------------- keyed lists with fades
 function setOpacity(s, el, opacity) {
   const before = Number(el.getAttribute("data-opacity"));
   const ms = Number.isFinite(before) && opacity < before ? s.look.motion.ghostOutMs : s.look.motion.ghostInMs;
@@ -69,29 +75,33 @@ function setOpacity(s, el, opacity) {
   setAttr(el, "data-opacity", opacity);
 }
 
-function enter(s, el, item, { scan }) {
+/** A new element arrives: a shadow grows out of the line of scrimmage (`origin`), words fade in. */
+function enter(s, el, item) {
   if (!s.reduced) {
-    setClass(el, "sc-fb-in", true);
-    if (scan) setClass(el, "sc-fb-scan", true);
+    setClass(el, item.origin ? "sc-fb-grow" : "sc-fb-in", true);
+    if (item.origin) {
+      el.style.setProperty("transform-box", "view-box");
+      el.style.setProperty("transform-origin", `${item.origin.px}px ${item.origin.py}px`);
+    }
   }
-  setOpacity(s, el, item.opacity);
+  if (item.opacity !== undefined) setOpacity(s, el, item.opacity);
   return el;
 }
 
-/** New contents for a kept element; its class stays, so a running fade-in or scan isn't cut short. */
+/** New contents for a kept element; its class stays, so a running entrance isn't cut short. */
 function refill(el, spec) {
   clear(el);
   for (const child of spec.children ?? []) el.appendChild(buildNode(child));
   for (const [name, value] of Object.entries(spec.attrs ?? {})) if (name !== "class") setAttr(el, name, value);
 }
 
-function keyed(s, parent, items, { scanTop }) {
+function keyed(s, parent, items) {
   reconcile(parent, items, {
     key: (item) => item.key,
-    create: (item) => enter(s, buildNode(item.node), item, { scan: scanTop && item.rank === 1 }),
+    create: (item) => enter(s, buildNode(item.node), item),
     update: (el, item) => {
       refill(el, item.node);
-      setOpacity(s, el, item.opacity);
+      if (item.opacity !== undefined) setOpacity(s, el, item.opacity);
     },
   });
 }
@@ -123,26 +133,60 @@ function fadeOut(s, stage) {
   }, s.look.motion.ghostOutMs));
 }
 
-/** The prediction zones and their labels; `ghosts` is { set, phase } or null (fades out). */
-export function renderGhosts(s, stage, ghosts) {
+// ---------------------------------------------------------------- the shadow plays
+/**
+ * The size of the shadows' words as this world draws them ({ charPx, linePx, padPx }), measured on a hidden probe,
+ * so their layout (shadows.js) keeps text off text in the world's own font; null where nothing is laid out (a hidden
+ * host, node tests): the label model's defaults then.
+ */
+function measureLabelPx(s, stage) {
+  const probe = buildNode(tagNode({ at: { px: 0, py: 0 }, text: PROBE_TEXT, size: tagSize(s.ctx, "s"), part: "probe" }));
+  setAttr(probe, "visibility", "hidden");
+  stage.tagGhost.appendChild(probe);
+  try {
+    const box = probe.querySelector("text").getBBox();
+    if (!(box?.width > 0) || !(box.height > 0)) return null;
+    return { charPx: box.width / PROBE_TEXT.length, linePx: box.height + 2 * TAG_PAD.padY + LINE_GAP_PX,
+      padPx: 2 * TAG_PAD.padX };
+  } catch {
+    return null;   // no layout engine here (getBBox missing or the host hidden): the defaults stand
+  } finally {
+    probe.remove();
+  }
+}
+
+/**
+ * The shadow plays before a caller snap and their words. `ghosts` is { input } (a fallback-ghosts shadow request) or
+ * null (they fade out); `avoid` is what the words must keep clear of (the previous play's drawing).
+ */
+export function renderGhosts(s, stage, ghosts, { avoid = [] } = {}) {
   cancelFade(s, stage);
-  if (!ghosts?.set) {
+  if (!ghosts?.input) {
     fadeOut(s, stage);
     return;
   }
-  const layer = ghostLayer(ghosts.set, s.ctx, { phase: ghosts.phase, highlight: s.highlight });
-  const scanTop = s.look.ghost.style === "pixel";
-  keyed(s, stage.ghosts, layer.zones, { scanTop });
-  keyed(s, stage.tagGhost, layer.labels, { scanTop: false });
+  const shadows = shadowPlaysFor(ghosts.input, s.ctx, { hover: s.highlight, avoid,
+    labelPx: measureLabelPx(s, stage) });
+  const layer = shadowLayer(shadows, s.ctx);
+  keyed(s, stage.ghosts, layer.zones);
+  keyed(s, stage.tagGhost, layer.labels);
   fitTags(stage.tagGhost);
   settleTags(s, stage);
 }
 
 // ---------------------------------------------------------------- plays
+/** The last play's words (dimmed while the next call is up, still on the field) and its verdict chip (gone then). */
+function playTags(entry, spec, dim) {
+  if (!spec?.label) return [];
+  const label = { ...spec.label.node, attrs: { ...spec.label.node.attrs, opacity: dim ? LABEL_DIM : 1 } };
+  const chip = !dim && spec.verdictNode ? [{ key: `${idOf(entry)}:verdict`, node: spec.verdictNode }] : [];
+  return [{ key: `${idOf(entry)}:label`, node: label }, ...chip];
+}
+
 /**
- * Residue (look.residue.opacity), the last play (dimmed to look.lastPlay.dimOpacity once the next call is up) and
- * its labels, which retire then: result words are transient, the next call owns the field. `exclude` is the entry a
- * player is animating on this stage, drawn there instead.
+ * Residue (look.residue.opacity), the last play (dimmed to look.lastPlay.dimOpacity once the next call is up, its
+ * words with it) and its verdict chip, which retires then. `exclude` is the entry a player is animating on this
+ * stage, drawn there instead; its words arrive when it lands.
  */
 export function renderPlays(s, stage, plays, { exclude = null, dim = false } = {}) {
   const residueOpacity = s.look.residue.opacity;
@@ -155,7 +199,7 @@ export function renderPlays(s, stage, plays, { exclude = null, dim = false } = {
   const last = plays.last && !animating(plays.last) ? plays.last : null;
   const spec = last ? specOf(s, last) : null;
   renderInto(stage.last, spec ? [playNode(spec, dim ? s.look.lastPlay.dimOpacity : 1)] : []);
-  renderInto(stage.tagPlay, spec && !dim ? [spec.label?.node, spec.verdictNode].filter(Boolean) : []);
+  keyed(s, stage.tagPlay, last ? playTags(last, spec, dim) : []);
   fitTags(stage.tagPlay);
   settleTags(s, stage);
 }

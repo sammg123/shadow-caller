@@ -1,0 +1,393 @@
+/* Under the Lights: the video board, the next call (ui/prediction.js; DESIGN.md Components "Video board"; owner W2).
+   The call is the largest, brightest thing on screen. Under a painted plate, the LED face: the call name in Display
+   caps (never cut), the percentage in Doto over its unlit 88%, the tilt tag, the then-line, the pass/run split and the
+   five families as LED bars with league notches. Hover or focus opens the board (layout.css) and scans in the 14 plays,
+   the why lines and the legend, which wait visually hidden so Tab and screen readers still reach them. No team color
+   lights the board. Shared LED primitives (--uls-led-num, --uls-lit, --uls-track, --uls-cell) live in masthead.css. */
+
+/* ---------------------------------------------------------------- the face and its plate */
+:where(:root[data-world="under-the-lights"]) .sc-call {
+  display: grid;
+  align-content: start;
+  gap: 0;
+  padding: 0 0 var(--uls-face-pad);
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-call > :not(.sc-call-head) { margin-inline: var(--uls-face-pad); }
+/* The caption plate: painted steel above the LED face ("MOST LIKELY CALL · SNAP 23"); it stays put while the open
+   board scrolls. */
+:where(:root[data-world="under-the-lights"]) .sc-call-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  min-height: var(--uls-plate-h);
+  padding: 0 var(--sc-space-3);
+  border-bottom: 1px solid var(--uls-steel-seam);
+  background: var(--uls-steel-raised);
+}
+:where(:root[data-world="under-the-lights"]) .sc-call-kicker {
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- the call: name, figure, tilt tag */
+:where(:root[data-world="under-the-lights"]) .sc-call-top { display: grid; gap: 2px; margin-top: var(--uls-face-pad); }
+:where(:root[data-world="under-the-lights"]) .sc-call-name {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--sc-size-l) / var(--sc-leading-tight) var(--sc-font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  overflow-wrap: normal;
+}
+:where(:root[data-world="under-the-lights"]) .sc-call-figure {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-3);
+}
+/* The figure: Doto over its unlit 88%. The ghost sits behind (z -1 in the figure's own stacking context) and a hidden
+   copy of it sets the cell's width, so one digit never shifts the cell (The Ticking Number Rule). */
+:where(:root[data-world="under-the-lights"]) .sc-call-pct {
+  position: relative;
+  z-index: 0;
+  display: inline-grid;
+  justify-items: end;
+  color: var(--sc-ink);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-call);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.75;
+  letter-spacing: 0;
+}
+:where(:root[data-world="under-the-lights"]) .sc-call-pct::before {
+  content: "88%" / "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  z-index: -1;
+  color: var(--uls-unlit);
+}
+:where(:root[data-world="under-the-lights"]) .sc-call-pct::after {
+  content: "88%" / "";
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+/* The tilt tag: an LED tag. A tilt is lit amber; a lean is amber on the panel; no edge stays dim. */
+:where(:root[data-world="under-the-lights"]) .sc-call-figure .pill {
+  flex: none;
+  padding: 5px 8px 4px;
+  border: var(--sc-border-w) solid currentColor;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-panel);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .pill[data-tilt="lean"] { color: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .pill[data-tilt="tilt"] {
+  border-color: var(--uls-led-amber);
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+}
+
+/* ---------------------------------------------------------------- the then-line */
+:where(:root[data-world="under-the-lights"]) .sc-then {
+  margin-top: var(--sc-space-2);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-m) / 1.15 var(--sc-font-text);
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+:where(:root[data-world="under-the-lights"]) .sc-then-lead {
+  color: var(--sc-ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-call-sep, .sc-then-sep) { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-then-pct { color: var(--uls-led-amber); }
+
+/* ---------------------------------------------------------------- LED bars: the panel, its lit cells, the notch */
+/* A bar is a track of unlit cells to 100%, with one empty cell row above and below for the league notch; the lit
+   cells are masked onto the same 4 px grid from the track's own corner, so lit and unlit pixels line up. */
+:where(:root[data-world="under-the-lights"]) :is(.sc-split-bar, .sc-fam-bar, .sc-leaf-bar) {
+  position: relative;
+  height: calc((var(--uls-bar-rows, 2) + 2) * var(--uls-cell));
+  padding-block: var(--uls-cell);
+  border-radius: 0;
+  background: var(--uls-track) content-box;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-split-pass, .sc-fam-fill, .sc-leaf-fill),
+:where(:root[data-world="under-the-lights"]) .sc-split-bar::before {
+  position: absolute;
+  inset: var(--uls-cell) auto var(--uls-cell) 0;
+  border-radius: 0;
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-fam-fill, .sc-leaf-fill) {
+  width: var(--sc-share, 0%);
+  width: round(nearest, var(--sc-share, 0%), var(--uls-cell));
+  background: var(--sc-tone);
+}
+/* The league notch: one lit column, a cell above and below the bar, warm white whatever the family's tone. */
+:where(:root[data-world="under-the-lights"]) :is(.lgmark, .sc-fam-tick) {
+  position: absolute;
+  inset: 0 auto 0 var(--sc-league-share, 50%);
+  inset-inline-start: round(down, var(--sc-league-share, 50%), var(--uls-cell));
+  width: var(--uls-cell);
+  border: 0;
+  background: var(--sc-ink);
+  transform: none;
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+
+/* ---------------------------------------------------------------- the pass/run split */
+:where(:root[data-world="under-the-lights"]) .sc-split { gap: 0; margin-top: var(--sc-space-2); }
+:where(:root[data-world="under-the-lights"]) .sc-split-bar { --uls-bar-rows: 2; }
+/* Run cells to the right edge (amber), pass cells over them to the share (warm white). */
+:where(:root[data-world="under-the-lights"]) .sc-split-bar::before { content: ""; right: 0; background: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-split-pass {
+  z-index: 1;
+  width: var(--sc-share, 50%);
+  width: round(nearest, var(--sc-share, 50%), var(--uls-cell));
+  background: var(--sc-pass);
+}
+:where(:root[data-world="under-the-lights"]) .sc-split-bar .lgmark { z-index: 2; }
+:where(:root[data-world="under-the-lights"]) .sc-split-labels {
+  justify-content: space-between;
+  gap: 0 var(--sc-space-3);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-split-labels [data-side="pass"] { color: var(--sc-pass); }
+:where(:root[data-world="under-the-lights"]) .sc-split-labels [data-side="run"] {
+  color: var(--sc-run);
+  text-align: end;
+}
+:where(:root[data-world="under-the-lights"]) .sc-split-labels [data-side="league"] { color: var(--sc-ink-muted); }
+
+/* ---------------------------------------------------------------- five families: name, lit cells, league, share */
+:where(:root[data-world="under-the-lights"]) .sc-fams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-1);
+  margin-top: var(--sc-space-2);
+  padding: 0;
+  border: 0;
+}
+:where(:root[data-world="under-the-lights"]) .fam {
+  display: grid;
+  grid-template-columns: minmax(0, 7.4em) minmax(0, 1fr) 3.2em;
+  grid-template-areas: "name bar pct" "leaves leaves leaves";
+  align-items: center;
+  gap: 0 var(--sc-space-2);
+  font-size: var(--sc-size-s);
+}
+:where(:root[data-world="under-the-lights"]) .sc-fam-head {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--sc-space-1);
+  min-width: 0;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) 1em / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(:root[data-world="under-the-lights"]) .sc-fam-name { overflow-wrap: normal; }
+:where(:root[data-world="under-the-lights"]) .sc-fam-bar { grid-area: bar; --uls-bar-rows: 2; }
+:where(:root[data-world="under-the-lights"]) .sc-fam-pct {
+  grid-area: pct;
+  justify-self: end;
+  color: var(--sc-tone);
+  font: var(--sc-weight-strong) 1em / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+/* The league share is the notch on the bar; its words stay in the page for assistive tech, out of sight. */
+:where(:root[data-world="under-the-lights"]) .sc-fam-league {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+:where(:root[data-world="under-the-lights"]) .sc-leaves { grid-area: leaves; }
+
+/* ---------------------------------------------------------------- hot arrows: pixel triangles (9 x 9 glyphs) */
+:where(:root[data-world="under-the-lights"]) .sc-hot {
+  flex: none;
+  display: inline-block;
+  width: var(--uls-glyph);
+  height: var(--uls-glyph);
+  margin-block: calc((1em - var(--uls-glyph)) / 2);
+  overflow: hidden;
+  font-size: 0;
+  line-height: 0;
+  background: var(--sc-ink-muted);
+  -webkit-mask: url("/static/img/worlds/under-the-lights/hot-down.svg") center / contain no-repeat;
+  mask: url("/static/img/worlds/under-the-lights/hot-down.svg") center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .sc-hot.up {
+  background: var(--sc-tone, var(--sc-ink));
+  -webkit-mask-image: url("/static/img/worlds/under-the-lights/hot-up.svg");
+  mask-image: url("/static/img/worlds/under-the-lights/hot-up.svg");
+}
+
+/* ---------------------------------------------------------------- the 14 plays (shown when the board is open) */
+:where(:root[data-world="under-the-lights"]) .sc-leaves { gap: 0; padding: 2px 0 var(--sc-space-1); }
+:where(:root[data-world="under-the-lights"]) .leaf {
+  grid-template-columns: minmax(0, 1fr) 2.6em 2.6em var(--uls-glyph);
+  grid-template-areas: "name bar pct hot";
+  align-items: center;
+  gap: 0 var(--sc-space-2);
+  min-height: 0;
+  padding: 3px var(--sc-space-1);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.01em;
+  transition: none;
+}
+:where(:root[data-world="under-the-lights"]) .leaf .sc-leaf-bar { grid-area: bar; --uls-bar-rows: 1; }
+:where(:root[data-world="under-the-lights"]) .leaf .sc-leaf-pct {
+  grid-area: pct;
+  justify-self: end;
+  color: var(--sc-tone);
+}
+:where(:root[data-world="under-the-lights"]) .leaf .sc-hot { grid-area: hot; }
+:where(:root[data-world="under-the-lights"]) .leaf[aria-pressed="true"] {
+  background: none;
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .leaf[aria-pressed="true"] .sc-leaf-name {
+  font-weight: var(--sc-weight-display);
+}
+
+/* A row under the pointer or keyboard focus wears a 2 px warm-white frame (its play lights on the turf). */
+:where(:root[data-world="under-the-lights"]) :is(.sc-call-top, .sc-then-item, .fam) { outline-offset: 2px; }
+/* Inside the open board's columns the frame sits within the row, so a column edge never clips it. */
+:where(:root[data-world="under-the-lights"]) .leaf { outline-offset: -2px; }
+:where(:root[data-world="under-the-lights"]) :is(.sc-call-top[data-leaf], .sc-then-item, .fam):hover,
+:where(:root[data-world="under-the-lights"]) .leaf:is(:hover, [data-highlighted="true"]):not(:focus-visible) {
+  outline: var(--sc-border-w) solid var(--sc-ink);
+  background: none;
+}
+:where(:root[data-world="under-the-lights"]) .leaf[aria-pressed="true"]:not(:focus-visible) {
+  outline: var(--sc-border-w) solid var(--uls-led-amber);
+}
+
+/* ---------------------------------------------------------------- why lines and the legend (sentence case) */
+:where(:root[data-world="under-the-lights"]) .sc-call-more {
+  gap: var(--sc-space-2);
+  margin-top: var(--sc-space-3);
+  padding-top: var(--sc-space-2);
+  border-top: 1px solid var(--uls-steel-seam);
+}
+:where(:root[data-world="under-the-lights"]) .why {
+  gap: 2px var(--sc-space-4);
+  color: var(--sc-ink);
+  font: var(--sc-weight-regular) var(--sc-size-xs) / 1.25 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-why-pts {
+  font-family: var(--sc-font-text);
+  font-weight: var(--sc-weight-strong);
+}
+:where(:root[data-world="under-the-lights"]) .sc-why-item[data-sign="up"] .sc-why-pts { color: var(--sc-pass); }
+:where(:root[data-world="under-the-lights"]) .sc-why-item[data-sign="down"] .sc-why-pts { color: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-why-item[data-kind="script"] { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-legend {
+  max-width: 70ch;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.25 var(--sc-font-text);
+}
+
+/* ---------------------------------------------------------------- off the field */
+:where(:root[data-world="under-the-lights"]) .sc-offfield { gap: var(--sc-space-3); padding: var(--uls-face-pad); }
+:where(:root[data-world="under-the-lights"]) .sc-offfield-heading {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--sc-size-l) / var(--sc-leading-tight) var(--sc-font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-offfield-body {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-offfield-body strong {
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+}
+/* With no call to show, the figure's cell stays on the face, every pixel unlit (DESIGN.md: an empty cell shows only its
+   unlit 8s). Decoration, hidden from assistive tech. */
+:where(:root[data-world="under-the-lights"]) .sc-offfield::after {
+  content: "88%" / "";
+  margin-top: var(--sc-space-2);
+  color: var(--uls-unlit);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-call);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.75;
+}
+
+/* ================================================================ the stadium board: collapsed, then open */
+@media (min-width: 1200px) and (min-height: 640px) {
+  /* Collapsed: the plays, the league words and the why lines wait, visually hidden but in the page (the notch shows
+     the league; the split bar's own label speaks all three shares). */
+  #app[data-layout="uls"] .uls-board:not(:hover, :focus-within)
+    :is(.sc-leaves, .sc-call-more, .sc-split-labels [data-side="league"]) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  #app[data-layout="uls"][data-board-open="true"] .uls-board
+    :is(.sc-leaves, .sc-call-more, .sc-split-labels [data-side="league"]) {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
+  /* Open: the families stand in two columns, each over its plays, and the rest scans in, top to bottom. */
+  #app[data-layout="uls"] :is(.uls-board:is(:hover, :focus-within), [data-board-open="true"] .uls-board) .sc-fams {
+    display: block;
+    columns: 2;
+    column-gap: var(--sc-space-5);
+  }
+  #app[data-layout="uls"] :is(.uls-board:is(:hover, :focus-within), [data-board-open="true"] .uls-board) .fam {
+    margin-bottom: var(--sc-space-1);
+    padding: 3px 4px;
+    outline-offset: -2px;
+    break-inside: avoid;
+  }
+  #app[data-layout="uls"] :is(.uls-board:is(:hover, :focus-within), [data-board-open="true"] .uls-board)
+    :is(.sc-leaves, .sc-call-more) { animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both; }
+}
+
+/* The TV's bigger board: the bars carry three rows of cells. */
+@media (min-width: 1700px) and (min-height: 900px) {
+  :where(:root[data-world="under-the-lights"]) :is(.sc-split-bar, .sc-fam-bar) { --uls-bar-rows: 3; }
+}
+
+/* Reduced motion: the open board's rows appear at once. */
+@media (prefers-reduced-motion: reduce) {
+  #app[data-layout="uls"] .uls-board :is(.sc-leaves, .sc-call-more) { animation: none; }
+}
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-board :is(.sc-leaves, .sc-call-more) { animation: none; }

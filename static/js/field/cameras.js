@@ -163,6 +163,9 @@ export function createCameraRig(look, { reducedMotion = false } = {}) {
     step: (dtMs) => step(r, dtMs),
     snap: () => snap(r),
     pose: () => copyPose(r.st.pose ?? desired(r)),
+    /** v1.4 (A5 part 2): the pose the camera is settling on (world units), so field text is laid out for the view
+     * it will land in, not the one mid-glide. */
+    goalPose: () => copyPose(desired(r)),
     lens: () => ({ fov: camera.fov, aspect: camera.aspect, view: camera.view?.enabled ? { ...camera.view } : null }),
     moving: () => Boolean(r.st.tween),
     dispose() {

@@ -1,0 +1,186 @@
+/* Under the Lights: the flag panel in the drawer's FLAGS rack (ui/flag-panel.js on #flagPanel; DESIGN.md "Control-room
+   drawer", "Keys, lamps and LED inputs"; FI 1.6, 2.5; G25; owner W4). X runs the drawer out to this rack (booth.js),
+   painted flag yellow while it is open (booth.css). The rack is the panel, so the panel drops its own frame: the note
+   about the current pick on an LED strip beside Close (Esc), then the defense and offense columns of foul keys (each
+   key's flag-mode letter in a yellow LED window, the foul in caps, its enforcement in small type under it), Other on
+   each team with the automatic 1st down lamp switch, Offsetting (W) and the hint. The panel's own title sits under
+   the FLAGS plate for screen readers (it names the region). A foul key under the pointer or focus lights its window
+   flag yellow. */
+
+:where(#app[data-layout="uls"]) #flagPanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "note close" "cols cols" "offset offset" "hint hint";
+  align-items: start;
+  gap: var(--sc-space-3) var(--sc-space-2);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+}
+:where(#app[data-layout="uls"]) .sc-flag-head { display: contents; }
+:where(#app[data-layout="uls"]) .sc-flag-title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Close (Esc): a steel key with no window. */
+:where(#app[data-layout="uls"]) .sc-flag-close {
+  grid-area: close;
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-3);
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(#app[data-layout="uls"]) .sc-flag-close:hover {
+  border-color: var(--uls-steel-edge);
+  background: var(--uls-steel-edge);
+}
+/* The note: what happens to the play you picked (G25), on an LED strip in sentence case. */
+:where(#app[data-layout="uls"]) .sc-flag-note {
+  grid-area: note;
+  min-height: var(--uls-key-h);
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-radius: 0;
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.25 var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------- the two columns of fouls */
+:where(#app[data-layout="uls"]) .sc-flag-cols {
+  grid-area: cols;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sc-space-3) var(--sc-space-2);
+}
+:where(#app[data-layout="uls"]) .sc-flag-col { gap: var(--sc-space-1); }
+:where(#app[data-layout="uls"]) .sc-flag-heading {
+  padding: 0 0 2px;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1.1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) .sc-flag-list { gap: var(--sc-space-1); }
+
+/* A foul key: the letter's LED window at the left, the foul in caps, the enforcement under it. */
+:where(#app[data-layout="uls"]) #flagPanel .sc-key {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "cap name" "cap hint";
+  align-items: center;
+  align-content: center;
+  column-gap: var(--sc-space-2);
+  row-gap: 2px;
+  width: 100%;
+  min-height: var(--uls-key-h);
+  padding: 4px var(--sc-space-2) 4px 4px;
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+  line-height: 1.05;
+  text-align: start;
+  white-space: normal;
+}
+:where(#app[data-layout="uls"]) #flagPanel .sc-key-cap {
+  grid-area: cap;
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--uls-size-key) + 8px);
+  height: auto;
+  min-height: calc(var(--uls-size-key) + 8px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--uls-line-to-gain);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+}
+:where(#app[data-layout="uls"]) #flagPanel .sc-key-name {
+  grid-area: name;
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.05 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+:where(#app[data-layout="uls"]) #flagPanel .sc-key-hint {
+  grid-area: hint;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.01em;
+  text-transform: none;
+}
+/* A key with no letter (Other on each team) is all words. */
+:where(#app[data-layout="uls"]) #flagPanel .sc-key-cap[hidden] + .sc-key-name,
+:where(#app[data-layout="uls"]) #flagPanel .sc-key-cap[hidden] ~ .sc-key-hint {
+  grid-column: 1 / -1;
+  padding-inline-start: var(--sc-space-2);
+}
+:where(#app[data-layout="uls"]) #flagPanel .sc-key:hover { border-color: var(--uls-steel-edge); color: var(--sc-ink); }
+:where(#app[data-layout="uls"]) #flagPanel .sc-key:is(:hover, :focus-visible) .sc-key-cap {
+  background: var(--uls-line-to-gain);
+  color: var(--uls-led-panel);
+}
+
+/* Other on each team, and the automatic 1st down lamp switch on the defense's side. */
+:where(#app[data-layout="uls"]) .sc-flag-other {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-1);
+  margin-top: var(--sc-space-1);
+}
+:where(#app[data-layout="uls"]) .sc-flag-other .sc-key,
+:where(#app[data-layout="uls"]) .sc-flag-offset .sc-key { width: 100%; min-width: 0; }
+:where(#app[data-layout="uls"]) .sc-flag-other .sc-check {
+  min-height: var(--uls-key-h);
+  font-size: var(--sc-size-s);
+  white-space: normal;
+}
+:where(#app[data-layout="uls"]) .sc-flag-other .sc-check input[type="checkbox"] {
+  width: var(--uls-lamp);
+  height: var(--uls-lamp);
+  accent-color: auto;
+}
+:where(#app[data-layout="uls"]) .sc-flag-offset { grid-area: offset; }
+:where(#app[data-layout="uls"]) .sc-flag-hint {
+  grid-area: hint;
+  max-width: 64ch;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / var(--sc-leading-body) var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------- one column on a phone */
+@media (max-width: 720px) {
+  :where(#app[data-layout="uls"]) .sc-flag-cols { grid-template-columns: minmax(0, 1fr); }
+  :where(#app[data-layout="uls"]) #flagPanel {
+    grid-template-areas: "note note" "close close" "cols cols" "offset offset" "hint hint";
+  }
+  :where(#app[data-layout="uls"]) .sc-flag-close { justify-self: start; }
+}
+
+/* A touch screen has no keyboard to learn: the flag-mode letters step aside (A9), the fouls keep their words. */
+@media (hover: none) and (pointer: coarse) {
+  :where(#app[data-layout="uls"]) #flagPanel .sc-key-cap { display: none; }
+  :where(#app[data-layout="uls"]) #flagPanel .sc-key {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "name" "hint";
+    padding-inline-start: var(--sc-space-3);
+  }
+}

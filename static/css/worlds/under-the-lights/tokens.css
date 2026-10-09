@@ -1,0 +1,223 @@
+/* Under the Lights: tokens (DESIGN.md frontmatter, Colors, Typography, Layout; owner W3).
+   Every REQUIRED_TOKENS name (theme/tokens.js) with DESIGN.md's values, plus the world's own --uls-* tokens:
+   the palette by name, the LED and painted type, the stadium's geometry and the LED face texture. The clamps are
+   exact at the two reference viewports (1440x900 and 1920x1080) and hold their laptop values below 1440; phones get
+   their own sizes at the end. Fonts are self-hosted (G28): static/fonts/under-the-lights/ (SOURCES.txt, OFL.txt). */
+
+/* ---------------------------------------------------------------- fonts (latin subsets) */
+@font-face {
+  font-family: "Big Shoulders Display";
+  src: url("/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2") format("woff2");
+  font-weight: 700 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Big Shoulders Text";
+  src: url("/static/fonts/under-the-lights/big-shoulders-text/big-shoulders-text-latin.woff2") format("woff2");
+  font-weight: 500 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Doto at wght 800, ROND 60 (a static instance: fat round dots that nearly touch). */
+@font-face {
+  font-family: "Doto";
+  src: url("/static/fonts/under-the-lights/doto/doto-latin-800-rond60.woff2") format("woff2");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* The one-face patch: Doto draws "." and ":" as plus-shaped clusters (".421" reads "+421"), so the LED stack takes
+   those two from Big Shoulders Display, square dots. Ghost and lit text share the stack, so cells still align. */
+@font-face {
+  font-family: "ULS LED Punct";
+  src: url("/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2") format("woff2");
+  font-weight: 700 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+002E, U+003A;
+}
+
+:root[data-world="under-the-lights"] {
+  color-scheme: dark;
+
+  /* ---- the palette by name (DESIGN.md colors) */
+  --uls-night-sky: #0D1424;
+  --uls-bowl-haze: #26314C;
+  --uls-light-cone: #F4F1E6;
+  --uls-turf-dark: #3F8C3B;
+  --uls-turf-light: #46983F;
+  --uls-paint: #F5F7F2;
+  --uls-line-to-gain: #FFD400;
+  --uls-los: #4A90FF;
+  --uls-pylon: #FF6A13;
+  --uls-goalpost: #FFC425;
+  --uls-led-panel: #0F1114;
+  --uls-unlit: #2A2622;
+  --uls-led-warm: #FFF3D1;
+  --uls-led-gold: #FFD27A;
+  --uls-led-amber: #FFB21E;
+  --uls-led-dim: #B9AD92;
+  --uls-segment-lit: #FFB21E;
+  --uls-segment-unlit: #3A2E1C;
+  --uls-tally-red: #FF4D3D;
+  --uls-lamp-green: #7DDB6A;
+  --uls-caption-white: #FFFFFF;
+  --uls-caption-dark: #000000;
+  --uls-steel-neutral: #33405C;
+  --uls-steel: #1C2333;
+  --uls-steel-raised: #283149;
+  --uls-steel-seam: #2E374D;
+  --uls-steel-edge: #4A5571;
+
+  /* ---- ground and ink (DESIGN.md token map) */
+  --sc-bg: #0D1424;
+  --sc-surface: #1C2333;
+  --sc-surface-2: #0F1114;
+  --sc-surface-raised: #283149;
+  --sc-scrim: #0D1424B8;
+  --sc-ink: #FFF3D1;
+  --sc-ink-muted: #B9AD92;
+  --sc-ink-inverse: #0F1114;
+  --sc-rule: #2E374D;
+  --sc-rule-strong: #4A5571;
+
+  /* ---- meanings: pass, RPO and run are three steps of one warm ramp; labels always name the family */
+  --sc-pass: #FFF3D1;
+  --sc-run: #FFB21E;
+  --sc-rpo: #FFD27A;
+  --sc-gain: #FFD400;
+  --sc-los: #4A90FF;
+  --sc-good: #7DDB6A;
+  --sc-bad: #FF4D3D;
+  --sc-warn: #FFD400;
+  --sc-live: #FF4D3D;
+  --sc-focus: #FFF3D1;
+
+  /* ---- type: Big Shoulders for every word, Doto for big LED numbers only (40 px and up) */
+  --sc-font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
+  --sc-font-text: "Big Shoulders Text", "Arial Narrow", sans-serif;
+  --sc-font-num: "Big Shoulders Text", "Arial Narrow", sans-serif;
+  --sc-size-call: clamp(64px, calc(5vw - 8px), 88px);
+  --sc-size-xl: clamp(44px, calc(2.5vw + 8px), 56px);
+  --sc-size-l: clamp(40px, calc(2.9167vw - 2px), 54px);
+  --sc-size-m: clamp(18px, 1.25vw, 24px);
+  --sc-size-s: clamp(16px, calc(1.25vw - 2px), 22px);
+  --sc-size-xs: clamp(15px, 1.0417vw, 20px);
+  --sc-weight-regular: 500;
+  --sc-weight-strong: 700;
+  --sc-weight-display: 800;
+  --sc-case-label: uppercase;
+  --sc-tracking-label: 0.06em;
+  --sc-leading-tight: 0.95;
+  --sc-leading-body: 1.3;
+
+  /* World type roles (DESIGN.md typography). Doto rides --uls-led-font, never below 40 px (The 40 Pixel Rule). */
+  --uls-led-font: "ULS LED Punct", Doto, ui-monospace, monospace;
+  --uls-led-variation: "ROND" 60;
+  --uls-size-led-readout: clamp(40px, calc(1.6667vw + 16px), 48px);
+  --uls-size-caption: clamp(19px, calc(1.0417vw + 4px), 24px);
+  --uls-size-plate: clamp(16px, calc(1.25vw - 2px), 22px);
+  --uls-size-key: clamp(22px, calc(1.25vw + 4px), 28px);
+  --uls-size-ribbon: clamp(22px, calc(1.25vw + 4px), 28px);
+  --uls-size-body: clamp(16px, calc(0.8333vw + 4px), 20px);
+  --uls-tracking-caption: 0.06em;
+  --uls-tracking-plate: 0.08em;
+  --uls-tracking-ribbon: 0.03em;
+  --uls-leading-figure: 0.85;
+
+  /* ---- space and shape: LED square, steel 2 px, lamps round */
+  --sc-space-1: 4px;
+  --sc-space-2: 8px;
+  --sc-space-3: clamp(12px, 0.8333vw, 16px);
+  --sc-space-4: clamp(16px, calc(0.8333vw + 4px), 20px);
+  --sc-space-5: clamp(24px, 1.6667vw, 32px);
+  --sc-space-6: clamp(32px, calc(1.6667vw + 8px), 40px);
+  --sc-radius-s: 0px;
+  --sc-radius-m: 2px;
+  --sc-radius-l: 2px;
+  --sc-border-w: 2px;
+  --sc-focus-w: 3px;
+  --sc-gutter: clamp(24px, calc(5vw - 48px), 48px);
+  /* Nominal: the stadium's field host fills the viewport (layout.css), the phone's is a 390 x 300 band. */
+  --sc-field-aspect: 16 / 9;
+
+  /* ---- motion: one LED frame at 12 fps, the light dip, the scanline */
+  --sc-dur-fast: 83ms;
+  --sc-dur-med: 300ms;
+  --sc-dur-slow: 400ms;
+  --sc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --sc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---- the stadium's geometry (DESIGN.md Layout; exact at 1440x900 and 1920x1080) */
+  --uls-pitch: 4px;
+  --uls-ribbon-h: clamp(44px, calc(2.5vw + 8px), 56px);
+  --uls-lower-h: clamp(40px, calc(3.3333vw - 8px), 56px);
+  --uls-band-h: clamp(140px, calc(8.3333vw + 20px), 180px);
+  --uls-band-gap: 4px;
+  --uls-strip-h: clamp(52px, calc(2.5vw + 16px), 64px);
+  --uls-board-w: clamp(416px, calc(30vw - 16px), 560px);
+  --uls-board-h: clamp(324px, calc(22.0833vw + 6px), 430px);
+  --uls-board-gap: clamp(20px, calc(0.8333vw + 8px), 24px);
+  --uls-board-open-w: clamp(600px, 41.6667vw, 800px);
+  --uls-board-open-h: clamp(560px, calc(38.75vw + 2px), 746px);
+  --uls-stack-gap: 16px;
+  --uls-plate-h: clamp(24px, 1.6667vw, 32px);
+  --uls-frame: 8px;
+  --uls-face-pad: clamp(14px, calc(1.25vw - 4px), 20px);
+  --uls-drawer-w: clamp(400px, calc(25vw + 40px), 520px);
+  --uls-feed-w: clamp(220px, 18.3333vw, 352px);
+  --uls-wp-w: clamp(264px, 18.3333vw, 352px);
+  --uls-key-h: clamp(40px, calc(1.6667vw + 16px), 48px);
+  --uls-lamp: clamp(10px, calc(0.4167vw + 4px), 12px);
+  --uls-light-catch: 2px;
+
+  /* Logos sit in LED windows, so they are ESPN's dark-background variant in both room settings (scoreboard.css). */
+  --sc-logo-variant: dark;
+
+  /* The LED face: the panel with its unlit pixels on a 4 px pitch (The Unlit Pixel Rule). Texture, not glow. */
+  --uls-led-face: radial-gradient(circle at 2px 2px, var(--uls-unlit) 0 0.9px, transparent 1.3px) 0 0 /
+    var(--uls-pitch) var(--uls-pitch) var(--uls-led-panel);
+}
+
+/* ---------------------------------------------------------------- phones: DESIGN.md's third column (390 px) */
+@media (max-width: 720px) {
+  :root[data-world="under-the-lights"] {
+    --sc-size-call: 48px;
+    --sc-size-xl: 40px;
+    --sc-size-l: 32px;
+    --sc-size-m: 16px;
+    --sc-size-s: 15px;
+    --sc-size-xs: 14px;
+    --sc-gutter: 12px;
+    --sc-field-aspect: 13 / 10;
+    --uls-size-led-readout: 40px;
+    --uls-size-caption: 19px;
+    --uls-size-plate: 16px;
+    --uls-size-key: 22px;
+    --uls-size-ribbon: 16px;
+    --uls-size-body: 15px;
+    --uls-face-pad: 12px;
+  }
+}
+
+/* ---------------------------------------------------------------- reduced motion: every change is instant */
+@media (prefers-reduced-motion: reduce) {
+  :root[data-world="under-the-lights"] {
+    --sc-dur-fast: 0ms;
+    --sc-dur-med: 0ms;
+    --sc-dur-slow: 0ms;
+  }
+}
+
+:root[data-world="under-the-lights"][data-motion="reduced"] {
+  --sc-dur-fast: 0ms;
+  --sc-dur-med: 0ms;
+  --sc-dur-slow: 0ms;
+}

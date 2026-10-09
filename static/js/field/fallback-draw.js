@@ -37,7 +37,8 @@ const LOGO_YD = 9;
 const SMALL_FIELD_PX = 5;
 const ZONE_TEXT = Object.freeze({ maxYd: 5.4, lengthYd: 40, charEm: 0.7, trackEm: 0.08 });
 const BALL = Object.freeze({ yd: 1.8, minPx: 13, maxPx: 30, ring: 0.9, haloAbove: 0.3 });
-const TAG = Object.freeze({ padX: 6, padY: 3 });
+/** A tag's plate padding around its text, in px (fallback-svg fitTags sizes the plate). */
+export const TAG_PAD = Object.freeze({ padX: 6, padY: 3 });
 
 export const r2 = (v) => Math.round(v * DIGITS) / DIGITS;
 
@@ -153,7 +154,7 @@ export function tagNode({ at, text, anchor = "middle", tone = "ink", size = "s",
     + " font-weight: var(--sc-weight-strong); letter-spacing: var(--sc-tracking-label);"
     + " text-transform: var(--sc-case-label)";
   return node("g", { class: `sc-fb-tag ${cls}`.trim(), "data-part": part, "data-anchor": anchor,
-    "data-pad-x": TAG.padX, "data-pad-y": TAG.padY }, [
+    "data-pad-x": TAG_PAD.padX, "data-pad-y": TAG_PAD.padY }, [
     node("rect", { x: r2(at.px), y: r2(at.py), width: 0, height: 0, rx: 2,
       style: "fill: var(--sc-surface-2); stroke: var(--sc-rule-strong); stroke-width: 1" }),
     node("text", { x: r2(at.px), y: r2(at.py), "text-anchor": anchor, "dominant-baseline": "central",

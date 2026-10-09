@@ -1,0 +1,24 @@
+/* Under the Lights: the connection banner (ui/conn-banner.js; DESIGN.md Components "Toasts, connection banner, review
+   banner, boot screen"; owner W2). A full-width LED strip directly under the upper ribbon, over the bowl and never the
+   board (layout.css): a yellow lamp and RECONNECTING…, or a tally-red lamp and CAN'T REACH THE APP SERVER. RETRYING IN
+   4 S., with the RETRY NOW key at its right end. Ribbon caps; the strip's bottom edge is a steel light-catch. */
+
+:where(:root[data-world="under-the-lights"]) .sc-conn {
+  gap: var(--sc-space-3);
+  min-height: var(--uls-ribbon-h);
+  padding: var(--sc-space-1) var(--sc-space-3) var(--sc-space-1) var(--sc-gutter);
+  border: 0;
+  border-bottom: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-ribbon) / 1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-conn[data-conn] { border-bottom-color: var(--uls-steel-edge); }
+:where(:root[data-world="under-the-lights"]) .sc-conn .sc-lamp { background: var(--uls-line-to-gain); }
+:where(:root[data-world="under-the-lights"]) .sc-conn[data-conn="offline"] .sc-lamp {
+  background: var(--uls-tally-red);
+}
+:where(:root[data-world="under-the-lights"]) .sc-conn-text { overflow-wrap: anywhere; }
+:where(:root[data-world="under-the-lights"]) .sc-conn-retry { flex: none; margin-inline-start: auto; }

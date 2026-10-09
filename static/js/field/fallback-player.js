@@ -2,13 +2,13 @@
  * Animates one play on a stage of the 2D field (ui-architecture.md 2.5 playRow and 6.2, owner A6). DOM side, but no
  * clock and no frame loop of its own: the engine calls tick(now) from its requestAnimationFrame loop. The plan comes
  * from field/timing.js (planDrawing fitted to the duration the conductor gives, DC E4); each frame sets every part
- * to its step's progress (fallback-plays partAt: strokes grow along their paths, lanes grow with the ball, marks
- * and areas pop in) and moves the ball, its shadow and its trail.
+ * to its step's eased progress (fallback-plays partAt: strokes grow from the line of scrimmage with the ball at their
+ * tip, marks pop in) and moves the ball, its shadow and its trail.
  */
 import { ballNodes } from "./fallback-draw.js";
-import { partAt, playSpec, trailNodes } from "./fallback-plays.js";
+import { partAt, playSpec, shownBall, trailNodes } from "./fallback-plays.js";
 import { applyAttrs, buildNode, renderInto } from "./fallback-svg.js";
-import { ballAt, fitPlan, planDrawing, progressAt } from "./timing.js";
+import { easeFor, fitPlan, planDrawing, progressAt } from "./timing.js";
 import { clear, svgEl } from "../ui/dom.js";
 
 function mountSpec(layer, spec) {
@@ -28,11 +28,13 @@ function mountSpec(layer, spec) {
   return parts;
 }
 
+/** Each step's progress at t, eased as the ball moves (timing.easeFor), so a stroke's tip is where the ball is: a run
+ * grows from the line of scrimmage and slows into the tackle with it. */
 function apply(run, t) {
   const { drawing } = run.job.entry;
-  const progress = new Map(progressAt(run.plan, t).map((p) => [p.index, p.u]));
+  const progress = new Map(progressAt(run.plan, t).map((p) => [p.index, easeFor(drawing.steps[p.index])(p.u)]));
   for (const { el, part, index } of run.parts) applyAttrs(el, partAt(part, progress.get(index) ?? 0));
-  const ball = ballAt(drawing, run.plan, t);
+  const ball = shownBall(drawing, run.plan, t);
   const team = run.spec.steps[Math.max(0, ball?.index ?? 0)]?.team ?? drawing.team;
   const nodes = ball ? [...trailNodes(drawing, run.plan, t, run.job.ctx, team), ...ballNodes(ball, run.job.ctx)] : [];
   renderInto(run.job.stage.ball, nodes);

@@ -1,0 +1,137 @@
+/* Under the Lights: the drive chart on the lower LED ribbon (ui/drive-chart.js; DESIGN.md Components "Lower ribbon:
+   drive chart and win probability"; owner W2). Each drive is a strip of LED cells on the 100-yard scale, the caller's
+   own goal on the left as on the field: every cell of the scale is an unlit pixel, a dim column every 10 yards, the
+   drive lit from its start to its end (warm white for the caller, amber for the opponent; never a team color) and a
+   lit end column. The ribbon shows the current drive (else the last); hover or focus unrolls the game's drive list
+   upward (layout.css), earlier drives dimmer, every drive a button that shows its first play on the field.
+   The track is the drive chart's own SVG masked onto the panel's 4 px pitch, over a plain panel cell (the button's
+   ::before in the track's grid area), so its lit and unlit pixels share one grid. */
+
+:where(:root[data-world="under-the-lights"]) .sc-drives { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-dc-empty {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-list { gap: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-dc-item { --sc-dc-tone: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-dc-item[data-caller="true"] { --sc-dc-tone: var(--sc-ink); }
+
+/* ---------------------------------------------------------------- one drive: label, LED strip, summary */
+:where(:root[data-world="under-the-lights"]) .sc-dc-btn {
+  align-items: center;
+  gap: 2px var(--sc-space-3);
+  padding: var(--sc-space-1) var(--sc-space-1);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  transition: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-btn::before {
+  content: "";
+  grid-area: track;
+  align-self: center;
+  height: calc(3 * var(--uls-cell));
+  background: var(--uls-led-panel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-label { gap: var(--sc-space-2); align-items: center; }
+:where(:root[data-world="under-the-lights"]) .sc-dc-team {
+  color: var(--sc-dc-tone);
+  font-weight: var(--sc-weight-display);
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-result {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-strong);
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-item[data-result="TD"] .sc-dc-result {
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-item[data-current="true"] .sc-dc-result { color: var(--sc-ink); }
+/* Result glyphs (9 x 9): the referee's touchdown signal, and a change of possession for the turnovers. */
+:where(:root[data-world="under-the-lights"])
+  .sc-dc-item:is([data-result="TD"], [data-result="INT"], [data-result="FUMBLE"],
+  [data-result="TURNOVER"], [data-result="DOWNS"]) .sc-dc-result::before {
+  content: "";
+  flex: none;
+  width: var(--uls-glyph);
+  height: var(--uls-glyph);
+  background: currentColor;
+  -webkit-mask: url("/static/img/worlds/under-the-lights/turnover.svg") center / contain no-repeat;
+  mask: url("/static/img/worlds/under-the-lights/turnover.svg") center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-item[data-result="TD"] .sc-dc-result::before {
+  -webkit-mask-image: url("/static/img/worlds/under-the-lights/ref-touchdown.svg");
+  mask-image: url("/static/img/worlds/under-the-lights/ref-touchdown.svg");
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-summary {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: none;
+}
+
+/* The LED strip: three rows of cells; the scale unlit, the yard columns dim, the drive lit. */
+:where(:root[data-world="under-the-lights"]) .sc-dc-track {
+  align-self: center;
+  height: calc(3 * var(--uls-cell));
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-field { fill: var(--uls-segment-unlit); }
+:where(:root[data-world="under-the-lights"]) :is(.sc-dc-yard, .sc-dc-mid) {
+  stroke: color-mix(in srgb, var(--uls-led-dim) 38%, var(--uls-led-panel));
+  stroke-width: var(--uls-cell);
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-mid {
+  stroke: color-mix(in srgb, var(--uls-led-dim) 60%, var(--uls-led-panel));
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-bar {
+  fill: var(--sc-dc-tone);
+  fill-opacity: 1;
+  stroke: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-end { stroke: var(--sc-dc-tone); stroke-width: var(--uls-cell); }
+/* Earlier drives stay dim; the current drive and the one under the pointer are fully lit. */
+:where(:root[data-world="under-the-lights"]) .sc-dc-item[data-complete="true"]:not([data-current="true"]) .sc-dc-bar {
+  fill: color-mix(in srgb, var(--sc-dc-tone) 55%, var(--uls-led-panel));
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-item[data-complete="true"]:not([data-current="true"]) .sc-dc-end {
+  stroke: color-mix(in srgb, var(--sc-dc-tone) 55%, var(--uls-led-panel));
+}
+:where(:root[data-world="under-the-lights"])
+  .sc-dc-btn:is(:hover, :focus-visible, [aria-pressed="true"]) :is(.sc-dc-bar) {
+  fill: var(--sc-dc-tone);
+}
+:where(:root[data-world="under-the-lights"])
+  .sc-dc-btn:is(:hover, :focus-visible, [aria-pressed="true"]) :is(.sc-dc-end) {
+  stroke: var(--sc-dc-tone);
+}
+
+/* Hover: the warm-white frame; the drive shown on the field: an amber frame. */
+:where(:root[data-world="under-the-lights"]) .sc-dc-btn:hover:not(:disabled, :focus-visible) {
+  outline: var(--sc-border-w) solid var(--sc-ink);
+  outline-offset: -2px;
+  background: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-btn[aria-pressed="true"] {
+  outline: var(--sc-border-w) solid var(--uls-led-amber);
+  outline-offset: -2px;
+  background: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-dc-btn:focus-visible { outline-offset: -3px; }
+:where(:root[data-world="under-the-lights"]) .sc-dc-btn:disabled { color: var(--sc-ink-muted); }
+
+/* On the ribbon, the one drive fills the ribbon's height. */
+:where(#app[data-layout="uls"] .uls-lower #rg-drives:not(:hover, :focus-within)) .sc-dc-btn {
+  height: var(--uls-lower-h);
+  padding-block: 0;
+}
+:where(#app[data-layout="uls"] .uls-lower) .sc-dc-item + .sc-dc-item { border-top: 1px solid var(--uls-steel-seam); }

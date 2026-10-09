@@ -52,8 +52,8 @@ def test_28_first_and_goal_puts_the_line_to_gain_on_the_goal_line(upage, server,
 
 
 def test_field_hooks_with_a_drive(upage, server, scene):
-    """ui-architecture 5.3: scene ready, its canvas or SVG, the approximation legend, the top 3 ghosts in rank order,
-    idle with nothing queued, the epoch, a camera, and the frame counter."""
+    """ui-architecture 5.3: scene ready, its canvas or SVG, the approximation legend, the shadow plays (his top 2) in
+    rank order, idle with nothing queued, the epoch, a camera, and the frame counter."""
     base = server["base"]
     with_drive(upage, base, SCENES[scene])
     f = field(upage)
@@ -61,7 +61,8 @@ def test_field_hooks_with_a_drive(upage, server, scene):
     expect(f.locator(CHILD[scene])).to_have_count(1)
     expect(f.locator('[data-testid="field-legend"]')).to_have_text("Ball shown mid-field; ESPN gives no hash.")
     top = [t["key"] for t in state(base)["prediction"]["top"]]
-    expect(f).to_have_attribute("data-ghosts", " ".join(top))
+    # v1.4 (play-drawing.md 4): the field draws his top 2 as shadow plays; the hook lists them first, in rank order
+    expect(f).to_have_attribute("data-ghosts", re.compile("^" + re.escape(" ".join(top[:2])) + r"(\s|$)"))
     wait_idle(upage)
     expect(f).to_have_attribute("data-queue", "0")
     expect(f).to_have_attribute("data-epoch", version(base)["epoch"])

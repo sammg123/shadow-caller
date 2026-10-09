@@ -16,6 +16,10 @@ const PURE = Object.freeze([
     "timeline-cache", "sync-plan", "present", "anim-queue", "domain", "keymap", "selection", "strip", "flags", "review"]
     .map((m) => `core/${m}.js`),
   ...["coords", "grammar", "paths", "ghosts", "timing", "camera-plan"].map((m) => `field/${m}.js`),
+  // v1.4 (play-drawing.md): the play's words on the field and the shadow plays before a snap
+  ...["play-label", "shadows"].map((m) => `field/${m}.js`),
+  // v1.4 (A5 part 2): how a play and a shadow play look on the 3D field (the action layer's parts)
+  "field/play-style.js",
   // v1.2 (A6): the 2D field's drawing data
   ...["fallback-draw", "fallback-ghosts", "fallback-pixels", "fallback-plays", "fallback-steps", "fallback-bowl"]
     .map((m) => `field/${m}.js`),

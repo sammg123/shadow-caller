@@ -1,0 +1,393 @@
+/* Under the Lights: layout (DESIGN.md Layout, Elevation & Depth, Components; owner W3). The bowl fills the viewport
+   and the HUD hangs at its edges like stadium fixtures (theme/worlds/under-the-lights/arrange.js builds them): the
+   upper LED ribbon, the video board and the desk on the right, the lower LED ribbon, the painted scoreboard band, the
+   control-room drawer (B) and the stat board (G). Fixtures are opaque LED or painted steel, flat, with a 2 px
+   light-catch on top (The Flat Hardware Rule). State moves whole regions by CSS alone, so the tab order stays the
+   DOM order arrange set: a closed drawer or stat board is display: contents and lends its regions to the ribbon,
+   the strip and the band. Rules that reach inside a component use :where() on the fixture, so they match the
+   component's own specificity and a world component skin (loaded after this file) wins.
+   Below 1200 x 640 the fixtures stay in the flow, one scrolling column (DESIGN.md Phone); the stadium block places
+   them at the viewport's edges. */
+
+/* ---------------------------------------------------------------- HUD insets, registered so they compute to px */
+/* The camera keeps the play in the free area: both engines read these on #field (stage.js, fallback-svg.js);
+   arrange.js reads them back (hudInsets) and announces every change that is not a resize ("sc:hud-insets"). */
+@property --sc-field-safe-top { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --sc-field-safe-right { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --sc-field-safe-bottom { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --sc-field-safe-left { syntax: "<length>"; inherits: true; initial-value: 0px; }
+
+/* ---------------------------------------------------------------- the page and the materials */
+:root[data-world="under-the-lights"] body { background: var(--sc-bg); }
+:root[data-world="under-the-lights"] :where(:focus-visible) {
+  outline: var(--sc-focus-w) solid var(--sc-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--sc-bg);
+}
+#app[data-layout="uls"] {
+  --uls-hud-top: var(--uls-ribbon-h);
+  --uls-hud-bottom: calc(var(--uls-lower-h) + var(--uls-band-gap) + var(--uls-band-h));
+  --uls-col-right: calc(var(--sc-gutter) + var(--uls-board-w) + var(--uls-stack-gap));
+  --uls-board-top: calc(var(--uls-hud-top) + var(--uls-board-gap));
+  --sc-field-safe-top: 0px;
+  --sc-field-safe-right: 0px;
+  --sc-field-safe-bottom: 0px;
+  --sc-field-safe-left: 0px;
+  display: block; max-width: none; min-height: 100vh; margin: 0; padding: 0; color: var(--sc-ink);
+}
+/* Manual entry (feed off, no watch): the scorer's strip hangs under the ribbon and everything below moves down. */
+#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"]) {
+  --uls-hud-top: calc(var(--uls-ribbon-h) + var(--uls-strip-h));
+}
+/* LED faces show their unlit pixels; steel carries the light-catch on its top edge. */
+#app[data-layout="uls"] :is(.uls-ribbon, .uls-lower) { background: var(--uls-led-face); }
+#app[data-layout="uls"] :is(.uls-board, .uls-desk, .uls-plate) {
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-steel);
+}
+#app[data-layout="uls"] :is(.uls-board, .uls-desk) { display: grid; align-content: start; min-width: 0; }
+#app[data-layout="uls"] .uls-board #heroArea { background: var(--uls-led-face); }
+/* Components bring their neutral panel chrome; inside a fixture, the fixture is the panel. */
+:where(#app[data-layout="uls"]) :where(.uls-ribbon, .uls-lower, .uls-band, .uls-board, .uls-desk, .uls-drawer,
+  .uls-statboard)
+  :is(.sc-plays, .sc-feed, .sc-drives, .sc-winprob, .sc-scoreboard, .sc-scorecard, .sc-transport, .sc-call,
+  .sc-offfield, .sc-strip, .sc-tendencies, .sc-boxscore, .sc-playlog) { border: 0; border-radius: 0; background: none; }
+:where(#app[data-layout="uls"] .uls-desk) > #entry { gap: var(--sc-space-3); padding: 0; border: 0; background: none; }
+#app[data-layout="uls"]:not([data-mode="watch"]) .uls-desk > #rg-transport { display: none; }
+
+/* ---------------------------------------------------------------- the drawer and the stat board, put away */
+/* Closed, the drawer lends its feed region to the ribbon (compact: the lamp and the status) and, in manual entry,
+   its situation region to the strip under the ribbon; the closed stat board lends its score region to the band. */
+#app[data-layout="uls"] :is(.uls-drawer, .uls-rack, .uls-statboard) { display: contents; }
+:where(#app[data-layout="uls"] .uls-ribbon) :is(#rg-masthead, .sc-masthead) { display: contents; }
+:where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-plate { order: -1; }
+/* The ribbons' typography, at every size: the nameplate in plate caps; the win probability as a readout beside its
+   LED line (the panel titles belong to the stat board, never to a ribbon). */
+:where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-title {
+  font-size: var(--uls-size-plate); line-height: 1; letter-spacing: var(--uls-tracking-plate); text-transform: uppercase;
+}
+:where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-meta { font-size: var(--sc-size-xs); line-height: 1.1; }
+:where(#app[data-layout="uls"] .uls-lower) :is(.sc-drives, .sc-winprob) > .sc-panel-title,
+:where(#app[data-layout="uls"] .uls-lower) :is(.sc-wp-axis, .sc-wp-evenlabel) { display: none; }
+:where(#app[data-layout="uls"] .uls-lower) :is(.sc-wp, .sc-wp-head) { display: flex; align-items: center; gap: var(--sc-space-2); height: 100%; }
+:where(#app[data-layout="uls"] .uls-lower) .sc-wp-value { font-size: var(--sc-size-s); line-height: 1; }
+:where(#app[data-layout="uls"] .uls-lower) .sc-wp-plot { flex: 1 1 auto; min-width: 0; }
+:where(#app[data-layout="uls"] .uls-lower) .sc-wp-svg { height: calc(var(--uls-lower-h) - 12px); }
+:where(#app[data-layout="uls"] .uls-lower) .sc-wp-note { font-size: var(--sc-size-xs); line-height: 1.1; }
+#app[data-layout="uls"]:not([data-booth-open="true"]) :is(.uls-plate, .uls-rack-body, #rg-flags) { display: none; }
+#app[data-layout="uls"]:not([data-booth-open="true"], [data-mode="normal"], [data-mode="flag"]) #rg-situation { display: none; }
+#app[data-layout="uls"]:not([data-scorecard-open="true"]) :is(#rg-tendencies, #rg-box, #rg-log) { display: none; }
+:where(#app[data-layout="uls"]:not([data-booth-open="true"])) .sc-feed {
+  display: flex; align-items: center; gap: var(--sc-space-2); height: 100%; padding: 0 0 0 var(--sc-space-2);
+}
+:where(#app[data-layout="uls"]:not([data-booth-open="true"])) :is(.sc-feed-event, #replayBtn, .sc-feed-watch,
+  .sc-feed-bg, .sc-feed[data-feed-state="off"] .sc-feed-status) {
+  display: none;
+}
+:where(#app[data-layout="uls"]:not([data-booth-open="true"])) .sc-feed-controls { flex: none; flex-wrap: nowrap; }
+:where(#app[data-layout="uls"]:not([data-booth-open="true"])) .sc-feed-status {
+  flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}
+:where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-note { display: none; }
+/* A ribbon holds one message: the newest play; the current drive (else the last one). Hover or focus unrolls them. */
+#app[data-layout="uls"] .uls-ribbon .sc-plays > .sc-panel-title,
+#app[data-layout="uls"] #rg-plays:not(:hover, :focus-within) :is(.sc-pf-unlinked, .sc-pf-ghead,
+  .sc-pf-group:not(:first-child), .sc-pf-row:not([data-newest="true"])),
+#app[data-layout="uls"] #rg-drives:not(:hover, :focus-within) :is(.sc-dc-list:has(> [data-current="true"])
+  > :not([data-current="true"]), .sc-dc-list:not(:has(> [data-current="true"])) > :not(:last-child)) {
+  display: none;
+}
+
+/* The open drawer: a steel rack that scrolls inside itself, FEED, SITUATION, FLAGS (while the flag panel is
+   open) and SETTINGS (once the booth fills it), each under a painted plate. */
+#app[data-layout="uls"][data-booth-open="true"] .uls-drawer {
+  position: fixed; z-index: 40; display: grid; align-content: start; gap: var(--sc-space-4);
+  padding: var(--sc-space-4) var(--sc-space-4) var(--sc-space-5); overflow-y: auto; overscroll-behavior: contain;
+  border-inline-end: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-steel);
+}
+#app[data-layout="uls"][data-booth-open="true"] .uls-rack { display: grid; gap: var(--sc-space-2); min-width: 0; }
+:where(#app[data-layout="uls"] .uls-drawer) .sc-flag-cols { grid-template-columns: minmax(0, 1fr); }
+#app[data-layout="uls"][data-booth-open="true"] .uls-rack:has(.uls-rack-body:empty, #flagPanel[hidden]) { display: none; }
+/* In manual entry the strip stays under the ribbon, so the drawer shows no SITUATION rack. */
+#app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"]) [data-rack="situation"] {
+  display: contents;
+}
+#app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"])
+  [data-rack="situation"] > .uls-plate {
+  display: none;
+}
+#app[data-layout="uls"] .uls-plate {
+  display: flex; align-items: center; min-height: var(--uls-plate-h); padding: 0 var(--sc-space-2);
+  background: var(--uls-steel-raised); color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate); text-transform: uppercase;
+}
+/* The open stat board: a big LED face, the score region at full size, tendencies beside it, the box and the log
+   below; it scrolls inside itself. */
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard {
+  position: fixed; z-index: 30; display: grid; align-content: start; gap: var(--sc-space-4);
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  grid-template-areas: "score tendencies" "box tendencies" "log log";
+  padding: var(--sc-space-4); overflow-y: auto; overscroll-behavior: contain;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-led-face);
+}
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard > * { min-width: 0; }
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard > #rg-score { grid-area: score; }
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard > #rg-tendencies { grid-area: tendencies; }
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard > #rg-box { grid-area: box; }
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard > #rg-log { grid-area: log; }
+
+/* ---------------------------------------------------------------- the scoreboard band, painted by the offense */
+/* Flat paint in the offense's exact ESPN primary, captions in its ink, a light-catch of the same paint lifted toward
+   white. Row one is the game; row two is SHADOW v LEAGUE. A possession change repaints at once: paint never fades. */
+#app[data-layout="uls"] :is(.uls-band, #rg-score) { background: var(--sc-team-off); color: var(--sc-team-off-ink); }
+#app[data-layout="uls"] .uls-band {
+  display: grid;
+  padding: var(--sc-space-2) var(--sc-gutter);
+  border-top: var(--uls-light-catch) solid color-mix(in srgb, var(--sc-team-off) 70%, #FFFFFF);
+}
+#app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard > #rg-score { background: none; color: inherit; }
+/* No team colors yet (manual mode before ESPN, DC C2): neutral scoreboard steel, not the neutral team gray. */
+@container style(--sc-team-off: #5b6470) {
+  #app[data-layout="uls"] :is(.uls-band, #rg-score) { background: var(--uls-steel-neutral); color: var(--uls-caption-white); }
+  #app[data-layout="uls"] .uls-band { border-top-color: color-mix(in srgb, var(--uls-steel-neutral) 70%, #FFFFFF); }
+}
+:where(#app[data-layout="uls"] .uls-band) .sc-scoreboard { padding: 0; color: inherit; }
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-scorecard {
+  display: flex; align-items: center; gap: var(--sc-space-5); padding: 0; color: inherit;
+}
+/* Row two holds the SHADOW V LEAGUE plate and exactly three pairs; the rest of the scorecard waits for G. */
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) :is(.sc-scorecard > .sc-panel-title, .sc-card-legend,
+  .sc-card-groups, .sc-card-note, .sc-card-pair:is([data-pair="family_logloss"], [data-pair="leaf_logloss"])) {
+  display: none;
+}
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) :is(.sc-card-pair, .sc-card-num) { padding-block: 0; line-height: 1; }
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) :is(.sc-card-pairs, .sc-card-pairlist) {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sc-space-2) var(--sc-space-5);
+}
+
+/* ================================================================ the stadium: fixtures at the viewport's edges */
+@media (min-width: 1200px) and (min-height: 640px) {
+  #app[data-layout="uls"] {
+    --sc-field-safe-top: var(--uls-hud-top);
+    --sc-field-safe-right: var(--uls-col-right);
+    --sc-field-safe-bottom: var(--uls-hud-bottom);
+  }
+
+  /* The bowl, full bleed, with its legend and the review tag in the free area. */
+  #app[data-layout="uls"] > #rg-field { position: fixed; inset: 0; z-index: 0; }
+  #app[data-layout="uls"] #field {
+    position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0;
+    aspect-ratio: auto; border-radius: 0; background: var(--sc-bg);
+  }
+  #app[data-layout="uls"] #field > .sc-field-legend {
+    inset: auto auto calc(var(--sc-field-safe-bottom) + var(--sc-space-2)) var(--sc-space-4);
+    max-width: calc(100% - var(--sc-field-safe-right) - 2 * var(--sc-space-4));
+    border: 0;
+    border-radius: var(--sc-radius-s);
+    background: var(--uls-led-face);
+    color: var(--sc-ink-muted);
+  }
+  #app[data-layout="uls"] #rg-field > .sc-review {
+    inset: calc(var(--sc-field-safe-top) + var(--sc-space-3)) auto auto var(--sc-space-4);
+    max-width: calc(100% - var(--sc-field-safe-right) - 2 * var(--sc-space-4));
+  }
+
+  /* The upper ribbon, left to right: the masthead's steel nameplate, the play feed's one message, the masthead's
+     keys on the LED face, the feed's lamp. The masthead stays one element (display: contents lends its plate and its
+     keys to the ribbon's grid), and the DOM order (plays, then masthead) is the visual order of everything Tab meets. */
+  #app[data-layout="uls"] .uls-ribbon {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto var(--uls-feed-w);
+    column-gap: var(--sc-space-3);
+    height: var(--uls-ribbon-h);
+    padding-inline-end: var(--sc-gutter);
+  }
+  #app[data-layout="uls"] .uls-ribbon > #rg-plays { grid-area: 1 / 2; position: relative; min-width: 0; overflow: visible; }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-controls { grid-area: 1 / 3; align-self: center; }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-plate {
+    grid-area: 1 / 1;
+    align-content: center;
+    gap: 2px;
+    max-width: clamp(200px, 18vw, 360px);
+    height: 100%;
+    padding: 0 var(--sc-space-3) 0 var(--sc-gutter);
+    border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+    background: var(--uls-steel);
+  }
+  :where(#app[data-layout="uls"] .uls-ribbon) :is(.sc-masthead-controls, .sc-masthead-keys) { flex-wrap: nowrap; gap: var(--sc-space-1); }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-meta { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-key { min-height: calc(var(--uls-ribbon-h) - 8px); }
+  /* V, B and G print their key (V's window names the camera); the names stay for assistive tech and the title. */
+  @media (hover: hover), (pointer: fine) {
+    :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-view-keys .sc-key-name {
+      position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+    }
+  }
+  /* The play feed shows its newest play; on hover or keyboard focus it unrolls under the ribbon into a replay board
+     of recent plays, newest first, every row a button, clear of the board column. */
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-plays {
+    position: absolute; inset: 0; display: flex; align-items: center; padding: 0; overflow: hidden;
+  }
+  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :focus-within) .sc-plays {
+    inset: 0 0 auto;
+    display: grid; align-content: start; gap: var(--sc-space-2);
+    max-height: calc(100vh - var(--uls-hud-bottom) - var(--uls-stack-gap));
+    padding: 0 var(--sc-space-3) var(--sc-space-3); overflow-y: auto; overscroll-behavior: contain;
+    border-bottom: var(--uls-light-catch) solid var(--uls-steel-edge);
+    background: var(--uls-led-face);
+  }
+  #app[data-layout="uls"]:not([data-booth-open="true"]) #rg-feed {
+    position: fixed; inset: 0 var(--sc-gutter) auto auto; z-index: 25;
+    width: var(--uls-feed-w); height: var(--uls-ribbon-h); overflow: hidden;
+  }
+  /* The scorer's strip (manual entry): a row of LED windows on steel directly under the ribbon, full width. */
+  #app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"]) #rg-situation {
+    position: fixed;
+    inset: var(--uls-ribbon-h) 0 auto;
+    z-index: 15;
+    height: var(--uls-strip-h);
+    padding-inline: var(--sc-gutter);
+    overflow: hidden;
+    border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+    background: var(--uls-steel);
+  }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip {
+    display: flex; align-items: center; gap: var(--sc-space-4); height: 100%; padding: 0;
+  }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) :is(.sc-strip-fields, .sc-strip-drive) {
+    flex-wrap: nowrap; align-items: center; padding: 0; border: 0;
+  }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip .sc-strip-field {
+    display: flex; align-items: center; gap: var(--sc-space-2);
+  }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) :is(.sc-strip-input, .sc-side, .sc-end) {
+    min-height: calc(var(--uls-strip-h) - 14px);
+  }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-input { font-size: var(--uls-size-key); }
+
+  /* The drawer runs out from the left between the HUD's top and the band. */
+  #app[data-layout="uls"][data-booth-open="true"] .uls-drawer {
+    inset: var(--uls-hud-top) auto var(--uls-band-h) 0;
+    width: var(--uls-drawer-w);
+  }
+
+  /* The video board hangs upper right: a steel cabinet (8 px frame) around the LED face that holds the call. While
+     the pointer or keyboard focus is inside it, it grows from its top-right corner at once, like hardware (DESIGN.md
+     Expanded; a future D key sets #app[data-board-open]). The desk hangs under it and scrolls. */
+  #app[data-layout="uls"] .uls-board {
+    position: fixed;
+    inset: var(--uls-board-top) var(--sc-gutter) auto auto;
+    z-index: 11;
+    width: var(--uls-board-w);
+    height: var(--uls-board-h);
+    padding: 0 var(--uls-frame) var(--uls-frame);
+    overflow: hidden;
+  }
+  #app[data-layout="uls"] .uls-board:is(:hover, :focus-within),
+  #app[data-layout="uls"][data-board-open="true"] .uls-board {
+    z-index: 35;
+    width: var(--uls-board-open-w);
+    height: min(var(--uls-board-open-h), calc(100vh - var(--uls-board-top) - var(--uls-stack-gap)));
+  }
+  #app[data-layout="uls"] .uls-board { align-content: stretch; }
+  #app[data-layout="uls"] .uls-board :is(#rg-call, #heroArea) { display: grid; grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; }
+  :where(#app[data-layout="uls"] .uls-board) :is(.sc-call, .sc-offfield) { align-content: start; min-height: 0; overflow: hidden; }
+  :where(#app[data-layout="uls"] .uls-board:is(:hover, :focus-within)) .sc-call { overflow-y: auto; }
+  #app[data-layout="uls"] .uls-desk {
+    position: fixed;
+    inset: calc(var(--uls-board-top) + var(--uls-board-h) + var(--uls-stack-gap)) var(--sc-gutter)
+      calc(var(--uls-hud-bottom) + var(--uls-stack-gap)) auto;
+    z-index: 10;
+    gap: var(--sc-space-3);
+    width: var(--uls-board-w);
+    padding: 0 var(--uls-frame) var(--uls-frame);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+  /* The entry line stays pinned while the keypad scrolls under it (ui-architecture 4.4). */
+  :where(#app[data-layout="uls"] .uls-desk) .sc-entry-line { position: sticky; top: 0; z-index: 1; background: var(--uls-steel); }
+
+  /* The lower ribbon: the current drive on its 100-yard scale (left), the caller's win probability (right). The
+     drive chart unrolls upward into the game's drive list on hover or focus, clear of the board column. */
+  #app[data-layout="uls"] .uls-lower {
+    position: fixed;
+    inset: auto 0 calc(var(--uls-band-h) + var(--uls-band-gap));
+    z-index: 10;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--uls-wp-w);
+    height: var(--uls-lower-h);
+  }
+  #app[data-layout="uls"] .uls-lower > * { position: relative; min-width: 0; overflow: hidden; }
+  #app[data-layout="uls"] .uls-lower > #rg-drives { overflow: visible; }
+  #app[data-layout="uls"] .uls-lower > #rg-wp { padding-inline-end: var(--sc-gutter); border-inline-start: 1px solid var(--uls-steel-seam); }
+  :where(#app[data-layout="uls"] .uls-lower) :is(.sc-drives, .sc-winprob) { height: 100%; padding: 0 var(--sc-space-3); overflow: hidden; }
+  :where(#app[data-layout="uls"] .uls-lower) .sc-drives { position: absolute; inset: 0; }
+  #app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :focus-within) .sc-drives {
+    inset: auto max(0px, calc(var(--uls-col-right) - var(--uls-wp-w))) 0 0;
+    height: auto;
+    max-height: calc(100vh - var(--uls-hud-top) - var(--uls-band-h) - var(--uls-band-gap) - var(--uls-stack-gap));
+    padding-block: var(--sc-space-3) var(--sc-space-1);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+    background: var(--uls-led-face);
+  }
+
+  /* The band across the bottom: row one the game, row two SHADOW v LEAGUE (the closed stat board's score region). */
+  #app[data-layout="uls"] .uls-band { position: fixed; inset: auto 0 0; z-index: 10; height: var(--uls-band-h); }
+  #app[data-layout="uls"] .uls-band > #rg-scoreboard { display: grid; height: calc(var(--uls-band-h) / 2 - var(--sc-space-2)); }
+  #app[data-layout="uls"]:not([data-scorecard-open="true"]) #rg-score {
+    position: fixed; inset: auto 0 0; z-index: 12; height: calc(var(--uls-band-h) / 2);
+    padding: 0 var(--sc-gutter) var(--sc-space-2); overflow: hidden;
+  }
+  /* The stat board's night scrim covers only the bowl's free area (the field host's own layer). */
+  #app[data-layout="uls"][data-scorecard-open="true"] #field::after {
+    content: ""; position: absolute; z-index: 5; pointer-events: none; background: var(--sc-scrim);
+    inset: var(--sc-field-safe-top) var(--sc-field-safe-right) var(--sc-field-safe-bottom) var(--sc-field-safe-left);
+  }
+  /* Outside #app (the shell's overlays), placed by the same geometry: the toast steps in above the lower ribbon,
+     centered on the free area; the connection banner hangs under the ribbon over the bowl, never the board; the
+     notice tray sits at the free area's bottom right. */
+  :root[data-world="under-the-lights"] {
+    --uls-free-right: calc(var(--sc-gutter) + var(--uls-board-w) + var(--uls-stack-gap));
+    --uls-free-bottom: calc(var(--uls-lower-h) + var(--uls-band-gap) + var(--uls-band-h));
+  }
+  :root[data-world="under-the-lights"] #toast {
+    inset: auto auto calc(var(--uls-free-bottom) + var(--sc-space-4)) calc((100vw - var(--uls-free-right)) / 2);
+    max-width: min(clamp(560px, 37.5vw, 720px), calc(100vw - var(--uls-free-right) - 2 * var(--sc-gutter)));
+  }
+  :root[data-world="under-the-lights"] .sc-conn { inset: var(--uls-ribbon-h) var(--uls-free-right) auto 0; }
+  :root[data-world="under-the-lights"] #sc-notices {
+    inset: auto calc(var(--uls-free-right) + var(--sc-space-4)) calc(var(--uls-free-bottom) + var(--sc-space-4)) auto;
+  }
+  /* G lowers the stat board over the field's free area, on the night scrim. */
+  #app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard {
+    inset: var(--uls-board-top) var(--uls-col-right) calc(var(--uls-hud-bottom) + var(--uls-stack-gap)) var(--sc-gutter);
+  }
+}
+
+/* ================================================================ one column: phones, small or short windows */
+@media (max-width: 1199px), (max-height: 639px) {
+  #app[data-layout="uls"] #field { aspect-ratio: var(--sc-field-aspect); border-radius: 0; }
+  #app[data-layout="uls"] :is(.uls-ribbon, .uls-lower) { display: grid; gap: var(--sc-space-1); padding: var(--sc-space-2) var(--sc-gutter); }
+  #app[data-layout="uls"] :is(.uls-board, .uls-desk) { padding: 0 var(--uls-frame) var(--uls-frame); }
+  #app[data-layout="uls"] :is(#rg-feed, #rg-situation) { padding: var(--sc-space-2) var(--sc-gutter); background: var(--uls-steel); }
+  #app[data-layout="uls"]:not([data-scorecard-open="true"]) #rg-score { padding: 0 var(--sc-gutter) var(--sc-space-3); }
+  :where(#app[data-layout="uls"] .uls-ribbon) :is(.sc-masthead-controls, .sc-masthead-keys) { flex-wrap: nowrap; }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-controls { overflow-x: auto; overscroll-behavior-x: contain; }
+  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :focus-within) .sc-plays { max-height: 60vh; overflow-y: auto; }
+  /* The drawer and the stat board open in the flow, where they lend their regions, so the B and G keys that close
+     them stay in reach: a full-screen sheet would cover them, and a phone has no Escape key. */
+  #app[data-layout="uls"][data-booth-open="true"] .uls-drawer,
+  #app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard { position: static; overflow: visible; }
+  #app[data-layout="uls"][data-scorecard-open="true"] .uls-statboard {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "score" "tendencies" "box" "log";
+  }
+}

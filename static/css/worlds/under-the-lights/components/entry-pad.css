@@ -1,0 +1,214 @@
+/* Under the Lights: the desk in manual entry (ui/entry-pad.js on #entry; DESIGN.md "Control desk", "Keys, lamps and LED
+   inputs"; ui-architecture.md 4.4, 11.3; FI 1.3 to 1.5, 3.6; owner W4). The desk is a steel cabinet under the video
+   board (layout.css): a painted plate naming the mode ("WHAT DID HE CALL?"), then the entry line, pinned while the
+   desk scrolls (the chosen play on an LED readout, the Yards LED input, Touchdown and Turnover lamp switches, Log play
+   as the widest key, lit amber once something is picked), then the keypad as a console of lit-window pushbuttons:
+   Run J K L and Pass P A N on the first row, RPO O and Result I S C X on the second. Each button carries its letter
+   in an LED window in its family's tone (run amber, pass warm white, RPO gold; the flag key yellow) with its name
+   painted under it (the pushbutton itself is in booth.css, shared with the retag keys); picked, the window lights.
+   The per-key hints stay for screen readers; the chosen line says the next tap. Off the field the pad dims
+   (#entry[data-dim]). Flat hardware, no fades. */
+
+/* ---------------------------------------------------------------- the region and its plate */
+:where(#app[data-layout="uls"]) #entry { --sc-entry-dim: 0.62; }
+:where(#app[data-layout="uls"]) #manualEntry { gap: var(--sc-space-2); transition: none; }
+/* The plate names the mode, painted on the cabinet like the board's: full desk width, white caps. */
+:where(#app[data-layout="uls"]) .sc-pad-title {
+  display: flex;
+  align-items: center;
+  min-height: var(--uls-plate-h);
+  padding: 0 var(--sc-space-3);
+  border-bottom: 1px solid var(--uls-steel-seam);
+  background: var(--uls-steel-raised);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- the entry line (pinned) */
+:where(#app[data-layout="uls"]) .sc-entry-line {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-areas: "chosen chosen chosen yards" "td to log log";
+  gap: 6px var(--sc-space-1);
+  /* Steel above and below that costs no layout: pinned, it covers what scrolls under it (and keeps Yards' focus ring
+     whole) and ends on a seam. */
+  margin: -6px 0 -7px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--uls-steel-seam);
+  border-radius: 0;
+  background: var(--uls-steel);
+}
+
+/* The chosen play: an LED readout, its name in caps, the next tap under it in small type. */
+:where(#app[data-layout="uls"]) .sc-chosen {
+  grid-area: chosen;
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 0;
+  min-height: var(--uls-key-h);
+  padding: 3px var(--sc-space-3);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-m) / 1.05 var(--sc-font-text);
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+:where(#app[data-layout="uls"]) .sc-chosen[data-placeholder="true"] {
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-strong);
+}
+:where(#app[data-layout="uls"]) .sc-chosen-sep { display: none; }
+:where(#app[data-layout="uls"]) .sc-chosen-hint {
+  display: block;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.05 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: none;
+  white-space: normal;
+}
+
+/* Yards: an LED input in its steel frame, big digits, amber caret. */
+:where(#app[data-layout="uls"]) .sc-yards {
+  grid-area: yards;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  padding-inline-start: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) .sc-yards-input {
+  width: calc(3.2ch + 2 * var(--sc-space-2) + 4px);
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  caret-color: var(--uls-led-amber);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+  letter-spacing: 0;
+  text-align: end;
+}
+:where(#app[data-layout="uls"]) .sc-yards-input:focus { border-color: var(--uls-led-warm); }
+:where(#app[data-layout="uls"]) .sc-yards-input::selection {
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+}
+
+/* Touchdown (T) and Turnover (F): lamp switches (booth.css), filling their cells. */
+:where(#app[data-layout="uls"]) .sc-entry-line .sc-check[data-check="fTD"] { grid-area: td; }
+:where(#app[data-layout="uls"]) .sc-entry-line .sc-check[data-check="fTO"] { grid-area: to; }
+
+/* Log play: the widest key. Unlit until something is picked and a drive is on; then its face lights amber and its
+   window prints Enter. */
+:where(#app[data-layout="uls"]) .sc-log-play {
+  grid-area: log;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sc-space-2);
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-3) 0 var(--sc-space-1);
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(#app[data-layout="uls"]) .sc-log-play::before {
+  content: "Enter" / "";
+  display: inline-grid;
+  place-items: center;
+  height: calc(var(--uls-key-h) - 12px);
+  padding: 0 6px;
+  background: var(--uls-led-panel);
+  color: var(--uls-led-amber);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(#app[data-layout="uls"]) .sc-log-play:hover:not(:disabled) {
+  background: var(--uls-led-gold);
+  color: var(--uls-led-panel);
+}
+:where(#app[data-layout="uls"]) .sc-log-play:hover:not(:disabled)::before { color: var(--uls-led-warm); }
+:where(#app[data-layout="uls"]) .sc-log-play:disabled {
+  border-color: var(--uls-steel-edge);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink-muted);
+}
+:where(#app[data-layout="uls"]) .sc-log-play:disabled::before { color: var(--uls-segment-unlit); }
+
+/* ---------------------------------------------------------------- the keypad: a two-row console */
+:where(#app[data-layout="uls"]) .sc-keypad {
+  display: grid;
+  /* Two banks, sized 2 to 3 so the three run keys get room and the four results still fit in one row. */
+  grid-template-columns: minmax(min-content, 2fr) minmax(min-content, 3fr);
+  gap: 6px var(--sc-space-2);
+}
+:where(#app[data-layout="uls"]) .sc-keyrow { display: block; min-width: 0; }
+/* The family words are aria-hidden in the markup (each row is a named group); the names and tones carry them. */
+:where(#app[data-layout="uls"]) .sc-keyrow-label { display: none; }
+:where(#app[data-layout="uls"]) .sc-keyrow-keys { display: flex; flex-wrap: nowrap; gap: var(--sc-space-1); }
+
+/* Tones: the family ramp of the board (run amber, pass warm white, RPO gold), results warm white, the flag yellow. */
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key[data-tone="result"] { --sc-tone: var(--uls-led-warm); }
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key[data-tone="flag"] { --sc-tone: var(--uls-line-to-gain); }
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key[data-tone="flag"] .sc-key-cap { box-shadow: none; }
+/* Picked (R lights K) or open: the window lights in its tone; an outcome lights amber; the flag key lights yellow. */
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key.on {
+  border-color: var(--uls-steel-edge);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+}
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key.on .sc-key-cap {
+  border-color: transparent;
+  background: var(--sc-tone);
+  color: var(--uls-led-panel);
+}
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key[data-out].on .sc-key-cap { background: var(--uls-led-amber); }
+:where(#app[data-layout="uls"]) .sc-keypad .sc-key[data-tone="flag"].on .sc-key-cap {
+  background: var(--uls-line-to-gain);
+  color: var(--uls-led-panel);
+}
+
+/* ---------------------------------------------------------------- the hint */
+:where(#app[data-layout="uls"]) #entryHint {
+  max-width: 64ch;
+  padding: 0 var(--sc-space-1);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / var(--sc-leading-body) var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+
+/* ---------------------------------------------------------------- one column (phones, small windows) */
+@media (max-width: 1199px), (max-height: 639px) {
+  :where(#app[data-layout="uls"]) .sc-entry-line { position: static; }
+}
+@media (max-width: 420px) {
+  :where(#app[data-layout="uls"]) .sc-entry-line {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: "chosen chosen" "yards yards" "td to" "log log";
+  }
+  :where(#app[data-layout="uls"]) .sc-keypad { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* A touch screen has no Enter key to learn (A9's caps step aside there). */
+@media (hover: none) and (pointer: coarse) {
+  :where(#app[data-layout="uls"]) .sc-log-play::before { display: none; }
+  :where(#app[data-layout="uls"]) .sc-log-play { padding-inline-start: var(--sc-space-3); }
+}
