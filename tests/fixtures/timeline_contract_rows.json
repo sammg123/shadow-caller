@@ -1,0 +1,5135 @@
+{
+ "epoch": "contract-1",
+ "n": 183,
+ "since": 0,
+ "reset": true,
+ "source": "espn",
+ "mode": "replay",
+ "drives": [
+  {
+   "idx": 1,
+   "id": "4018729801",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 1,
+    "clock": "15:00",
+    "x": 30
+   },
+   "end": {
+    "qtr": 1,
+    "clock": "10:51",
+    "x": 100
+   },
+   "plays": 9,
+   "yards": 70,
+   "time": "4:09",
+   "time_s": 249,
+   "result": "TD",
+   "result_text": "Touchdown",
+   "complete": true,
+   "seq": [
+    1,
+    13
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 2,
+   "id": "4018729802",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 1,
+    "clock": "10:51",
+    "x": 73
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "14:53",
+    "x": 0
+   },
+   "plays": 15,
+   "yards": 73,
+   "time": "10:58",
+   "time_s": 658,
+   "result": "TD",
+   "result_text": "Touchdown",
+   "complete": true,
+   "seq": [
+    14,
+    36
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 3,
+   "id": "4018729803",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 2,
+    "clock": "14:53",
+    "x": 32
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "12:26",
+    "x": 44
+   },
+   "plays": 5,
+   "yards": 12,
+   "time": "2:27",
+   "time_s": 147,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    37,
+    44
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 4,
+   "id": "4018729804",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 2,
+    "clock": "12:26",
+    "x": 97
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "11:00",
+    "x": 92
+   },
+   "plays": 3,
+   "yards": 5,
+   "time": "1:26",
+   "time_s": 86,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    45,
+    49
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 5,
+   "id": "4018729805",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 2,
+    "clock": "11:00",
+    "x": 41
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "9:13",
+    "x": 53
+   },
+   "plays": 5,
+   "yards": 12,
+   "time": "1:47",
+   "time_s": 107,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    50,
+    57
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 6,
+   "id": "4018729806",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 2,
+    "clock": "9:13",
+    "x": 90
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "3:40",
+    "x": 48
+   },
+   "plays": 8,
+   "yards": 42,
+   "time": "5:33",
+   "time_s": 333,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    58,
+    69
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 7,
+   "id": "4018729807",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 2,
+    "clock": "3:40",
+    "x": 13
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "3:03",
+    "x": 18
+   },
+   "plays": 3,
+   "yards": 5,
+   "time": "0:37",
+   "time_s": 37,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    70,
+    74
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 8,
+   "id": "4018729808",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 2,
+    "clock": "3:03",
+    "x": 52
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "1:52",
+    "x": 51
+   },
+   "plays": 3,
+   "yards": 1,
+   "time": "1:11",
+   "time_s": 71,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    75,
+    80
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 9,
+   "id": "4018729809",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 2,
+    "clock": "1:52",
+    "x": 13
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "0:21",
+    "x": 77
+   },
+   "plays": 6,
+   "yards": 64,
+   "time": "1:31",
+   "time_s": 91,
+   "result": "FG",
+   "result_text": "Field Goal",
+   "complete": true,
+   "seq": [
+    81,
+    87
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 10,
+   "id": "40187298010",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 2,
+    "clock": "0:21",
+    "x": 71
+   },
+   "end": {
+    "qtr": 2,
+    "clock": "0:00",
+    "x": 56
+   },
+   "plays": 3,
+   "yards": 34,
+   "time": "0:21",
+   "time_s": 21,
+   "result": "END OF HALF",
+   "result_text": "End of Half",
+   "complete": true,
+   "seq": [
+    88,
+    93
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 11,
+   "id": "40187298011",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 3,
+    "clock": "15:00",
+    "x": 86
+   },
+   "end": {
+    "qtr": 3,
+    "clock": "14:00",
+    "x": 0
+   },
+   "plays": 2,
+   "yards": 86,
+   "time": "1:00",
+   "time_s": 60,
+   "result": "TD",
+   "result_text": "Touchdown",
+   "complete": true,
+   "seq": [
+    94,
+    97
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 12,
+   "id": "40187298012",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 3,
+    "clock": "14:00",
+    "x": 32
+   },
+   "end": {
+    "qtr": 3,
+    "clock": "10:43",
+    "x": 73
+   },
+   "plays": 6,
+   "yards": 41,
+   "time": "3:17",
+   "time_s": 197,
+   "result": "INT",
+   "result_text": "Interception",
+   "complete": true,
+   "seq": [
+    98,
+    105
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 13,
+   "id": "40187298013",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 3,
+    "clock": "10:43",
+    "x": 75
+   },
+   "end": {
+    "qtr": 3,
+    "clock": "7:31",
+    "x": 0
+   },
+   "plays": 5,
+   "yards": 75,
+   "time": "3:12",
+   "time_s": 192,
+   "result": "TD",
+   "result_text": "Touchdown",
+   "complete": true,
+   "seq": [
+    106,
+    112
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 14,
+   "id": "40187298014",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 3,
+    "clock": "7:31",
+    "x": 28
+   },
+   "end": {
+    "qtr": 3,
+    "clock": "7:24",
+    "x": 28
+   },
+   "plays": 0,
+   "yards": 0,
+   "time": "0:07",
+   "time_s": 7,
+   "result": "FUMBLE",
+   "result_text": "Fumble",
+   "complete": true,
+   "seq": [
+    113,
+    113
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 15,
+   "id": "40187298015",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 3,
+    "clock": "7:24",
+    "x": 37
+   },
+   "end": {
+    "qtr": 3,
+    "clock": "2:58",
+    "x": 23
+   },
+   "plays": 8,
+   "yards": 14,
+   "time": "4:26",
+   "time_s": 266,
+   "result": "FG",
+   "result_text": "Field Goal",
+   "complete": true,
+   "seq": [
+    114,
+    124
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 16,
+   "id": "40187298016",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 3,
+    "clock": "2:58",
+    "x": 25
+   },
+   "end": {
+    "qtr": 3,
+    "clock": "1:46",
+    "x": 43
+   },
+   "plays": 5,
+   "yards": 18,
+   "time": "1:12",
+   "time_s": 72,
+   "result": "DOWNS",
+   "result_text": "Downs",
+   "complete": true,
+   "seq": [
+    125,
+    131
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 17,
+   "id": "40187298017",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 3,
+    "clock": "1:46",
+    "x": 42
+   },
+   "end": {
+    "qtr": 4,
+    "clock": "8:32",
+    "x": 1
+   },
+   "plays": 12,
+   "yards": 41,
+   "time": "8:14",
+   "time_s": 494,
+   "result": "DOWNS",
+   "result_text": "Downs",
+   "complete": true,
+   "seq": [
+    132,
+    149
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 18,
+   "id": "40187298018",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 4,
+    "clock": "8:32",
+    "x": 1
+   },
+   "end": {
+    "qtr": 4,
+    "clock": "5:26",
+    "x": 100
+   },
+   "plays": 10,
+   "yards": 99,
+   "time": "3:06",
+   "time_s": 186,
+   "result": "TD",
+   "result_text": "Touchdown",
+   "complete": true,
+   "seq": [
+    150,
+    160
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 19,
+   "id": "40187298019",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 4,
+    "clock": "5:26",
+    "x": 65
+   },
+   "end": {
+    "qtr": 4,
+    "clock": "3:42",
+    "x": 63
+   },
+   "plays": 3,
+   "yards": 2,
+   "time": "1:44",
+   "time_s": 104,
+   "result": "PUNT",
+   "result_text": "Punt",
+   "complete": true,
+   "seq": [
+    161,
+    167
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 20,
+   "id": "40187298020",
+   "team": "DAL",
+   "offense_is_caller": true,
+   "start": {
+    "qtr": 4,
+    "clock": "3:42",
+    "x": 24
+   },
+   "end": {
+    "qtr": 4,
+    "clock": "1:16",
+    "x": 76
+   },
+   "plays": 7,
+   "yards": 52,
+   "time": "2:26",
+   "time_s": 146,
+   "result": "INT",
+   "result_text": "Interception",
+   "complete": true,
+   "seq": [
+    168,
+    176
+   ],
+   "engine_drive": null
+  },
+  {
+   "idx": 21,
+   "id": "40187298021",
+   "team": "TB",
+   "offense_is_caller": false,
+   "start": {
+    "qtr": 4,
+    "clock": "1:16",
+    "x": 88
+   },
+   "end": {
+    "qtr": 4,
+    "clock": "0:00",
+    "x": 69
+   },
+   "plays": 4,
+   "yards": 18,
+   "time": "1:16",
+   "time_s": 76,
+   "result": "END OF GAME",
+   "result_text": "End of Game",
+   "complete": true,
+   "seq": [
+    177,
+    183
+   ],
+   "engine_drive": null
+  }
+ ],
+ "status": {
+  "state": "post",
+  "qtr": 4,
+  "clock": "0:00",
+  "poss": null,
+  "score": {
+   "DAL": 16,
+   "TB": 24
+  },
+  "down_text": null,
+  "ball_x": null,
+  "ball_kind": null,
+  "timeouts": {
+   "TB": 2,
+   "DAL": 1
+  },
+  "last_seq": 183,
+  "wp_home": 0.0
+ },
+ "box": {
+  "TB": {
+   "plays": 65,
+   "yards": 419,
+   "rush": {
+    "att": 39,
+    "yds": 241
+   },
+   "pass": {
+    "comp": 19,
+    "att": 25,
+    "net": 178,
+    "int": 0,
+    "sacks": 1,
+    "sack_yds": 11
+   },
+   "first_downs": {
+    "total": 24,
+    "rush": 10,
+    "pass": 10,
+    "pen": 4
+   },
+   "third": {
+    "conv": 7,
+    "att": 13
+   },
+   "fourth": {
+    "conv": 0,
+    "att": 1
+   },
+   "turnovers": 0,
+   "fumbles_lost": 0,
+   "penalties": {
+    "n": 14,
+    "yds": 92
+   },
+   "top_s": 2361,
+   "top": "39:21"
+  },
+  "DAL": {
+   "plays": 55,
+   "yards": 366,
+   "rush": {
+    "att": 13,
+    "yds": 50
+   },
+   "pass": {
+    "comp": 24,
+    "att": 42,
+    "net": 316,
+    "int": 2,
+    "sacks": 0,
+    "sack_yds": 0
+   },
+   "first_downs": {
+    "total": 20,
+    "rush": 5,
+    "pass": 12,
+    "pen": 3
+   },
+   "third": {
+    "conv": 4,
+    "att": 10
+   },
+   "fourth": {
+    "conv": 0,
+    "att": 1
+   },
+   "turnovers": 3,
+   "fumbles_lost": 1,
+   "penalties": {
+    "n": 7,
+    "yds": 57
+   },
+   "top_s": 1239,
+   "top": "20:39"
+  }
+ },
+ "wp_start": 0.8619,
+ "unlinked": [],
+ "field": {
+  "units": "yd",
+  "orientation": "caller_left",
+  "left_team": "DAL",
+  "right_team": "TB",
+  "home": "DAL",
+  "x_min": -10,
+  "x_max": 110,
+  "width": 53.333,
+  "goal_lines": [
+   0,
+   100
+  ],
+  "posts_x": [
+   -10,
+   110
+  ],
+  "hash_y": [
+   23.583,
+   29.75
+  ]
+ },
+ "teams": {
+  "TB": {
+   "abbr": "TB",
+   "espn_id": "27",
+   "name": "Buccaneers",
+   "location": "Tampa Bay",
+   "display_name": "Tampa Bay Buccaneers",
+   "home": false,
+   "caller": false,
+   "side": "right",
+   "color": "#bd1c36",
+   "alt_color": "#3e3a35",
+   "logo": "/api/logo/TB",
+   "logo_dark": "/api/logo/TB?v=dark"
+  },
+  "DAL": {
+   "abbr": "DAL",
+   "espn_id": "6",
+   "name": "Cowboys",
+   "location": "Dallas",
+   "display_name": "Dallas Cowboys",
+   "home": true,
+   "caller": true,
+   "side": "left",
+   "color": "#002a5c",
+   "alt_color": "#b0b7bc",
+   "logo": "/api/logo/DAL",
+   "logo_dark": "/api/logo/DAL?v=dark"
+  }
+ },
+ "team_order": [
+  "TB",
+  "DAL"
+ ],
+ "meta": {
+  "leaves": [
+   "run_inside",
+   "run_ot_left",
+   "run_edge_left",
+   "run_ot_right",
+   "run_edge_right",
+   "dropback_short",
+   "dropback_mid",
+   "dropback_deep",
+   "pa_short",
+   "pa_mid",
+   "pa_deep",
+   "screen",
+   "rpo_run",
+   "rpo_throw"
+  ],
+  "families": [
+   "run",
+   "dropback",
+   "pa",
+   "screen",
+   "rpo"
+  ],
+  "leaf_names": {
+   "run_inside": "Inside run (A/B gap)",
+   "run_ot_left": "Off-tackle left",
+   "run_edge_left": "Outside left (edge)",
+   "run_ot_right": "Off-tackle right",
+   "run_edge_right": "Outside right (edge)",
+   "dropback_short": "Short (0–9 air yds)",
+   "dropback_mid": "Intermediate (10–19)",
+   "dropback_deep": "Deep shot (20+)",
+   "pa_short": "PA short (0–9)",
+   "pa_mid": "PA intermediate (10–19)",
+   "pa_deep": "PA deep shot (20+)",
+   "screen": "Screen",
+   "rpo_run": "RPO, handed off or kept",
+   "rpo_throw": "RPO, thrown"
+  },
+  "family_names": {
+   "run": "Run",
+   "dropback": "Dropback pass",
+   "pa": "Play-action",
+   "screen": "Screen",
+   "rpo": "RPO"
+  },
+  "leaf_family": {
+   "run_inside": "run",
+   "run_ot_left": "run",
+   "run_edge_left": "run",
+   "run_ot_right": "run",
+   "run_edge_right": "run",
+   "dropback_short": "dropback",
+   "dropback_mid": "dropback",
+   "dropback_deep": "dropback",
+   "pa_short": "pa",
+   "pa_mid": "pa",
+   "pa_deep": "pa",
+   "screen": "screen",
+   "rpo_run": "rpo",
+   "rpo_throw": "rpo"
+  },
+  "air_est": {
+   "short": {
+    "air": 5,
+    "band": [
+     1,
+     10
+    ],
+    "n": 1049
+   },
+   "deep": {
+    "air": 23,
+    "band": [
+     19,
+     32
+    ],
+    "n": 461
+   },
+   "source": "nflverse 2026 weeks 1-5 (65 games), pass attempts excluding sacks: median air yards, IQR as the band"
+  },
+  "air_bucket": {
+   "short": {
+    "air": 3,
+    "band": [
+     -1,
+     5
+    ],
+    "n": 2847
+   },
+   "mid": {
+    "air": 14,
+    "band": [
+     12,
+     16
+    ],
+    "n": 923
+   },
+   "deep": {
+    "air": 26,
+    "band": [
+     22,
+     35
+    ],
+    "n": 513
+   },
+   "source": "nflverse 2026 weeks 1-5: median air yards per depth bucket, IQR as the band"
+  }
+ },
+ "rows": [
+  {
+   "seq": 1,
+   "id": "40187298040",
+   "espn_seq": 4000,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": false,
+   "kind": "kickoff",
+   "type": "Kickoff",
+   "qtr": 1,
+   "clock": "15:00",
+   "clock_s": 900,
+   "t": 0,
+   "wall": "2026-10-09T00:15:54Z",
+   "pre": null,
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 70,
+    "text": "1st & 10 at DAL 30"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 65,
+    "x_end": 30,
+    "x_next": 30,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "TB",
+    "kdir": -1,
+    "from_x": 65,
+    "dist": 62,
+    "land_x": 3,
+    "ez": false,
+    "touchback": false,
+    "fair_catch": false,
+    "downed": false,
+    "oob": false,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": 27,
+    "ret_end_x": 30,
+    "fumble_rec": null,
+    "penalty": false
+   },
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8732,
+    "caller": 0.8732,
+    "delta": 0.0113
+   },
+   "text": "C.McLaughlin kicks 62 yards from TB 35 to DAL 3. K.Turpin pushed ob at DAL 30 for 27 yards (C.Rozeboom).",
+   "pred": null
+  },
+  {
+   "seq": 2,
+   "id": "40187298068",
+   "espn_seq": 6800,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Incompletion",
+   "qtr": 1,
+   "clock": "14:54",
+   "clock_s": 894,
+   "t": 6,
+   "wall": "2026-10-09T00:16:31Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 70,
+    "goal_to_go": false,
+    "text": "1st & 10 at DAL 30"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 2,
+    "togo": 10,
+    "yardline_100": 70,
+    "text": "2nd & 10 at DAL 30"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 30,
+    "x_end": 30,
+    "x_next": 30,
+    "x_catch": 35,
+    "lat": "middle",
+    "gap": null,
+    "approx": [
+     "x_catch"
+    ]
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": "incomplete",
+    "depth": "short",
+    "air": 5,
+    "air_src": "est",
+    "air_band": [
+     1,
+     10
+    ],
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.864,
+    "caller": 0.864,
+    "delta": -0.0092
+   },
+   "text": "D.Prescott pass incomplete short middle to B.Spann-Ford (C.Rozeboom).",
+   "pred": {
+    "log_seq": 1,
+    "snap": 1,
+    "engine_drive": 1,
+    "p": 0.4562,
+    "p_league": 0.4624,
+    "p_habits": 0.4562,
+    "flag": "no edge",
+    "top_leaf": "run_inside",
+    "top_leaf_p": 0.2733,
+    "top3": [
+     "run_inside",
+     "pa_short",
+     "dropback_short"
+    ],
+    "fam_top": "run",
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": "incomplete",
+    "name": "Short (0–9 air yds), incomplete",
+    "fam_p": 0.1781,
+    "fam_p_league": 0.2004,
+    "leaf_p": 0.14,
+    "leaf_p_league": 0.1566,
+    "leaf_rank": 3,
+    "leaf_rank_league": 2,
+    "dropback": 1,
+    "success": 0,
+    "retagged": false,
+    "dist": {
+     "his_f": [
+      0.51834,
+      0.1781,
+      0.22386,
+      0.02782,
+      0.05187
+     ],
+     "lg_f": [
+      0.51724,
+      0.20045,
+      0.19354,
+      0.03468,
+      0.0541
+     ],
+     "his_l": [
+      0.27331,
+      0.08495,
+      0.04348,
+      0.05108,
+      0.06552,
+      0.14003,
+      0.02377,
+      0.01431,
+      0.15806,
+      0.04823,
+      0.01758,
+      0.02782,
+      0.03759,
+      0.01428
+     ],
+     "lg_l": [
+      0.24098,
+      0.06767,
+      0.05743,
+      0.06359,
+      0.08757,
+      0.15658,
+      0.02996,
+      0.0139,
+      0.12557,
+      0.04805,
+      0.01992,
+      0.03468,
+      0.03726,
+      0.01684
+     ]
+    }
+   }
+  },
+  {
+   "seq": 3,
+   "id": "40187298091",
+   "espn_seq": 9100,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 1,
+   "clock": "14:48",
+   "clock_s": 888,
+   "t": 12,
+   "wall": "2026-10-09T00:17:06Z",
+   "pre": {
+    "down": 2,
+    "togo": 10,
+    "yardline_100": 70,
+    "goal_to_go": false,
+    "text": "2nd & 10 at DAL 30"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 3,
+    "togo": 2,
+    "yardline_100": 62,
+    "text": "3rd & 2 at DAL 38"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 30,
+    "x_end": 38,
+    "x_next": 38,
+    "x_catch": 35,
+    "lat": "middle",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 5,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 3,
+    "align": "S"
+   },
+   "result": {
+    "yards": 8,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8741,
+    "caller": 0.8741,
+    "delta": 0.0101
+   },
+   "text": "(Shotgun) D.Prescott pass short middle to J.Williams to DAL 38 for 8 yards (J.Trotter).",
+   "pred": null
+  },
+  {
+   "seq": 4,
+   "id": "401872980116",
+   "espn_seq": 11600,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 1,
+   "clock": "14:15",
+   "clock_s": 855,
+   "t": 45,
+   "wall": "2026-10-09T00:17:39Z",
+   "pre": {
+    "down": 3,
+    "togo": 2,
+    "yardline_100": 62,
+    "goal_to_go": false,
+    "text": "3rd & 2 at DAL 38"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 54,
+    "text": "1st & 10 at DAL 46"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 38,
+    "x_end": 46,
+    "x_next": 46,
+    "x_catch": 46,
+    "lat": "left",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 8,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 0,
+    "align": "S"
+   },
+   "result": {
+    "yards": 8,
+    "first_down": true,
+    "fd_by": "pass",
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.881,
+    "caller": 0.881,
+    "delta": 0.0069
+   },
+   "text": "(Shotgun) D.Prescott pass short left to G.Pickens to DAL 46 for 8 yards (J.Parrish).",
+   "pred": null
+  },
+  {
+   "seq": 5,
+   "id": "401872980141",
+   "espn_seq": 14100,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Rush",
+   "qtr": 1,
+   "clock": "13:53",
+   "clock_s": 833,
+   "t": 67,
+   "wall": "2026-10-09T00:18:03Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 54,
+    "goal_to_go": false,
+    "text": "1st & 10 at DAL 46"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 2,
+    "togo": 6,
+    "yardline_100": 50,
+    "text": "2nd & 6 at 50"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 46,
+    "x_end": 50,
+    "x_next": 50,
+    "x_catch": null,
+    "lat": "middle",
+    "gap": "up the middle",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 4,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8791,
+    "caller": 0.8791,
+    "delta": -0.0019
+   },
+   "text": "(No Huddle, Shotgun) J.Williams up the middle to 50 for 4 yards (J.Trotter; R.Bain).",
+   "pred": null
+  },
+  {
+   "seq": 6,
+   "id": "401872980163",
+   "espn_seq": 16300,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Rush",
+   "qtr": 1,
+   "clock": "13:19",
+   "clock_s": 799,
+   "t": 101,
+   "wall": "2026-10-09T00:18:38Z",
+   "pre": {
+    "down": 2,
+    "togo": 6,
+    "yardline_100": 50,
+    "goal_to_go": false,
+    "text": "2nd & 6 at 50"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 29,
+    "text": "1st & 10 at TB 29"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 50,
+    "x_end": 71,
+    "x_next": 71,
+    "x_catch": null,
+    "lat": "middle",
+    "gap": "up the middle",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 21,
+    "first_down": true,
+    "fd_by": "rush",
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8966,
+    "caller": 0.8966,
+    "delta": 0.0175
+   },
+   "text": "J.Williams up the middle to TB 29 for 21 yards (T.Smith).",
+   "pred": null
+  },
+  {
+   "seq": 7,
+   "id": "401872980185",
+   "espn_seq": 18500,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 1,
+   "clock": "12:41",
+   "clock_s": 761,
+   "t": 139,
+   "wall": "2026-10-09T00:19:16Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 29,
+    "goal_to_go": false,
+    "text": "1st & 10 at TB 29"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 8,
+    "yardline_100": 8,
+    "text": "1st & Goal at TB 8"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 71,
+    "x_end": 92,
+    "x_next": 92,
+    "x_catch": 92,
+    "lat": "middle",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_deep",
+    "outcome": null,
+    "depth": "deep",
+    "air": 21,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 0,
+    "align": "U"
+   },
+   "result": {
+    "yards": 21,
+    "first_down": true,
+    "fd_by": "pass",
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9061,
+    "caller": 0.9061,
+    "delta": 0.0095
+   },
+   "text": "D.Prescott pass deep middle to G.Pickens to TB 8 for 21 yards (J.Parrish).",
+   "pred": null
+  },
+  {
+   "seq": 8,
+   "id": "401872980210",
+   "espn_seq": 21000,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Penalty",
+   "qtr": 1,
+   "clock": "11:56",
+   "clock_s": 716,
+   "t": 184,
+   "wall": "2026-10-09T00:20:01Z",
+   "pre": {
+    "down": 1,
+    "togo": 8,
+    "yardline_100": 8,
+    "goal_to_go": true,
+    "text": "1st & Goal at TB 8"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 4,
+    "yardline_100": 4,
+    "text": "1st & Goal at TB 4"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 92,
+    "x_end": 93,
+    "x_next": 96,
+    "x_catch": null,
+    "lat": "left",
+    "gap": "left tackle",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_ot_left",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 1,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": true,
+    "penalty": {
+     "on": "TB",
+     "foul": "Defensive Offside",
+     "yards": 4,
+     "at_x": 92,
+     "no_play": true,
+     "status": "enforced",
+     "note": "defensive offside on TB"
+    }
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9117,
+    "caller": 0.9117,
+    "delta": 0.0056
+   },
+   "text": "J.Williams left tackle to TB 7 for 1 yard (Y.Diaby; E.Simmons).PENALTY on TB-D.Walker, Defensive Offside, 4 yards, enforced at TB 8 - No Play.",
+   "pred": null
+  },
+  {
+   "seq": 9,
+   "id": "401872980243",
+   "espn_seq": 24300,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Rush",
+   "qtr": 1,
+   "clock": "11:37",
+   "clock_s": 697,
+   "t": 203,
+   "wall": "2026-10-09T00:20:52Z",
+   "pre": {
+    "down": 1,
+    "togo": 4,
+    "yardline_100": 4,
+    "goal_to_go": true,
+    "text": "1st & Goal at TB 4"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 2,
+    "togo": 4,
+    "yardline_100": 4,
+    "text": "2nd & Goal at TB 4"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 96,
+    "x_end": 96,
+    "x_next": 96,
+    "x_catch": null,
+    "lat": "middle",
+    "gap": "up the middle",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9079,
+    "caller": 0.9079,
+    "delta": -0.0038
+   },
+   "text": "(Shotgun) J.Williams up the middle to TB 4 for no gain (D.Walker; A.Robinson).",
+   "pred": null
+  },
+  {
+   "seq": 10,
+   "id": "401872980265",
+   "espn_seq": 26500,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Penalty",
+   "qtr": 1,
+   "clock": "11:02",
+   "clock_s": 662,
+   "t": 238,
+   "wall": "2026-10-09T00:21:27Z",
+   "pre": {
+    "down": 2,
+    "togo": 4,
+    "yardline_100": 4,
+    "goal_to_go": true,
+    "text": "2nd & Goal at TB 4"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 1,
+    "yardline_100": 1,
+    "text": "1st & Goal at TB 1"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 96,
+    "x_end": 96,
+    "x_next": 99,
+    "x_catch": 101,
+    "lat": "middle",
+    "gap": null,
+    "approx": [
+     "x_catch"
+    ]
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": "incomplete",
+    "depth": "short",
+    "air": 5,
+    "air_src": "est",
+    "air_band": [
+     1,
+     10
+    ],
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": true,
+    "fd_by": "penalty",
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": true,
+    "penalty": {
+     "on": "TB",
+     "foul": "Defensive Pass Interference",
+     "yards": 3,
+     "at_x": 96,
+     "no_play": true,
+     "status": "enforced",
+     "note": "defensive pass interference on TB"
+    }
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9141,
+    "caller": 0.9141,
+    "delta": 0.0062
+   },
+   "text": "(Shotgun) D.Prescott pass incomplete short middle to J.Ferguson.PENALTY on TB-Z.McCollum, Defensive Pass Interference, 3 yards, enforced at TB 4 - No Play.",
+   "pred": null
+  },
+  {
+   "seq": 11,
+   "id": "401872980299",
+   "espn_seq": 29900,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Incompletion",
+   "qtr": 1,
+   "clock": "10:58",
+   "clock_s": 658,
+   "t": 242,
+   "wall": "2026-10-09T00:22:11Z",
+   "pre": {
+    "down": 1,
+    "togo": 1,
+    "yardline_100": 1,
+    "goal_to_go": true,
+    "text": "1st & Goal at TB 1"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 2,
+    "togo": 1,
+    "yardline_100": 1,
+    "text": "2nd & Goal at TB 1"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 99,
+    "x_end": 99,
+    "x_next": 99,
+    "x_catch": 104,
+    "lat": "left",
+    "gap": null,
+    "approx": [
+     "x_catch"
+    ]
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": "incomplete",
+    "depth": "short",
+    "air": 5,
+    "air_src": "est",
+    "air_band": [
+     1,
+     10
+    ],
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 0,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9121,
+    "caller": 0.9121,
+    "delta": -0.002
+   },
+   "text": "D.Prescott pass incomplete short left to G.Pickens (J.Parrish).",
+   "pred": null
+  },
+  {
+   "seq": 12,
+   "id": "401872980322",
+   "espn_seq": 32200,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Rushing Touchdown",
+   "qtr": 1,
+   "clock": "10:51",
+   "clock_s": 651,
+   "t": 249,
+   "wall": "2026-10-09T00:22:49Z",
+   "pre": {
+    "down": 2,
+    "togo": 1,
+    "yardline_100": 1,
+    "goal_to_go": true,
+    "text": "2nd & Goal at TB 1"
+   },
+   "post": null,
+   "geo": {
+    "dir": 1,
+    "x0": 99,
+    "x_end": 100,
+    "x_next": null,
+    "x_catch": null,
+    "lat": "middle",
+    "gap": "up the middle",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 1,
+    "first_down": true,
+    "fd_by": "rush",
+    "td": true,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 0
+   },
+   "scoring": {
+    "team": "DAL",
+    "type": "TD",
+    "pts": 7,
+    "pat": "kick_good"
+   },
+   "wp": {
+    "home": 0.9196,
+    "caller": 0.9196,
+    "delta": 0.0075
+   },
+   "text": "J.Williams up the middle for 1 yard, TOUCHDOWN. B.Aubrey extra point is GOOD, Center-T.Sieg, Holder-B.Anger.",
+   "pred": null
+  },
+  {
+   "seq": 13,
+   "id": "401872980353",
+   "espn_seq": 35300,
+   "src": "espn",
+   "drive": 1,
+   "drive_id": "4018729801",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": false,
+   "kind": "admin",
+   "type": "Official Timeout",
+   "qtr": 1,
+   "clock": "10:51",
+   "clock_s": 651,
+   "t": 249,
+   "wall": "2026-10-09T00:23:44Z",
+   "pre": null,
+   "post": null,
+   "geo": null,
+   "call": null,
+   "result": null,
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9203,
+    "caller": 0.9203,
+    "delta": 0.0007
+   },
+   "text": "Official Timeout at 10:51.",
+   "admin": {
+    "what": "official_timeout",
+    "by": null
+   },
+   "pred": null
+  },
+  {
+   "seq": 14,
+   "id": "401872980360",
+   "espn_seq": 36000,
+   "src": "espn",
+   "drive": 2,
+   "drive_id": "4018729802",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "kickoff",
+   "type": "Kickoff",
+   "qtr": 1,
+   "clock": "10:51",
+   "clock_s": 651,
+   "t": 249,
+   "wall": "2026-10-09T00:26:36Z",
+   "pre": null,
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 73,
+    "text": "1st & 10 at TB 27"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 35,
+    "x_end": 73,
+    "x_next": 73,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "DAL",
+    "kdir": 1,
+    "from_x": 35,
+    "dist": 55,
+    "land_x": 90,
+    "ez": false,
+    "touchback": false,
+    "fair_catch": false,
+    "downed": false,
+    "oob": false,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": 17,
+    "ret_end_x": 73,
+    "fumble_rec": null,
+    "penalty": false
+   },
+   "score": {
+    "DAL": 7,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9182,
+    "caller": 0.9182,
+    "delta": -0.0021
+   },
+   "text": "B.Aubrey kicks 55 yards from DAL 35 to TB 10. K.Johnson to TB 27 for 17 yards (J.Thomas; B.Spann-Ford).",
+   "pred": null
+  },
+  {
+   "seq": 15,
+   "id": "401872980390",
+   "espn_seq": 39000,
+   "src": "espn",
+   "drive": 2,
+   "drive_id": "4018729802",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 1,
+   "clock": "10:44",
+   "clock_s": 644,
+   "t": 256,
+   "wall": "2026-10-09T00:27:18Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 73,
+    "goal_to_go": false,
+    "text": "1st & 10 at TB 27"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 2,
+    "togo": 7,
+    "yardline_100": 70,
+    "text": "2nd & 7 at TB 30"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 73,
+    "x_end": 70,
+    "x_next": 70,
+    "x_catch": 74,
+    "lat": "left",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": -1,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 4,
+    "align": "U"
+   },
+   "result": {
+    "yards": 3,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 0
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.9202,
+    "caller": 0.9202,
+    "delta": 0.002
+   },
+   "text": "J.Daniels pass short left to E.Egbuka pushed ob at TB 30 for 3 yards (R.Steward).",
+   "pred": null
+  },
+  {
+   "seq": 41,
+   "id": "4018729801037",
+   "espn_seq": 103700,
+   "src": "espn",
+   "drive": 3,
+   "drive_id": "4018729803",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Rush",
+   "qtr": 2,
+   "clock": "13:20",
+   "clock_s": 800,
+   "t": 1000,
+   "wall": "2026-10-09T00:52:11Z",
+   "pre": {
+    "down": 2,
+    "togo": 8,
+    "yardline_100": 54,
+    "goal_to_go": false,
+    "text": "2nd & 8 at DAL 46"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 3,
+    "togo": 10,
+    "yardline_100": 56,
+    "text": "3rd & 10 at DAL 44"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 46,
+    "x_end": 44,
+    "x_next": 44,
+    "x_catch": null,
+    "lat": "left",
+    "gap": "left guard",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": -2,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8349,
+    "caller": 0.8349,
+    "delta": -0.0132
+   },
+   "text": "J.Williams left guard to DAL 44 for -2 yards (J.Trotter, Y.Diaby).",
+   "pred": null
+  },
+  {
+   "seq": 42,
+   "id": "4018729801059",
+   "espn_seq": 105900,
+   "src": "espn",
+   "drive": 3,
+   "drive_id": "4018729803",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Incompletion",
+   "qtr": 2,
+   "clock": "12:42",
+   "clock_s": 762,
+   "t": 1038,
+   "wall": "2026-10-09T00:52:49Z",
+   "pre": {
+    "down": 3,
+    "togo": 10,
+    "yardline_100": 56,
+    "goal_to_go": false,
+    "text": "3rd & 10 at DAL 44"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 4,
+    "togo": 10,
+    "yardline_100": 56,
+    "text": "4th & 10 at DAL 44"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 44,
+    "x_end": 44,
+    "x_next": 44,
+    "x_catch": 67,
+    "lat": "left",
+    "gap": null,
+    "approx": [
+     "x_catch"
+    ]
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_deep",
+    "outcome": "incomplete",
+    "depth": "deep",
+    "air": 23,
+    "air_src": "est",
+    "air_band": [
+     19,
+     32
+    ],
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8196,
+    "caller": 0.8196,
+    "delta": -0.0153
+   },
+   "text": "(Shotgun) D.Prescott pass incomplete deep left to G.Pickens (J.Parrish).",
+   "pred": null
+  },
+  {
+   "seq": 43,
+   "id": "4018729801082",
+   "espn_seq": 108200,
+   "src": "espn",
+   "drive": 3,
+   "drive_id": "4018729803",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "punt",
+   "type": "Punt",
+   "qtr": 2,
+   "clock": "12:36",
+   "clock_s": 756,
+   "t": 1044,
+   "wall": "2026-10-09T00:53:29Z",
+   "pre": {
+    "down": 4,
+    "togo": 10,
+    "yardline_100": 56,
+    "goal_to_go": false,
+    "text": "4th & 10 at DAL 44"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 97,
+    "text": "1st & 10 at TB 3"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 44,
+    "x_end": 97,
+    "x_next": 97,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "DAL",
+    "kdir": 1,
+    "from_x": 44,
+    "dist": 53,
+    "land_x": 97,
+    "ez": false,
+    "touchback": false,
+    "fair_catch": false,
+    "downed": false,
+    "oob": true,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": null,
+    "ret_end_x": null,
+    "fumble_rec": null,
+    "penalty": false
+   },
+   "score": {
+    "DAL": 7,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.828,
+    "caller": 0.828,
+    "delta": 0.0084
+   },
+   "text": "B.Anger punts 53 yards to TB 3, Center-T.Sieg, out of bounds.",
+   "pred": null
+  },
+  {
+   "seq": 44,
+   "id": "4018729801092",
+   "espn_seq": 109200,
+   "src": "espn",
+   "drive": 3,
+   "drive_id": "4018729803",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": false,
+   "kind": "admin",
+   "type": "Official Timeout",
+   "qtr": 2,
+   "clock": "12:26",
+   "clock_s": 746,
+   "t": 1054,
+   "wall": "2026-10-09T00:54:05Z",
+   "pre": null,
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 97,
+    "text": "1st & 10 at TB 3"
+   },
+   "geo": null,
+   "call": null,
+   "result": null,
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8275,
+    "caller": 0.8275,
+    "delta": -0.0005
+   },
+   "text": "Official Timeout at 12:26.",
+   "admin": {
+    "what": "official_timeout",
+    "by": null
+   },
+   "pred": null
+  },
+  {
+   "seq": 85,
+   "id": "4018729802012",
+   "espn_seq": 201200,
+   "src": "espn",
+   "drive": 9,
+   "drive_id": "4018729809",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 2,
+   "clock": "0:54",
+   "clock_s": 54,
+   "t": 1746,
+   "wall": "2026-10-09T01:33:39Z",
+   "pre": {
+    "down": 2,
+    "togo": 10,
+    "yardline_100": 27,
+    "goal_to_go": false,
+    "text": "2nd & 10 at TB 27"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 3,
+    "togo": 6,
+    "yardline_100": 23,
+    "text": "3rd & 6 at TB 23"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 73,
+    "x_end": 77,
+    "x_next": 77,
+    "x_catch": 77,
+    "lat": "right",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 4,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 0,
+    "align": "S"
+   },
+   "result": {
+    "yards": 4,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8421,
+    "caller": 0.8421,
+    "delta": 0.0047
+   },
+   "text": "(Shotgun) D.Prescott pass short right to C.Lamb to TB 23 for 4 yards (K.Scott) [T.Smith].",
+   "pred": null
+  },
+  {
+   "seq": 86,
+   "id": "4018729802037",
+   "espn_seq": 203700,
+   "src": "espn",
+   "drive": 9,
+   "drive_id": "4018729809",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Incompletion",
+   "qtr": 2,
+   "clock": "0:30",
+   "clock_s": 30,
+   "t": 1770,
+   "wall": "2026-10-09T01:34:03Z",
+   "pre": {
+    "down": 3,
+    "togo": 6,
+    "yardline_100": 23,
+    "goal_to_go": false,
+    "text": "3rd & 6 at TB 23"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 4,
+    "togo": 6,
+    "yardline_100": 23,
+    "text": "4th & 6 at TB 23"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 77,
+    "x_end": 77,
+    "x_next": 77,
+    "x_catch": 82,
+    "lat": "middle",
+    "gap": null,
+    "approx": [
+     "x_catch"
+    ]
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": "incomplete",
+    "depth": "short",
+    "air": 5,
+    "air_src": "est",
+    "air_band": [
+     1,
+     10
+    ],
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 7,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8302,
+    "caller": 0.8302,
+    "delta": -0.0119
+   },
+   "text": "(No Huddle, Shotgun) D.Prescott pass incomplete short middle to J.Williams [D.Walker].",
+   "pred": null
+  },
+  {
+   "seq": 87,
+   "id": "4018729802060",
+   "espn_seq": 206000,
+   "src": "espn",
+   "drive": 9,
+   "drive_id": "4018729809",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "fg",
+   "type": "Field Goal Good",
+   "qtr": 2,
+   "clock": "0:21",
+   "clock_s": 21,
+   "t": 1779,
+   "wall": "2026-10-09T01:34:45Z",
+   "pre": {
+    "down": 4,
+    "togo": 6,
+    "yardline_100": 23,
+    "goal_to_go": false,
+    "text": "4th & 6 at TB 23"
+   },
+   "post": null,
+   "geo": {
+    "dir": 1,
+    "x0": 77,
+    "x_end": null,
+    "x_next": null,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "DAL",
+    "kdir": 1,
+    "from_x": 77,
+    "dist": 41,
+    "land_x": null,
+    "ez": false,
+    "touchback": false,
+    "fair_catch": false,
+    "downed": false,
+    "oob": false,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": null,
+    "ret_end_x": null,
+    "fumble_rec": null,
+    "penalty": false,
+    "good": true,
+    "post_x": 110,
+    "x_kick": 69
+   },
+   "score": {
+    "DAL": 10,
+    "TB": 7
+   },
+   "scoring": {
+    "team": "DAL",
+    "type": "FG",
+    "pts": 3,
+    "pat": null
+   },
+   "wp": {
+    "home": 0.8494,
+    "caller": 0.8494,
+    "delta": 0.0192
+   },
+   "text": "B.Aubrey 41 yard field goal is GOOD, Center-T.Sieg, Holder-B.Anger.",
+   "pred": null
+  },
+  {
+   "seq": 88,
+   "id": "4018729802080",
+   "espn_seq": 208000,
+   "src": "espn",
+   "drive": 10,
+   "drive_id": "40187298010",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "kickoff",
+   "type": "Kickoff",
+   "qtr": 2,
+   "clock": "0:21",
+   "clock_s": 21,
+   "t": 1779,
+   "wall": "2026-10-09T01:36:20Z",
+   "pre": null,
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 71,
+    "text": "1st & 10 at TB 29"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 35,
+    "x_end": 71,
+    "x_next": 71,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "DAL",
+    "kdir": 1,
+    "from_x": 35,
+    "dist": 65,
+    "land_x": 100,
+    "ez": false,
+    "touchback": false,
+    "fair_catch": false,
+    "downed": false,
+    "oob": false,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": 29,
+    "ret_end_x": 71,
+    "fumble_rec": null,
+    "penalty": false
+   },
+   "score": {
+    "DAL": 10,
+    "TB": 7
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.8467,
+    "caller": 0.8467,
+    "delta": -0.0027
+   },
+   "text": "B.Aubrey kicks 65 yards from DAL 35 to TB 0. K.Johnson to TB 29 for 29 yards (H.Luepke).",
+   "pred": null
+  },
+  {
+   "seq": 100,
+   "id": "4018729802364",
+   "espn_seq": 236400,
+   "src": "espn",
+   "drive": 12,
+   "drive_id": "40187298012",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 3,
+   "clock": "13:21",
+   "clock_s": 801,
+   "t": 1899,
+   "wall": "2026-10-09T02:01:25Z",
+   "pre": {
+    "down": 2,
+    "togo": 12,
+    "yardline_100": 70,
+    "goal_to_go": false,
+    "text": "2nd & 12 at DAL 30"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 3,
+    "togo": 3,
+    "yardline_100": 61,
+    "text": "3rd & 3 at DAL 39"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 30,
+    "x_end": 39,
+    "x_next": 39,
+    "x_catch": 35,
+    "lat": "middle",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 5,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 4,
+    "align": "S"
+   },
+   "result": {
+    "yards": 9,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.7015,
+    "caller": 0.7015,
+    "delta": 0.0209
+   },
+   "text": "(Shotgun) D.Prescott pass short middle to L.Schoonmaker to DAL 39 for 9 yards (A.Anzalone; I.Melifonwu).",
+   "pred": null
+  },
+  {
+   "seq": 101,
+   "id": "4018729802389",
+   "espn_seq": 238900,
+   "src": "espn",
+   "drive": 12,
+   "drive_id": "40187298012",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 3,
+   "clock": "12:45",
+   "clock_s": 765,
+   "t": 1935,
+   "wall": "2026-10-09T02:02:01Z",
+   "pre": {
+    "down": 3,
+    "togo": 3,
+    "yardline_100": 61,
+    "goal_to_go": false,
+    "text": "3rd & 3 at DAL 39"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 34,
+    "text": "1st & 10 at TB 34"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 39,
+    "x_end": 66,
+    "x_next": 66,
+    "x_catch": 47,
+    "lat": "left",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 8,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 19,
+    "align": "S"
+   },
+   "result": {
+    "yards": 27,
+    "first_down": true,
+    "fd_by": "pass",
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.7483,
+    "caller": 0.7483,
+    "delta": 0.0468
+   },
+   "text": "(Shotgun) D.Prescott pass short left to G.Pickens to TB 34 for 27 yards (I.Melifonwu).",
+   "pred": null
+  },
+  {
+   "seq": 102,
+   "id": "4018729802419",
+   "espn_seq": 241900,
+   "src": "espn",
+   "drive": 12,
+   "drive_id": "40187298012",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Rush",
+   "qtr": 3,
+   "clock": "12:07",
+   "clock_s": 727,
+   "t": 1973,
+   "wall": "2026-10-09T02:02:39Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 34,
+    "goal_to_go": false,
+    "text": "1st & 10 at TB 34"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 2,
+    "togo": 8,
+    "yardline_100": 32,
+    "text": "2nd & 8 at TB 32"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 66,
+    "x_end": 68,
+    "x_next": 68,
+    "x_catch": null,
+    "lat": "middle",
+    "gap": "up the middle",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 2,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.7344,
+    "caller": 0.7344,
+    "delta": -0.0139
+   },
+   "text": "J.Williams up the middle to TB 32 for 2 yards (C.Kancey).",
+   "pred": null
+  },
+  {
+   "seq": 103,
+   "id": "4018729802441",
+   "espn_seq": 244100,
+   "src": "espn",
+   "drive": 12,
+   "drive_id": "40187298012",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 3,
+   "clock": "11:32",
+   "clock_s": 692,
+   "t": 2008,
+   "wall": "2026-10-09T02:03:14Z",
+   "pre": {
+    "down": 2,
+    "togo": 8,
+    "yardline_100": 32,
+    "goal_to_go": false,
+    "text": "2nd & 8 at TB 32"
+   },
+   "post": {
+    "poss": "DAL",
+    "down": 3,
+    "togo": 3,
+    "yardline_100": 27,
+    "text": "3rd & 3 at TB 27"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 68,
+    "x_end": 73,
+    "x_next": 73,
+    "x_catch": 73,
+    "lat": "left",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 5,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 0,
+    "align": "S"
+   },
+   "result": {
+    "yards": 5,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.7456,
+    "caller": 0.7456,
+    "delta": 0.0112
+   },
+   "text": "(Shotgun) D.Prescott pass short left to C.Lamb to TB 27 for 5 yards (J.Parrish).",
+   "pred": null
+  },
+  {
+   "seq": 104,
+   "id": "4018729802466",
+   "espn_seq": 246600,
+   "src": "espn",
+   "drive": 12,
+   "drive_id": "40187298012",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Pass Interception Return",
+   "qtr": 3,
+   "clock": "10:51",
+   "clock_s": 651,
+   "t": 2049,
+   "wall": "2026-10-09T02:03:55Z",
+   "pre": {
+    "down": 3,
+    "togo": 3,
+    "yardline_100": 27,
+    "goal_to_go": false,
+    "text": "3rd & 3 at TB 27"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 75,
+    "text": "1st & 10 at TB 25"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 73,
+    "x_end": 75,
+    "x_next": 75,
+    "x_catch": 76,
+    "lat": "middle",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": null,
+    "depth": "short",
+    "air": 3,
+    "air_src": "int_spot",
+    "air_band": null,
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": true,
+    "turnover_kind": "int",
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.6324,
+    "caller": 0.6324,
+    "delta": -0.1132
+   },
+   "text": "(Shotgun) D.Prescott pass short middle intended for R.Flournoy INTERCEPTED by Y.Diaby at TB 24. Y.Diaby to TB 25 for 1 yard (C.Beebe; T.Booker).",
+   "pred": null
+  },
+  {
+   "seq": 105,
+   "id": "4018729802480",
+   "espn_seq": 248000,
+   "src": "espn",
+   "drive": 12,
+   "drive_id": "40187298012",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": false,
+   "kind": "admin",
+   "type": "Official Timeout",
+   "qtr": 3,
+   "clock": "10:43",
+   "clock_s": 643,
+   "t": 2057,
+   "wall": "2026-10-09T02:05:03Z",
+   "pre": null,
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 75,
+    "text": "1st & 10 at TB 25"
+   },
+   "geo": null,
+   "call": null,
+   "result": null,
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.6314,
+    "caller": 0.6314,
+    "delta": -0.001
+   },
+   "text": "Official Timeout at 10:43.",
+   "admin": {
+    "what": "official_timeout",
+    "by": null
+   },
+   "pred": null
+  },
+  {
+   "seq": 106,
+   "id": "4018729802493",
+   "espn_seq": 249300,
+   "src": "espn",
+   "drive": 13,
+   "drive_id": "40187298013",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "play",
+   "type": "Penalty",
+   "qtr": 3,
+   "clock": "10:43",
+   "clock_s": 643,
+   "t": 2057,
+   "wall": "2026-10-09T02:07:07Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 75,
+    "goal_to_go": false,
+    "text": "1st & 10 at TB 25"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 20,
+    "yardline_100": 85,
+    "text": "1st & 20 at TB 15"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 75,
+    "x_end": 69,
+    "x_next": 85,
+    "x_catch": null,
+    "lat": "left",
+    "gap": "left guard",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 6,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": true,
+    "penalty": {
+     "on": "TB",
+     "foul": "Offensive Holding",
+     "yards": 10,
+     "at_x": 75,
+     "no_play": true,
+     "status": "enforced",
+     "note": "offensive holding on TB"
+    }
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.6864,
+    "caller": 0.6864,
+    "delta": 0.055
+   },
+   "text": "B.Irving left guard to TB 31 for 6 yards (M.Hooker).PENALTY on TB-G.Barton, Offensive Holding, 10 yards, enforced at TB 25 - No Play.",
+   "pred": null
+  },
+  {
+   "seq": 107,
+   "id": "4018729802533",
+   "espn_seq": 253300,
+   "src": "espn",
+   "drive": 13,
+   "drive_id": "40187298013",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "play",
+   "type": "Rush",
+   "qtr": 3,
+   "clock": "10:17",
+   "clock_s": 617,
+   "t": 2083,
+   "wall": "2026-10-09T02:07:58Z",
+   "pre": {
+    "down": 1,
+    "togo": 20,
+    "yardline_100": 85,
+    "goal_to_go": false,
+    "text": "1st & 20 at TB 15"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 2,
+    "togo": 14,
+    "yardline_100": 79,
+    "text": "2nd & 14 at TB 21"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 85,
+    "x_end": 79,
+    "x_next": 79,
+    "x_catch": null,
+    "lat": "left",
+    "gap": "left guard",
+    "approx": []
+   },
+   "call": {
+    "family": "run",
+    "leaf": "run_inside",
+    "outcome": null,
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "S"
+   },
+   "result": {
+    "yards": 6,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.6688,
+    "caller": 0.6688,
+    "delta": -0.0176
+   },
+   "text": "(Shotgun) K.Gainwell left guard to TB 21 for 6 yards (K.Clark; R.Gary).",
+   "pred": null
+  },
+  {
+   "seq": 108,
+   "id": "4018729802555",
+   "espn_seq": 255500,
+   "src": "espn",
+   "drive": 13,
+   "drive_id": "40187298013",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "play",
+   "type": "Pass Reception",
+   "qtr": 3,
+   "clock": "9:36",
+   "clock_s": 576,
+   "t": 2124,
+   "wall": "2026-10-09T02:08:39Z",
+   "pre": {
+    "down": 2,
+    "togo": 14,
+    "yardline_100": 79,
+    "goal_to_go": false,
+    "text": "2nd & 14 at TB 21"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 15,
+    "text": "1st & 10 at DAL 15"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 79,
+    "x_end": 15,
+    "x_next": 15,
+    "x_catch": 46,
+    "lat": "right",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_deep",
+    "outcome": null,
+    "depth": "deep",
+    "air": 33,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 31,
+    "align": "S"
+   },
+   "result": {
+    "yards": 64,
+    "first_down": true,
+    "fd_by": "pass",
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 14
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.492,
+    "caller": 0.492,
+    "delta": -0.1768
+   },
+   "text": "(Shotgun) J.Daniels pass deep right to T.Johnson pushed ob at DAL 15 for 64 yards (M.Hooker).",
+   "pred": null
+  },
+  {
+   "seq": 112,
+   "id": "4018729802660",
+   "espn_seq": 266000,
+   "src": "espn",
+   "drive": 13,
+   "drive_id": "40187298013",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "admin",
+   "type": "Official Timeout",
+   "qtr": 3,
+   "clock": "7:31",
+   "clock_s": 451,
+   "t": 2249,
+   "wall": "2026-10-09T02:11:47Z",
+   "pre": null,
+   "post": null,
+   "geo": null,
+   "call": null,
+   "result": null,
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 21
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.3557,
+    "caller": 0.3557,
+    "delta": -0.0032
+   },
+   "text": "Official Timeout at 07:31.",
+   "admin": {
+    "what": "official_timeout",
+    "by": null
+   },
+   "pred": null
+  },
+  {
+   "seq": 113,
+   "id": "4018729802667",
+   "espn_seq": 266700,
+   "src": "espn",
+   "drive": 14,
+   "drive_id": "40187298014",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": false,
+   "kind": "kickoff",
+   "type": "Kickoff",
+   "qtr": 3,
+   "clock": "7:31",
+   "clock_s": 451,
+   "t": 2249,
+   "wall": "2026-10-09T02:14:46Z",
+   "pre": null,
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 37,
+    "text": "1st & 10 at DAL 37"
+   },
+   "geo": {
+    "dir": 1,
+    "x0": 65,
+    "x_end": 37,
+    "x_next": 37,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": true,
+    "turnover_kind": "fumble",
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "TB",
+    "kdir": -1,
+    "from_x": 65,
+    "dist": 61,
+    "land_x": 4,
+    "ez": false,
+    "touchback": false,
+    "fair_catch": false,
+    "downed": false,
+    "oob": false,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": 24,
+    "ret_end_x": 28,
+    "fumble_rec": {
+     "team": "TB",
+     "x": 37
+    },
+    "penalty": false
+   },
+   "score": {
+    "DAL": 10,
+    "TB": 21
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.2403,
+    "caller": 0.2403,
+    "delta": -0.1154
+   },
+   "text": "C.McLaughlin kicks 61 yards from TB 35 to DAL 4. K.Turpin to DAL 28 for 24 yards (M.Killebrew). FUMBLES (M.Killebrew), RECOVERED by TB-K.Knowles at DAL 37.",
+   "pred": null
+  },
+  {
+   "seq": 114,
+   "id": "4018729802713",
+   "espn_seq": 271300,
+   "src": "espn",
+   "drive": 15,
+   "drive_id": "40187298015",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "play",
+   "type": "Sack",
+   "qtr": 3,
+   "clock": "7:24",
+   "clock_s": 444,
+   "t": 2256,
+   "wall": "2026-10-09T02:16:14Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 37,
+    "goal_to_go": false,
+    "text": "1st & 10 at DAL 37"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 2,
+    "togo": 21,
+    "yardline_100": 48,
+    "text": "2nd & 21 at DAL 48"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 37,
+    "x_end": 48,
+    "x_next": 48,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": null,
+    "outcome": "sack",
+    "depth": null,
+    "air": null,
+    "air_src": null,
+    "air_band": null,
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": -11,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 21
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.325,
+    "caller": 0.325,
+    "delta": 0.0847
+   },
+   "text": "J.Daniels sacked at DAL 48 for -11 yards (M.Lawrence).",
+   "pred": null
+  },
+  {
+   "seq": 115,
+   "id": "4018729802733",
+   "espn_seq": 273300,
+   "src": "espn",
+   "drive": 15,
+   "drive_id": "40187298015",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "play",
+   "type": "Pass Incompletion",
+   "qtr": 3,
+   "clock": "6:37",
+   "clock_s": 397,
+   "t": 2303,
+   "wall": "2026-10-09T02:17:00Z",
+   "pre": {
+    "down": 2,
+    "togo": 21,
+    "yardline_100": 48,
+    "goal_to_go": false,
+    "text": "2nd & 21 at DAL 48"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 3,
+    "togo": 21,
+    "yardline_100": 48,
+    "text": "3rd & 21 at DAL 48"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 48,
+    "x_end": 48,
+    "x_next": 48,
+    "x_catch": 43,
+    "lat": "right",
+    "gap": null,
+    "approx": [
+     "x_catch"
+    ]
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_short",
+    "outcome": "incomplete",
+    "depth": "short",
+    "air": 5,
+    "air_src": "est",
+    "air_band": [
+     1,
+     10
+    ],
+    "yac": null,
+    "align": "U"
+   },
+   "result": {
+    "yards": 0,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 10,
+    "TB": 21
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.3253,
+    "caller": 0.3253,
+    "delta": 0.0003
+   },
+   "text": "J.Daniels pass incomplete short right to K.Gainwell (M.Lawrence).",
+   "pred": null
+  },
+  {
+   "seq": 159,
+   "id": "4018729803742",
+   "espn_seq": 374200,
+   "src": "espn",
+   "drive": 18,
+   "drive_id": "40187298018",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": true,
+   "kind": "play",
+   "type": "Passing Touchdown",
+   "qtr": 4,
+   "clock": "5:26",
+   "clock_s": 326,
+   "t": 3274,
+   "wall": "2026-10-09T02:57:45Z",
+   "pre": {
+    "down": 2,
+    "togo": 10,
+    "yardline_100": 18,
+    "goal_to_go": false,
+    "text": "2nd & 10 at TB 18"
+   },
+   "post": null,
+   "geo": {
+    "dir": 1,
+    "x0": 82,
+    "x_end": 100,
+    "x_next": null,
+    "x_catch": 100,
+    "lat": "left",
+    "gap": null,
+    "approx": []
+   },
+   "call": {
+    "family": "dropback",
+    "leaf": "dropback_mid",
+    "outcome": null,
+    "depth": "deep",
+    "air": 18,
+    "air_src": "yac",
+    "air_band": null,
+    "yac": 0,
+    "align": "S"
+   },
+   "result": {
+    "yards": 18,
+    "first_down": true,
+    "fd_by": "pass",
+    "td": true,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": null,
+   "score": {
+    "DAL": 16,
+    "TB": 24
+   },
+   "scoring": {
+    "team": "DAL",
+    "type": "TD",
+    "pts": 6,
+    "pat": "two_failed"
+   },
+   "wp": {
+    "home": 0.1677,
+    "caller": 0.1677,
+    "delta": 0.1106
+   },
+   "text": "(Shotgun) D.Prescott pass deep left to G.Pickens for 18 yards, TOUCHDOWN. TWO-POINT CONVERSION ATTEMPT. D.Prescott pass to R.Flournoy is incomplete. ATTEMPT FAILS.",
+   "pred": null
+  },
+  {
+   "seq": 160,
+   "id": "4018729803775",
+   "espn_seq": 377500,
+   "src": "espn",
+   "drive": 18,
+   "drive_id": "40187298018",
+   "team": "DAL",
+   "opp": "TB",
+   "offense_is_caller": false,
+   "kind": "admin",
+   "type": "Official Timeout",
+   "qtr": 4,
+   "clock": "5:26",
+   "clock_s": 326,
+   "t": 3274,
+   "wall": "2026-10-09T02:59:09Z",
+   "pre": null,
+   "post": {
+    "poss": "DAL",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 65,
+    "text": "1st & 10 at DAL 35"
+   },
+   "geo": null,
+   "call": null,
+   "result": null,
+   "kick": null,
+   "score": {
+    "DAL": 16,
+    "TB": 24
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.1201,
+    "caller": 0.1201,
+    "delta": -0.0476
+   },
+   "text": "Official Timeout at 05:26.",
+   "admin": {
+    "what": "official_timeout",
+    "by": null
+   },
+   "pred": null
+  },
+  {
+   "seq": 161,
+   "id": "4018729803781",
+   "espn_seq": 378100,
+   "src": "espn",
+   "drive": 19,
+   "drive_id": "40187298019",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "kickoff",
+   "type": "Kickoff",
+   "qtr": 4,
+   "clock": "5:26",
+   "clock_s": 326,
+   "t": 3274,
+   "wall": "2026-10-09T03:01:46Z",
+   "pre": null,
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 65,
+    "text": "1st & 10 at TB 35"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 35,
+    "x_end": 100,
+    "x_next": 65,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": false,
+    "penalty": null
+   },
+   "kick": {
+    "by": "DAL",
+    "kdir": 1,
+    "from_x": 35,
+    "dist": 65,
+    "land_x": 100,
+    "ez": true,
+    "touchback": true,
+    "fair_catch": false,
+    "downed": false,
+    "oob": false,
+    "muffed": false,
+    "blocked": false,
+    "ret_yards": null,
+    "ret_end_x": null,
+    "fumble_rec": null,
+    "penalty": false
+   },
+   "score": {
+    "DAL": 16,
+    "TB": 24
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.0959,
+    "caller": 0.0959,
+    "delta": -0.0242
+   },
+   "text": "B.Aubrey kicks 65 yards from DAL 35 to end zone, Touchback to the TB 35.",
+   "pred": null
+  },
+  {
+   "seq": 162,
+   "id": "4018729803805",
+   "espn_seq": 380500,
+   "src": "espn",
+   "drive": 19,
+   "drive_id": "40187298019",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "penalty",
+   "type": "Penalty",
+   "qtr": 4,
+   "clock": "5:26",
+   "clock_s": 326,
+   "t": 3274,
+   "wall": "2026-10-09T03:02:44Z",
+   "pre": {
+    "down": 1,
+    "togo": 10,
+    "yardline_100": 65,
+    "goal_to_go": false,
+    "text": "1st & 10 at TB 35"
+   },
+   "post": {
+    "poss": "TB",
+    "down": 1,
+    "togo": 15,
+    "yardline_100": 70,
+    "text": "1st & 15 at TB 30"
+   },
+   "geo": {
+    "dir": -1,
+    "x0": 65,
+    "x_end": 65,
+    "x_next": 70,
+    "x_catch": null,
+    "lat": null,
+    "gap": null,
+    "approx": []
+   },
+   "call": null,
+   "result": {
+    "yards": null,
+    "first_down": false,
+    "fd_by": null,
+    "td": false,
+    "turnover": false,
+    "turnover_kind": null,
+    "downs": false,
+    "safety": false,
+    "nullified": true,
+    "penalty": {
+     "on": "TB",
+     "foul": "False Start",
+     "yards": 5,
+     "at_x": 65,
+     "no_play": true,
+     "status": "enforced",
+     "note": "false start on TB"
+    }
+   },
+   "kick": null,
+   "score": {
+    "DAL": 16,
+    "TB": 24
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.1475,
+    "caller": 0.1475,
+    "delta": 0.0516
+   },
+   "text": "** Injury Update: TB-T.Wirfs has returned to the game.  PENALTY on TB-B.Bredeson, False Start, 5 yards, enforced at TB 35 - No Play.",
+   "pred": null
+  },
+  {
+   "seq": 183,
+   "id": "4018729804255",
+   "espn_seq": 425500,
+   "src": "espn",
+   "drive": 21,
+   "drive_id": "40187298021",
+   "team": "TB",
+   "opp": "DAL",
+   "offense_is_caller": false,
+   "kind": "admin",
+   "type": "End of Game",
+   "qtr": 4,
+   "clock": "0:00",
+   "clock_s": 0,
+   "t": 3600,
+   "wall": "2026-10-09T03:18:24Z",
+   "pre": null,
+   "post": null,
+   "geo": null,
+   "call": null,
+   "result": null,
+   "kick": null,
+   "score": {
+    "DAL": 16,
+    "TB": 24
+   },
+   "scoring": null,
+   "wp": {
+    "home": 0.0,
+    "caller": 0.0,
+    "delta": -0.001
+   },
+   "text": "END GAME",
+   "admin": {
+    "what": "end_game",
+    "by": null
+   },
+   "pred": null
+  }
+ ],
+ "snapshots": {
+  "104": {
+   "drives": [
+    {
+     "idx": 1,
+     "id": "4018729801",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 1,
+      "clock": "15:00",
+      "x": 30
+     },
+     "end": {
+      "qtr": 1,
+      "clock": "10:51",
+      "x": 100
+     },
+     "plays": 9,
+     "yards": 70,
+     "time": "4:09",
+     "time_s": 249,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      1,
+      13
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 2,
+     "id": "4018729802",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 1,
+      "clock": "10:51",
+      "x": 73
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "14:53",
+      "x": 0
+     },
+     "plays": 15,
+     "yards": 73,
+     "time": "10:58",
+     "time_s": 658,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      14,
+      36
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 3,
+     "id": "4018729803",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "14:53",
+      "x": 32
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "12:26",
+      "x": 44
+     },
+     "plays": 5,
+     "yards": 12,
+     "time": "2:27",
+     "time_s": 147,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      37,
+      44
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 4,
+     "id": "4018729804",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "12:26",
+      "x": 97
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "11:00",
+      "x": 92
+     },
+     "plays": 3,
+     "yards": 5,
+     "time": "1:26",
+     "time_s": 86,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      45,
+      49
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 5,
+     "id": "4018729805",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "11:00",
+      "x": 41
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "9:13",
+      "x": 53
+     },
+     "plays": 5,
+     "yards": 12,
+     "time": "1:47",
+     "time_s": 107,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      50,
+      57
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 6,
+     "id": "4018729806",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "9:13",
+      "x": 90
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "3:40",
+      "x": 48
+     },
+     "plays": 8,
+     "yards": 42,
+     "time": "5:33",
+     "time_s": 333,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      58,
+      69
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 7,
+     "id": "4018729807",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "3:40",
+      "x": 13
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "3:03",
+      "x": 18
+     },
+     "plays": 3,
+     "yards": 5,
+     "time": "0:37",
+     "time_s": 37,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      70,
+      74
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 8,
+     "id": "4018729808",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "3:03",
+      "x": 52
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "1:52",
+      "x": 51
+     },
+     "plays": 3,
+     "yards": 1,
+     "time": "1:11",
+     "time_s": 71,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      75,
+      80
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 9,
+     "id": "4018729809",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "1:52",
+      "x": 13
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "0:21",
+      "x": 77
+     },
+     "plays": 6,
+     "yards": 64,
+     "time": "1:31",
+     "time_s": 91,
+     "result": "FG",
+     "result_text": "Field Goal",
+     "complete": true,
+     "seq": [
+      81,
+      87
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 10,
+     "id": "40187298010",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "0:21",
+      "x": 71
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "0:00",
+      "x": 56
+     },
+     "plays": 3,
+     "yards": 34,
+     "time": "0:21",
+     "time_s": 21,
+     "result": "END OF HALF",
+     "result_text": "End of Half",
+     "complete": true,
+     "seq": [
+      88,
+      93
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 11,
+     "id": "40187298011",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 3,
+      "clock": "15:00",
+      "x": 86
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "14:00",
+      "x": 0
+     },
+     "plays": 2,
+     "yards": 86,
+     "time": "1:00",
+     "time_s": 60,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      94,
+      97
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 12,
+     "id": "40187298012",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 3,
+      "clock": "14:00",
+      "x": 32
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "10:43",
+      "x": 73
+     },
+     "plays": 6,
+     "yards": 41,
+     "time": "3:17",
+     "time_s": 197,
+     "result": "INT",
+     "result_text": "Interception",
+     "complete": true,
+     "seq": [
+      98,
+      104
+     ],
+     "engine_drive": null
+    }
+   ],
+   "status": {
+    "state": "in",
+    "qtr": 3,
+    "clock": "10:51",
+    "poss": "TB",
+    "score": {
+     "DAL": 10,
+     "TB": 14
+    },
+    "down_text": "1st & 10 at TB 25",
+    "ball_x": 75,
+    "ball_kind": "snap",
+    "timeouts": {
+     "TB": 3,
+     "DAL": 3
+    },
+    "last_seq": 104,
+    "wp_home": 0.6324
+   },
+   "box": {
+    "TB": {
+     "plays": 34,
+     "yards": 241,
+     "rush": {
+      "att": 18,
+      "yds": 150
+     },
+     "pass": {
+      "comp": 12,
+      "att": 16,
+      "net": 91,
+      "int": 0,
+      "sacks": 0,
+      "sack_yds": 0
+     },
+     "first_downs": {
+      "total": 15,
+      "rush": 5,
+      "pass": 7,
+      "pen": 3
+     },
+     "third": {
+      "conv": 4,
+      "att": 7
+     },
+     "fourth": {
+      "conv": 0,
+      "att": 0
+     },
+     "turnovers": 0,
+     "fumbles_lost": 0,
+     "penalties": {
+      "n": 9,
+      "yds": 57
+     },
+     "top_s": 1229,
+     "top": "20:29"
+    },
+    "DAL": {
+     "plays": 33,
+     "yards": 187,
+     "rush": {
+      "att": 9,
+      "yds": 32
+     },
+     "pass": {
+      "comp": 12,
+      "att": 24,
+      "net": 155,
+      "int": 1,
+      "sacks": 0,
+      "sack_yds": 0
+     },
+     "first_downs": {
+      "total": 11,
+      "rush": 3,
+      "pass": 5,
+      "pen": 3
+     },
+     "third": {
+      "conv": 2,
+      "att": 7
+     },
+     "fourth": {
+      "conv": 0,
+      "att": 0
+     },
+     "turnovers": 1,
+     "fumbles_lost": 0,
+     "penalties": {
+      "n": 5,
+      "yds": 40
+     },
+     "top_s": 828,
+     "top": "13:48"
+    }
+   },
+   "unlinked": []
+  },
+  "183": {
+   "drives": [
+    {
+     "idx": 1,
+     "id": "4018729801",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 1,
+      "clock": "15:00",
+      "x": 30
+     },
+     "end": {
+      "qtr": 1,
+      "clock": "10:51",
+      "x": 100
+     },
+     "plays": 9,
+     "yards": 70,
+     "time": "4:09",
+     "time_s": 249,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      1,
+      13
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 2,
+     "id": "4018729802",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 1,
+      "clock": "10:51",
+      "x": 73
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "14:53",
+      "x": 0
+     },
+     "plays": 15,
+     "yards": 73,
+     "time": "10:58",
+     "time_s": 658,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      14,
+      36
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 3,
+     "id": "4018729803",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "14:53",
+      "x": 32
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "12:26",
+      "x": 44
+     },
+     "plays": 5,
+     "yards": 12,
+     "time": "2:27",
+     "time_s": 147,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      37,
+      44
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 4,
+     "id": "4018729804",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "12:26",
+      "x": 97
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "11:00",
+      "x": 92
+     },
+     "plays": 3,
+     "yards": 5,
+     "time": "1:26",
+     "time_s": 86,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      45,
+      49
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 5,
+     "id": "4018729805",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "11:00",
+      "x": 41
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "9:13",
+      "x": 53
+     },
+     "plays": 5,
+     "yards": 12,
+     "time": "1:47",
+     "time_s": 107,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      50,
+      57
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 6,
+     "id": "4018729806",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "9:13",
+      "x": 90
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "3:40",
+      "x": 48
+     },
+     "plays": 8,
+     "yards": 42,
+     "time": "5:33",
+     "time_s": 333,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      58,
+      69
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 7,
+     "id": "4018729807",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "3:40",
+      "x": 13
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "3:03",
+      "x": 18
+     },
+     "plays": 3,
+     "yards": 5,
+     "time": "0:37",
+     "time_s": 37,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      70,
+      74
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 8,
+     "id": "4018729808",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "3:03",
+      "x": 52
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "1:52",
+      "x": 51
+     },
+     "plays": 3,
+     "yards": 1,
+     "time": "1:11",
+     "time_s": 71,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      75,
+      80
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 9,
+     "id": "4018729809",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 2,
+      "clock": "1:52",
+      "x": 13
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "0:21",
+      "x": 77
+     },
+     "plays": 6,
+     "yards": 64,
+     "time": "1:31",
+     "time_s": 91,
+     "result": "FG",
+     "result_text": "Field Goal",
+     "complete": true,
+     "seq": [
+      81,
+      87
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 10,
+     "id": "40187298010",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 2,
+      "clock": "0:21",
+      "x": 71
+     },
+     "end": {
+      "qtr": 2,
+      "clock": "0:00",
+      "x": 56
+     },
+     "plays": 3,
+     "yards": 34,
+     "time": "0:21",
+     "time_s": 21,
+     "result": "END OF HALF",
+     "result_text": "End of Half",
+     "complete": true,
+     "seq": [
+      88,
+      93
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 11,
+     "id": "40187298011",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 3,
+      "clock": "15:00",
+      "x": 86
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "14:00",
+      "x": 0
+     },
+     "plays": 2,
+     "yards": 86,
+     "time": "1:00",
+     "time_s": 60,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      94,
+      97
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 12,
+     "id": "40187298012",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 3,
+      "clock": "14:00",
+      "x": 32
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "10:43",
+      "x": 73
+     },
+     "plays": 6,
+     "yards": 41,
+     "time": "3:17",
+     "time_s": 197,
+     "result": "INT",
+     "result_text": "Interception",
+     "complete": true,
+     "seq": [
+      98,
+      105
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 13,
+     "id": "40187298013",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 3,
+      "clock": "10:43",
+      "x": 75
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "7:31",
+      "x": 0
+     },
+     "plays": 5,
+     "yards": 75,
+     "time": "3:12",
+     "time_s": 192,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      106,
+      112
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 14,
+     "id": "40187298014",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 3,
+      "clock": "7:31",
+      "x": 28
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "7:24",
+      "x": 28
+     },
+     "plays": 0,
+     "yards": 0,
+     "time": "0:07",
+     "time_s": 7,
+     "result": "FUMBLE",
+     "result_text": "Fumble",
+     "complete": true,
+     "seq": [
+      113,
+      113
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 15,
+     "id": "40187298015",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 3,
+      "clock": "7:24",
+      "x": 37
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "2:58",
+      "x": 23
+     },
+     "plays": 8,
+     "yards": 14,
+     "time": "4:26",
+     "time_s": 266,
+     "result": "FG",
+     "result_text": "Field Goal",
+     "complete": true,
+     "seq": [
+      114,
+      124
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 16,
+     "id": "40187298016",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 3,
+      "clock": "2:58",
+      "x": 25
+     },
+     "end": {
+      "qtr": 3,
+      "clock": "1:46",
+      "x": 43
+     },
+     "plays": 5,
+     "yards": 18,
+     "time": "1:12",
+     "time_s": 72,
+     "result": "DOWNS",
+     "result_text": "Downs",
+     "complete": true,
+     "seq": [
+      125,
+      131
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 17,
+     "id": "40187298017",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 3,
+      "clock": "1:46",
+      "x": 42
+     },
+     "end": {
+      "qtr": 4,
+      "clock": "8:32",
+      "x": 1
+     },
+     "plays": 12,
+     "yards": 41,
+     "time": "8:14",
+     "time_s": 494,
+     "result": "DOWNS",
+     "result_text": "Downs",
+     "complete": true,
+     "seq": [
+      132,
+      149
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 18,
+     "id": "40187298018",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 4,
+      "clock": "8:32",
+      "x": 1
+     },
+     "end": {
+      "qtr": 4,
+      "clock": "5:26",
+      "x": 100
+     },
+     "plays": 10,
+     "yards": 99,
+     "time": "3:06",
+     "time_s": 186,
+     "result": "TD",
+     "result_text": "Touchdown",
+     "complete": true,
+     "seq": [
+      150,
+      160
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 19,
+     "id": "40187298019",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 4,
+      "clock": "5:26",
+      "x": 65
+     },
+     "end": {
+      "qtr": 4,
+      "clock": "3:42",
+      "x": 63
+     },
+     "plays": 3,
+     "yards": 2,
+     "time": "1:44",
+     "time_s": 104,
+     "result": "PUNT",
+     "result_text": "Punt",
+     "complete": true,
+     "seq": [
+      161,
+      167
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 20,
+     "id": "40187298020",
+     "team": "DAL",
+     "offense_is_caller": true,
+     "start": {
+      "qtr": 4,
+      "clock": "3:42",
+      "x": 24
+     },
+     "end": {
+      "qtr": 4,
+      "clock": "1:16",
+      "x": 76
+     },
+     "plays": 7,
+     "yards": 52,
+     "time": "2:26",
+     "time_s": 146,
+     "result": "INT",
+     "result_text": "Interception",
+     "complete": true,
+     "seq": [
+      168,
+      176
+     ],
+     "engine_drive": null
+    },
+    {
+     "idx": 21,
+     "id": "40187298021",
+     "team": "TB",
+     "offense_is_caller": false,
+     "start": {
+      "qtr": 4,
+      "clock": "1:16",
+      "x": 88
+     },
+     "end": {
+      "qtr": 4,
+      "clock": "0:00",
+      "x": 69
+     },
+     "plays": 4,
+     "yards": 18,
+     "time": "1:16",
+     "time_s": 76,
+     "result": "END OF GAME",
+     "result_text": "End of Game",
+     "complete": true,
+     "seq": [
+      177,
+      183
+     ],
+     "engine_drive": null
+    }
+   ],
+   "status": {
+    "state": "post",
+    "qtr": 4,
+    "clock": "0:00",
+    "poss": null,
+    "score": {
+     "DAL": 16,
+     "TB": 24
+    },
+    "down_text": null,
+    "ball_x": null,
+    "ball_kind": null,
+    "timeouts": {
+     "TB": 2,
+     "DAL": 1
+    },
+    "last_seq": 183,
+    "wp_home": 0.0
+   },
+   "box": {
+    "TB": {
+     "plays": 65,
+     "yards": 419,
+     "rush": {
+      "att": 39,
+      "yds": 241
+     },
+     "pass": {
+      "comp": 19,
+      "att": 25,
+      "net": 178,
+      "int": 0,
+      "sacks": 1,
+      "sack_yds": 11
+     },
+     "first_downs": {
+      "total": 24,
+      "rush": 10,
+      "pass": 10,
+      "pen": 4
+     },
+     "third": {
+      "conv": 7,
+      "att": 13
+     },
+     "fourth": {
+      "conv": 0,
+      "att": 1
+     },
+     "turnovers": 0,
+     "fumbles_lost": 0,
+     "penalties": {
+      "n": 14,
+      "yds": 92
+     },
+     "top_s": 2361,
+     "top": "39:21"
+    },
+    "DAL": {
+     "plays": 55,
+     "yards": 366,
+     "rush": {
+      "att": 13,
+      "yds": 50
+     },
+     "pass": {
+      "comp": 24,
+      "att": 42,
+      "net": 316,
+      "int": 2,
+      "sacks": 0,
+      "sack_yds": 0
+     },
+     "first_downs": {
+      "total": 20,
+      "rush": 5,
+      "pass": 12,
+      "pen": 3
+     },
+     "third": {
+      "conv": 4,
+      "att": 10
+     },
+     "fourth": {
+      "conv": 0,
+      "att": 1
+     },
+     "turnovers": 3,
+     "fumbles_lost": 1,
+     "penalties": {
+      "n": 7,
+      "yds": 57
+     },
+     "top_s": 1239,
+     "top": "20:39"
+    }
+   },
+   "unlinked": []
+  }
+ },
+ "provenance": "timeline.response over data/espn/summary_401872980_final.json, every play applied; rows kept in blocks 1-15, 41-44, 85-88, 100-108, 112-115, 159-162, 183-183; pred on seq 2 quoted from data-contract.md B2; snapshots = responses at n 104, 183"
+}

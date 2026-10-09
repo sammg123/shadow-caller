@@ -1,0 +1,510 @@
+{
+ "drive_active": false,
+ "drive_n": 0,
+ "family_names": {
+  "dropback": "Dropback pass",
+  "pa": "Play-action",
+  "rpo": "RPO",
+  "run": "Run",
+  "screen": "Screen"
+ },
+ "feed": {
+  "detail": "",
+  "event_id": "401872980",
+  "last_play": null,
+  "last_poll": null,
+  "on": false,
+  "plays_logged": 0,
+  "skipped": null,
+  "state": "off"
+ },
+ "game": {
+  "espn_event": "401872980",
+  "game_id": "2026_05_TB_DAL",
+  "label": "Buccaneers at Cowboys, Thursday Night Football, Oct 8",
+  "offense": "DAL",
+  "offense_is_home": true,
+  "offense_spread": 8.5,
+  "opponent": "TB",
+  "total_line": 48.5
+ },
+ "keys": {
+  "A": [
+   {
+    "leaf": "pa_short",
+    "name": "PA short (0–9)"
+   },
+   {
+    "leaf": "pa_mid",
+    "name": "PA intermediate (10–19)"
+   },
+   {
+    "leaf": "pa_deep",
+    "name": "PA deep shot (20+)"
+   }
+  ],
+  "J": [
+   {
+    "leaf": "run_ot_left",
+    "name": "Off-tackle left"
+   },
+   {
+    "leaf": "run_edge_left",
+    "name": "Outside left (edge)"
+   }
+  ],
+  "K": [
+   {
+    "leaf": "run_inside",
+    "name": "Inside run (A/B gap)"
+   }
+  ],
+  "L": [
+   {
+    "leaf": "run_ot_right",
+    "name": "Off-tackle right"
+   },
+   {
+    "leaf": "run_edge_right",
+    "name": "Outside right (edge)"
+   }
+  ],
+  "N": [
+   {
+    "leaf": "screen",
+    "name": "Screen"
+   }
+  ],
+  "O": [
+   {
+    "leaf": "rpo_run",
+    "name": "RPO, handed off or kept"
+   },
+   {
+    "leaf": "rpo_throw",
+    "name": "RPO, thrown"
+   }
+  ],
+  "P": [
+   {
+    "leaf": "dropback_short",
+    "name": "Short (0–9 air yds)"
+   },
+   {
+    "leaf": "dropback_mid",
+    "name": "Intermediate (10–19)"
+   },
+   {
+    "leaf": "dropback_deep",
+    "name": "Deep shot (20+)"
+   }
+  ],
+  "R": [
+   {
+    "leaf": "run_inside",
+    "name": "Inside run (A/B gap)"
+   }
+  ]
+ },
+ "leaf_names": {
+  "dropback_deep": "Deep shot (20+)",
+  "dropback_mid": "Intermediate (10–19)",
+  "dropback_short": "Short (0–9 air yds)",
+  "pa_deep": "PA deep shot (20+)",
+  "pa_mid": "PA intermediate (10–19)",
+  "pa_short": "PA short (0–9)",
+  "rpo_run": "RPO, handed off or kept",
+  "rpo_throw": "RPO, thrown",
+  "run_edge_left": "Outside left (edge)",
+  "run_edge_right": "Outside right (edge)",
+  "run_inside": "Inside run (A/B gap)",
+  "run_ot_left": "Off-tackle left",
+  "run_ot_right": "Off-tackle right",
+  "screen": "Screen"
+ },
+ "log": [],
+ "memory": {
+  "prev": null,
+  "script_plays": 15,
+  "snap_n": 0,
+  "value_gap": 0.0
+ },
+ "message": "Set the start of Dallas's first drive.",
+ "metrics": {
+  "n": 0
+ },
+ "penalties": {
+  "12D": {
+   "against": "def",
+   "first": false,
+   "label": "Too many men on defense",
+   "lod": false,
+   "presnap": true,
+   "yards": 5
+  },
+  "DH": {
+   "against": "def",
+   "first": true,
+   "label": "Defensive holding",
+   "lod": false,
+   "presnap": false,
+   "yards": 5
+  },
+  "DOG": {
+   "against": "off",
+   "first": false,
+   "label": "Delay of game",
+   "lod": false,
+   "presnap": true,
+   "yards": 5
+  },
+  "DPI": {
+   "against": "def",
+   "first": true,
+   "label": "Defensive pass interference",
+   "lod": false,
+   "presnap": false,
+   "yards": "spot"
+  },
+  "FM": {
+   "against": "def",
+   "first": true,
+   "label": "Face mask",
+   "lod": false,
+   "presnap": false,
+   "yards": 15
+  },
+  "FS": {
+   "against": "off",
+   "first": false,
+   "label": "False start",
+   "lod": false,
+   "presnap": true,
+   "yards": 5
+  },
+  "IBB": {
+   "against": "off",
+   "first": false,
+   "label": "Illegal block in the back",
+   "lod": false,
+   "presnap": false,
+   "yards": 10
+  },
+  "IC": {
+   "against": "def",
+   "first": true,
+   "label": "Illegal contact",
+   "lod": false,
+   "presnap": false,
+   "yards": 5
+  },
+  "IG": {
+   "against": "off",
+   "first": false,
+   "label": "Intentional grounding",
+   "lod": true,
+   "presnap": false,
+   "yards": 10
+  },
+  "ILF": {
+   "against": "off",
+   "first": false,
+   "label": "Illegal formation / shift",
+   "lod": false,
+   "presnap": false,
+   "yards": 5
+  },
+  "OFFSET": {
+   "against": null,
+   "first": false,
+   "label": "Offsetting penalties, replay the down",
+   "lod": false,
+   "presnap": false,
+   "yards": 0
+  },
+  "OFFSIDE": {
+   "against": "def",
+   "first": false,
+   "label": "Offside / encroachment / neutral zone",
+   "lod": false,
+   "presnap": true,
+   "yards": 5
+  },
+  "OH": {
+   "against": "off",
+   "first": false,
+   "label": "Offensive holding",
+   "lod": false,
+   "presnap": false,
+   "yards": 10
+  },
+  "OPI": {
+   "against": "off",
+   "first": false,
+   "label": "Offensive pass interference",
+   "lod": false,
+   "presnap": false,
+   "yards": 10
+  },
+  "OTHER_D": {
+   "against": "def",
+   "first": false,
+   "label": "Penalty on defense",
+   "lod": false,
+   "presnap": false,
+   "yards": "box"
+  },
+  "OTHER_O": {
+   "against": "off",
+   "first": false,
+   "label": "Penalty on offense",
+   "lod": false,
+   "presnap": false,
+   "yards": "box"
+  },
+  "RTP": {
+   "against": "def",
+   "first": true,
+   "label": "Roughing the passer",
+   "lod": false,
+   "presnap": false,
+   "yards": 15
+  },
+  "URD": {
+   "against": "def",
+   "first": true,
+   "label": "Unnecessary roughness on defense",
+   "lod": false,
+   "presnap": false,
+   "yards": 15
+  },
+  "URO": {
+   "against": "off",
+   "first": false,
+   "label": "Unnecessary roughness on offense",
+   "lod": false,
+   "presnap": false,
+   "yards": 15
+  }
+ },
+ "prediction": null,
+ "profile": {
+  "alpha": 0.1,
+  "built_at": "2026-10-08T23:47:22",
+  "by_down": [
+   {
+    "actual": 0.503257328990228,
+    "down": 1,
+    "league_expected": 0.5392137037272364,
+    "n": 614
+   },
+   {
+    "actual": 0.6524663677130045,
+    "down": 2,
+    "league_expected": 0.6378789408206866,
+    "n": 446
+   },
+   {
+    "actual": 0.8622047244094488,
+    "down": 3,
+    "league_expected": 0.8259319645255544,
+    "n": 254
+   },
+   {
+    "actual": 0.7837837837837838,
+    "down": 4,
+    "league_expected": 0.684165844291885,
+    "n": 37
+   }
+  ],
+  "caller": "Brian Schottenheimer",
+  "coefs": {
+   "dq": {
+    "est": 0.4490545152393998,
+    "group": "memory",
+    "hi": 0.8201512876137959,
+    "label": "Value gap (what's been working)",
+    "lo": 0.053642751161014184
+   },
+   "early_down": {
+    "est": -0.5940779826634233,
+    "group": "habit",
+    "hi": -0.2664954046910238,
+    "label": "Early downs (1st/2nd)",
+    "lo": -0.8819580438591899
+   },
+   "explosive_prev": {
+    "est": -0.4227536796620258,
+    "group": "memory",
+    "hi": -0.03491418542221448,
+    "label": "After a 20+ yard gain",
+    "lo": -0.8134620044952688
+   },
+   "intercept": {
+    "est": 0.5688829190489698,
+    "group": "habit",
+    "hi": 0.8711596571301631,
+    "label": "Overall lean",
+    "lo": 0.1922353649037366
+   },
+   "last": {
+    "est": -0.44854829705817084,
+    "group": "memory",
+    "hi": -0.26274237823427626,
+    "label": "Repeat last call (stickiness)",
+    "lo": -0.6295585508324291
+   },
+   "last_fail": {
+    "est": 0.2292929909064519,
+    "group": "memory",
+    "hi": 0.5626169635850317,
+    "label": "After a failed play",
+    "lo": -0.16516451083876263
+   },
+   "red_zone": {
+    "est": 0.08669789717215533,
+    "group": "habit",
+    "hi": 0.32978510655868226,
+    "label": "Red zone",
+    "lo": -0.1834627935269211
+   },
+   "sack_prev": {
+    "est": -0.22714786366387432,
+    "group": "memory",
+    "hi": 0.32629503182906305,
+    "label": "After a sack",
+    "lo": -0.697086342841922
+   },
+   "third_long": {
+    "est": -0.42881322077284495,
+    "group": "habit",
+    "hi": 0.06148938788406505,
+    "label": "3rd & 4+",
+    "lo": -0.8441710761817315
+   },
+   "trailing9": {
+    "est": 0.011803571527121373,
+    "group": "habit",
+    "hi": 0.25794412854894727,
+    "label": "Trailing by 9+",
+    "lo": -0.1487399669100117
+   }
+  },
+  "cv_logloss": {
+   "habits": 0.5319515904791661,
+   "habits_plus_memory": 0.5248158837313505,
+   "league_baseline": 0.5321692392811415,
+   "nflfastr_xpass_reference": 0.532210749296659
+  },
+  "dropback_rate": {
+   "actual": 0.6276831976313841,
+   "league_expected": 0.6296610487955885
+  },
+  "granular": {
+   "cv": {
+    "family": {
+     "his": 1.033582887345055,
+     "lambda": 100.0,
+     "league": 1.0371410049460863
+    },
+    "pass_depth": {
+     "his": 0.8106336499547369,
+     "lambda": 3.0,
+     "league": 0.8165418762341072,
+     "n": 715
+    },
+    "run_gap": {
+     "his": 1.250839431685996,
+     "lambda": 10.0,
+     "league": 1.2630137316370478,
+     "n": 449
+    },
+    "specific_play": {
+     "logloss_his": 1.9684741363280982,
+     "logloss_league": 1.9782001399673605,
+     "n": 1270,
+     "top1_his": 0.37559055118110235,
+     "top1_league": 0.37559055118110235,
+     "top3_his": 0.65748031496063
+    }
+   },
+   "family_rates": {
+    "dropback": {
+     "his": 0.43449296817172467,
+     "league_expected": 0.44599141954472477
+    },
+    "pa": {
+     "his": 0.15173945225758698,
+     "league_expected": 0.12280460272615583
+    },
+    "rpo": {
+     "his": 0.050333086602516654,
+     "league_expected": 0.049637819601679393
+    },
+    "run": {
+     "his": 0.33530717986676534,
+     "league_expected": 0.3386825521717687
+    },
+    "screen": {
+     "his": 0.028127313101406367,
+     "league_expected": 0.04288360595567141
+    }
+   },
+   "n_snaps": 1351,
+   "rpo_throw": {
+    "his": 0.2752887219581992,
+    "his_n": 68,
+    "league": 0.3112703766160764
+   }
+  },
+  "lambda": 3.0,
+  "n_games": 21,
+  "n_snaps": 1351,
+  "q0": 0.5092524056254626,
+  "seasons": [
+   2025,
+   2026
+  ],
+  "sklearn": "1.9.1",
+  "stage1_check": {
+   "logloss_constant": 0.6721973788841601,
+   "logloss_nflfastr_xpass": 0.5354508496025102,
+   "logloss_ours": 0.5267817625779824,
+   "n": 33401,
+   "test_season": 2025
+  },
+  "team": "DAL"
+ },
+ "sit": {
+  "clock": 900,
+  "clock_estimated": false,
+  "clock_str": "15:00",
+  "down": 1,
+  "qtr": 1,
+  "score_off": 0,
+  "score_opp": 0,
+  "togo": 10,
+  "yardline_100": 75
+ },
+ "timeline": {
+  "epoch": "caec-2",
+  "mode": "manual",
+  "n": 0,
+  "source": "log"
+ },
+ "version": 1,
+ "watch": {
+  "backup": null,
+  "error": null,
+  "event_id": null,
+  "feed_was_on": false,
+  "ff_until": 0,
+  "idx": 0,
+  "next_at": null,
+  "next_kind": null,
+  "speed": null,
+  "started_at": null,
+  "state": "idle",
+  "total": 0
+ }
+}

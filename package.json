@@ -1,0 +1,11 @@
+{
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.8"
+  },
+  "scripts": {
+    "test:js": "node --test 'tests/js/**/*.test.mjs'",
+    "test:js:cov": "node --test --experimental-test-coverage --test-coverage-include='static/js/**' --test-coverage-lines=80 --test-coverage-functions=80 --test-coverage-branches=70 'tests/js/**/*.test.mjs'"
+  }
+}
