@@ -3,7 +3,7 @@ drive summaries. Runs in a sandbox: data/live_state.json and data/shadow.duckdb 
 import copy
 
 import pytest
-from conftest import nfl_id, scrimmage
+from helpers import nfl_id, scrimmage
 
 from espn_feed import iter_plays
 

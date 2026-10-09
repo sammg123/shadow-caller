@@ -1,7 +1,7 @@
 """ESPN parser checked play by play against nflverse for TB at DAL, Oct 8 2026 (ESPN event 401872980),
 plus real plays from other 2026 games for cases this game didn't have."""
 import pytest
-from conftest import nfl_id, scrimmage
+from helpers import nfl_id, scrimmage
 
 from espn_feed import classify, iter_plays, situation
 from granular import depth_of, run_leaf

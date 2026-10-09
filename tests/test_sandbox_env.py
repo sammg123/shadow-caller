@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 
-from conftest import ESPN_EVENT, ESPN_FILE, ROOT
+from helpers import ESPN_EVENT, ESPN_FILE, ROOT
 
 
 def run_py(code, env_extra):
