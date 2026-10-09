@@ -4,6 +4,9 @@
  *
  * A Plan is { totalMs, steps: [{ index, startMs, endMs }] } with one entry per drawing step, in order. Steps run
  * one after another; the row then holds for `holdMs`. A normal row lasts minRowMs to maxRowMs (2 to 4 s at 1x).
+ * Shapes follow docs/design/play-drawing.md: there is no snap phase, so the first step leaves the line of scrimmage
+ * at t = 0; a pass arc flies, then the YAC grows straight from the catch (the catch dot takes no time); a run line
+ * grows from the line of scrimmage and slows into the tackle; an incompletion's X pops in where the arc lands.
  */
 import { deepFreeze } from "../core/domain.js";
 import { isFiniteNum, requireNum } from "./grammar.js";
@@ -40,11 +43,13 @@ export const EASE = Object.freeze({
   inOutSine: (u) => -(Math.cos(Math.PI * u) - 1) / 2,
 });
 
-const SETTLE_ROLES = new Set(["snap", "hold", "march"]);
+/** The holder's set and the penalty walk ease in and out; every other line on the turf is a carry. */
+const SETTLE_ROLES = new Set(["hold", "march"]);
+/** Marks that appear the instant the ball arrives: the catch dot, so the YAC grows straight from it. */
+const INSTANT_MARKS = new Set(["catch"]);
 
 /** How a step moves: flights keep their ground speed, carries slow into the tackle, walks ease in and out. */
 export function easeFor(step) {
-  if (step?.t === "corridor") return EASE.inOutQuad;
   if (step?.t !== "ground") return EASE.linear;
   return SETTLE_ROLES.has(step.role) ? EASE.inOutCubic : EASE.outCubic;
 }
@@ -64,23 +69,7 @@ export function sampleLine(from, to, u) {
   return { x: from.x + (to.x - from.x) * k, y: from.y + (to.y - from.y) * k };
 }
 
-function lengthOf(pts) {
-  return pts.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.x - pts[i].x, p.y - pts[i].y), 0);
-}
-
-function sampleTrackPath(pts, u) {
-  const total = lengthOf(pts);
-  if (total === 0) return { x: pts[0].x, y: pts[0].y };
-  const legs = pts.slice(1).map((p, i) => ({ a: pts[i], b: p, len: Math.hypot(p.x - pts[i].x, p.y - pts[i].y) }));
-  const target = clamp01(u) * total;
-  const found = legs.reduce((acc, leg) => {
-    if (acc.hit) return acc;
-    if (acc.walked + leg.len >= target) return { hit: leg, walked: acc.walked };
-    return { hit: null, walked: acc.walked + leg.len };
-  }, { hit: null, walked: 0 });
-  const leg = found.hit ?? legs[legs.length - 1];
-  return sampleLine(leg.a, leg.b, leg.len === 0 ? 1 : (target - found.walked) / leg.len);
-}
+const lengthOf = ([a, b]) => Math.hypot(b.x - a.x, b.y - a.y);
 
 function segmentOf(step, index, at) {
   const base = { index, ghosted: Boolean(step.ghosted) };
@@ -91,19 +80,12 @@ function segmentOf(step, index, at) {
   if (step.t === "ground") {
     return { seg: { ...base, kind: "line", moves: true, pts: [step.from, step.to] }, at: { ...step.to, h: 0 } };
   }
-  if (step.t === "corridor") {
-    const lane = [{ x: step.x0, y: step.yC }, { x: step.x1, y: step.yC }];
-    const entry = at ?? lane[0];
-    const pts = entry.x === lane[0].x && entry.y === lane[0].y ? lane : [entry, ...lane];
-    return { seg: { ...base, kind: "path", moves: true, pts }, at: { ...lane[1], h: 0 } };
-  }
   return { seg: { ...base, kind: "still", moves: false, pts: at ? [at] : [] }, at };
 }
 
 /**
- * The ball's track through a drawing, one segment per step: "arc" (from, to, apex, endH), "line" (from, to),
- * "path" (a lane, entered from wherever the ball was: no route is invented, the lane is the stroke) or "still"
- * (marks, areas and bands: the ball waits where it is).
+ * The ball's track through a drawing, one segment per step: "arc" (from, to, apex, endH), "line" (from, to: a flat
+ * line on the turf) or "still" (marks: the ball waits where it is).
  */
 export function trackOf(drawing) {
   const steps = drawing?.steps ?? [];
@@ -118,7 +100,7 @@ export function trackOf(drawing) {
 function positionOn(seg, u) {
   if (seg.kind === "arc") return sampleArc(seg.pts[0], seg.pts[1], seg.apex, seg.endH, u);
   if (seg.kind === "still") return { x: seg.pts[0].x, y: seg.pts[0].y, h: seg.pts[0].h ?? 0 };
-  return { ...sampleTrackPath(seg.pts, u), h: 0 };
+  return { ...sampleLine(seg.pts[0], seg.pts[1], u), h: 0 };
 }
 
 // ---------------------------------------------------------------- plans
@@ -137,10 +119,8 @@ function stepMs(step, seg, m) {
     const speed = step.role === "pass" ? m.airYps : m.kickYps;
     return Math.max(m.minStepMs, (lengthOf(seg.pts) / speed) * MS_PER_S);
   }
-  if (step.t === "ground" || step.t === "corridor") {
-    return Math.max(m.minStepMs, (lengthOf(seg.pts) / m.groundYps) * MS_PER_S);
-  }
-  return m.markMs;
+  if (step.t === "ground") return Math.max(m.minStepMs, (lengthOf(seg.pts) / m.groundYps) * MS_PER_S);
+  return INSTANT_MARKS.has(step.role) ? 0 : m.markMs;
 }
 
 function scaled(plan, totalMs) {
@@ -149,7 +129,8 @@ function scaled(plan, totalMs) {
     steps: plan.steps.map((s) => ({ index: s.index, startMs: s.startMs * k, endMs: s.endMs * k })) });
 }
 
-/** Step times for a drawing: length / speed (at least minStepMs), marks take markMs, then holdMs; 2 to 4 s. */
+/** Step times for a drawing: length / speed (at least minStepMs), marks take markMs (the catch dot none), then
+ * holdMs; scaled into minRowMs..maxRowMs (2 to 4 s at the default motion). */
 export function planDrawing(drawing, motion = DEFAULT_MOTION) {
   const m = resolveMotion(motion);
   const steps = drawing?.steps ?? [];

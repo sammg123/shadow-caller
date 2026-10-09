@@ -1,4 +1,9 @@
 /**
+ * @deprecated since 2026-10-09 (v1.4): use field/shadows.js. docs/design/play-drawing.md (Sam's binding direction)
+ * replaces these zones and bands with shadow plays: the top 2 drawn as dashed, translucent arcs and lines from the
+ * line of scrimmage (`buildShadowPlays`, `shadowForLeaf`). This module stays, unchanged, until every renderer has
+ * moved over.
+ *
  * Prediction -> ghost geometry before the snap (directions.md: "Category zones and lanes before the snap, weighted
  * by probability ... Zones, never routes; no player figures anywhere"). Pure: no DOM, no three.js.
  *
@@ -29,7 +34,8 @@ const leafEntry = (leaf, p) => (LEAVES.includes(leaf) && isProb(p) ? { leaf, p }
 const familyEntry = (family, p) => (FAMILIES.includes(family) && isProb(p) ? { family, p } : null);
 const byPDesc = (a, b) => b.p - a.p;
 
-/** Ghost input from /api/state `prediction`: the top 3 (`top`), plus every leaf and family from `families`. */
+/** @deprecated use shadows.js buildShadowPlays(prediction, situation), which reads `prediction.top` itself.
+ * Ghost input from /api/state `prediction`: the top 3 (`top`), plus every leaf and family from `families`. */
 export function ghostInputFromPrediction(prediction) {
   const top = Array.isArray(prediction?.top) ? prediction.top : [];
   const leaves = top.map((t) => leafEntry(t?.key, t?.p)).filter(Boolean).slice(0, MAX_SHAPES);
@@ -45,6 +51,7 @@ export function ghostInputFromPrediction(prediction) {
 }
 
 /**
+ * @deprecated use shadows.js buildShadowPlays(row.pred, situation, { leafOrder }), which reads `pred` itself.
  * Ghost input from a timeline row's `pred` (review and replay): `top3` weighted by `dist.his_l`, plus the whole
  * tree. `leafOrder` and `familyOrder` are the canonical orders the arrays follow (timeline `meta`).
  */
@@ -136,6 +143,7 @@ const validLeaves = (list) => (Array.isArray(list) ? list.filter((e) => leafEntr
 const validFamilies = (list) => (Array.isArray(list) ? list.filter((e) => familyEntry(e?.family, e?.p)) : []);
 
 /**
+ * @deprecated use shadows.js buildShadowPlays(input, situation): shadow plays, not zones (play-drawing.md 4).
  * The ghosts for a situation: the top 3 shapes with labels, plus weighted zones for every leaf and family the input
  * carries. Null without a snap situation (no ball, a kickoff) or without a valid call.
  */

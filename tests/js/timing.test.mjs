@@ -1,4 +1,5 @@
-// field/timing.js: step timing, sampling and easing for one drawing.
+// field/timing.js: step timing, sampling and easing for one drawing (docs/design/play-drawing.md: no snap phase; the
+// arc flies, then the YAC grows; run lines grow from the line of scrimmage; the X appears where the arc lands).
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -52,6 +53,9 @@ test("easing functions run 0 to 1 and never step backward", () => {
   assert.equal(easeFor({ t: "arc" }), EASE.linear, "a thrown ball keeps its ground speed");
   assert.equal(easeFor({ t: "ground", role: "march" }), EASE.inOutCubic);
   assert.equal(easeFor({ t: "ground", role: "yac" }), EASE.outCubic);
+  assert.equal(easeFor({ t: "ground", role: "run" }), EASE.outCubic, "a run line slows into the tackle");
+  assert.equal(easeFor({ t: "ground", role: "snap" }), EASE.outCubic, "there is no snap phase to settle");
+  assert.equal(easeFor({ t: "mark", role: "incomplete" }), EASE.linear);
 });
 
 test("planDrawing: length over speed, marks take markMs, then the hold", () => {
@@ -121,28 +125,81 @@ test("progressAt reports every started step, finished ones at u 1", () => {
   assert.deepEqual(progressAt(instant, 0), [{ index: 0, u: 1 }, { index: 1, u: 1 }]);
 });
 
-test("ballAt follows the first DAL snap: back to the drop, up the arc, down at the target", () => {
+test("ballAt follows the first DAL snap: off the line of scrimmage at once, up the arc, down at the X", () => {
   const d = buildDrawing(rowById("40187298068"));
   const plan = planDrawing(d, DEFAULT_MOTION);
   const start = ballAt(d, plan, 0);
   near(start.x, 30);
   near(start.y, C);
   assert.equal(start.h, 0);
-  const arc = plan.steps[1];
+  assert.equal(start.index, 0, "the throw is the first step: no snap phase");
+  const arc = plan.steps[0];
   const mid = ballAt(d, plan, (arc.startMs + arc.endMs) / 2);
   assert.ok(mid.h > 0, "in the air mid-flight");
-  assert.equal(mid.index, 1);
+  assert.equal(mid.index, 0);
   const end = ballAt(d, plan, plan.totalMs);
   near(end.x, 35);
   near(end.h, 0);
   assert.equal(ballAt(buildDrawing(rowById("401872980353")), { totalMs: 0, steps: [] }, 0), null);
 });
 
+test("the X appears where and when the arc lands", () => {
+  const d = buildDrawing(rowById("40187298068"));
+  const plan = planDrawing(d, DEFAULT_MOTION);
+  const [arc, x] = plan.steps;
+  assert.equal(d.steps[1].role, "incomplete");
+  assert.equal(x.startMs, arc.endMs);
+  assert.ok(x.endMs > x.startMs, "the X pops in over markMs");
+  const at = ballAt(d, plan, (x.startMs + x.endMs) / 2);
+  assert.deepEqual([at.index, Math.round(at.x), Math.round(at.y * 1000) / 1000, at.h], [1, 35, C, 0]);
+});
+
+test("a completion: the arc flies, the catch dot takes no time, the YAC grows the moment the ball lands", () => {
+  const d = buildDrawing(rowById("4018729801915"));
+  const plan = planDrawing(d, DEFAULT_MOTION);
+  const [arc, dot, yac] = plan.steps;
+  assert.equal(d.steps[1].role, "catch");
+  assert.deepEqual([dot.startMs, dot.endMs], [arc.endMs, arc.endMs]);
+  assert.equal(yac.startMs, arc.endMs);
+  assert.ok(yac.endMs > yac.startMs);
+  const landing = ballAt(d, plan, arc.endMs);
+  near(landing.x, 52);
+  near(landing.h, 0);
+});
+
+test("run lines grow from the line of scrimmage and slow into the tackle", () => {
+  const d = buildDrawing(rowById("4018729802242"));
+  const plan = planDrawing(d, DEFAULT_MOTION);
+  assert.equal(plan.steps.length, 1);
+  const start = ballAt(d, plan, 0);
+  near(start.x, 86);
+  near(start.y, C);
+  const [line] = plan.steps;
+  const half = ballAt(d, plan, (line.startMs + line.endMs) / 2);
+  assert.ok(86 - half.x > 36, `past halfway at half time (${half.x})`);
+  near(ballAt(d, plan, line.endMs).x, 14);
+  near(ballAt(d, plan, line.endMs).y, C - 4);
+});
+
+test("no snap phase: on every scrimmage play the ball leaves the line of scrimmage from the first moment", () => {
+  for (const row of allRows()) {
+    if (row.kind !== "play") continue;
+    const d = buildDrawing(row);
+    const plan = planDrawing(d, DEFAULT_MOTION);
+    const first = d.steps[0];
+    assert.ok(first.t === "arc" || first.t === "ground", `${row.id} starts moving`);
+    assert.equal(plan.steps[0].startMs, 0, row.id);
+    const at = ballAt(d, plan, 0);
+    near(at.x, row.geo.x0, 1e-6, `${row.id} x`);
+    near(at.y, C, 1e-6, `${row.id} y`);
+  }
+});
+
 test("ballAt marks the ghost ball of a wiped-out play and walks the real one off", () => {
   const d = buildDrawing(rowById("401872980210"));
   const plan = planDrawing(d, DEFAULT_MOTION);
-  const lane = plan.steps[1];
-  assert.equal(ballAt(d, plan, (lane.startMs + lane.endMs) / 2).ghosted, true);
+  const run = plan.steps[0];
+  assert.equal(ballAt(d, plan, (run.startMs + run.endMs) / 2).ghosted, true);
   const end = ballAt(d, plan, plan.totalMs);
   assert.equal(end.ghosted, false);
   near(end.x, 96);
@@ -169,15 +226,16 @@ test("sampleDrawing: keyframes from 0 to the end, finite, on the field", () => {
     { stepMs: 0 }), TypeError);
 });
 
-test("trackOf chains the ball through every step; a lane starts where the ball is", () => {
+test("trackOf chains the ball through every step: lines, arcs, and stills for the marks", () => {
   const run = trackOf(buildDrawing(rowById("4018729802242")));
-  assert.equal(run.length, 2);
+  assert.equal(run.length, 1);
+  assert.equal(run[0].kind, "line");
   assert.equal(run[0].moves, true);
-  assert.deepEqual(run[1].pts.map((p) => [p.x, Math.round(p.y * 1000) / 1000]),
-    [[90, C], [86, C - 4], [14, C - 4]], "from the mesh, into the gap at the line, straight up the lane");
+  assert.deepEqual(run[0].pts.map((p) => [p.x, Math.round(p.y * 1000) / 1000]), [[86, C], [14, C - 4]],
+    "from the line of scrimmage straight to the end spot");
   const pass = trackOf(buildDrawing(rowById("4018729801915")));
-  assert.deepEqual(pass.map((s) => s.kind), ["line", "arc", "still", "line"]);
-  assert.deepEqual([pass[2].pts[0].x, pass[2].pts[0].y], [52, C], "the ball waits at the catch");
+  assert.deepEqual(pass.map((s) => s.kind), ["arc", "still", "line"]);
+  assert.deepEqual([pass[1].pts[0].x, pass[1].pts[0].y], [52, C], "the ball is at the catch dot");
   assert.deepEqual(trackOf({ steps: [] }), []);
 });
 

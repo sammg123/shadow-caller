@@ -1,28 +1,36 @@
 /**
- * One timeline row -> plain drawing data (data-contract B5 and B6, directions.md "Shared approximation grammar").
- * Pure: no DOM, no three.js. Field yards in, field yards out; coords.js maps them to world or screen space.
+ * One timeline row -> plain drawing data (data-contract B5 and B6; docs/design/play-drawing.md, binding since
+ * 2026-10-09). Pure: no DOM, no three.js. Field yards in, field yards out; coords.js maps them to world or screen.
  *
- * A Drawing is a list of steps in time order (ui-architecture.md 2.4):
- *   arc       a ball in flight: pass, punt, kickoff, fg (true length, generic height)
- *   ground    a straight stroke on the turf: snap, hold, yac, return, sack, kneel, march
- *   corridor  a lane with soft edges and no cutbacks: run, scramble
- *   area      the catch area (a small area, never a dot)
- *   band      where an incompletion fell: the whole depth range in the side's third
- *   mark      td, turnover, flag, sack, safety, fg_good, fg_miss, touchback, fair_catch, downed, oob, muffed, blocked
- * Every step carries `ghosted` (the action of a no-play) and every stroke `approx` (an estimate, drawn as one).
- * The ball sits on the center line: ESPN gives no hash. A snap step (the drop or the mesh) is a drawing convention,
- * so a pass thrown from its end is approximate too, even when the air yards are exact (PRODUCT principle 3).
+ * Every scrimmage play starts on the line of scrimmage, on the center line between the hashes (ESPN gives no hash):
+ * no dropback, no handoff mesh, no play-action fake, no ball behind the line. A Drawing is a list of steps in time
+ * order (ui-architecture.md 2.4, v1.4):
+ *   arc     a ball in the air: pass (line of scrimmage -> catch, target or interception spot), punt, kickoff, fg
+ *   ground  a flat straight line on the turf: run, scramble, kneel, sack, yac, return, march, hold
+ *   mark    catch (a small dot), incomplete (the X), int, td, turnover, flag, sack, safety, fg_good, fg_miss,
+ *           touchback, fair_catch, downed, oob, muffed, blocked
+ * Every step carries `ghosted` (the action of a no-play: drawn dimmed and dashed) and `approx` (drawn as an
+ * estimate). A real pass is never one: the real play draws solid (play-drawing.md 4) and its label's depth word
+ * carries the estimate (section 5; `label.approx`). Kicks with an estimated landing and a loose ball's runback are.
+ * Lanes across the field are approximate by nature: a pass ends in its side's lane and a run angles to its gap
+ * (grammar.js LATERAL_*).
+ * `label` holds the play's words ("Deep pass left · +21", play-label.js) and where they go: beside the end of the
+ * play, outward from the center line the ball rests on (a kick's under its arc), on the other side when its own
+ * strokes would cross the words as the sideline cameras show them (an arc rises up the screen). `resultLabel` keeps
+ * the play feed's short word.
  */
 import { deepFreeze } from "../core/domain.js";
 import { resultText } from "../model/format.js";
-import { FIELD, clampX, clampY, depthSpan, xAtYardline100, yFromLateral } from "./coords.js";
+import { FIELD, clampX, clampY, xAtYardline100, yFromLateral } from "./coords.js";
 import {
-  AIR_FALLBACK_YD, AIR_UNKNOWN_BAND, CATCH_AREA_RADIUS, CROSSBAR_YD, FG_CLEARANCE_YD, FG_HOLD_YD, FULL_WIDTH,
-  LANE_HALF_WIDTH, LATERAL_GAP, LATERAL_PASS, LATERAL_RUN_SIDE, MIN_BAND_YD, THIRDS, arcApex, dropDepthYd,
-  isFiniteNum, meshDepthYd, ownValue, runLateralOfLeaf,
+  AIR_DEPTH_YD, AIR_FALLBACK_YD, AIR_UNKNOWN_YD, CROSSBAR_YD, END_LINE_INSET_YD, FG_CLEARANCE_YD, FG_HOLD_YD,
+  LABEL_GAP_YD, LABEL_LINE_YD, LATERAL_GAP, LATERAL_PASS, LATERAL_RUN_SIDE, arcApex, isFiniteNum, ownValue,
+  runLateralOfLeaf,
 } from "./grammar.js";
+import { labelFootprint, placeLabelText, playLabel } from "./play-label.js";
 
 const C = FIELD.CENTER_Y;
+const EPS = 1e-9;
 const KICKOFF_YL100 = 65;          // kickoffs after a score: the kicking team's own 35
 const SAFETY_KICK_YL100 = 80;      // the free kick after a safety: the conceding team's own 20
 const LANDING_MARKS = Object.freeze(["touchback", "fair_catch", "downed", "oob", "muffed"]);
@@ -30,31 +38,28 @@ const LANDING_MARKS = Object.freeze(["touchback", "fair_catch", "downed", "oob",
 const num = (v) => (isFiniteNum(v) ? v : null);
 const pt = (x, y = C) => ({ x: clampX(x), y: clampY(y) });
 const kdirOf = (k, fallback) => (k.kdir === 1 || k.kdir === -1 ? k.kdir : fallback);
+/** x kept inside the end lines by END_LINE_INSET_YD: a target the row does not pin never sits on the posts. */
+const insideX = (x) => Math.min(FIELD.X_MAX - END_LINE_INSET_YD, Math.max(FIELD.X_MIN + END_LINE_INSET_YD, x));
 
 // ---------------------------------------------------------------- step constructors
 const ground = (role, from, to, approx, ghosted) => ({ t: "ground", role, from, to, approx, ghosted });
-const mark = (role, at, ghosted) => ({ t: "mark", role, at, ghosted });
-const area = (at, ghosted) => ({ t: "area", role: "catch", at, r: CATCH_AREA_RADIUS, approx: true, ghosted });
-const band = (box, ghosted) => ({ t: "band", role: "incomplete", ...box, approx: true, ghosted });
+const mark = (role, at, ghosted, approx = false) => ({ t: "mark", role, at, approx, ghosted });
 
 function arc(role, from, to, { endH = 0, approx, ghosted }) {
   const apex = arcApex(role, Math.hypot(to.x - from.x, to.y - from.y));
   return { t: "arc", role, from, to, apex, endH, approx, ghosted };
 }
 
-function corridor(role, x0, x1, yC, ghosted) {
-  return { t: "corridor", role, x0: clampX(x0), x1: clampX(x1), yC, halfWidth: LANE_HALF_WIDTH, approx: true, ghosted };
-}
-
 // ---------------------------------------------------------------- row facts
 function spots(row) {
   const g = row.geo ?? {};
-  const x0 = num(g.x0);
-  return { dir: g.dir === -1 ? -1 : 1, x0, xEnd: num(g.x_end), xNext: num(g.x_next) };
+  return { dir: g.dir === -1 ? -1 : 1, x0: num(g.x0), xEnd: num(g.x_end), xNext: num(g.x_next) };
 }
 
 const isTouchdown = (row) => Boolean(row.result?.td) || row.scoring?.type === "TD";
 const lostFumble = (row) => Boolean(row.result?.turnover) && row.result?.turnover_kind !== "int";
+const estimated = (row, field) => Array.isArray(row.geo?.approx) && row.geo.approx.includes(field);
+const lineOf = (row) => pt(spots(row).x0);
 
 /** Where the ball carrier went down. A lost fumble's x_end can be the defense's touchdown, so use the gain. */
 function carrierEndX(row) {
@@ -85,7 +90,7 @@ function fumbleRunback(row, acc, ghosted) {
   return moveTo(marked, isTouchdown(row) ? xEnd : xNext ?? xEnd, true, ghosted);
 }
 
-/** Safety, lost fumble and touchdown marks after a scrimmage action. */
+/** Safety, lost fumble and touchdown marks after a scrimmage action; `label` is where the play's words go. */
 function finishAction(row, steps, end, ghosted, label) {
   const safety = row.result?.safety ? [mark("safety", end, ghosted)] : [];
   const base = { at: end, steps: [...steps, ...safety] };
@@ -94,29 +99,21 @@ function finishAction(row, steps, end, ghosted, label) {
   return { steps: [...acc.steps, ...td], end: acc.at, label: label ?? acc.at };
 }
 
-// ---------------------------------------------------------------- scrimmage actions
-function laneAction(row, ghosted, role) {
-  const { dir, x0 } = spots(row);
-  const back = role === "run" ? meshDepthYd(row.call?.align) : dropDepthYd(row.call);
-  const endX = carrierEndX(row);
-  const yC = clampY(yFromLateral(runLateral(row), dir));
-  const steps = [ground("snap", pt(x0), pt(x0 - dir * back), true, ghosted), corridor(role, x0, endX, yC, ghosted)];
-  return finishAction(row, steps, pt(endX, yC), ghosted);
+// ---------------------------------------------------------------- scrimmage actions (play-drawing.md 2)
+/** Run, scramble: one flat line from the line of scrimmage to where the play ended, angled to its gap. */
+function lineAction(row, ghosted, role) {
+  const end = pt(carrierEndX(row), yFromLateral(runLateral(row), spots(row).dir));
+  return finishAction(row, [ground(role, lineOf(row), end, false, ghosted)], end, ghosted);
 }
 
 function sackAction(row, ghosted) {
   const end = pt(carrierEndX(row));
-  return finishAction(row, [ground("sack", pt(spots(row).x0), end, false, ghosted), mark("sack", end, ghosted)],
+  return finishAction(row, [ground("sack", lineOf(row), end, false, ghosted), mark("sack", end, ghosted)],
     end, ghosted);
 }
 
-function passStart(row, ghosted) {
-  const { dir, x0 } = spots(row);
-  const release = pt(x0 - dir * dropDepthYd(row.call));
-  return { snap: ground("snap", pt(x0), release, true, ghosted), release };
-}
-
-/** The catch (or interception) x: exact from the row, else estimated from the air yards or a fallback. */
+/** The catch (or interception) x: exact from the row, else estimated from the air yards or a fallback; an
+ * estimated catch never lands past where the receiver went down. */
 function catchX(row, { capAtEnd }) {
   const { dir, x0 } = spots(row);
   const given = num(row.geo.x_catch);
@@ -127,50 +124,44 @@ function catchX(row, { capAtEnd }) {
   return capAtEnd && (endX - x) * dir < 0 ? endX : x;
 }
 
-/** The throw: from the snap step's end (an estimated set point), so always approximate. */
-const throwTo = (release, at, ghosted) => arc("pass", release, at, { approx: true, ghosted });
+/** The throw, from the line of scrimmage, drawn solid even to an estimated spot: the label's depth word says so. */
+const throwTo = (row, at, ghosted) => arc("pass", lineOf(row), at, { approx: false, ghosted });
+/** The row pins no exact spot where the ball came down (an incompletion's target, a typed row's catch). */
+const airEstimated = (row) => num(row.geo.x_catch) == null || estimated(row, "x_catch");
 
 function completeAction(row, ghosted) {
-  const { snap, release } = passStart(row, ghosted);
   const at = pt(catchX(row, { capAtEnd: true }), passY(row));
   const end = pt(carrierEndX(row), at.y);
   const yac = end.x === at.x ? [] : [ground("yac", at, end, false, ghosted)];
-  return finishAction(row, [snap, throwTo(release, at, ghosted), area(at, ghosted), ...yac], end, ghosted);
+  return finishAction(row, [throwTo(row, at, ghosted), mark("catch", at, ghosted), ...yac], end, ghosted);
 }
 
 function interceptionAction(row, ghosted) {
-  const { snap, release } = passStart(row, ghosted);
   const at = pt(catchX(row, { capAtEnd: false }), passY(row));
-  const steps = [snap, throwTo(release, at, ghosted), mark("turnover", at, ghosted)];
+  const steps = [throwTo(row, at, ghosted), mark("int", at, ghosted)];
   const back = moveTo({ at, steps }, spots(row).xEnd, false, ghosted);
-  return finishAction(row, back.steps, back.at, ghosted);
+  const action = finishAction(row, back.steps, back.at, ghosted);
+  return back.at === at ? { ...action, estimate: airEstimated(row) } : action;
 }
 
-function incompletionBox(row) {
+/** An incompletion's target: its air yards (exact or ESPN's estimate), else the depth word's median. */
+function targetX(row) {
   const { dir, x0 } = spots(row);
-  const given = row.call?.air_band;
-  const range = Array.isArray(given) && num(given[0]) != null && num(given[1]) != null ? given : AIR_UNKNOWN_BAND;
-  const { x0: bx0, x1: bx1 } = depthSpan(x0, dir, range, MIN_BAND_YD);
-  const [l0, l1] = ownValue(THIRDS, row.geo.lat) ?? FULL_WIDTH;
-  const ys = [yFromLateral(l0, dir), yFromLateral(l1, dir)];
-  return { x0: bx0, x1: bx1, y0: clampY(Math.min(...ys)), y1: clampY(Math.max(...ys)) };
+  const given = num(row.geo.x_catch);
+  const air = num(row.call?.air) ?? ownValue(AIR_DEPTH_YD, row.call?.depth) ?? AIR_UNKNOWN_YD;
+  return insideX(given ?? x0 + dir * air);
 }
 
 function incompleteAction(row, ghosted) {
-  const { snap, release } = passStart(row, ghosted);
-  const box = incompletionBox(row);
-  const est = num(row.geo.x_catch);
-  const lo = Math.min(box.x0, box.x1);
-  const hi = Math.max(box.x0, box.x1);
-  const target = pt(est == null ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, est)), passY(row));
-  const steps = [snap, throwTo(release, target, ghosted), band(box, ghosted)];
-  return finishAction(row, steps, pt(spots(row).x0), ghosted, target);
+  const target = pt(targetX(row), passY(row));
+  const steps = [throwTo(row, target, ghosted), mark("incomplete", target, ghosted)];
+  return { ...finishAction(row, steps, lineOf(row), ghosted, target), estimate: airEstimated(row) };
 }
 
 const PLAY_ACTIONS = Object.freeze({
   sack: sackAction,
-  scramble: (row, ghosted) => laneAction(row, ghosted, "scramble"),
-  run: (row, ghosted) => laneAction(row, ghosted, "run"),
+  scramble: (row, ghosted) => lineAction(row, ghosted, "scramble"),
+  run: (row, ghosted) => lineAction(row, ghosted, "run"),
   int: interceptionAction,
   incomplete: incompleteAction,
   complete: completeAction,
@@ -184,13 +175,15 @@ function playShape(row) {
   return call.outcome === "incomplete" ? "incomplete" : "complete";
 }
 
+/** Kneel and other: a line on the turf when the ball moved; a spike draws nothing. */
 function kneelAction(row, ghosted) {
   const { x0, xEnd } = spots(row);
   const end = pt(xEnd ?? x0);
-  return finishAction(row, end.x === x0 ? [] : [ground("kneel", pt(x0), end, false, ghosted)], end, ghosted);
+  const moved = row.kind !== "spike" && end.x !== x0;
+  return finishAction(row, moved ? [ground("kneel", lineOf(row), end, false, ghosted)] : [], end, ghosted);
 }
 
-// ---------------------------------------------------------------- kicks
+// ---------------------------------------------------------------- kicks (unchanged by play-drawing.md)
 function blockedFrom(row, steps, at, ghosted) {
   const { xEnd, xNext } = spots(row);
   const moved = moveTo({ at, steps: [...steps, mark("blocked", at, ghosted)] }, xEnd ?? xNext, true, ghosted);
@@ -250,7 +243,7 @@ function fgAction(row, ghosted) {
 
 const ACTIONS = Object.freeze({
   play: (row, ghosted) => PLAY_ACTIONS[playShape(row)](row, ghosted),
-  penalty: (row) => ({ steps: [], end: pt(spots(row).x0), label: pt(spots(row).x0) }),
+  penalty: (row) => ({ steps: [], end: lineOf(row), label: lineOf(row) }),
   kneel: kneelAction,
   spike: kneelAction,
   other: kneelAction,
@@ -263,7 +256,8 @@ const ACTIONS = Object.freeze({
 // ---------------------------------------------------------------- flags
 const march = (fromX, toX) => (toX == null || toX === fromX ? [] : [ground("march", pt(fromX), pt(toX), false, false)]);
 
-/** The flag and the enforcement walk. A no-play walks from the line; a flag on a play that stands, from x_end. */
+/** The flag and the enforcement walk. A no-play walks from the line; a flag on a play that stands, from where it
+ * was enforced (else the end of the play). */
 function flagTail(row, action) {
   const pen = row.result?.penalty;
   const { x0, xNext } = spots(row);
@@ -273,21 +267,42 @@ function flagTail(row, action) {
   }
   if (!pen) return { steps: [], labelAt: null };
   const enforced = pen.status !== "declined" && pen.status !== "offsetting";
-  return { steps: [mark("flag", flagAt, false), ...(enforced ? march(action.end.x, xNext) : [])], labelAt: null };
+  const walk = enforced ? march(num(pen.at_x) ?? action.end.x, xNext) : [];
+  return { steps: [mark("flag", flagAt, false), ...walk], labelAt: null };
+}
+
+// ---------------------------------------------------------------- the label (play-drawing.md 3)
+/** Kicks fly high over the center line: their words go toward the near sideline first, under the arc. */
+const KICKS = new Set(["kickoff", "punt", "fg", "fg_miss"]);
+const LABEL_TRIES = 3;
+
+/** Beside the end of the play: on its side (`side` -1 toward the near sideline, 1 the far one), then the other side,
+ * then a line further out each way; never within LABEL_GAP_YD of the center line the next ball rests on. */
+function labelCandidates(anchor, side) {
+  return Array.from({ length: LABEL_TRIES }, (_, k) => LABEL_GAP_YD + k * LABEL_LINE_YD)
+    .flatMap((gap) => [side, -side].map((s) => ({ x: anchor.x, y: anchor.y + s * gap })))
+    .filter((p) => Math.abs(p.y - C) >= LABEL_GAP_YD - EPS);
+}
+
+/**
+ * The words and where they go: beside the end of the play, outward from the center line (a kick toward the near
+ * sideline), unless its own strokes, as the sideline cameras show them (labelFootprint: an arc rises up the
+ * screen), or the ball would sit under them. `approx`: the spot the words describe is an estimate (ESPN's "short"
+ * target, a loose ball's runback).
+ */
+function labelOf(row, action, tail, { steps, balls }) {
+  const text = playLabel(row);
+  if (!text) return null;
+  const anchor = tail.labelAt ?? action.label;
+  const side = KICKS.has(row.kind) || anchor.y < C - EPS ? -1 : 1;
+  const points = [...labelFootprint(steps), ...balls.filter(Boolean)];
+  const at = placeLabelText(text, labelCandidates(anchor, side), { points });
+  const strokes = tail.labelAt ? [] : action.steps.filter((s) => s.t === "arc" || s.t === "ground");
+  return { text, at, approx: tail.labelAt ? false : action.estimate ?? Boolean(strokes.at(-1)?.approx) };
 }
 
 // ---------------------------------------------------------------- bounds
-function extentOf(step) {
-  if (step.t === "arc" || step.t === "ground") return [step.from, step.to];
-  if (step.t === "corridor") {
-    return [{ x: step.x0, y: step.yC - step.halfWidth }, { x: step.x1, y: step.yC + step.halfWidth }];
-  }
-  if (step.t === "area") {
-    return [{ x: step.at.x - step.r, y: step.at.y - step.r }, { x: step.at.x + step.r, y: step.at.y + step.r }];
-  }
-  if (step.t === "band") return [{ x: step.x0, y: step.y0 }, { x: step.x1, y: step.y1 }];
-  return [step.at];
-}
+const extentOf = (step) => (step.t === "mark" ? [step.at] : [step.from, step.to]);
 
 function boundsOf(steps, extras) {
   const pts = [...steps.flatMap(extentOf), ...extras.filter(Boolean)];
@@ -301,9 +316,9 @@ function boundsOf(steps, extras) {
 
 // ---------------------------------------------------------------- public API
 /**
- * A row as plain drawing data. Admin rows (and rows with no spot) have no steps. The result label's text is the
- * play feed's own word (model/format.js resultText), placed at the end of the action, or at the flag of a no-play.
- * Never mutates the row.
+ * A row as plain drawing data: { seq, id, kind, team, dir, offenseIsCaller, ghosted, steps, ballStart, ballEnd,
+ * resultLabel: {at, text} | null, label: {text, at, approx} | null, bounds }. Admin rows (and rows with no spot)
+ * have no steps and no labels. Never mutates the row; the result is deep-frozen.
  */
 export function buildDrawing(row) {
   if (!row || typeof row !== "object") throw new TypeError("buildDrawing needs a timeline row");
@@ -313,7 +328,8 @@ export function buildDrawing(row) {
   };
   const build = row.kind !== "admin" && spots(row).x0 != null ? ownValue(ACTIONS, row.kind) : undefined;
   if (!build) {
-    return deepFreeze({ ...head, steps: [], ballStart: null, ballEnd: null, resultLabel: null, bounds: null });
+    return deepFreeze({ ...head, steps: [], ballStart: null, ballEnd: null, resultLabel: null, label: null,
+      bounds: null });
   }
   const action = build(row, head.ghosted);
   const tail = flagTail(row, action);
@@ -322,7 +338,9 @@ export function buildDrawing(row) {
   const ballEnd = spots(row).xNext == null ? null : pt(spots(row).xNext);
   const text = resultText(row);
   const resultLabel = text ? { at: tail.labelAt ?? action.label, text } : null;
-  return deepFreeze({ ...head, steps, ballStart, ballEnd, resultLabel, bounds: boundsOf(steps, [ballStart, ballEnd]) });
+  const label = labelOf(row, action, tail, { steps, balls: [ballStart, ballEnd] });
+  return deepFreeze({ ...head, steps, ballStart, ballEnd, resultLabel, label,
+    bounds: boundsOf(steps, [ballStart, ballEnd]) });
 }
 
 function snapSituation(ballX, dir, poss, s) {
@@ -338,7 +356,7 @@ function snapSituation(ballX, dir, poss, s) {
 const kickoffSituation = (ballX, dir, poss) => ({ ballX, ltgX: null, dir, poss: poss ?? null, kind: "kickoff",
   goalToGo: false, down: null, togo: null });
 
-/** The situation before the row's snap (or kick): what review and ghost replay draw. Null for admin rows. */
+/** The situation before the row's snap (or kick): what review and shadow replay draw. Null for admin rows. */
 export function situationFromRow(row) {
   if (!row || row.kind === "admin" || !row.geo) return null;
   const { dir, x0 } = spots(row);

@@ -153,6 +153,13 @@ export function rowById(id) {
   return found;
 }
 
+/** One row by its seq (1-based arrival index), from the capture. */
+export function rowBySeq(seq) {
+  const found = allRows().find((r) => r.seq === seq);
+  if (!found) throw new Error(`no timeline row with seq ${seq}`);
+  return found;
+}
+
 /** The canonical leaf and family orders (DC B2 meta). */
 export const META_LEAVES = Object.freeze(["run_inside", "run_ot_left", "run_edge_left", "run_ot_right",
   "run_edge_right", "dropback_short", "dropback_mid", "dropback_deep", "pa_short", "pa_mid", "pa_deep", "screen",
