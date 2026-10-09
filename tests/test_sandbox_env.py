@@ -56,3 +56,13 @@ def test_sandbox_script_refuses_the_real_data_dir():
     got = subprocess.run([sys.executable, "scripts/sandbox.py", "--data", str(ROOT / "data"), "--dry-run"], cwd=ROOT,
                          capture_output=True, text=True, timeout=60)
     assert got.returncode != 0 and "real data" in got.stderr
+
+
+def test_fixture_capture_never_takes_a_busy_port_for_its_sandbox():
+    """scripts/capture_ui_fixtures.py resets the game it talks to. On a port where another app already answers (the
+    live one on 5050), its readiness probe would pass and the reset would land in that game: it must refuse."""
+    code = ("import socket, sys\nsys.path.insert(0, 'scripts')\nimport capture_ui_fixtures as cap\n"
+            "s = socket.socket(); s.bind(('127.0.0.1', 0)); s.listen()\n"
+            "try:\n    cap.start_sandbox(s.getsockname()[1])\nexcept RuntimeError as e:\n    print('refused', e)")
+    got = run_py(code, {})
+    assert got.startswith("refused") and "already in use" in got

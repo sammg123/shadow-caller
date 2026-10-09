@@ -1,38 +1,6 @@
-"""Browser tests against a sandboxed copy of the app (never the live game). Run: pytest tests/e2e -m e2e"""
-import subprocess
-import sys
-import time
-from pathlib import Path
-
+"""Browser tests against a sandboxed copy of the app (never the live game). Run: pytest tests/e2e -m e2e
+The `server` fixture lives in tests/conftest.py, shared with the API tests."""
 import pytest
-
-from e2e_helpers import ROOT, _free_port, _get
-
-
-@pytest.fixture(scope="session")
-def server(tmp_path_factory):
-    port = _free_port()
-    data = tmp_path_factory.mktemp("sandbox")
-    proc = subprocess.Popen([sys.executable, "scripts/sandbox.py", "--port", str(port), "--data", str(data)],
-                            cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    base = f"http://127.0.0.1:{port}"
-    for _ in range(120):
-        try:
-            _get(base + "/api/version")
-            break
-        except Exception:
-            if proc.poll() is not None:
-                raise RuntimeError("sandbox server exited:\n" + proc.stdout.read())
-            time.sleep(0.25)
-    else:
-        proc.kill()
-        raise RuntimeError("sandbox server did not start")
-    yield {"base": base, "data": data, "port": port}
-    proc.terminate()
-    try:
-        proc.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        proc.kill()
 
 
 @pytest.fixture(scope="session")

@@ -35,3 +35,58 @@ def scrimmage(r):
     if r["play_type"] in ("run", "pass"):
         return not (r["qb_kneel"] or r["qb_spike"] or r["two_point_attempt"])
     return r["play_type"] == "no_play" and bool(r["pass"] or r["rush"])
+
+
+# ---------------------------------------------------------------- HTTP against a sandboxed server (API and e2e tests)
+EVENT = ESPN_EVENT
+
+
+def _free_port():
+    import socket
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+def _get(url, timeout=2):
+    import urllib.request
+    with urllib.request.urlopen(url, timeout=timeout) as r:
+        return json.loads(r.read().decode())
+
+
+def get(url, timeout=30):
+    return _get(url, timeout=timeout)
+
+
+def post(base, path, body=None):
+    import urllib.request
+    req = urllib.request.Request(base + path, data=json.dumps(body or {}).encode(), method="POST",
+                                 headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode())
+
+
+def request_json(url, timeout=30):
+    """(status, parsed body) of a GET, including 4xx answers (urlopen raises on those)."""
+    import urllib.error
+    import urllib.request
+    try:
+        with urllib.request.urlopen(url, timeout=timeout) as r:
+            return r.status, json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read().decode())
+
+
+# The keys a log row had before rows carried seq, espn_id, clock_est and nullified: the shape of the game file the
+# Oct 8 build wrote (data/live_state.json). A file like that must still load and draw.
+LEGACY_ROW_KEYS = ("call", "clock", "down", "drive", "dropback", "fam_p", "fam_p_league", "fam_top", "family", "flag",
+                   "leaf", "leaf_p", "leaf_p_league", "leaf_rank", "leaf_rank_league", "name", "outcome", "p",
+                   "p_habits", "p_league", "qtr", "score", "snap", "success", "td", "time", "togo", "top_leaf",
+                   "top_leaf_p", "turnover", "yardline_100", "yards")
+
+
+def legacy_game(state):
+    """A game state as the Oct 8 build saved it: no version, no drive_ends, log rows with LEGACY_ROW_KEYS only."""
+    old = {k: v for k, v in state.items() if k not in ("version", "drive_ends")}
+    old["log"] = [{k: r[k] for k in LEGACY_ROW_KEYS} for r in state["log"]]
+    return old

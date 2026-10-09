@@ -5,7 +5,9 @@ __pycache__/
 .pytest_cache/
 .coverage
 data/live_state.json
+data/live_state.*
 data/live_state.backup-*.json
+data/watch_session.json*
 data/feed_seen.json*
 data/shadow.duckdb*
 data/espn/*
@@ -15,3 +17,4 @@ models/*.joblib
 .DS_Store
 node_modules/
 test-results/
+.impeccable/questions/

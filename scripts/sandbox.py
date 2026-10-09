@@ -24,6 +24,10 @@ def prepare(data_dir):
     for saved in (ROOT / "data" / "espn").glob("*_final.json"):
         if not (data_dir / "espn" / saved.name).exists():
             shutil.copy(saved, data_dir / "espn" / saved.name)
+    (data_dir / "logos").mkdir(exist_ok=True)
+    for logo in (ROOT / "data" / "logos").glob("*.png"):     # team logos, filled once online by logos.py
+        if logo.is_file() and not (data_dir / "logos" / logo.name).exists():
+            shutil.copy(logo, data_dir / "logos" / logo.name)
     return data_dir
 
 

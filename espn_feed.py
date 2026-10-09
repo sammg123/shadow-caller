@@ -5,6 +5,7 @@ gives yards after catch), sack / scramble / incomplete, TD, turnover, penalties 
 play, punts and field goals. ESPN can't tell play-action, RPO or screen: retag those in the app.
 """
 import json
+import logging
 import os
 import re
 import threading
@@ -14,6 +15,8 @@ from datetime import datetime
 
 from config import DATA_DIR, ESPN_OFFLINE, GAME
 from live import parse_clock
+
+log = logging.getLogger(__name__)
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
 RAW_DIR = DATA_DIR / "espn"
@@ -36,6 +39,14 @@ PASS_TYPES = ("pass reception", "pass incompletion", "passing touchdown", "pass 
 END_OF_HALF_TYPES = ("end of half", "end of regulation", "end of game")
 KICKOFF_RE = re.compile(r"\bkicks (?:onside )?\d+ yards?\b", re.I)
 SCORING_SUMMARY_RE = re.compile(r"\b\d+ Yds? (?:pass from|run|rush)\b[^()]*\(", re.I)   # 'X 46 Yd pass from Y (Z Kick)'
+SCRAMBLE_RE = re.compile(r"\bscrambles (left end|left tackle|left guard|up the middle|right guard|right tackle|right end)\b",
+                         re.I)
+EVENT_RE = re.compile(r"[0-9]{1,12}")      # ASCII digits only ('\d' takes Arabic-Indic too): ids reach paths and URLs
+ORDER_KEY = "_apply_order"                 # feed_seen.json: games whose id list is in apply order (older files sorted it)
+# Air yards of an incompletion, from the gamebook word: median and interquartile range, nflverse 2026 weeks 1 to 5
+# (65 games, pass attempts excluding sacks). Hard-coded for v1; build.py can write them into models/profile.json later.
+AIR_EST = {"short": {"air": 5, "band": [1, 10], "n": 1049}, "deep": {"air": 23, "band": [19, 32], "n": 461}}
+AIR_EST_SOURCE = "nflverse 2026 weeks 1-5 (65 games), pass attempts excluding sacks: median air yards, IQR as the band"
 
 
 def fetch_json(url, timeout=10):
@@ -55,33 +66,49 @@ def find_event(team_abbr, date=None):
     return None, None
 
 
+def check_event(event_id):
+    """The event id as a string, or ValueError: it is used in file names and URLs."""
+    eid = str(event_id or "")
+    if not EVENT_RE.fullmatch(eid):
+        raise ValueError(f"ESPN event ids are digits only, like 401872980 (got '{eid[:20]}').")
+    return eid
+
+
 def fetch_summary(event_id):
+    event_id = check_event(event_id)
     if ESPN_OFFLINE:                                   # demos and tests: a saved finished game, no network
         path = RAW_DIR / f"summary_{event_id}_final.json"
-        if not path.exists():
-            raise FileNotFoundError(f"Offline mode: no saved game at {path}")
+        if not path.exists():                          # the file's name, never the server's folders
+            raise FileNotFoundError(f"Offline mode: no saved game for ESPN event {event_id} ({path.name}).")
         return json.loads(path.read_text())
     return fetch_json(f"{BASE}/summary?event={event_id}")
 
 
-def iter_plays(summary):
-    """All plays in order as (offense_abbr, play). drives.current is the drive in progress."""
+def iter_drive_plays(summary):
+    """All plays in order as (offense_abbr, drive_idx, drive_id, play). drive_idx counts ESPN's drives from 1
+    (drives.previous, then drives.current, the drive in progress)."""
     drives = summary.get("drives") or {}
     groups = list(drives.get("previous") or [])
     cur = drives.get("current")
     if isinstance(cur, dict) and cur.get("plays"):
         groups.append(cur)
     seen, out = set(), []
-    for d in groups:
+    for idx, d in enumerate(groups, start=1):
         team = (d.get("team") or {}).get("abbreviation")
+        did = str(d["id"]) if d.get("id") is not None else None
         for p in d.get("plays") or []:
             pid = str(p.get("id"))
             if pid in seen:
                 continue
             seen.add(pid)
-            out.append((team, p))
-    out.sort(key=lambda tp: int(tp[1].get("sequenceNumber") or 0))
+            out.append((team, idx, did, p))
+    out.sort(key=lambda x: int(x[3].get("sequenceNumber") or 0))
     return out
+
+
+def iter_plays(summary):
+    """All plays in order as (offense_abbr, play). drives.current is the drive in progress."""
+    return [(team, p) for team, idx, did, p in iter_drive_plays(summary)]
 
 
 def team_id(summary, abbr):
@@ -181,6 +208,29 @@ def _pass_leaf(p, body, yards, incomplete, intercepted):
     return f"dropback_{word}" if word else None
 
 
+def _gap_side(gap):
+    """'left' / 'middle' / 'right' from gap words ('left tackle' -> 'left', 'up the middle' -> 'middle')."""
+    if not gap:
+        return None
+    return "middle" if gap == "up the middle" else gap.split()[0]
+
+
+def _pass_facts(p, body, yards, incomplete, intercepted):
+    """Side and gamebook depth word of a pass, and its air yards: exact from yards after catch on a completion,
+    the median for the word on an incompletion. An interception's air comes from its spot (timeline.py)."""
+    m = PASS_RE.search(body)
+    word = ((m.group(2) or "").lower() or None) if m else None
+    out = {"lat": ((m.group(3) or "").lower() or None) if m else None, "depth": word}
+    yac = p.get("yardsAfterCatch")
+    if not incomplete and not intercepted and isinstance(yac, (int, float)):
+        air = yards - int(yac)
+        conflict = (word == "deep" and air < 10) or (word == "short" and air >= 20)   # the same distrust as _pass_leaf
+        out.update(air=air, yac=int(yac), air_src="yac_conflict" if conflict else "yac")
+    elif not intercepted and word in AIR_EST:
+        out.update(air=AIR_EST[word]["air"], air_src="est", air_band=list(AIR_EST[word]["band"]))
+    return out
+
+
 def _turnover(p, typ, low):
     if "isTurnover" in p:
         return bool(p["isTurnover"])
@@ -196,7 +246,8 @@ def classify(team, p):
     nullified = "no play" in low
     info = {"id": str(p.get("id")), "team": team, "text": raw, "type": typ, "kind": "skip",
             "leaf": None, "family": None, "outcome": None, "yards": 0, "td": False, "turnover": False,
-            "nullified": nullified, "align": _align(raw)}
+            "nullified": nullified, "align": _align(raw),
+            "lat": None, "gap": None, "depth": None, "air": None, "air_src": None, "air_band": None, "yac": None}
     if (any(k in typ for k in ADMIN_TYPES) or raw.lstrip().upper().startswith("TWO-POINT CONVERSION")
             or KICKOFF_RE.search(text)):
         return info
@@ -220,12 +271,17 @@ def classify(team, p):
     yards = _yards(p, body, family, incomplete, intercepted)
     if family == "run":
         m = GAP_RE.search(body)
-        info.update(family="run", leaf=GAP_LEAF[m.group(1).lower()] if m else None)
+        gap = m.group(1).lower() if m else None
+        info.update(family="run", leaf=GAP_LEAF[gap] if gap else None, gap=gap, lat=_gap_side(gap))
     elif family == "pass":
         info.update(family="dropback", leaf=_pass_leaf(p, body, yards, incomplete, intercepted),
-                    outcome="incomplete" if incomplete else None)
+                    outcome="incomplete" if incomplete else None, **_pass_facts(p, body, yards, incomplete, intercepted))
     else:
         info.update(family="dropback", outcome=family)
+        if family == "scramble":
+            m = SCRAMBLE_RE.search(body)
+            gap = m.group(1).lower() if m else None
+            info.update(gap=gap, lat=_gap_side(gap))
     turnover = not nullified and _turnover(p, typ, low)
     td = (not turnover and not nullified and "touchdown nullified" not in low
           and ("touchdown" in low or (not gamebook and "touchdown" in typ) or bool(SCORING_SUMMARY_RE.search(text))))
@@ -259,7 +315,12 @@ def situation(p, which, offense_is_home):
 
 
 class Feed:
-    """Polls ESPN and applies new plays to the engine, in order, under the app's lock."""
+    """Polls ESPN and applies new plays to the engine, in order, under the app's lock.
+
+    applied: ESPN play ids in the order they were applied (the timeline's seq); seen is the same ids as a set.
+    skipped_ids: the applied ids whose apply failed (this game, since the ids were last loaded or forgotten).
+    gen: bumped by invalidate(); a poll fetched under an older gen applies nothing.
+    summary: the last ESPN summary applied or loaded (load_summary() falls back to the saved files)."""
 
     def __init__(self, engine, lock, on_change=None):
         self.engine, self.lock, self.on_change = engine, lock, on_change
@@ -268,43 +329,121 @@ class Feed:
         self.interval = 4
         self.status = {"state": "off", "detail": "", "last_poll": None, "last_play": None, "plays_logged": 0,
                        "skipped": None}
-        self.seen = self._load_seen()
+        self.gen = 0
+        self.reload_seen()
+        self.summary = None
         self.off_team_id = None
         self._thread = None
+        self.load_summary()
+
+    @property
+    def summary(self):
+        return self._summary
+
+    @summary.setter
+    def summary(self, summary):
+        """Set event_id first: a summary only counts for the event it was set under."""
+        self._summary, self._summary_event = summary, self.event_id
+        if summary:                                    # apply_one needs it to see possession change hands
+            self.off_team_id = team_id(summary, GAME["offense"]) or getattr(self, "off_team_id", None)
+        self.fix_order(summary)
+
+    def load_summary(self):
+        """This game's ESPN summary: memory, then data/espn/summary_<event>.json (the last poll), then the saved
+        summary_<event>_final.json. None when there is none. Never touches the network."""
+        if self._summary is not None and self._summary_event == self.event_id:
+            return self._summary
+        eid = str(self.event_id or "")
+        if not EVENT_RE.fullmatch(eid):
+            return None
+        for path in (RAW_DIR / f"summary_{eid}.json", RAW_DIR / f"summary_{eid}_final.json"):
+            try:
+                s = json.loads(path.read_text()) if path.exists() else None
+            except (ValueError, OSError) as ex:
+                print(f"Couldn't read {path.name} ({ex}); trying the next saved copy.")
+                continue
+            if isinstance(s, dict):
+                self.summary = s
+                return s
+        return None
 
     # -------------------------------------------------- persistence of processed play ids
     def _load_seen(self):
+        """(ids in apply order, True if the file is the old string-sorted format)."""
         if not SEEN_PATH.exists():
-            return set()
+            return [], False
         try:
-            return set(json.loads(SEEN_PATH.read_text()).get(GAME["game_id"], []))
-        except (ValueError, OSError) as ex:
+            d = json.loads(SEEN_PATH.read_text())
+            ids = [str(x) for x in d.get(GAME["game_id"], [])]
+            legacy = GAME["game_id"] not in (d.get(ORDER_KEY) or [])
+        except (ValueError, OSError, AttributeError, TypeError) as ex:
             print(f"Couldn't read {SEEN_PATH.name} ({ex}); ESPN plays already in the log may be logged again.")
-            return set()
+            return [], False
+        return list(dict.fromkeys(ids)), legacy and len(ids) > 1
+
+    def reload_seen(self):
+        """Read the applied ids from feed_seen.json again (after a backup of it is put back)."""
+        self.applied, self._legacy_order = self._load_seen()
+        self.seen = set(self.applied)
+        self.skipped_ids = []
+
+    def fix_order(self, summary):
+        """An old feed_seen.json stored the ids string-sorted: put them back in the order the plays happened."""
+        if not getattr(self, "_legacy_order", False) or not summary:
+            return
+        pos = {str(p.get("id")): i for i, (t, p) in enumerate(iter_plays(summary))}
+        order = sorted(self.applied, key=lambda pid: pos.get(pid, len(pos)))
+        self._legacy_order = False
+        if order != self.applied:
+            self.applied = order
+            self._bump_epoch()
 
     def _save_seen(self):
         try:
             d = json.loads(SEEN_PATH.read_text()) if SEEN_PATH.exists() else {}
         except (ValueError, OSError):
             d = {}
-        d[GAME["game_id"]] = sorted(self.seen)
+        d = d if isinstance(d, dict) else {}
+        ordered = d.get(ORDER_KEY) if isinstance(d.get(ORDER_KEY), list) else []
+        d[GAME["game_id"]] = list(self.applied)
+        d[ORDER_KEY] = sorted(set(ordered) | {GAME["game_id"]})
         tmp = SEEN_PATH.with_name(SEEN_PATH.name + ".tmp")
         tmp.write_text(json.dumps(d))
         os.replace(tmp, SEEN_PATH)                     # atomic: a crash mid-write can't corrupt it
 
     def forget(self):
-        self.seen = set()
+        self.seen, self.applied, self._legacy_order, self.skipped_ids = set(), [], False, []
         self.status["skipped"] = None
         self._save_seen()
+        self._bump_epoch()
+
+    def invalidate(self):
+        """Drop any poll already in flight: its apply() sees a stale generation and applies nothing."""
+        with self.lock:
+            self.gen += 1
+
+    def _bump_epoch(self):
+        bump = getattr(self.engine, "bump_epoch", None)
+        if bump:
+            bump()
 
     # -------------------------------------------------- control
-    def start(self, event_id=None):
+    def resolve_event(self, event_id=None):
+        """The event to follow: the id given (checked), else the current one, else today's game for the offense
+        from ESPN's scoreboard. That last is a network call of up to 10 s: make it before taking the app's lock."""
         if event_id:
-            self.event_id = str(event_id)
-        if not self.event_id:
-            eid, name = find_event(GAME["offense"])
-            if not eid:
-                raise ValueError(f"No {GAME['offense']} game on ESPN today. Enter the ESPN event id.")
+            return check_event(event_id)
+        if self.event_id:
+            return check_event(self.event_id)
+        eid, name = find_event(GAME["offense"])
+        if not eid:
+            raise ValueError(f"No {GAME['offense']} game on ESPN today. Enter the ESPN event id.")
+        return check_event(eid)
+
+    def start(self, event_id=None):
+        eid = self.resolve_event(event_id)
+        if eid != self.event_id:
+            self.invalidate()        # a poll of the old event still in flight must not land as the new one's
             self.event_id = eid
         self.on = True
         self.status.update(state="starting", detail=f"ESPN event {self.event_id}")
@@ -325,36 +464,71 @@ class Feed:
             time.sleep(self.interval)
 
     def poll_once(self, summary=None):
-        summary = summary or fetch_summary(self.event_id)
+        gen, eid = self.gen, self.event_id             # read before the fetch: a replay or watch may start meanwhile,
+        summary = summary or fetch_summary(eid)        # and switch event_id; this poll stays with its own game's file
+        if gen != self.gen:
+            return 0
         RAW_DIR.mkdir(exist_ok=True)
-        (RAW_DIR / f"summary_{self.event_id}.json").write_text(json.dumps(summary))
-        n = self.apply(summary)
+        (RAW_DIR / f"summary_{check_event(eid)}.json").write_text(json.dumps(summary))
+        n = self.apply(summary, gen)
         self.status.update(state="live" if self.on else self.status["state"], last_poll=datetime.now().strftime("%H:%M:%S"),
-                           detail=f"ESPN event {self.event_id}")
+                           detail=f"ESPN event {eid}")
         return n
 
     # -------------------------------------------------- apply plays
-    def apply(self, summary):
+    def apply(self, summary, gen=None):
+        """Apply every play in the summary not applied yet, in order. gen: the generation read before the fetch;
+        when a replay, reset or watch has invalidated it since, nothing is applied (returns 0)."""
         logged = 0
         with self.lock:              # the replay button and the poll thread must not both apply the same plays
+            if gen is not None and gen != self.gen:
+                return 0
+            self.summary = summary
             self.off_team_id = team_id(summary, GAME["offense"]) or self.off_team_id
             new = [(t, p) for t, p in iter_plays(summary) if str(p.get("id")) not in self.seen]
             try:
                 for team, p in new:
-                    try:
-                        logged += self._apply_one(team, p)
-                    except Exception as ex:    # one bad play must not stall the feed for the rest of the game
-                        self.status["skipped"] = f"{(p.get('text') or '')[:90]} ({ex})"
-                        print("ESPN play skipped:", p.get("id"), ex)
-                    self.seen.add(str(p.get("id")))
-                    self.status["last_play"] = (p.get("text") or "")[:160]
+                    logged += self.apply_one(team, p, save=False)
             finally:
                 if new:
                     self._save_seen()
-            self.status["plays_logged"] += logged
         if new and self.on_change:
             self.on_change()
         return logged
+
+    def apply_one(self, team, p, save=True):
+        """Apply one ESPN play to the engine, then record its id in apply order and update the status line.
+        Never raises: a play that fails is skipped (status 'skipped', its id in skipped_ids, the traceback in the
+        server log) but still counts as applied. Returns 1 if it logged a snap that counts. Takes the lock
+        (re-entrant), so callers may hold it."""
+        pid = str(p.get("id"))
+        logged = 0
+        with self.lock:
+            typed_rows = not self.applied and bool(self.engine.state.get("log"))
+            try:
+                logged = self._apply_one(team, p)
+            except Exception as ex:    # one bad play must not stall the feed for the rest of the game
+                self.status["skipped"] = f"{(p.get('text') or '')[:90]} ({ex})"
+                if pid not in self.skipped_ids:
+                    self.skipped_ids.append(pid)
+                log.exception("ESPN play %s skipped; enter it by hand if it was a %s snap", pid, GAME["offense"])
+            if pid not in self.seen:
+                if typed_rows:         # the field showed hand-typed plays; from now on it shows ESPN's: new epoch
+                    self._bump_epoch()
+                self.seen.add(pid)
+                self.applied.append(pid)
+            self.status["last_play"] = (p.get("text") or "")[:160]
+            self.status["plays_logged"] += logged
+            if save:
+                self._save_seen_safely()
+        return logged
+
+    def _save_seen_safely(self):
+        try:
+            self._save_seen()
+        except OSError as ex:
+            self.status["detail"] = f"Couldn't save {SEEN_PATH.name}: {ex}"
+            print(f"Couldn't save {SEEN_PATH.name}:", ex)
 
     def _apply_one(self, team, p):
         """Apply one ESPN play to the engine. Returns 1 if it logged a snap that counts, else 0."""
@@ -371,7 +545,7 @@ class Feed:
             if info["nullified"]:
                 note = penalty_note(play_text(info["text"]))
                 e.apply_penalty("OFFSET", play={k: info[k] for k in ("leaf", "family", "outcome")},
-                                source="espn", note=note)
+                                source="espn", note=note, espn_id=info["id"])
             else:
                 e.record_play(None, info["yards"], td=info["td"], turnover=info["turnover"],
                               leaf=info["leaf"], family=None if info["leaf"] else info["family"],

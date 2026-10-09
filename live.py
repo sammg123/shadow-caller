@@ -1,7 +1,10 @@
 """Live game engine: holds the situation, his in-game memory, every prediction and its result."""
 import copy
 import json
+import logging
+import os
 import re
+import secrets
 from datetime import datetime
 
 import duckdb
@@ -15,7 +18,10 @@ from features import (HABIT_COLS, MEMORY_COLS, base_row, habit_values, log_loss,
 from granular import (FAMILIES, FAMILY_NAMES, LEAF_FAMILY, LEAF_NAMES, LEAVES, SHORTHAND,
                       TAP_CYCLES, leaf_is_dropback, predict_tree)
 
+log = logging.getLogger(__name__)
+
 HOT_PTS, HOT_RATIO = 0.04, 1.3
+BOOT_ID = secrets.token_hex(2)     # new on every server start; the first half of the timeline epoch
 OUTCOME_NAMES = {"sack": "sack", "scramble": "scramble", "incomplete": "incomplete"}
 
 # code: (label, against 'def'/'off'/None, yards | 'spot' | 'box', auto first down, loss of down, pre-snap)
@@ -80,7 +86,20 @@ class GameEngine:
         self.alpha = self.profile["alpha"]
         self.q0 = self.profile["q0"]
         self.history = []
+        self.epoch_n = 0
+        self._pred_memo = None
         self.state = self._load() or self._fresh()
+
+    # ------------------------------------------------------------ timeline epoch
+    def epoch(self):
+        """Opaque id of the current timeline: '<boot>-<n>'. It changes when the drawn plays stop being
+        append-only (reset, forget, replay, watch start or restore, an undo that takes a drawn row or prediction
+        away, a server restart)."""
+        return f"{BOOT_ID}-{self.epoch_n}"
+
+    def bump_epoch(self):
+        self.epoch_n += 1
+        return self.epoch()
 
     # ------------------------------------------------------------ state
     def _fresh(self):
@@ -96,18 +115,51 @@ class GameEngine:
         }
 
     def _load(self):
-        if STATE_PATH.exists():
-            try:
-                s = json.loads(STATE_PATH.read_text())
-                if s.get("game", {}).get("game_id") == GAME["game_id"]:
-                    return s
-            except Exception:
-                return None
-        return None
+        """The saved game, or None (no file, or another game's). A file that can't be read is copied aside first
+        (live_state.unreadable-<time>.json): the fresh game's first save would otherwise destroy what is left."""
+        if not STATE_PATH.exists():
+            return None
+        try:
+            s = json.loads(STATE_PATH.read_text())
+        except (OSError, ValueError) as ex:
+            self._keep_unreadable(ex)
+            return None
+        game = s.get("game") if isinstance(s, dict) else None
+        if not isinstance(game, dict) or game.get("game_id") != GAME["game_id"]:
+            return None
+        return self._upgrade(s)
+
+    @staticmethod
+    def _upgrade(s):
+        """A game saved by an older build: its log rows have no seq (the timeline's key). seq has always been the
+        1-based log position, so it is filled in here and saved with the next change."""
+        for i, r in enumerate(s.get("log") or [], start=1):
+            if isinstance(r, dict) and r.get("seq") is None:
+                r["seq"] = i
+        return s
+
+    @staticmethod
+    def _keep_unreadable(ex):
+        dest = STATE_PATH.with_name(f"live_state.unreadable-{datetime.now():%Y%m%d-%H%M%S}.json")
+        try:
+            with open(dest, "xb") as f:            # x: never over an older copy
+                f.write(STATE_PATH.read_bytes())
+            log.warning("Couldn't read %s (%s). Kept a copy as %s; starting a fresh game.", STATE_PATH.name, ex,
+                        dest.name)
+        except OSError as err:
+            log.warning("Couldn't read %s (%s) or keep a copy of it (%s).", STATE_PATH.name, ex, err)
 
     def _save(self):
+        """Write the whole file, then swap it in (os.replace): a save cut short leaves the last good game, never
+        half of one. Watch mode and replays save about twice a play."""
         self.state["version"] = self.state.get("version", 0) + 1
-        STATE_PATH.write_text(json.dumps(self.state, indent=1))
+        tmp = STATE_PATH.with_name(STATE_PATH.name + ".tmp")
+        try:
+            tmp.write_text(json.dumps(self.state, indent=1))
+            os.replace(tmp, STATE_PATH)
+        except OSError:
+            tmp.unlink(missing_ok=True)
+            raise
 
     def _checkpoint(self):
         if getattr(self, "_batching", False):
@@ -130,10 +182,20 @@ class GameEngine:
         self._checkpoint()
         self.state = self._fresh()
         self._db_delete_after(0)
+        self.bump_epoch()
         self._save()
 
     # ------------------------------------------------------------ prediction
     def predict(self):
+        """The prediction for the current situation and memory. Memoized per state version: the key is the content
+        predict() reads (sit, mem, GAME), so an undo back to an older state can never get a stale answer.
+        Returns a fresh copy each time; callers may change it."""
+        key = json.dumps([self.state["sit"], self.state["mem"], GAME], sort_keys=True, default=str)
+        if self._pred_memo is None or self._pred_memo[0] != key:
+            self._pred_memo = (key, self._predict())
+        return copy.deepcopy(self._pred_memo[1])
+
+    def _predict(self):
         s, m = self.state["sit"], self.state["mem"]
         p0 = float(self.stage1.predict_proba(np.array([base_row(s, GAME)]))[0, 1])
         h = habit_values(s["down"], s["togo"], s["score_off"] - s["score_opp"], s["yardline_100"])
@@ -264,6 +326,8 @@ class GameEngine:
         s = self.state["sit"]
         if how == "fg":
             s["score_off"] += 3
+        if self.state["drive_active"]:     # how the drive ended, for the timeline (punts and FGs log no snap)
+            self.state.setdefault("drive_ends", {})[str(self.state["drive_n"])] = how
         self.state["drive_active"] = False
         self.state["mem"]["prev"] = None
         self.state["message"] = {"punt": "Punt. Waiting for the next Dallas drive.",
@@ -413,7 +477,7 @@ class GameEngine:
         return {"seq": len(self.state["log"]) + 1, "snap": m["snap_n"] + 1, "drive": self.state["drive_n"],
                 "time": datetime.now().strftime("%H:%M:%S"), "qtr": s["qtr"], "clock": fmt_clock(s["clock"]),
                 "down": s["down"], "togo": s["togo"], "yardline_100": s["yardline_100"],
-                "score": f"{s['score_off']}-{s['score_opp']}"}
+                "score": f"{s['score_off']}-{s['score_opp']}", "clock_est": bool(s.get("clock_estimated"))}
 
     def record_play(self, call=None, yards=0, td=False, turnover=False, penalty=False,
                     leaf=None, family=None, outcome=None, source="manual", feed=None):
@@ -443,7 +507,8 @@ class GameEngine:
                "family": family, "leaf": leaf, "outcome": outcome, "name": name,
                "nullified": False, "penalty": None, "source": source,
                "depth": leaf.split("_")[1] if leaf and leaf.startswith(("dropback_", "pa_")) else None,
-               "feed_text": (feed or {}).get("text"), "align": (feed or {}).get("align")}
+               "feed_text": (feed or {}).get("text"), "align": (feed or {}).get("align"),
+               "espn_id": (feed or {}).get("id")}
         self.state["log"].append(row)
         self._db_insert(row)
 
@@ -489,11 +554,12 @@ class GameEngine:
                 self.state["message"] = "Logged."
         self._save()
 
-    def apply_penalty(self, code, yards=None, auto_first=None, play=None, source="manual", note=None):
+    def apply_penalty(self, code, yards=None, auto_first=None, play=None, source="manual", note=None, espn_id=None):
         """Enforce a foul from where the ball is now.
         play = {'leaf'/'family'/'outcome'} when the call was already picked: that snap is logged as
         nullified (counts for scoring the prediction, not for his in-game memory). Pre-snap fouls ignore it.
-        yards: distance past the line for DPI, or the yardage for OTHER_D / OTHER_O."""
+        yards: distance past the line for DPI, or the yardage for OTHER_D / OTHER_O.
+        espn_id: the ESPN play a nullified call came from (the timeline's join key)."""
         code = code.upper()
         if code not in PENALTIES:
             raise ValueError(f"Unknown penalty '{code}'")
@@ -522,7 +588,7 @@ class GameEngine:
                    "call": callcode, "dropback": dropback, "yards": 0, "success": None, "td": False,
                    "turnover": False, "family": family, "leaf": leaf, "outcome": outcome,
                    "name": f"{name} (no play" + (f": {note}" if note else f": {label.lower()}" if against else ", flag") + ")",
-                   "nullified": True, "penalty": code, "source": source}
+                   "nullified": True, "penalty": code, "source": source, "espn_id": espn_id}
             self.state["log"].append(row)
             self._db_insert(row)
 
