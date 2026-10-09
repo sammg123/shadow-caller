@@ -1,8 +1,13 @@
-"""Settings for the Shadow Play-Caller app. Edit GAME and the play-caller table for a new matchup."""
+"""Settings for the Shadow Play-Caller app. Edit GAME and the play-caller table for a new matchup.
+
+Environment overrides (tests and demos run on a copy, never the live game): SHADOW_DATA_DIR, SHADOW_PORT,
+SHADOW_ESPN_OFFLINE=1 (read data/espn/summary_<event>_final.json instead of calling ESPN), SHADOW_NO_BROWSER=1.
+"""
+import os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-DATA_DIR = ROOT / "data"
+DATA_DIR = Path(os.environ.get("SHADOW_DATA_DIR") or ROOT / "data")
 MODEL_DIR = ROOT / "models"
 DB_PATH = DATA_DIR / "shadow.duckdb"
 CALLERS_CSV = DATA_DIR / "play_callers.csv"
@@ -30,4 +35,5 @@ SCRIPT_PLAYS = 15        # opening-script snaps: memory terms switched off
 EXPLOSIVE_YARDS = 20
 TILT = 0.15              # |p - league| at or above this -> TILT flag
 LEAN = 0.08              # |p - league| at or above this -> lean flag
-PORT = 5050
+PORT = int(os.environ.get("SHADOW_PORT") or 5050)
+ESPN_OFFLINE = os.environ.get("SHADOW_ESPN_OFFLINE") == "1"

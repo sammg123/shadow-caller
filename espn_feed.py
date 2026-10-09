@@ -12,7 +12,7 @@ import time
 import urllib.request
 from datetime import datetime
 
-from config import DATA_DIR, GAME
+from config import DATA_DIR, ESPN_OFFLINE, GAME
 from live import parse_clock
 
 BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
@@ -56,6 +56,11 @@ def find_event(team_abbr, date=None):
 
 
 def fetch_summary(event_id):
+    if ESPN_OFFLINE:                                   # demos and tests: a saved finished game, no network
+        path = RAW_DIR / f"summary_{event_id}_final.json"
+        if not path.exists():
+            raise FileNotFoundError(f"Offline mode: no saved game at {path}")
+        return json.loads(path.read_text())
     return fetch_json(f"{BASE}/summary?event={event_id}")
 
 

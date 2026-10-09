@@ -1,5 +1,6 @@
 """Localhost server for the Shadow Play-Caller.  Run:  python app.py  then open http://localhost:5050"""
 import json
+import os
 import shutil
 import threading
 import webbrowser
@@ -234,5 +235,6 @@ def export():
 if __name__ == "__main__":
     url = f"http://localhost:{PORT}"
     print(f"\n  Shadow Play-Caller running at {url}\n")
-    Timer(1.0, lambda: webbrowser.open(url)).start()
+    if not os.environ.get("SHADOW_NO_BROWSER"):
+        Timer(1.0, lambda: webbrowser.open(url)).start()
     app.run(host="127.0.0.1", port=PORT, debug=False, threaded=True)
