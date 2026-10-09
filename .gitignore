@@ -1,0 +1,17 @@
+# runtime state: never commit the live game
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+data/live_state.json
+data/live_state.backup-*.json
+data/feed_seen.json*
+data/shadow.duckdb*
+data/espn/*
+!data/espn/*_final.json
+data/logos/
+models/*.joblib
+.DS_Store
+node_modules/
+test-results/

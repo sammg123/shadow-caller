@@ -1,0 +1,187 @@
+{
+  "caller": "Brian Schottenheimer",
+  "seasons": [
+    2025,
+    2026
+  ],
+  "n_snaps": 1351,
+  "n_games": 21,
+  "alpha": 0.1,
+  "lambda": 3.0,
+  "q0": 0.5092524056254626,
+  "coefs": {
+    "intercept": {
+      "est": 0.5688829190489698,
+      "lo": 0.1922353649037366,
+      "hi": 0.8711596571301631,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.5940779826634233,
+      "lo": -0.8819580438591899,
+      "hi": -0.2664954046910238,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.42881322077284495,
+      "lo": -0.8441710761817315,
+      "hi": 0.06148938788406505,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.011803571527121373,
+      "lo": -0.1487399669100117,
+      "hi": 0.25794412854894727,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.08669789717215533,
+      "lo": -0.1834627935269211,
+      "hi": 0.32978510655868226,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.4490545152393998,
+      "lo": 0.053642751161014184,
+      "hi": 0.8201512876137959,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.44854829705817084,
+      "lo": -0.6295585508324291,
+      "hi": -0.26274237823427626,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.2292929909064519,
+      "lo": -0.16516451083876263,
+      "hi": 0.5626169635850317,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.4227536796620258,
+      "lo": -0.8134620044952688,
+      "hi": -0.03491418542221448,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.22714786366387432,
+      "lo": -0.697086342841922,
+      "hi": 0.32629503182906305,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5321692392811415,
+    "habits": 0.5319515904791661,
+    "habits_plus_memory": 0.5248158837313505,
+    "nflfastr_xpass_reference": 0.532210749296659
+  },
+  "dropback_rate": {
+    "actual": 0.6276831976313841,
+    "league_expected": 0.6296610487955885
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 614,
+      "actual": 0.503257328990228,
+      "league_expected": 0.5392137037272364
+    },
+    {
+      "down": 2,
+      "n": 446,
+      "actual": 0.6524663677130045,
+      "league_expected": 0.6378789408206866
+    },
+    {
+      "down": 3,
+      "n": 254,
+      "actual": 0.8622047244094488,
+      "league_expected": 0.8259319645255544
+    },
+    {
+      "down": 4,
+      "n": 37,
+      "actual": 0.7837837837837838,
+      "league_expected": 0.684165844291885
+    }
+  ],
+  "team": "DAL",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33401,
+    "logloss_ours": 0.5267817625779824,
+    "logloss_nflfastr_xpass": 0.5354508496025102,
+    "logloss_constant": 0.6721973788841601
+  },
+  "granular": {
+    "n_snaps": 1351,
+    "family_rates": {
+      "run": {
+        "his": 0.33530717986676534,
+        "league_expected": 0.3386825521717687
+      },
+      "dropback": {
+        "his": 0.43449296817172467,
+        "league_expected": 0.44599141954472477
+      },
+      "pa": {
+        "his": 0.15173945225758698,
+        "league_expected": 0.12280460272615583
+      },
+      "screen": {
+        "his": 0.028127313101406367,
+        "league_expected": 0.04288360595567141
+      },
+      "rpo": {
+        "his": 0.050333086602516654,
+        "league_expected": 0.049637819601679393
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0371410049460863,
+        "his": 1.033582887345055,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2630137316370478,
+        "his": 1.250839431685996,
+        "lambda": 10.0,
+        "n": 449
+      },
+      "pass_depth": {
+        "league": 0.8165418762341072,
+        "his": 0.8106336499547369,
+        "lambda": 3.0,
+        "n": 715
+      },
+      "specific_play": {
+        "n": 1270,
+        "logloss_league": 1.9782001399673605,
+        "logloss_his": 1.9684741363280982,
+        "top1_his": 0.37559055118110235,
+        "top1_league": 0.37559055118110235,
+        "top3_his": 0.65748031496063
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2752887219581992,
+      "league": 0.3112703766160764,
+      "his_n": 68
+    }
+  },
+  "built_at": "2026-10-08T23:47:22",
+  "sklearn": "1.9.1"
+}

@@ -1,0 +1,751 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shadow Play-Caller</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EEF1F4; --panel:#F8FAFB; --ink:#142235; --muted:#5B6878; --rule:#D3D9E0;
+  --pass:#1F5FBF; --run:#B8741A; --rpo:#6B4FA0; --turf:#2E6B3F; --turf-2:#336F44; --chalk:#F4F7F5; --gain:#F2C230;
+  --good:#2E7D4F; --bad:#B23A3A;
+  --cond:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --text:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+.leaf[data-leaf]{cursor:pointer;border-radius:4px}
+.leaf[data-leaf]:hover{background:#fff;box-shadow:0 0 0 4px #fff}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--text);font-size:15px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--gain);outline-offset:2px}
+.wrap{max-width:1360px;margin:0 auto;padding:18px 20px 40px}
+
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 22px;padding-bottom:14px;border-bottom:2px solid var(--ink)}
+header h1{font-family:var(--cond);font-weight:700;font-size:30px;line-height:1;margin:0}
+header .game{font-weight:600}
+header .who{color:var(--muted)}
+header .tools{margin-left:auto;display:flex;gap:8px}
+.btn{border:1.5px solid var(--ink);background:transparent;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:600;text-decoration:none}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.btn.quiet{border-color:var(--rule);color:var(--muted)}
+.btn.quiet:hover{background:var(--rule);color:var(--ink)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;margin-top:18px}
+@media (max-width:1040px){.grid{grid-template-columns:1fr}}
+
+.field{width:100%;display:block;border-radius:6px}
+.est{color:var(--run);font-weight:600}
+
+/* editable situation line */
+.strip{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 20px;margin:12px 0 2px}
+.cell{display:flex;flex-direction:column}
+.cell label{font-size:12px;color:var(--muted);white-space:nowrap}
+.cell.sep{padding-left:20px;border-left:1px solid var(--rule)}
+.ed{font-family:var(--cond);font-weight:700;font-size:30px;line-height:1.1;color:var(--ink);border:none;border-bottom:2px dashed var(--rule);background:transparent;padding:0 3px;border-radius:0;text-align:center}
+.ed.big{font-size:42px}
+.ed:hover{border-bottom-color:var(--muted);background:#fff}
+.ed:focus{outline:none;border-bottom:2px solid var(--gain);background:#fff}
+.ed.bad{border-bottom-color:var(--bad)}
+.w1{width:calc(1.7ch + 8px)} .w2{width:calc(2.6ch + 8px)} .w4{width:calc(4.4ch + 8px)} .w5{width:calc(5.6ch + 8px)}
+.amp{font-family:var(--cond);font-weight:700;font-size:30px;color:var(--muted);padding-bottom:6px}
+.dash{font-family:var(--cond);font-weight:700;font-size:26px;color:var(--muted)}
+.drive{margin-left:auto;align-items:flex-end;gap:6px}
+.drive .info{font-size:13px;color:var(--muted)}
+.drive .info.cue{color:var(--ink);font-weight:600}
+.drive .row{margin-top:0}
+.drive .btn{padding:3px 10px;font-size:14px}
+.stripnote{font-size:13px;color:var(--muted);margin:2px 0 0}
+.spotwrap{display:flex;align-items:flex-end;gap:6px}
+.side{font-family:var(--cond);font-weight:700;font-size:28px;line-height:1;padding:5px 10px 4px;border-radius:8px;cursor:pointer;
+  border:2px solid var(--ink);background:var(--ink);color:var(--paper);display:flex;align-items:center;gap:6px;margin-bottom:3px}
+.side small{font-size:16px;opacity:.75}
+.side.opp{background:#fff;color:var(--ink)}
+.side:hover{filter:brightness(1.15)}
+
+/* prediction */
+.hero{margin-top:12px;padding-top:16px;border-top:1px solid var(--rule)}
+.pick{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px 28px}
+.pick .lead{font-size:14px;color:var(--muted);margin-bottom:2px}
+.pick .name{font-family:var(--cond);font-weight:700;font-size:44px;line-height:1}
+.pick .name b{font-weight:700;margin-left:10px}
+.pick .alt{color:var(--muted);font-size:15px;padding-bottom:5px}
+.pick .alt b{color:var(--ink);font-weight:600}
+.pill{margin-left:auto;display:inline-block;font-family:var(--cond);font-weight:700;font-size:22px;padding:3px 14px;border-radius:999px;border:2px solid var(--muted);color:var(--muted);white-space:nowrap}
+.pill.tiltpass{background:var(--pass);border-color:var(--pass);color:#fff}
+.pill.tiltrun{background:var(--run);border-color:var(--run);color:#fff}
+.pill.leanpass{border-color:var(--pass);color:var(--pass)}
+.pill.leanrun{border-color:var(--run);color:var(--run)}
+
+.split{position:relative;display:flex;height:12px;border-radius:4px;overflow:hidden;margin:18px 0 26px}
+.split div{transition:width .35s ease}
+.splitlab{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:-22px;margin-bottom:12px}
+.lgmark{position:absolute;top:-4px;bottom:-4px;border-left:2px dashed var(--ink)}
+
+.fams{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;border-top:2px solid var(--ink)}
+@media (max-width:760px){.fams{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.fam{padding:10px 12px 12px;border-left:1px solid var(--rule)}
+.fam:first-child{border-left:none;padding-left:0}
+.fam h4{margin:0;font-family:var(--cond);font-weight:600;font-size:18px}
+.fam .fp{font-family:var(--cond);font-weight:700;font-size:40px;line-height:1.05}
+.fam .lg{font-size:13px;color:var(--muted);margin-bottom:8px}
+.fam.c-run .fp{color:var(--run)} .fam.c-pass .fp{color:var(--pass)} .fam.c-rpo .fp{color:var(--rpo)}
+.leaf{margin:7px 0}
+.leaf .row1{display:flex;justify-content:space-between;gap:6px;font-size:14px}
+.leaf .row1 span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+.leaf .bar{height:5px;border-radius:3px;background:var(--rule);margin-top:3px;overflow:hidden}
+.leaf .bar i{display:block;height:100%}
+.c-run .bar i{background:var(--run)} .c-pass .bar i{background:var(--pass)} .c-rpo .bar i{background:var(--rpo)}
+.up{color:var(--good);font-weight:700} .down{color:var(--bad);font-weight:700}
+.legend{font-size:13px;color:var(--muted);margin:8px 0 0}
+.why{margin:14px 0 0;padding:10px 0 0;border-top:1px solid var(--rule);list-style:none;display:flex;flex-wrap:wrap;gap:4px 26px}
+.why li{display:flex;gap:8px;align-items:baseline}
+.why .pts{font-family:var(--cond);font-weight:700;font-size:17px}
+.why .pts.up{color:var(--pass)} .why .pts.down{color:var(--run)}
+.offfield{padding:28px 0 18px;border-top:1px solid var(--rule);margin-top:14px}
+.offfield h2{font-family:var(--cond);font-size:34px;margin:0 0 4px}
+.offfield p{margin:0;color:var(--muted)}
+
+/* entry */
+.entry{margin-top:18px;padding:16px;background:var(--panel);border:1px solid var(--rule);border-radius:10px}
+.entry h3,.rail h3{font-family:var(--cond);font-size:22px;font-weight:700;margin:0 0 10px}
+.pad{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:center}
+.pad .lab{font-family:var(--cond);font-weight:600;font-size:17px;color:var(--muted)}
+.keys{display:flex;flex-wrap:wrap;gap:8px}
+.key{border:2px solid var(--rule);background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;text-align:left;min-width:110px}
+.key b{display:block;font-weight:600}
+.key small{display:block;color:var(--muted);font-size:12px}
+.key kbd{float:right;margin-left:10px;font-family:var(--cond);font-weight:700;font-size:15px;color:var(--muted)}
+.key.on{color:#fff} .key.on small,.key.on kbd{color:#fff}
+.key.run.on{background:var(--run);border-color:var(--run)}
+.key.pass.on{background:var(--pass);border-color:var(--pass)}
+.key.rpo.on{background:var(--rpo);border-color:var(--rpo)}
+.key.out.on{background:var(--ink);border-color:var(--ink)}
+.chosen{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)}
+.chosen .what{font-family:var(--cond);font-size:26px;font-weight:700;min-width:240px}
+.chosen .what.none{color:var(--muted);font-weight:600;font-size:20px}
+.yds{display:flex;align-items:center;gap:8px}
+.yds input{width:84px;font-family:var(--cond);font-size:28px;font-weight:700;text-align:center;border:2px solid var(--ink);border-radius:8px;padding:2px 6px;background:#fff}
+.chosen label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.log-btn{margin-left:auto;background:var(--ink);color:var(--paper);border:none;border-radius:8px;padding:10px 22px;font-family:var(--cond);font-size:22px;font-weight:700;cursor:pointer}
+.log-btn:disabled{opacity:.35;cursor:not-allowed}
+.key.flag{border-color:var(--gain);background:#FFF8DC}
+.key.flag.on{background:var(--gain);border-color:var(--gain);color:var(--ink)}
+.key.flag.on small,.key.flag.on kbd{color:var(--ink)}
+.flagpanel{margin-top:12px;padding:12px 14px;border:2px solid var(--gain);border-radius:10px;background:#FFFBEA}
+.fphead{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-bottom:10px}
+.fphead b{font-family:var(--cond);font-size:22px}
+.fphead .btn{margin-left:auto;padding:3px 10px;font-size:14px}
+#flagNote{font-size:14px}
+.fpcols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.fpcols{grid-template-columns:1fr}}
+.fpteam{font-family:var(--cond);font-weight:700;font-size:18px;margin-bottom:6px}
+.fpbtns{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.fpb{border:1.5px solid var(--rule);background:#fff;border-radius:8px;padding:5px 9px;cursor:pointer;text-align:left}
+.fpb:hover{border-color:var(--ink)}
+.fpb b{display:block;font-weight:600;font-size:14px}
+.fpb small{display:block;color:var(--muted);font-size:12px}
+.fpb kbd{float:right;margin-left:8px;font-family:var(--cond);font-weight:700;font-size:15px;color:var(--muted)}
+.fpother{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)}
+.fpauto{display:flex;gap:6px;align-items:center;font-size:14px}
+.feedbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-bottom:10px}
+.live{display:flex;align-items:center;gap:8px;border:2px solid var(--ink);background:#fff;border-radius:999px;padding:5px 14px;cursor:pointer;font-family:var(--cond);font-weight:700;font-size:18px}
+.live i{width:10px;height:10px;border-radius:50%;background:var(--rule)}
+.live.on{background:var(--ink);color:var(--paper)}
+.live.on i{background:#E5484D;box-shadow:0 0 0 3px rgba(229,72,77,.3)}
+.live.err i{background:var(--gain)}
+.evt{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.evt input{width:110px;border:1.5px solid var(--rule);border-radius:6px;padding:4px 6px;background:#fff;font-variant-numeric:tabular-nums}
+.fstat{font-size:13px;color:var(--muted);flex:1;min-width:200px}
+.fstat b{color:var(--ink);font-weight:600}
+.lastplay{padding:2px 0 4px}
+.lastplay h3{margin-bottom:4px}
+.lpname{font-family:var(--cond);font-weight:700;font-size:28px;line-height:1.1}
+.lptext{color:var(--muted);font-size:14px;margin:4px 0 10px}
+.lpkeys{display:flex;flex-wrap:wrap;gap:8px}
+.lpkeys .key.cur{border-color:var(--ink)}
+.short{display:flex;gap:8px;margin-top:14px}
+.short input{flex:1;border:1.5px solid var(--rule);border-radius:8px;padding:8px 10px;background:#fff}
+.hint{color:var(--muted);font-size:13px;margin:6px 0 0}
+
+/* side */
+.rail{display:flex;flex-direction:column;gap:18px}
+.rail section{padding:14px 16px;background:var(--panel);border:1px solid var(--rule);border-radius:10px}
+.form{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.form label{display:flex;flex-direction:column;font-size:13px;color:var(--muted);gap:2px}
+.form input,.form select{border:1.5px solid var(--rule);border-radius:6px;padding:5px 6px;background:#fff;color:var(--ink);width:100%}
+.form .wide{grid-column:span 2}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.score{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.score .team{font-family:var(--cond);font-size:22px;font-weight:700}
+.score .pts{font-family:var(--cond);font-size:34px;font-weight:700;min-width:36px;text-align:center}
+.mini{border:1px solid var(--rule);background:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-size:13px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+.kpi .v{font-family:var(--cond);font-size:28px;font-weight:700;line-height:1}
+.kpi .l{font-size:13px;color:var(--muted)}
+.better{color:var(--good)} .worse{color:var(--bad)}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.sub{font-family:var(--cond);font-weight:600;font-size:16px;margin:14px 0 6px;color:var(--muted)}
+
+/* log */
+.logwrap{margin-top:24px;overflow-x:auto}
+.logwrap h3{font-family:var(--cond);font-size:22px;margin:0 0 8px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--muted);border-bottom:2px solid var(--ink);padding:6px 8px;white-space:nowrap}
+td{border-bottom:1px solid var(--rule);padding:6px 8px;font-variant-numeric:tabular-nums}
+td.num{text-align:right}
+.ok{color:var(--good);font-weight:700} .no{color:var(--bad);font-weight:700}
+.empty{color:var(--muted);padding:16px 0}
+
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 18px;border-radius:8px;max-width:90vw;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.err{background:var(--bad)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Shadow Play-Caller</h1>
+    <span class="game" id="gameLabel"></span>
+    <span class="who" id="whoLabel"></span>
+    <div class="tools">
+      <button class="btn quiet" id="undoBtn" title="Undo (U)">Undo</button>
+      <a class="btn quiet" href="/api/export.csv">Export CSV</a>
+      <button class="btn quiet" id="resetBtn">Reset game</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <main>
+      <div class="feedbar" id="feedBar">
+        <button class="live" id="feedBtn" type="button"><i></i><span id="feedBtnTxt">ESPN live: off</span></button>
+        <label class="evt" for="feedEvent">ESPN game id <input id="feedEvent" autocomplete="off" placeholder="today's game"></label>
+        <button class="btn quiet" id="replayBtn" type="button" title="Rebuild a finished game from ESPN (backs up the current one)">Replay this game</button>
+        <span class="fstat" id="feedStatus"></span>
+      </div>
+      <svg class="field" id="field" viewBox="0 0 1200 120" role="img" aria-label="Field position"></svg>
+      <div class="strip" id="strip">
+        <div class="cell"><label for="iQtr">Qtr</label><input class="ed w1" id="iQtr" inputmode="numeric" autocomplete="off"></div>
+        <div class="cell"><label for="iClock">Clock <span class="est" id="clockEst" title="Estimated from snaps; type the real clock">est.</span></label><input class="ed w4" id="iClock" autocomplete="off"></div>
+        <div class="cell"><label for="iOff"><span id="lOff">DAL</span> – <span id="lOpp">TB</span></label>
+          <div><input class="ed w2" id="iOff" inputmode="numeric" autocomplete="off" aria-label="Dallas score"> <span class="dash">–</span> <input class="ed w2" id="iOpp" inputmode="numeric" autocomplete="off" aria-label="Opponent score"></div></div>
+        <div class="cell sep"><label for="iDown">Down</label><input class="ed big w1" id="iDown" inputmode="numeric" autocomplete="off"></div>
+        <span class="amp">&amp;</span>
+        <div class="cell"><label for="iTogo">To go</label><input class="ed big w2" id="iTogo" autocomplete="off"></div>
+        <div class="cell"><label for="iYard">Ball on</label>
+          <div class="spotwrap"><button class="side" id="iSide" type="button" title="Click to switch sides of the field"><span id="sideTxt">TB</span><small>⇄</small></button><input class="ed big w2" id="iYard" inputmode="numeric" autocomplete="off" aria-label="Yard line"></div></div>
+        <div class="cell drive">
+          <span class="info" id="driveInfo"></span>
+          <div class="row" id="endRow">
+            <button class="btn quiet" data-end="punt">Punt</button>
+            <button class="btn quiet" data-end="fg">FG good</button>
+            <button class="btn quiet" data-end="fg_miss">FG missed</button>
+            <button class="btn quiet" data-end="half">Half over</button>
+          </div>
+        </div>
+      </div>
+      <p class="stripnote">Click any number and type; Enter or Tab saves. Click the team to switch sides of the field. Clock takes 8:41 or 841; G in To go means goal.</p>
+      <div id="heroArea"></div>
+
+      <div class="entry" id="entry">
+        <div class="lastplay" id="lastPlay" hidden></div>
+        <div id="manualEntry">
+        <h3>What did he call?</h3>
+        <div class="pad">
+          <span class="lab">Run</span>
+          <div class="keys">
+            <button class="key run" data-k="J"><kbd>J</kbd><b>Left</b><small>JJ: outside edge</small></button>
+            <button class="key run" data-k="K"><kbd>K</kbd><b>Inside</b><small>A/B gap (R works too)</small></button>
+            <button class="key run" data-k="L"><kbd>L</kbd><b>Right</b><small>LL: outside edge</small></button>
+          </div>
+          <span class="lab">Pass</span>
+          <div class="keys">
+            <button class="key pass" data-k="P"><kbd>P</kbd><b>Dropback</b><small>tap again: short, mid, deep</small></button>
+            <button class="key pass" data-k="A"><kbd>A</kbd><b>Play-action</b><small>tap again: short, mid, deep</small></button>
+            <button class="key pass" data-k="N"><kbd>N</kbd><b>Screen</b><small>&nbsp;</small></button>
+          </div>
+          <span class="lab">RPO</span>
+          <div class="keys">
+            <button class="key rpo" data-k="O"><kbd>O</kbd><b>RPO</b><small>OO: he threw it</small></button>
+          </div>
+          <span class="lab">Result</span>
+          <div class="keys">
+            <button class="key out" data-out="incomplete"><kbd>I</kbd><b>Incomplete</b><small>after P, A, N or OO</small></button>
+            <button class="key out" data-out="sack"><kbd>S</kbd><b>Sack</b><small>yards lost</small></button>
+            <button class="key out" data-out="scramble"><kbd>C</kbd><b>Scramble</b><small>yards gained</small></button>
+            <button class="key flag" id="flagBtn"><kbd>X</kbd><b>Flag</b><small>penalty menu</small></button>
+          </div>
+        </div>
+        <div class="flagpanel" id="flagPanel" hidden>
+          <div class="fphead"><b>Flag.</b> <span id="flagNote"></span> <button class="btn quiet" id="flagClose">Close (Esc)</button></div>
+          <div class="fpcols">
+            <div><div class="fpteam" id="fpDef">On TB (defense)</div><div class="fpbtns" id="fpDefBtns"></div></div>
+            <div><div class="fpteam" id="fpOff">On DAL (offense)</div><div class="fpbtns" id="fpOffBtns"></div></div>
+          </div>
+          <div class="fpother">
+            <button class="fpb" data-pen="OFFSET"><kbd>W</kbd><b>Offsetting</b><small>replay the down</small></button>
+            <button class="fpb" data-pen="OTHER_D"><b id="otherDLab">Other on TB</b><small>yards from the Yards box</small></button>
+            <label class="fpauto"><input type="checkbox" id="otherFirst"> automatic 1st down</label>
+            <button class="fpb" data-pen="OTHER_O"><b id="otherOLab">Other on DAL</b><small>yards from the Yards box</small></button>
+          </div>
+          <p class="hint">Flag on the play you picked: that play is wiped out but still counts as his call for scoring. Flag after a play that stands (late hit): log the play first, then flag. DPI and Other use the Yards box (for DPI, yards past the line). Half the distance applies near the goal line.</p>
+        </div>
+        <div class="chosen">
+          <span class="what none" id="chosen">Pick the play</span>
+          <div class="yds"><label for="yards">Yards</label><input id="yards" inputmode="numeric" value="0" autocomplete="off"></div>
+          <label><input type="checkbox" id="fTD"> Touchdown <small>(T)</small></label>
+          <label><input type="checkbox" id="fTO"> Turnover <small>(F)</small></label>
+          <button class="log-btn" id="logBtn" disabled>Log play</button>
+        </div>
+        </div>
+        <div class="short">
+          <input id="cmd" placeholder="Shorthand: JJ 6 | 2&amp;4 D44   ·   PP 0 INC   ·   PPP 35 TD   ·   X DH   ·   X DPI 25   ·   new D25" autocomplete="off" aria-label="Shorthand command">
+          <button class="btn" id="cmdBtn">Run</button>
+        </div>
+        <p class="hint" id="entryHint">Press the play key (tap again to cycle), type yards, Enter. I incomplete, X flag, Esc clears, U undoes. Down, distance and field position advance on their own.</p>
+      </div>
+
+      <div class="logwrap">
+        <h3>Play log</h3>
+        <div id="logArea"></div>
+      </div>
+    </main>
+
+    <aside class="rail">
+      <section>
+        <h3>Tonight's scorecard</h3>
+        <div id="kpiArea"></div>
+      </section>
+
+      <section>
+        <h3 id="profTitle">His tendencies</h3>
+        <div id="profArea"></div>
+      </section>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+let S = null, sel = {k:null, i:0, out:null};
+const $ = id => document.getElementById(id);
+const pct = x => Math.round(x * 100) + "%";
+const pct1 = x => (x * 100 < 10 ? (x * 100).toFixed(1) : Math.round(x * 100)) + "%";
+const OFF = () => S.game.offense, OPP = () => S.game.opponent;
+const FAMCLS = {run:"c-run", dropback:"c-pass", pa:"c-pass", screen:"c-pass", rpo:"c-rpo"};
+const LEAFFAM = {run_inside:"run",run_ot_left:"run",run_edge_left:"run",run_ot_right:"run",run_edge_right:"run",
+  dropback_short:"dropback",dropback_mid:"dropback",dropback_deep:"dropback",pa_short:"pa",pa_mid:"pa",pa_deep:"pa",
+  screen:"screen",rpo_run:"rpo",rpo_throw:"rpo"};
+
+function spot(yl){ if (yl === 50) return "50"; return yl > 50 ? `${OFF()} ${100 - yl}` : `${OPP()} ${yl}`; }
+const ord = d => ["", "1st", "2nd", "3rd", "4th"][d];
+
+async function api(path, body){
+  const r = await fetch(path, body ? {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)} : {});
+  const j = await r.json();
+  S = j; render();
+  if (j.error) toast(j.error, true); else if (body) toast(j.message);
+  return j;
+}
+let tt;
+function toast(msg, err){ const t = $("toast"); t.textContent = msg; t.className = "toast show" + (err ? " err" : ""); clearTimeout(tt); tt = setTimeout(() => t.className = "toast", 2600); }
+
+function drawField(){
+  const s = S.sit, f = $("field");
+  const bx = 100 + (100 - s.yardline_100) * 10, gx = Math.min(1100, bx + s.togo * 10);
+  let h = `<rect x="0" y="0" width="1200" height="120" fill="var(--turf)"/>`;
+  for (let i = 0; i < 10; i++) if (i % 2) h += `<rect x="${100 + i*100}" y="0" width="100" height="120" fill="var(--turf-2)"/>`;
+  h += `<rect x="0" y="0" width="100" height="120" fill="#24563A"/><rect x="1100" y="0" width="100" height="120" fill="#24563A"/>`;
+  h += `<text x="50" y="66" fill="var(--chalk)" font-family="Barlow Condensed" font-weight="700" font-size="30" text-anchor="middle" transform="rotate(-90 50 60)">${OFF()}</text>`;
+  h += `<text x="1150" y="66" fill="var(--chalk)" font-family="Barlow Condensed" font-weight="700" font-size="30" text-anchor="middle" transform="rotate(90 1150 60)">${OPP()}</text>`;
+  for (let y = 0; y <= 100; y += 10){
+    const x = 100 + y * 10;
+    h += `<line x1="${x}" y1="0" x2="${x}" y2="120" stroke="var(--chalk)" stroke-opacity=".55" stroke-width="${y % 50 ? 1.5 : 2.5}"/>`;
+    if (y > 0 && y < 100) h += `<text x="${x}" y="108" fill="var(--chalk)" fill-opacity=".8" font-family="Barlow Condensed" font-weight="600" font-size="18" text-anchor="middle">${y <= 50 ? y : 100 - y}</text>`;
+  }
+  if (S.drive_active){
+    h += `<line x1="${gx}" y1="0" x2="${gx}" y2="120" stroke="var(--gain)" stroke-width="4"/>`;
+    h += `<line x1="${bx}" y1="0" x2="${bx}" y2="120" stroke="#8FB8FF" stroke-width="3"/>`;
+    h += `<ellipse cx="${bx}" cy="48" rx="13" ry="8" fill="#7A4A23" stroke="var(--chalk)" stroke-width="1.5"/>`;
+    h += `<text x="${gx + 8}" y="22" fill="var(--gain)" font-family="Barlow Condensed" font-weight="700" font-size="18">line to gain</text>`;
+  }
+  f.innerHTML = h;
+}
+
+function arrow(hot){ return hot === "up" ? ' <span class="up" title="Well above the league">▲</span>' : hot === "down" ? ' <span class="down" title="Well below the league">▼</span>' : ""; }
+
+function renderHero(){
+  const P = S.prediction;
+  if (!P){
+    $("heroArea").innerHTML = `<div class="offfield"><h2>${OFF()} is off the field</h2><p>When ${OFF()} gets the ball, click <b>Ball on</b> above and type the spot, like <b>D 25</b>. The drive starts and predictions come back. Update the score and clock the same way.</p></div>`;
+    return;
+  }
+  const t = P.top, cls = P.flag.replace(" ", "").toLowerCase();
+  const passShare = P.p, lgPass = P.p_league;
+  let why = "";
+  const hab = Math.round((P.p_habits - P.p_league) * 1000) / 10;
+  why += `<li><span class="pts ${hab >= 0 ? "up" : "down"}">${hab >= 0 ? "+" : ""}${hab}</span><span>pass pts from his habits here</span></li>`;
+  if (P.script) why += `<li><span class="pts">—</span><span>Opening script: memory switches on after snap ${S.memory.script_plays}</span></li>`;
+  for (const m of P.memory_parts) why += `<li><span class="pts ${m.pts >= 0 ? "up" : "down"}">${m.pts >= 0 ? "+" : ""}${m.pts}</span><span>${m.term}</span></li>`;
+  const fams = P.families.map(f => `<div class="fam ${FAMCLS[f.key]}">
+      <h4>${f.name}${arrow(f.hot)}</h4><div class="fp">${pct(f.p)}</div><div class="lg">League ${pct(f.p_league)}</div>
+      ${f.leaves.map(l => `<div class="leaf" data-leaf="${l.key}" title="Click to log this as the play he called"><div class="row1"><span>${l.name}${arrow(l.hot)}</span><span>${pct1(l.p)}</span></div>
+        <div class="bar"><i style="width:${Math.min(100, l.p / P.top[0].p * 100)}%"></i></div></div>`).join("")}
+    </div>`).join("");
+  $("heroArea").innerHTML = `<div class="hero">
+    <div class="pick">
+      <div><div class="lead">Most likely call</div><div class="name">${t[0].name}<b>${pct(t[0].p)}</b></div></div>
+      <div class="alt">Then <b>${t[1].name}</b> ${pct(t[1].p)} · <b>${t[2].name}</b> ${pct(t[2].p)}</div>
+      <span class="pill ${cls}" title="Pass vs run against the league">${P.flag.replace(/^(\w)/, c => c.toUpperCase())}</span>
+    </div>
+    <div class="split" aria-label="Pass versus run">
+      <div style="width:${passShare * 100}%;background:var(--pass)"></div><div style="flex:1;background:var(--run)"></div>
+      <span class="lgmark" style="left:${lgPass * 100}%" title="League ${pct(lgPass)}"></span>
+    </div>
+    <div class="splitlab"><span>Ball thrown or dropback ${pct(passShare)}</span><span>League ${pct(lgPass)} (dashed)</span><span>Handed off or kept ${pct(1 - passShare)}</span></div>
+    <div class="fams">${fams}</div>
+    <p class="legend">▲ ▼ = at least 4 points and 30% above or below the league for this exact situation. Bars are scaled to the top pick. Click a play to pick it as what he called.</p>
+    <ul class="why">${why}</ul>
+  </div>`;
+  document.querySelectorAll(".leaf[data-leaf]").forEach(el => el.onclick = () => pickLeaf(el.dataset.leaf));
+}
+function pickLeaf(leaf){
+  for (const k of ["J","K","L","P","A","N","O"]){
+    const i = S.keys[k].findIndex(x => x.leaf === leaf);
+    if (i >= 0){ sel = {k, i, out:null}; renderChosen(); focusYards(); return; }
+  }
+}
+
+function selLeaf(){
+  if (!sel.k || !S) return null;
+  const c = S.keys[sel.k]; return c[sel.i % c.length];
+}
+function renderChosen(){
+  const L = selLeaf(), el = $("chosen");
+  let txt = L ? L.name : "", cyc = "";
+  if (sel.out === "incomplete"){
+    const fam = L ? LEAFFAM[L.leaf] : null;
+    txt = (L && ["dropback","pa","screen"].includes(fam) ? L.name : L && fam === "rpo" ? "RPO, thrown" : "Dropback pass") + ", incomplete";
+  } else if (sel.out){ txt = (L && !["run","screen"].includes(LEAFFAM[L.leaf]) && L.leaf !== "rpo_run" ? S.family_names[LEAFFAM[L.leaf]] : "Dropback pass") + (sel.out === "sack" ? ", sack" : ", scramble"); }
+  if (L && S.keys[sel.k].length > 1 && !sel.out){
+    const nxt = S.keys[sel.k][(sel.i + 1) % S.keys[sel.k].length];
+    cyc = ` <small style="font-family:var(--text);font-size:13px;color:var(--muted);font-weight:500">tap ${sel.k} for ${nxt.name}</small>`;
+  }
+  el.className = "what" + (txt ? "" : " none");
+  el.innerHTML = txt ? txt + cyc : "Pick the play";
+  document.querySelectorAll(".key[data-k]").forEach(b => b.classList.toggle("on", b.dataset.k === sel.k || (sel.k === "R" && b.dataset.k === "K")));
+  document.querySelectorAll(".key[data-out]").forEach(b => b.classList.toggle("on", b.dataset.out === sel.out));
+  $("logBtn").disabled = !(S.drive_active && (L || sel.out));
+}
+
+function render(){
+  if (!S) return;
+  if (!S.keys){
+    document.querySelector("main").innerHTML = `<div class="offfield"><h2>Restart the server to finish the update</h2><p>In Terminal press Ctrl+C, run <b>bash start.sh</b>, then refresh this page. Your logged snaps are saved.</p></div>`;
+    return;
+  }
+  $("gameLabel").textContent = S.game.label;
+  $("whoLabel").textContent = `Modelling ${S.profile.caller} (${S.profile.team} offense)`;
+  drawField(); renderStrip(); renderHero(); renderChosen(); renderFeed();
+  $("entry").style.opacity = (S.drive_active || feedOn()) ? 1 : .5;
+  renderKPIs(); renderProfile(); renderLog();
+}
+
+// ---- ESPN live feed
+const feedOn = () => !!(S && S.feed && S.feed.on);
+function renderFeed(){
+  const f = S.feed || {}, on = !!f.on;
+  const b = $("feedBtn");
+  b.classList.toggle("on", on); b.classList.toggle("err", on && f.state === "error");
+  $("feedBtnTxt").textContent = on ? (f.state === "error" ? "ESPN live: retrying" : "ESPN live: on") : "ESPN live: off";
+  if (document.activeElement !== $("feedEvent")) $("feedEvent").value = f.event_id || "";
+  let st = "";
+  if (on && f.state === "error") st = `Can't reach ESPN (${f.detail}). Still trying every few seconds.`;
+  else if (on) st = `Updated ${f.last_poll || "…"}` + (f.last_play ? ` · <b>Last:</b> ${esc(f.last_play)}` : "")
+    + (f.skipped ? ` · <b>Skipped, enter it by hand:</b> ${esc(f.skipped)}` : "");
+  else st = "Off: enter plays by hand, or turn it on and plays log themselves.";
+  $("feedStatus").innerHTML = st;
+  $("manualEntry").hidden = on;
+  $("flagPanel").hidden = on || !flagMode;
+  $("entryHint").textContent = on
+    ? "ESPN logs each play, down, distance, spot, clock and score. It can't see play-action, screens or RPOs: press A, N or O to fix the last play. P undoes that, J/K/L change the run gap, U undoes."
+    : "Press the play key (tap again to cycle), type yards, Enter. I incomplete, X flag, Esc clears, U undoes. Down, distance and field position advance on their own.";
+  renderLastPlay();
+}
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function renderLastPlay(){
+  const el = $("lastPlay");
+  if (!feedOn()){ el.hidden = true; return; }
+  el.hidden = false;
+  const r = S.log.find(x => x.source === "espn" && !x.nullified);
+  if (!r){ el.innerHTML = `<h3>Waiting for the first ${OFF()} play</h3><p class="lptext">Plays appear here a few seconds after ESPN posts them.</p>`; return; }
+  const keys = r.dropback
+    ? [["A","Play-action","pa"],["N","Screen","screen"],["O","RPO, thrown","rpo"],["P","Plain dropback","dropback"]]
+    : [["O","RPO, handed off","rpo"],["J","Left (again: edge)",null],["K","Inside",null],["L","Right (again: edge)",null]];
+  el.innerHTML = `<h3>Last play from ESPN</h3>
+    <div class="lpname">${esc(r.name)}${r.td ? ", TD" : ""}${r.turnover ? ", turnover" : ""} <span style="font-size:18px;color:var(--muted)">${r.yards} yds${r.retagged ? " · retagged" : ""}</span></div>
+    <p class="lptext">${esc(r.feed_text || "")}</p>
+    <div class="lpkeys">${keys.map(([k, lab, fam]) => `<button class="key ${r.dropback ? "pass" : (k === "O" ? "rpo" : "run")} ${fam && r.family === fam ? "cur" : ""}" data-retag="${k}"><kbd>${k}</kbd><b>${lab}</b></button>`).join("")}</div>`;
+  el.querySelectorAll("[data-retag]").forEach(b => b.onclick = () => api("/api/retag", {key:b.dataset.retag}));
+}
+$("feedBtn").onclick = () => api("/api/feed", {on: !feedOn(), event_id: $("feedEvent").value.trim() || null});
+$("replayBtn").onclick = () => {
+  const id = $("feedEvent").value.trim();
+  if (confirm(`Rebuild the game log from ESPN game ${id || "(today's)"}? The current log is backed up first.`))
+    api("/api/feed/replay", {event_id: id || null});
+};
+$("feedEvent").addEventListener("keydown", e => { if (e.key === "Enter"){ e.preventDefault(); $("feedEvent").blur(); } });
+// pick up plays the feed logged in the background
+setInterval(async () => {
+  if (!S) return;
+  try {
+    const j = await (await fetch("/api/version")).json();
+    const f = S.feed || {};
+    if (j.version !== S.version || j.feed.last_poll !== f.last_poll || j.feed.state !== f.state || j.feed.on !== f.on){
+      S = await (await fetch("/api/state")).json(); render();
+    }
+  } catch (e) {}
+}, 2000);
+
+function setVal(id, v){ const el = $(id); if (document.activeElement !== el){ el.value = v; el.classList.remove("bad"); } }
+function renderStrip(){
+  const s = S.sit;
+  setVal("iQtr", s.qtr); setVal("iClock", s.clock_str);
+  setVal("iOff", s.score_off); setVal("iOpp", s.score_opp);
+  setVal("iDown", s.down); setVal("iTogo", s.togo >= s.yardline_100 ? "G" : s.togo);
+  const own = s.yardline_100 > 50 || (s.yardline_100 === 50 && sideAtFifty !== OPP());
+  setVal("iYard", own ? 100 - s.yardline_100 : s.yardline_100);
+  $("sideTxt").textContent = own ? OFF() : OPP();
+  $("iSide").classList.toggle("opp", !own);
+  $("iSide").title = `Ball on ${own ? OFF() + "'s own" : OPP() + "'s"} side. Click to switch.`;
+  $("lOff").textContent = OFF(); $("lOpp").textContent = OPP();
+  $("clockEst").hidden = !s.clock_estimated;
+  const info = $("driveInfo");
+  info.textContent = S.drive_active ? `Drive ${S.drive_n}, snap ${S.memory.snap_n + 1} of the game`
+                                    : `${OFF()} off the field. Type where they get the ball in Ball on.`;
+  info.className = "info" + (S.drive_active ? "" : " cue");
+  $("endRow").hidden = !S.drive_active;
+}
+
+function renderKPIs(){
+  const m = S.metrics;
+  if (!m.n){ $("kpiArea").innerHTML = `<p class="note">Scores appear after the first logged snap.</p>`; return; }
+  const g = m.granular || {};
+  let h = "";
+  if (g.leaf_n){
+    h += `<div class="sub">Specific play (${g.leaf_n} snaps)</div><div class="kpis">
+      <div class="kpi"><div class="v">${g.leaf_top1} of ${g.leaf_n}</div><div class="l">Top pick was right</div></div>
+      <div class="kpi"><div class="v">${g.leaf_top3} of ${g.leaf_n}</div><div class="l">Actual play in his top 3 (league ${g.leaf_top3_league})</div></div>
+      <div class="kpi"><div class="v ${g.leaf_logloss < g.leaf_logloss_league ? "better" : "worse"}">${g.leaf_logloss.toFixed(2)}</div><div class="l">His model, log loss</div></div>
+      <div class="kpi"><div class="v">${g.leaf_logloss_league.toFixed(2)}</div><div class="l">League, log loss</div></div></div>`;
+  }
+  if (g.fam_n){
+    h += `<div class="sub">Play type (${g.fam_n} snaps)</div><div class="kpis">
+      <div class="kpi"><div class="v">${g.fam_top_hits} of ${g.fam_n}</div><div class="l">Most likely type was right</div></div>
+      <div class="kpi"><div class="v ${g.fam_logloss < g.fam_logloss_league ? "better" : "worse"}">${g.fam_logloss.toFixed(2)}</div><div class="l">Log loss (league ${g.fam_logloss_league.toFixed(2)})</div></div></div>`;
+  }
+  h += `<div class="sub">Pass vs run (${m.n} snaps)</div><div class="kpis">
+    <div class="kpi"><div class="v ${m.logloss_model < m.logloss_league ? "better" : "worse"}">${m.logloss_model.toFixed(3)}</div><div class="l">His model, log loss (league ${m.logloss_league.toFixed(3)})</div></div>
+    <div class="kpi"><div class="v">${pct(m.acc_model)}</div><div class="l">Called right (league ${pct(m.acc_league)})</div></div>
+    <div class="kpi"><div class="v">${m.tilt_n ? m.tilt_hits + " of " + m.tilt_n : "0"}</div><div class="l">Tilts that came true</div></div>
+    <div class="kpi"><div class="v">${pct(m.dropback_rate)}</div><div class="l">Pass rate tonight</div></div></div>
+    <p class="note">Lower log loss is better. One game is a pipeline test, not proof.</p>`;
+  $("kpiArea").innerHTML = h;
+}
+
+function renderProfile(){
+  const P = S.profile, cs = Object.entries(P.coefs).filter(([k]) => k !== "intercept");
+  const W = 310, L = 160, R = W - 10, rowH = 22, lo = -1.2, hi = 1.2;
+  const X = v => L + (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * (R - L);
+  let g = `<svg viewBox="0 0 ${W} ${cs.length * rowH + 30}" width="100%" role="img" aria-label="His pass-run tendency terms with 90 percent intervals">`;
+  g += `<line x1="${X(0)}" y1="4" x2="${X(0)}" y2="${cs.length * rowH + 4}" stroke="var(--muted)" stroke-dasharray="3 3"/>`;
+  cs.forEach(([k, v], i) => {
+    const y = 14 + i * rowH, sure = v.lo > 0 || v.hi < 0, col = v.est >= 0 ? "var(--pass)" : "var(--run)";
+    g += `<text x="0" y="${y + 4}" font-size="11.5" fill="var(--ink)">${v.label}</text>`;
+    g += `<line x1="${X(v.lo)}" y1="${y}" x2="${X(v.hi)}" y2="${y}" stroke="${col}" stroke-width="2.5" stroke-opacity="${sure ? 1 : .35}"/>`;
+    g += `<circle cx="${X(v.est)}" cy="${y}" r="4.5" fill="${sure ? col : "#fff"}" stroke="${col}" stroke-width="2"/>`;
+  });
+  const by = cs.length * rowH + 22;
+  g += `<text x="${X(-1)}" y="${by}" font-size="11" fill="var(--run)" text-anchor="middle">more run</text><text x="${W}" y="${by}" font-size="11" fill="var(--pass)" text-anchor="end">more pass</text></svg>`;
+  let mix = "";
+  const G = P.granular;
+  if (G){
+    mix = `<div class="sub">His play-type mix vs expected</div><table><tbody>` +
+      Object.entries(G.family_rates).map(([k, v]) => `<tr><td>${S.family_names[k]}</td><td class="num">${pct(v.his)}</td><td class="num" style="color:var(--muted)">exp. ${pct(v.league_expected)}</td></tr>`).join("") +
+      `</tbody></table><p class="note">Held-out check: his top pick for the specific play was right ${pct(G.cv.specific_play.top1_his)} of the time; the actual play was in his top 3 ${pct(G.cv.specific_play.top3_his)} of the time (${G.cv.specific_play.n.toLocaleString()} snaps).</p>`;
+  }
+  $("profTitle").textContent = `${P.caller.split(" ").slice(-1)[0]}'s tendencies`;
+  $("profArea").innerHTML = `<div class="sub" style="margin-top:0">Pass vs run terms</div>` + g +
+    `<p class="note">${P.n_snaps.toLocaleString()} snaps, ${P.n_games} games (${P.seasons.join("–")}). Filled dots: 90% interval excludes zero.</p>` + mix;
+}
+
+function renderLog(){
+  const L = S.log;
+  if (!L.length){ $("logArea").innerHTML = `<p class="empty">No snaps yet. Each logged play shows his top pick next to what he called.</p>`; return; }
+  const legacy = {R:"Run", P:"Pass", SC:"Scramble", S:"Sack"};
+  $("logArea").innerHTML = `<table><thead><tr><th>#</th><th>Time</th><th>Situation</th><th>His top pick</th><th>Actual</th><th class="num">His % on it</th><th class="num">League %</th><th class="num">Rank</th><th class="num">Yds</th></tr></thead><tbody>` +
+    L.map(r => {
+      const top = r.top_leaf ? `${S.leaf_names[r.top_leaf]} ${pct(r.top_leaf_p)}` : `${r.p >= .5 ? "Pass" : "Run"} ${pct(Math.max(r.p, 1 - r.p))}`;
+      const actual = (r.name || legacy[r.call]) + (r.td ? ", TD" : "") + (r.turnover ? ", turnover" : "");
+      const hisP = r.leaf_p != null ? r.leaf_p : r.fam_p;
+      const lgP = r.leaf_p != null ? r.leaf_p_league : r.fam_p_league;
+      const rank = r.leaf_rank != null ? `<span class="${r.leaf_rank === 1 ? "ok" : r.leaf_rank <= 3 ? "" : "no"}">${r.leaf_rank}</span>` : "—";
+      return `<tr><td>${r.snap}</td><td>Q${r.qtr} ${r.clock}</td><td>${ord(r.down)} &amp; ${r.togo} at ${spot(r.yardline_100)}</td>
+        <td>${top}</td><td>${actual}</td><td class="num">${hisP != null ? pct1(hisP) : "—"}</td><td class="num">${lgP != null ? pct1(lgP) : "—"}</td>
+        <td class="num">${rank}</td><td class="num">${r.nullified ? "flag" : r.yards}</td></tr>`;
+    }).join("") + `</tbody></table>`;
+}
+
+// ---- actions
+function tap(k){
+  if (!S) return;
+  if (k === "R") k = "K";
+  if (sel.k === k) sel.i += 1; else { sel.k = k; sel.i = 0; }
+  sel.out = null; renderChosen(); focusYards();
+}
+function outcome(o){
+  sel.out = sel.out === o ? null : o;
+  if (sel.out === "incomplete") $("yards").value = "0";
+  renderChosen(); focusYards();
+}
+
+// ---- flags
+const FLAGKEYS = {O:"OFFSIDE", H:"DH", C:"IC", D:"DPI", R:"RTP", U:"URD", M:"FM", Z:"12D",
+                  F:"FS", G:"DOG", E:"ILF", L:"OH", P:"OPI", B:"IBB", I:"IG", N:"URO", W:"OFFSET"};
+const KEYOF = Object.fromEntries(Object.entries(FLAGKEYS).map(([k, c]) => [c, k]));
+let flagMode = false, flagBuilt = false;
+function penSummary(p){
+  if (p.yards === "spot") return "ball at the spot, auto 1st (Yards = past the line)";
+  const bits = [`${p.yards} yds`];
+  if (p.first) bits.push("auto 1st");
+  if (p.lod) bits.push("loss of down");
+  if (p.presnap) bits.push("pre-snap");
+  return bits.join(", ");
+}
+function buildFlags(){
+  const mk = (c) => { const p = S.penalties[c];
+    return `<button class="fpb" data-pen="${c}"><kbd>${KEYOF[c] || ""}</kbd><b>${p.label.replace(" on defense","").replace(" on offense","")}</b><small>${penSummary(p)}</small></button>`; };
+  const order = ["OFFSIDE","DH","IC","DPI","RTP","URD","FM","12D","FS","DOG","ILF","OH","OPI","IBB","IG","URO"];
+  $("fpDefBtns").innerHTML = order.filter(c => S.penalties[c].against === "def").map(mk).join("");
+  $("fpOffBtns").innerHTML = order.filter(c => S.penalties[c].against === "off").map(mk).join("");
+  $("fpDef").textContent = `On ${OPP()} (defense)`; $("fpOff").textContent = `On ${OFF()} (offense)`;
+  $("otherDLab").textContent = `Other on ${OPP()}`; $("otherOLab").textContent = `Other on ${OFF()}`;
+  document.querySelectorAll("#flagPanel [data-pen]").forEach(b => b.onclick = () => applyFlag(b.dataset.pen));
+  flagBuilt = true;
+}
+function openFlag(){
+  if (!S || !S.drive_active){ toast("No Dallas drive in progress. Type the ball spot first.", true); return; }
+  if (!flagBuilt) buildFlags();
+  flagMode = true; $("flagPanel").hidden = false; $("flagBtn").classList.add("on");
+  const L = selLeaf();
+  $("flagNote").textContent = (L || sel.out) ? `Your pick (${$("chosen").textContent.replace(/tap .*/, "").trim()}) is wiped out but still scored as his call. Pre-snap fouls ignore it.`
+                                             : "No play picked: the flag just moves the ball.";
+  focusYards();
+}
+function closeFlag(){ flagMode = false; $("flagPanel").hidden = true; $("flagBtn").classList.remove("on"); }
+async function applyFlag(code){
+  const L = selLeaf();
+  const body = {code, yards: parseInt($("yards").value || "0", 10) || null, auto_first: $("otherFirst").checked};
+  if (L || sel.out) body.play = {leaf: L ? L.leaf : null, family: L ? null : "dropback", outcome: sel.out};
+  const j = await api("/api/penalty", body);
+  if (!j.error){ closeFlag(); clearSel(); $("otherFirst").checked = false; focusYards(); }
+}
+$("flagBtn").onclick = () => flagMode ? closeFlag() : openFlag();
+$("flagClose").onclick = closeFlag;
+function focusYards(){ const y = $("yards"); if (document.activeElement !== y){ y.focus(); y.select(); } }
+function clearSel(){ sel = {k:null, i:0, out:null}; $("yards").value = "0"; $("fTD").checked = $("fTO").checked = false; renderChosen(); }
+
+async function logPlay(){
+  const L = selLeaf();
+  if (!S.drive_active || !(L || sel.out)) return;
+  const yards = parseInt($("yards").value || "0", 10) || 0;
+  const body = {yards, td:$("fTD").checked, turnover:$("fTO").checked};
+  if (L) body.leaf = L.leaf; else body.family = "dropback";
+  if (sel.out) body.outcome = sel.out;
+  const j = await api("/api/play", body);
+  if (!j.error){ clearSel(); focusYards(); }
+}
+document.querySelectorAll(".key[data-k]").forEach(b => b.onclick = () => tap(b.dataset.k));
+document.querySelectorAll(".key[data-out]").forEach(b => b.onclick = () => outcome(b.dataset.out));
+$("logBtn").onclick = logPlay;
+$("undoBtn").onclick = () => api("/api/undo", {});
+$("resetBtn").onclick = () => { if (confirm("Clear every snap logged for this game?")) api("/api/reset", {}); };
+$("cmdBtn").onclick = runCmd;
+async function runCmd(){ const t = $("cmd").value.trim(); if (!t) return; const j = await api("/api/command", {text:t}); if (!j.error) $("cmd").value = ""; }
+$("cmd").addEventListener("keydown", e => { if (e.key === "Enter") runCmd(); });
+document.querySelectorAll("[data-end]").forEach(b => b.onclick = () => api("/api/drive", {end:b.dataset.end}));
+
+// inline situation fields: type, then Enter or Tab saves; Esc reverts
+let sideAtFifty = null;
+const curSide = () => $("sideTxt").textContent;
+const FIELDS = {iQtr: v => ({qtr:v}), iClock: v => ({clock:v}), iOff: v => ({score_off:v}), iOpp: v => ({score_opp:v}),
+                iDown: v => ({down:v}), iTogo: v => ({togo:v}), iYard: v => ({spot:`${curSide()} ${v}`})};
+async function saveSit(body, el){
+  const wasActive = S && S.drive_active;
+  const r = await fetch("/api/situation", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(body)});
+  const j = await r.json();
+  if (j.error){ toast(j.error, true); S = j; if (el) renderAllBut(el); else render(); return false; }
+  S = j; render();
+  if (!wasActive && j.drive_active) toast(j.message);
+  return true;
+}
+$("iSide").addEventListener("click", async () => {
+  const other = curSide() === OFF() ? OPP() : OFF();
+  const yard = parseInt($("iYard").value, 10) || (S.sit.yardline_100 > 50 ? 100 - S.sit.yardline_100 : S.sit.yardline_100);
+  if (yard === 50) sideAtFifty = other;
+  await saveSit({spot:`${other} ${yard}`});
+  const y = $("iYard"); y.focus(); y.select();
+});
+for (const [id, build] of Object.entries(FIELDS)){
+  const el = $(id);
+  el.addEventListener("focus", () => el.select());
+  el.addEventListener("change", async () => {
+    const v = el.value.trim();
+    if (v === ""){ render(); return; }
+    await saveSit(build(v), el);
+  });
+  el.addEventListener("keydown", e => {
+    if (e.key === "Enter"){ e.preventDefault(); el.blur(); if (S && S.drive_active) focusYards(); }
+    if (e.key === "Escape"){ e.preventDefault(); el.value = ""; el.blur(); }
+  });
+}
+function renderAllBut(el){ const keep = el.value; render(); el.value = keep; el.classList.add("bad"); }
+
+document.addEventListener("keydown", e => {
+  const t = e.target instanceof Element ? e.target : document.body;
+  if (t.matches("input:not(#yards), select, textarea") || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  if (feedOn()){
+    if (["A","N","O","P","J","K","L","R"].includes(k)){ e.preventDefault(); api("/api/retag", {key:k}); return; }
+    if (k === "U"){ e.preventDefault(); api("/api/undo", {}); return; }
+    return;
+  }
+  if (flagMode){
+    if (k === "Escape" || k === "X"){ e.preventDefault(); closeFlag(); return; }
+    if (FLAGKEYS[k]){ e.preventDefault(); applyFlag(FLAGKEYS[k]); return; }
+    if (e.key.length === 1 && !/[0-9\-]/.test(e.key)){ e.preventDefault(); return; }
+    if (k === "Enter"){ e.preventDefault(); return; }
+    return;
+  }
+  if (["J","K","L","R","P","A","N","O"].includes(k)){ e.preventDefault(); tap(k); return; }
+  if (k === "S"){ e.preventDefault(); outcome("sack"); return; }
+  if (k === "C"){ e.preventDefault(); outcome("scramble"); return; }
+  if (k === "I"){ e.preventDefault(); outcome("incomplete"); return; }
+  if (k === "T"){ e.preventDefault(); $("fTD").checked = !$("fTD").checked; return; }
+  if (k === "F"){ e.preventDefault(); $("fTO").checked = !$("fTO").checked; return; }
+  if (k === "X"){ e.preventDefault(); openFlag(); return; }
+  if (k === "U"){ e.preventDefault(); api("/api/undo", {}); return; }
+  if (k === "Escape"){ e.preventDefault(); clearSel(); return; }
+  if (k === "Enter"){ e.preventDefault(); logPlay(); return; }
+  if (t.id === "yards" && e.key.length === 1 && !/[0-9\-]/.test(e.key)) e.preventDefault();
+});
+$("yards").addEventListener("focus", () => $("yards").select());
+
+api("/api/state");
+</script>
+</body>
+</html>
