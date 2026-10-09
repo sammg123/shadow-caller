@@ -1,7 +1,6 @@
 """Guards around the live game over HTTP, on sandboxed servers (offline, the saved TB at DAL game, temp data folders;
-never the live game): only this machine's own page may change the game, a reset keeps a copy, an undo that takes an
-ESPN row's prediction away starts a new timeline, a game file from an older build still serves its timeline, and a
-watch survives a server kill."""
+never the live game): only this machine's own page may change the game, a reset keeps a copy, an undo never takes an
+ESPN play back out, a game file from an older build still serves its timeline, and a watch survives a server kill."""
 import json
 import subprocess
 import sys
@@ -124,8 +123,10 @@ def test_reset_keeps_a_copy_of_the_game(srv):
     assert json.loads(made.pop().read_text())["log"] == game["log"]
 
 
-def test_undo_that_takes_away_an_espn_rows_prediction_starts_a_new_timeline(srv):
-    """A cached row would keep the prediction the undo removed (a ghost): a new epoch makes the client redraw."""
+def test_undo_never_takes_an_espn_play_back_out(srv):
+    """U after a watched (or fed) play used to take its row out of the log while its id stayed applied, so it was
+    never logged again and the field showed a snap with no prediction. Now that undo is refused (409, the reason in
+    `error`) and nothing changes; a retag made after the last ESPN play can still be undone."""
     base = srv["base"]
     post(base, "/api/reset")
     status, out = send(base, "/api/watch/start", {"event_id": EVENT, "speed": 0.5, "from_seq": 2})
@@ -133,11 +134,14 @@ def test_undo_that_takes_away_an_espn_rows_prediction_starts_a_new_timeline(srv)
     assert wait_until(lambda: get(base + "/api/version")["timeline_n"] == 2)     # the kickoff and DAL's first snap
     send(base, "/api/watch/stop", {})                                            # keep the watched game
     v = get(base + "/api/version")
-    assert get(f"{base}/api/timeline?since=0")["rows"][1]["pred"] is not None
-    post(base, "/api/undo")
+    status, out = send(base, "/api/undo", {})
+    assert status == 409 and "ESPN" in out["error"] and len(out["log"]) == 1
     after = get(base + "/api/version")
-    assert after["epoch"] != v["epoch"] and after["timeline_n"] == 2
-    assert get(f"{base}/api/timeline?since=0&epoch={after['epoch']}")["rows"][1]["pred"] is None
+    assert (after["epoch"], after["version"], after["timeline_n"]) == (v["epoch"], v["version"], 2)
+    assert get(f"{base}/api/timeline?since=0&epoch={after['epoch']}")["rows"][1]["pred"] is not None
+    assert send(base, "/api/retag", {"key": "A"})[1]["log"][0]["family"] == "pa"
+    status, out = send(base, "/api/undo", {})
+    assert status == 200 and out["log"][0]["family"] == "dropback" and out["version"] > after["version"]
 
 
 def test_a_game_file_from_an_older_build_serves_its_timeline(server, tmp_path):

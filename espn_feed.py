@@ -412,6 +412,10 @@ class Feed:
         os.replace(tmp, SEEN_PATH)                     # atomic: a crash mid-write can't corrupt it
 
     def forget(self):
+        """No play counts as applied any more (reset, replay, watch). If some did, the engine's undo steps go too:
+        one could bring back their rows with their ids forgotten, and the feed would log them all twice (G9)."""
+        if self.applied:               # first, so a seen file that can't be saved never leaves a way back
+            self.engine.clear_history()
         self.seen, self.applied, self._legacy_order, self.skipped_ids = set(), [], False, []
         self.status["skipped"] = None
         self._save_seen()
@@ -500,7 +504,8 @@ class Feed:
         """Apply one ESPN play to the engine, then record its id in apply order and update the status line.
         Never raises: a play that fails is skipped (status 'skipped', its id in skipped_ids, the traceback in the
         server log) but still counts as applied. Returns 1 if it logged a snap that counts. Takes the lock
-        (re-entrant), so callers may hold it."""
+        (re-entrant), so callers may hold it. Undo can't step back past it, applied or skipped
+        (GameEngine.seal_history): its id stays applied, so the feed would never log it again."""
         pid = str(p.get("id"))
         logged = 0
         with self.lock:
@@ -512,6 +517,7 @@ class Feed:
                 if pid not in self.skipped_ids:
                     self.skipped_ids.append(pid)
                 log.exception("ESPN play %s skipped; enter it by hand if it was a %s snap", pid, GAME["offense"])
+            self.engine.seal_history()
             if pid not in self.seen:
                 if typed_rows:         # the field showed hand-typed plays; from now on it shows ESPN's: new epoch
                     self._bump_epoch()

@@ -15,7 +15,7 @@ import logos
 import timeline
 import watch
 from config import DATA_DIR, ESPN_OFFLINE, GAME, PORT, ROOT, WATCH_SCALE
-from live import GameEngine, parse_clock
+from live import GameEngine, UndoRefused, parse_clock
 
 app = Flask(__name__, static_folder=str(ROOT / "static"))
 LOCK = threading.RLock()
@@ -132,24 +132,40 @@ def state():
 @app.get("/api/version")
 def version():
     tl = timeline_pointer()
-    return jsonify({"version": engine.state.get("version", 0), "epoch": tl["epoch"], "timeline_n": tl["n"],
+    return jsonify({"version": engine.version, "epoch": tl["epoch"], "timeline_n": tl["n"],
                     "feed": {**feed.status, "on": feed.on}, "watch": WATCH.brief()})
+
+
+def timeline_args(args):
+    """(since, until, error) from the query: ASCII whole numbers; until is optional and never before since."""
+    since, until = args.get("since", "0"), args.get("until")
+    if not SINCE_RE.fullmatch(since):
+        return None, None, "since must be a whole number"
+    if until is None:
+        return int(since), None, None
+    if not SINCE_RE.fullmatch(until):
+        return None, None, "until must be a whole number"
+    if int(until) < int(since):
+        return None, None, "until can't be before since"
+    return int(since), int(until), None
 
 
 @app.get("/api/timeline")
 def timeline_rows():
     """Every applied play, both teams (data contract C1). ?since=n returns rows after n; a missing or stale
-    ?epoch= answers as since=0 with reset true."""
-    since = request.args.get("since", "0")
-    if not SINCE_RE.fullmatch(since):
-        return jsonify({"error": "since must be a whole number"}), 400
+    ?epoch= answers as since=0 with reset true. ?until=m (v1.2) answers as of row m: rows up to m, and drives,
+    status and box as they stood after it, so a batch of rows can be shown one row at a time."""
+    since, until, error = timeline_args(request.args)
+    if error:
+        return jsonify({"error": error}), 400
     with LOCK:
         epoch = engine.epoch()
         if _ROWS["epoch"] != epoch:
             _ROWS.update(epoch=epoch, cache={})
         body = timeline.response(feed.load_summary(), feed.applied, engine.state, GAME, epoch=epoch,
-                                 mode=timeline_mode(), since=int(since), client_epoch=request.args.get("epoch"),
-                                 cache=_ROWS["cache"], skipped=feed.skipped_ids)
+                                 mode=timeline_mode(), since=since, until=until,
+                                 client_epoch=request.args.get("epoch"), cache=_ROWS["cache"],
+                                 skipped=feed.skipped_ids)
     return jsonify(body)
 
 
@@ -253,14 +269,19 @@ def command():
 
 @app.post("/api/undo")
 def undo():
+    """One step back. Never past a play ESPN applied (the feed, a replay or a watch): its id stays applied, so the
+    feed would never log it again. That undo is refused with 409 and the reason; nothing changes."""
     def do():
         rows = len(engine.state.get("log") or [])
         manual = timeline_source() == "log" and bool(engine.history)
         engine.undo()
         if manual or len(engine.state.get("log") or []) != rows:
-            engine.bump_epoch()        # rows the client drew changed under it (a typed row, an ESPN row's pred)
-    locked(do)
-    return ok()
+            engine.bump_epoch()        # rows the client drew changed under it (a typed row and its pred)
+    try:
+        locked(do)
+        return ok()
+    except UndoRefused as e:
+        return fail(e, 409)
 
 
 @app.post("/api/reset")

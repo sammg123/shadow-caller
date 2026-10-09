@@ -164,6 +164,7 @@ def test_watch_backs_up_state_and_seen_then_resets(make_feed, summary, sandbox, 
     feed.summary = summary
     for team, p in iter_plays(summary)[:20]:
         feed.apply_one(team, p)
+    e.set_situation(qtr=e.state["sit"]["qtr"])                    # an undo step of Sam's after the last ESPN play
     assert e.state["log"] and e.history                           # a game in progress, with undo steps
     state_bytes, seen_bytes = live.STATE_PATH.read_bytes(), espn_feed.SEEN_PATH.read_bytes()
     w = watches(feed, 1.0)

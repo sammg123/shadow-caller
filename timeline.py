@@ -10,8 +10,9 @@ from espn_feed import AIR_EST, AIR_EST_SOURCE, _gain, classify, iter_drive_plays
 from granular import FAMILIES, FAMILY_NAMES, LEAF_FAMILY, LEAF_NAMES, LEAVES
 from live import fmt_clock
 from timeline_text import (INT_SPOT_RE, RETURN_RE, SACK_SPOT_RE, TIMEOUT_BY_RE, clamp_x, clock_seconds, dir_of,
-                           elapsed, goal_x, kick_facts, penalty_of, resolve_team, search_x, split_body, spot_x,
-                           text_x, x_from_yardline, x_from_yl100, yl100_from_x)
+                           down_text, elapsed, espn_box, game_facts, goal_x, kick_facts, mm_ss, pat_of, penalty_of,
+                           resolve_team, score_pair, search_x, split_body, spot_x, teams_of, text_x, x_from_yardline,
+                           x_from_yl100, yl100_from_x)
 
 SCRIMMAGE = ("play", "penalty", "kneel", "spike", "other", "punt", "fg", "fg_miss")   # downs the offense snapped
 OFFENSIVE_PLAYS = ("play", "kneel", "spike", "other", "fg", "fg_miss")                 # ESPN's offensivePlays
@@ -25,10 +26,6 @@ ADMIN_WHAT = (("official timeout", "official_timeout"), ("timeout", "timeout"), 
               ("end of half", "end_half"), ("end of regulation", "end_half"), ("end of game", "end_game"),
               ("end period", "end_period"), ("coin toss", "coin_toss"), ("extra point", "pat"),
               ("two-point", "pat"), ("conversion", "pat"))
-TWO_POINT_RE = re.compile(r"TWO-POINT CONVERSION ATTEMPT.*?ATTEMPT (SUCCEEDS|FAILS)", re.I | re.S)
-EXTRA_POINT_RE = re.compile(r"extra point is (GOOD|No Good|BLOCKED|Missed)", re.I)
-COLOR_RE = re.compile(r"[0-9a-fA-F]{6}")
-ABBR_RE = re.compile(r"[A-Z]{2,4}")
 FIELD = {"units": "yd", "orientation": "caller_left", "x_min": -10, "x_max": 110, "width": 53.333,
          "goal_lines": [0, 100], "posts_x": [-10, 110], "hash_y": [23.583, 29.75]}
 
@@ -272,16 +269,6 @@ def wp_of(pid, ctx):
     return {"home": home, "caller": home if ctx["caller_is_home"] else round(1 - home, 4), "delta": None}
 
 
-def pat_of(text):
-    m = TWO_POINT_RE.search(text)
-    if m:
-        return "two_good" if m.group(1).upper() == "SUCCEEDS" else "two_failed"
-    m = EXTRA_POINT_RE.search(text)
-    if m:
-        return "kick_good" if m.group(1).upper() == "GOOD" else "kick_missed"
-    return None
-
-
 def scoring_of(r, team, pts):
     """B6.6: the side whose score went up scores, whoever had the ball."""
     up = r["text"].upper()
@@ -374,11 +361,6 @@ def espn_drives(summary):
     drives = summary.get("drives") or {}
     groups = list(drives.get("previous") or []) + [drives.get("current") or {}]
     return {str(d.get("id")): d for d in groups if d.get("id") is not None}
-
-
-def mm_ss(text):
-    m = re.fullmatch(r"(\d{1,3}):(\d{2})", str(text or ""))
-    return int(m.group(1)) * 60 + int(m.group(2)) if m else None
 
 
 def ends_possession(r, team):
@@ -593,36 +575,7 @@ def status(rows, caller, teams=()):
             "wp_home": next((r["wp"]["home"] for r in reversed(rows) if r["wp"]), None)}
 
 
-# ---------------------------------------------------------------- A1, C2: field, teams, meta
-def hex_color(value):
-    return "#" + value.lower() if isinstance(value, str) and COLOR_RE.fullmatch(value) else None
-
-
-def teams_of(summary, game):
-    """(teams, team_order) from the summary header: names, colors, logo URLs (C2). Never score, winner, record or
-    linescores, which are final in a saved game. Without a summary: GAME, no colors, no logos."""
-    caller, out, order = game["offense"], {}, []
-    comps = (((((summary or {}).get("header") or {}).get("competitions") or [{}])[0]).get("competitors")) or []
-    for c in sorted(comps, key=lambda c: c.get("homeAway") != "away"):
-        t = c.get("team") or {}
-        abbr = str(t.get("abbreviation") or "")
-        if not ABBR_RE.fullmatch(abbr):
-            continue
-        out[abbr] = {"abbr": abbr, "espn_id": str(t["id"]) if t.get("id") is not None else None, "name": t.get("name"),
-                     "location": t.get("location"), "display_name": t.get("displayName"),
-                     "home": c.get("homeAway") == "home", "caller": abbr == caller,
-                     "side": "left" if abbr == caller else "right", "color": hex_color(t.get("color")),
-                     "alt_color": hex_color(t.get("alternateColor")), "logo": f"/api/logo/{abbr}",
-                     "logo_dark": f"/api/logo/{abbr}?v=dark"}
-        order.append(abbr)
-    if len(out) >= 2:
-        return out, order
-    home, away = (caller, game["opponent"]) if game.get("offense_is_home") else (game["opponent"], caller)
-    return {a: {"abbr": a, "espn_id": None, "name": None, "location": None, "display_name": None, "home": a == home,
-                "caller": a == caller, "side": "left" if a == caller else "right", "color": None, "alt_color": None,
-                "logo": None, "logo_dark": None} for a in (away, home)}, [away, home]
-
-
+# ---------------------------------------------------------------- A1: field, meta (C2 teams: timeline_text)
 def field_of(game, home):
     rest = {k: v for k, v in FIELD.items() if k not in ("units", "orientation")}
     return {"units": FIELD["units"], "orientation": FIELD["orientation"], "left_team": game["offense"],
@@ -640,17 +593,6 @@ def meta():
 LEAF_SIDE = {"run_ot_left": "left", "run_edge_left": "left", "run_inside": "middle", "run_ot_right": "right",
              "run_edge_right": "right"}
 DRIVE_END_RESULT = {"punt": "PUNT", "fg": "FG", "fg_miss": "MISSED FG", "half": "END OF HALF"}
-
-
-def down_text(down, togo, yl100, caller, opp):
-    """'1st & 4 at TB 4', built like GameEngine.situation_text()."""
-    spot = "50" if yl100 == 50 else (f"{caller} {100 - yl100}" if yl100 > 50 else f"{opp} {yl100}")
-    return f"{['', '1st', '2nd', '3rd', '4th'][down]} & {'Goal' if togo >= yl100 else togo} at {spot}"
-
-
-def score_pair(text, caller, opp):
-    m = re.fullmatch(r"(\d+)-(\d+)", str(text or ""))
-    return {caller: int(m.group(1)), opp: int(m.group(2))} if m else None
 
 
 def log_call(r):
@@ -721,11 +663,12 @@ def log_rows(state, game):
     return rows
 
 
-def log_drive(idx, rs, state, game):
+def log_drive(idx, rs, state, game, cut=()):
+    """cut: drives that go on past the rows given (a response as of an earlier row): still in progress there."""
     last = rs[-1]
     res, geo = last["result"], last["geo"]
-    complete = not (state.get("drive_active") and state.get("drive_n") == idx)
-    how = (state.get("drive_ends") or {}).get(str(idx))
+    complete = not (state.get("drive_active") and state.get("drive_n") == idx) and idx not in cut
+    how = None if idx in cut else (state.get("drive_ends") or {}).get(str(idx))
     result = ("TD" if res["td"] else "TURNOVER" if res["turnover"] else "DOWNS" if res["downs"]
               else DRIVE_END_RESULT.get(how))
     x_final = 100 if res["td"] else (geo["x_next"] if geo["x_next"] is not None else geo["x_end"])
@@ -737,13 +680,13 @@ def log_drive(idx, rs, state, game):
             "seq": [rs[0]["seq"], last["seq"]], "engine_drive": idx}
 
 
-def log_drives(rows, state, game):
+def log_drives(rows, state, game, cut=()):
     """Drives from the engine's drive numbers. Result: TD, TURNOVER or DOWNS from the last row, else how
     end_drive closed it (punt, FG), else null."""
     groups = {}
     for r in rows:
         groups.setdefault(r["drive"], []).append(r)
-    return [log_drive(idx, groups[idx], state, game) for idx in sorted(groups)]
+    return [log_drive(idx, groups[idx], state, game, cut) for idx in sorted(groups)]
 
 
 def log_status(state, game):
@@ -756,41 +699,96 @@ def log_status(state, game):
             "timeouts": None, "last_seq": len(state.get("log") or []), "wp_home": None}
 
 
+def log_status_at(rows, game):
+    """Manual mode as of an earlier row (until): its clock, the score after it, and the ball where its drive goes on
+    (null when the drive ended there). Same keys as log_status."""
+    caller, opp = game["offense"], game["opponent"]
+    if not rows:
+        return {**status([], caller, (opp, caller)), "clock_est": False, "timeouts": None}
+    r, post = rows[-1], rows[-1]["post"]
+    return {"state": "in", "qtr": r["qtr"], "clock": r["clock"], "clock_est": r["clock_est"],
+            "poss": caller if post else None, "score": r["score"], "down_text": post["text"] if post else None,
+            "ball_x": r["geo"]["x_next"] if post else None, "ball_kind": "snap" if post else None,
+            "timeouts": None, "last_seq": r["seq"], "wp_home": None}
+
+
 # ---------------------------------------------------------------- C1: the /api/timeline body
 def source_of(summary, applied):
     """'espn' once there is a summary and at least one applied play for this game, else 'log' (D)."""
     return "espn" if summary and applied else "log"
 
 
-def response(summary, applied, state, game, *, epoch, mode, since=0, client_epoch=None, cache=None, skipped=()):
-    """Everything GET /api/timeline?since=&epoch= returns (C1). Pure: reads its inputs, writes only `cache`
+def up_to(rows, upto):
+    """The rows with seq <= upto; all of them when upto is None."""
+    return rows if upto is None else [r for r in rows if r["seq"] <= upto]
+
+
+def espn_part(summary, applied, log, game, order, *, upto, cache, skipped):
+    """Rows, drives, box and status of the ESPN timeline as of seq `upto` (None: now), plus the lists that say what
+    can't be drawn: `skipped` (applies that failed; a caller snap among them has no prediction) and `missing`
+    (applied ids the summary no longer has: ESPN dropped or re-id'd the play)."""
+    caller = game["offense"]
+    rows = up_to(build_timeline(summary, applied, log, caller, cache), upto)
+    ds = drives(rows, summary, caller)
+    drawn, failed = {r["id"] for r in rows}, set(skipped)
+    return {"rows": rows, "drives": ds, "box": box(rows, ds, order), "status": status(rows, caller, order),
+            "wp_start": wp_start(summary), "unlinked": [r["seq"] for r in log if not r.get("espn_id")],
+            "skipped": [r["seq"] for r in rows if r["id"] in failed],
+            "missing": [pid for pid in applied[:upto] if pid not in drawn]}
+
+
+def log_part(state, game, *, upto):
+    """The manual timeline (D) as of seq `upto` (None: now). A drive that goes on past upto is still in progress
+    there, and the status is the one right after that row."""
+    every = log_rows(state, game)
+    rows = up_to(every, upto)
+    ds = log_drives(rows, state, game, cut={r["drive"] for r in every if upto is not None and r["seq"] > upto})
+    bx = {t: {**b, "top_s": None, "top": None} for t, b in box(rows, ds, [game["offense"]]).items()}
+    st = log_status(state, game) if upto is None else log_status_at(rows, game)
+    return {"rows": rows, "drives": ds, "box": bx, "status": st, "wp_start": None, "unlinked": [], "skipped": [],
+            "missing": []}
+
+
+def espn_box_now(summary, applied, mode, order):
+    """ESPN's own box score (v1.2), only when it can't spoil and counts exactly the plays on the field: never in
+    Watch mode, and only once every play the summary has is applied (a watch stopped part way leaves a finished
+    game on screen, and its final box would run ahead of the field). None otherwise, or when it doesn't parse."""
+    if mode == "watch":
+        return None
+    have = set(applied)
+    if any(row_id(p) not in have for t, i, d, p in iter_drive_plays(summary)):
+        return None
+    return espn_box(summary, order)
+
+
+def response(summary, applied, state, game, *, epoch, mode, since=0, until=None, client_epoch=None, cache=None,
+             skipped=()):
+    """Everything GET /api/timeline?since=&until=&epoch= returns (C1). Pure: reads its inputs, writes only `cache`
     ({play id: frozen row} for this epoch). A missing or different epoch, or since past the end, answers as
-    since=0 with reset true; field, teams, team_order and meta come only then.
-    Beyond C1, so nothing fails quietly: `skipped` lists the seq of applied rows whose apply failed (the feed's
-    skipped ids: a caller snap among them has no prediction), and `missing` the applied ids the summary no longer
-    has (ESPN dropped or re-id'd the play), which can't be drawn."""
+    since=0 with reset true; field, teams, team_order, meta and game come only then.
+    until (v1.2, ui-architecture Appendix B #8; the caller checks until >= since): the timeline as of that seq.
+    n is min(until, applied rows), rows run since < seq <= n, and drives, status and box are as of row n.
+    box_espn (v1.2) is ESPN's own box score, sent only by espn_box_now() and never with an until short of now;
+    box_source says which box the UI should show. Beyond C1, `skipped` and `missing` (espn_part) say what can't
+    be drawn, so nothing fails quietly."""
     caller, log = game["offense"], state.get("log") or []
     teams, order = teams_of(summary, game)
-    missing, skipped_seq = [], []
-    if source_of(summary, applied) == "espn":
-        rows, n = build_timeline(summary, applied, log, caller, cache), len(applied)
-        ds = drives(rows, summary, caller)
-        bx, st, wp0 = box(rows, ds, order), status(rows, caller, order), wp_start(summary)
-        unlinked = [r["seq"] for r in log if not r.get("espn_id")]
-        drawn, failed = {r["id"] for r in rows}, set(skipped)
-        missing = [pid for pid in applied if pid not in drawn]
-        skipped_seq = [r["seq"] for r in rows if r["id"] in failed]
-    else:
-        rows, n = log_rows(state, game), len(log)
-        ds = log_drives(rows, state, game)
-        bx = {t: {**b, "top_s": None, "top": None} for t, b in box(rows, ds, [caller]).items()}
-        st, wp0, unlinked = log_status(state, game), None, []
-    reset = client_epoch != epoch or since > n
+    source = source_of(summary, applied)
+    total = len(applied) if source == "espn" else len(log)
+    reset = client_epoch != epoch or since > total
     since = 0 if reset else since
-    out = {"epoch": epoch, "n": n, "since": since, "reset": reset, "source": source_of(summary, applied), "mode": mode,
-           "rows": [r for r in rows if r["seq"] > since], "drives": ds, "status": st, "box": bx, "wp_start": wp0,
-           "unlinked": unlinked, "skipped": skipped_seq, "missing": missing}
+    n = total if until is None else min(until, total)
+    upto = None if n == total else n
+    part = (espn_part(summary, applied, log, game, order, upto=upto, cache=cache, skipped=skipped)
+            if source == "espn" else log_part(state, game, upto=upto))
+    box_espn = espn_box_now(summary, applied, mode, order) if source == "espn" and upto is None else None
+    out = {"epoch": epoch, "n": n, "since": since, "reset": reset, "source": source, "mode": mode,
+           "rows": [r for r in part["rows"] if r["seq"] > since], "drives": part["drives"], "status": part["status"],
+           "box": part["box"], "box_espn": box_espn, "box_source": "espn" if box_espn else "derived",
+           **{k: part[k] for k in ("wp_start", "unlinked", "skipped", "missing")}}
+    if until is not None:
+        out["until"] = n
     if since == 0:
         home = next((t for t, v in teams.items() if v["home"]), caller)
-        out.update(field=field_of(game, home), teams=teams, team_order=order, meta=meta())
+        out.update(field=field_of(game, home), teams=teams, team_order=order, meta=meta(), game=game_facts(summary))
     return out

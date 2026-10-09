@@ -418,21 +418,19 @@ class Watch:
         session file, then stop the live feed, reset the engine and the feed and load this game. Returns what
         stop(restore=True) needs to put the old game back."""
         feed, engine = self.feed, self.engine
-        version = engine.state.get("version", 0)
         restore = carried or {"files": backup_game(),           # first: if it fails, nothing has changed yet
                               "feed_was_on": feed.on, "event_id": feed.event_id, "summary": feed.load_summary(),
                               "status": dict(feed.status)}
         save_session(restore, event_id, started_at)            # before the reset: a restart finds the way back
         feed.stop()
         feed.invalidate()                         # a live poll already in flight now applies nothing
-        engine.reset()
-        engine.history = []                       # U can't step back into half of the old game
+        engine.reset()                            # versions only go up across it (GameEngine.version)
+        engine.clear_history()                    # U can't step back into half of the old game
         feed.forget()
         feed.event_id = event_id
         feed.summary = summary                    # the setter also learns the caller's ESPN team id
         feed.status.update(last_play=None, plays_logged=0, skipped=None)
         engine.bump_epoch()
-        engine.state["version"] = max(engine.state.get("version", 0), version)   # versions only go up
         engine.set_message(f"Watching ESPN game {event_id} at {speed:g}x. Your game is backed up; Stop puts it back.")
         return restore
 
@@ -589,13 +587,13 @@ class Watch:
         feed.invalidate()
         files = r["files"]
         check_backups(files)
-        version = engine.state.get("version", 0)
         _put_files_back([(files[k], path) for k, path in (("state", live.STATE_PATH), ("seen", espn_feed.SEEN_PATH))
                          if files[k] is not None])
         state = engine._load() if files["state"] else engine._fresh()
         if state is None:
             raise WatchError(f"The backup {files['state'].name} couldn't be loaded.")
-        engine.state, engine.history = state, []
+        engine.state = state                      # an older version: the next save still takes a newer one
+        engine.clear_history()
         if files["seen"]:
             feed.reload_seen()
         else:
@@ -604,7 +602,6 @@ class Watch:
         feed.summary = r["summary"]               # after reload_seen: the setter fixes a legacy id order
         feed.status.update(r["status"] or {})
         engine.bump_epoch()
-        engine.state["version"] = max(engine.state.get("version", 0), version)
         engine.set_message("Stopped watching. Your game is back.")
         _resync_archive(engine)
         if r["feed_was_on"]:

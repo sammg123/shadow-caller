@@ -23,6 +23,17 @@ log = logging.getLogger(__name__)
 HOT_PTS, HOT_RATIO = 0.04, 1.3
 BOOT_ID = secrets.token_hex(2)     # new on every server start; the first half of the timeline epoch
 OUTCOME_NAMES = {"sack": "sack", "scramble": "scramble", "incomplete": "incomplete"}
+HISTORY_STEPS = 200                # undo steps kept in memory
+DRIVE_END_MESSAGES = {"punt": "Punt. Waiting for the next Dallas drive.",          # FI #86, #87: kept word for word
+                      "fg": "Field goal good (+3). Waiting for the next Dallas drive.",
+                      "fg_miss": "Field goal missed. Waiting for the next Dallas drive.",
+                      "half": "End of half. Waiting for the next Dallas drive."}
+ESPN_UNDO_FLOOR = ("Undo can't take back a play ESPN logged: the feed would never log it again. Retag the last play "
+                   "with A, N, O or P, or type the fix.")
+
+
+class UndoRefused(ValueError):
+    """An undo that would step back past a play ESPN applied (the feed, a replay or a watch). The app answers 409."""
 
 # code: (label, against 'def'/'off'/None, yards | 'spot' | 'box', auto first down, loss of down, pre-snap)
 PENALTIES = {
@@ -86,9 +97,19 @@ class GameEngine:
         self.alpha = self.profile["alpha"]
         self.q0 = self.profile["q0"]
         self.history = []
+        self.undo_floor = None             # why an undo with no steps left is refused (ESPN plays behind it), or None
         self.epoch_n = 0
         self._pred_memo = None
+        self._batching = False             # command(): one checkpoint and one save for the whole line
         self.state = self._load() or self._fresh()
+        self._version = self.state.get("version", 0)
+
+    @property
+    def version(self):
+        """The newest version saved (or loaded). It only goes up, also across an undo, a reset, a replay or a watch
+        that swaps in an older or fresh game, so another window that compares versions sees every change (G8).
+        Lock-free readers (/api/version) never see it drop, not even while a reset is half done."""
+        return max(self._version, self.state.get("version", 0))
 
     # ------------------------------------------------------------ timeline epoch
     def epoch(self):
@@ -151,8 +172,13 @@ class GameEngine:
 
     def _save(self):
         """Write the whole file, then swap it in (os.replace): a save cut short leaves the last good game, never
-        half of one. Watch mode and replays save about twice a play."""
-        self.state["version"] = self.state.get("version", 0) + 1
+        half of one. Watch mode and replays save about twice a play. Each save takes a new version, one above any
+        this engine has used, even if the write then fails (a number is never handed out twice). Inside a shorthand
+        line nothing is written: command() saves once, at the end."""
+        if self._batching:
+            return
+        self._version = self.version + 1
+        self.state["version"] = self._version
         tmp = STATE_PATH.with_name(STATE_PATH.name + ".tmp")
         try:
             tmp.write_text(json.dumps(self.state, indent=1))
@@ -162,13 +188,29 @@ class GameEngine:
             raise
 
     def _checkpoint(self):
-        if getattr(self, "_batching", False):
+        if self._batching:
             return
         self.history.append(copy.deepcopy(self.state))
-        self.history = self.history[-200:]
+        self.history = self.history[-HISTORY_STEPS:]
+
+    def clear_history(self):
+        """Drop every undo step: the game on screen was replaced or its ESPN ids forgotten (a reset of an ESPN game,
+        a watch starting or putting the game back). U then says 'Nothing to undo.'"""
+        self.history, self.undo_floor = [], None
+
+    def seal_history(self, reason=ESPN_UNDO_FLOOR):
+        """ESPN just applied a play (the feed, a replay or a watch). An undo step from before it would take its row
+        out of the log, or roll back its clock, score and drive, while its id stays applied, and the feed would never
+        log it again. So undo stops here: the steps behind are dropped and U past this point is refused with
+        `reason`. Changes Sam makes after it (a retag, a typed fix) can still be undone."""
+        self.history, self.undo_floor = [], reason
 
     def undo(self):
+        """One step back. Refused (UndoRefused) when the only way back crosses a play ESPN applied; with no steps
+        and nothing behind them, the message says there is nothing to undo."""
         if not self.history:
+            if self.undo_floor:
+                raise UndoRefused(self.undo_floor)
             self.state["message"] = "Nothing to undo."
             return
         last = self.state["log"][-1]["snap"] if self.state["log"] else None
@@ -322,6 +364,14 @@ class GameEngine:
         self._save()
 
     def end_drive(self, how):
+        """punt, fg, fg_miss or half. A field goal adds 3, so it needs a drive (G22: it used to score off the field);
+        the other ends are harmless without one."""
+        if not isinstance(how, str) or how not in DRIVE_END_MESSAGES:
+            raise ValueError("A drive ends with punt, fg, fg_miss or half.")
+        if how == "fg" and not self.state["drive_active"]:
+            off, opp = GAME["offense"], GAME["opponent"]
+            raise ValueError(f"No {off} drive in progress, so there's no field goal to add. "
+                             f"To fix the score, type it like '{off} 3 {opp} 0'.")
         self._checkpoint()
         s = self.state["sit"]
         if how == "fg":
@@ -330,10 +380,7 @@ class GameEngine:
             self.state.setdefault("drive_ends", {})[str(self.state["drive_n"])] = how
         self.state["drive_active"] = False
         self.state["mem"]["prev"] = None
-        self.state["message"] = {"punt": "Punt. Waiting for the next Dallas drive.",
-                                 "fg": "Field goal good (+3). Waiting for the next Dallas drive.",
-                                 "fg_miss": "Field goal missed. Waiting for the next Dallas drive.",
-                                 "half": "End of half. Waiting for the next Dallas drive."}.get(how, "Drive over.")
+        self.state["message"] = DRIVE_END_MESSAGES[how]
         self._save()
 
     def add_score(self, team, pts):
@@ -652,20 +699,23 @@ class GameEngine:
     def command(self, text):
         """Shorthand, segments split by '|':
         'P 8 | 2&2 D44'   'R -2'   'S 7'   'SC 6'   'P 35 TD'   'R 3 F' (fumble lost)   'I' (interception)
-        'X' (penalty, no play)   'new D25'   'DAL 14 TB 10'   'Q2 1:58'   'punt' / 'fg' / 'fg miss'"""
+        'X' (penalty, no play)   'new D25'   'DAL 14 TB 10'   'Q2 1:58'   'punt' / 'fg' / 'fg miss'
+        All or nothing, on disk too: the segments write nothing (one checkpoint, one save at the end), so a bad
+        segment, or a save that fails, leaves the game, the file and the archive as they were."""
         self._checkpoint()          # one undo reverts the whole line
         before = copy.deepcopy(self.state)
-        self._batching = True
         try:
-            self._command(text)
+            self._batching = True
+            try:
+                self._command(text)
+            finally:
+                self._batching = False
+            self._save()
         except Exception:
-            self.state = before     # all-or-nothing: a bad segment changes nothing
+            self.state = before
             self.history.pop()
             self._db_delete_after(len(self.state["log"]))
             raise
-        finally:
-            self._batching = False
-        self._save()
 
     def _command(self, text):
         off, opp = GAME["offense"], GAME["opponent"]
@@ -734,7 +784,6 @@ class GameEngine:
                 continue
             raise ValueError(f"Didn't understand '{seg}'")
         self.state["message"] = "Done: " + ", ".join(done)
-        self._save()
 
     def _parse_spot(self, text):
         """'D44' / 'DAL 44' = offense's own 44; 'T30' / 'TB 30' = opponent's 30; '50' = midfield;
@@ -811,7 +860,7 @@ class GameEngine:
                               "presnap": v[5]} for c, v in PENALTIES.items()},
             "leaf_names": LEAF_NAMES, "family_names": FAMILY_NAMES,
             "log": [{k: v for k, v in r.items() if k != "tree"} for r in reversed(s["log"])],
-            "metrics": self.metrics(), "version": s.get("version", 0),
+            "metrics": self.metrics(), "version": self.version,
             "message": s.get("message", ""), "profile": self.profile,
             "memory": {"snap_n": s["mem"]["snap_n"], "value_gap": s["mem"]["qp"] - s["mem"]["qr"],
                        "prev": s["mem"]["prev"], "script_plays": SCRIPT_PLAYS},
