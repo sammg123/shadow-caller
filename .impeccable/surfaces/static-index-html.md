@@ -19,7 +19,7 @@ The whole single page: the live play-caller console and its demo playback, one H
 
 ## Direction and memorable moment
 
-Under the Lights (DESIGN.md; docs/design/direction-contract.md): the stadium is the interface. The memorable moment is **the projection**: before every Dallas snap the lights dip, the call lights up on the turf in coarse pixels with its name and percentage, the lights come back at the snap, the ball's tracer flies through or past it, and the SHADOW v LEAGUE scoreboard ticks.
+Under the Lights (DESIGN.md; docs/design/direction-contract.md): the stadium is the interface. The memorable moment is **the projection**: before every Dallas snap the lights dip and the top 2 most likely plays appear on the turf as dashed, translucent shadow plays (a pass as an arc, a run as a straight line) with "1 · Deep shot (20+) · 31%" text underneath (docs/design/play-drawing.md, Sam's binding direction); the lights come back at the snap, the real play draws solid from the line of scrimmage with its label, and the SHADOW v LEAGUE scoreboard ticks.
 
 ## Unresolved decisions
 
