@@ -18,6 +18,9 @@ export const MASTHEAD = Object.freeze({
   scorecard: "Scorecard",
   scorecardTitle: "Full scorecard (G)",
   whoLabel: (caller, team) => `Modelling ${caller} (${team} offense)`,
+  // v1.2 (A9): names of the masthead's two key groups, for assistive tech
+  gameGroup: "Game",
+  viewGroup: "View",
 });
 
 export const FEED = Object.freeze({
@@ -176,6 +179,11 @@ export const SCORECARD = Object.freeze({
   pairFamily: "Play type log loss",
   pairLeaf: "Specific play log loss",
   basis: (n) => `${n} snaps`,
+  // v1.2 (A8): the SHADOW v LEAGUE block of the scorecard
+  pairsHeading: "Shadow v League",
+  pairsLegend: "Shadow is his model. League is the caller-blind league baseline.",
+  versus: "v",
+  leads: Object.freeze({ shadow: "Shadow leads", league: "League leads", even: "Even" }),
 });
 
 export const TENDENCIES = Object.freeze({
@@ -189,6 +197,11 @@ export const TENDENCIES = Object.freeze({
   mixHeading: "His play-type mix vs expected",
   expected: (p) => `exp. ${p}`,
   heldOut: (top1, top3, n) => `Held-out check: his top pick for the specific play was right ${top1} of the time; the actual play was in his top 3 ${top3} of the time (${n} snaps).`,
+  // v1.2 (A8): group captions and what each plotted row says to a screen reader
+  groups: Object.freeze({ habit: "His habits", memory: "In-game memory" }),
+  leans: Object.freeze({ pass: "leans pass", run: "leans run" }),
+  sure: "90% interval excludes zero",
+  unsure: "90% interval includes zero",
 });
 
 export const LOG = Object.freeze({
@@ -206,6 +219,13 @@ export const PLAYS = Object.freeze({
   heading: "Plays",
   verdict: Object.freeze({ top1: "Top pick", top3: "In his top 3", miss: "Miss", none: "" }),
   unlinked: (n) => (n === 1 ? "1 hand-entered play isn't on the field" : `${n} hand-entered plays aren't on the field`),
+  // v1.2 (A8): empty feed, row marks, and what clicking a row does
+  empty: "Plays appear here as they happen, newest first.",
+  noPlay: "No play",
+  retagged: "retagged",
+  review: "Show this play on the field",
+  reviewing: "On the field now. Click again to go back to live.",
+  inProgress: "Drive in progress",
 });
 
 export const DRIVES = Object.freeze({
@@ -213,12 +233,22 @@ export const DRIVES = Object.freeze({
   plays: (n) => `${n} ${n === 1 ? "play" : "plays"}`,
   yards: (n) => `${n} yds`,
   label: (team, result) => (result ? `${team} ${result}` : `${team} drive`),
+  // v1.2 (A8): empty chart and what clicking a drive does
+  empty: "Drives appear after the first play.",
+  review: "Show this drive's first play on the field",
+  reviewing: "This drive is on the field. Click again to go back to live.",
+  now: "Now",
 });
 
 export const WP = Object.freeze({
   heading: "Win probability",
   aria: (team, p) => `${team} win probability ${p}`,
   unavailable: "Win probability comes from ESPN; hand-entered games don't have it.",
+  // v1.2 (A8): the chart's axis words
+  quarters: Object.freeze(["Q1", "Q2", "Q3", "Q4"]),
+  overtime: "OT",
+  even: "50%",
+  waiting: "The line starts with the first play.",
 });
 
 export const BOX = Object.freeze({
@@ -242,6 +272,10 @@ export const BOX = Object.freeze({
   fumblesLost: "Fumbles lost",
   possession: "Possession",
   pair: (a, b) => `${a}-${b}`,
+  // v1.2 (A8): which box is showing (ESPN's own when the server sends it, ui-architecture Appendix B), and the empty line
+  sourceEspn: "ESPN box score",
+  sourceDerived: "Counted from the plays on the field",
+  empty: "Team stats appear after the first play.",
 });
 
 export const SCOREBOARD = Object.freeze({
@@ -251,6 +285,11 @@ export const SCOREBOARD = Object.freeze({
   ballOn: "Ball on",
   timeouts: "Timeouts",
   logoAlt: (name) => `${name} logo`,
+  // v1.2 (A8)
+  aria: "Scoreboard",
+  hasBall: "has the ball",
+  timeoutsLeft: (n) => `${n} ${n === 1 ? "timeout" : "timeouts"} left`,
+  final: "Final",
 });
 
 export const WATCH = Object.freeze({
@@ -270,9 +309,14 @@ export const REVIEW = Object.freeze({
   text: (who, when, what) => `Reviewing ${who}, ${when}, ${what}. Esc returns to live.`,
   unknown: (seq) => `Reviewing play ${seq}. Esc returns to live.`,
   kickoff: "kickoff",
+  // v1.2 (A9): the review banner's keys (Left, Right, Esc), so a mouse or a phone can step and leave review too
+  earlier: "Earlier play",
+  later: "Later play",
+  live: "Back to live",
 });
 
 export const FIELD = Object.freeze({
+  label: "Football field",   // v1.2 (A9): #field's name before a game is loaded
   legend: "Ball shown mid-field; ESPN gives no hash.",
   ballOn: (spot) => `Ball on ${spot}.`,
   downDistance: (text) => `${text}.`,

@@ -1,0 +1,24 @@
+/* Connection banner (ui/conn-banner.js; owner A9; G11): a strip across the top of the viewport while the app
+   server can't be reached. States: .sc-conn[data-conn="retrying|offline"]; hidden when online. */
+
+.sc-conn {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 900;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-3);
+  min-height: 2.75rem;
+  padding: var(--sc-space-2) var(--sc-gutter);
+  border-block-end: calc(var(--sc-border-w) * 2) solid var(--sc-warn);
+  background: var(--sc-surface-raised);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+}
+.sc-conn .sc-lamp { background: var(--sc-warn); }
+.sc-conn[data-conn="offline"] { border-block-end-color: var(--sc-bad); }
+.sc-conn[data-conn="offline"] .sc-lamp { background: var(--sc-bad); }
+.sc-conn-text { flex: 1 1 12rem; min-width: 0; }

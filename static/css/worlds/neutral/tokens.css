@@ -1,0 +1,110 @@
+/* Neutral world (ui-architecture.md 2.7; owner A10): a deliberately plain placeholder so the app is usable and
+   testable without a chosen world. Every REQUIRED_TOKENS name (theme/tokens.js), neutral values, system fonts only
+   (G28). Nothing here comes from the old stylesheet (G29). ?world=neutral forces it. */
+
+:root[data-world="neutral"] {
+  color-scheme: light;
+
+  /* Ground and ink */
+  --sc-bg: #eceef0;
+  --sc-surface: #ffffff;
+  --sc-surface-2: #f4f5f7;
+  --sc-surface-raised: #ffffff;
+  --sc-scrim: rgb(20 24 30 / 0.5);
+  --sc-ink: #16191d;
+  --sc-ink-muted: #565e68;
+  --sc-ink-inverse: #ffffff;
+  --sc-rule: #d4d8dd;
+  --sc-rule-strong: #858d97;
+
+  /* Meanings (FI 0 keeps the meaning; these are neutral values) */
+  --sc-pass: #2c5fb4;
+  --sc-run: #9c5911;
+  --sc-rpo: #6c4aa3;
+  --sc-gain: #d8a600;
+  --sc-los: #2f74d6;
+  --sc-good: #237a46;
+  --sc-bad: #b3302f;
+  --sc-warn: #8f5600;
+  --sc-live: #c42828;
+  --sc-focus: #0b57d0;
+
+  /* Type */
+  --sc-font-display: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sc-font-text: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sc-font-num: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --sc-size-call: clamp(2rem, 1.25rem + 2.4vw, 3.75rem);
+  --sc-size-xl: clamp(1.5rem, 1.1rem + 1.2vw, 2.25rem);
+  --sc-size-l: clamp(1.125rem, 1rem + 0.45vw, 1.5rem);
+  --sc-size-m: clamp(0.9375rem, 0.88rem + 0.2vw, 1.125rem);
+  --sc-size-s: clamp(0.8125rem, 0.78rem + 0.12vw, 0.9375rem);
+  --sc-size-xs: clamp(0.75rem, 0.72rem + 0.08vw, 0.8125rem);
+  --sc-weight-regular: 400;
+  --sc-weight-strong: 600;
+  --sc-weight-display: 700;
+  --sc-case-label: none;
+  --sc-tracking-label: 0.01em;
+  --sc-leading-tight: 1.1;
+  --sc-leading-body: 1.45;
+
+  /* Space and shape */
+  --sc-space-1: 4px;
+  --sc-space-2: 8px;
+  --sc-space-3: 12px;
+  --sc-space-4: 16px;
+  --sc-space-5: 24px;
+  --sc-space-6: 40px;
+  --sc-radius-s: 4px;
+  --sc-radius-m: 6px;
+  --sc-radius-l: 10px;
+  --sc-border-w: 1px;
+  --sc-focus-w: 3px;
+  --sc-gutter: clamp(16px, 2.5vw, 40px);
+  --sc-field-aspect: 16 / 9;
+
+  /* Motion */
+  --sc-dur-fast: 120ms;
+  --sc-dur-med: 220ms;
+  --sc-dur-slow: 400ms;
+  --sc-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* Lights down (data-ambient="dark"): the same plain world for a dim room. */
+:root[data-world="neutral"][data-ambient="dark"] {
+  color-scheme: dark;
+  --sc-bg: #14171b;
+  --sc-surface: #1c2025;
+  --sc-surface-2: #22272d;
+  --sc-surface-raised: #2a3037;
+  --sc-scrim: rgb(0 0 0 / 0.6);
+  --sc-ink: #eef1f4;
+  --sc-ink-muted: #a6afb9;
+  --sc-ink-inverse: #14171b;
+  --sc-rule: #343b43;
+  --sc-rule-strong: #6b7580;
+  --sc-pass: #84abff;
+  --sc-run: #e7a457;
+  --sc-rpo: #b89bf2;
+  --sc-gain: #ffd23f;
+  --sc-los: #7ab0ff;
+  --sc-good: #5fc68c;
+  --sc-bad: #ff7d75;
+  --sc-warn: #e8b04a;
+  --sc-live: #ff6161;
+  --sc-focus: #8ab4ff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root[data-world="neutral"] {
+    --sc-dur-fast: 0ms;
+    --sc-dur-med: 0ms;
+    --sc-dur-slow: 0ms;
+  }
+}
+
+:root[data-world="neutral"][data-motion="reduced"] {
+  --sc-dur-fast: 0ms;
+  --sc-dur-med: 0ms;
+  --sc-dur-slow: 0ms;
+}

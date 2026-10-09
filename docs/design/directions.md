@@ -1,5 +1,7 @@
 # Shadow Play-Caller: visual directions for the redesign
 
+> **v1.3 OVERRIDE (2026-10-09), Sam's direction: read `docs/design/play-drawing.md` first.** It is binding and overrides this file wherever they disagree (2.4 drawing grammar, 2.5 engine visuals, the ghost zones, the W1 projection shapes) and any task prompt that says otherwise: every play starts on the line of scrimmage (no QB drop, no handoff mesh, no PA fake step); a pass is an arc, an incompletion an arc ending in an X, a run a straight flat 2D line with its yards; every play is labeled on the field ("Deep pass left · +21", "Inside run (up the middle) · +4"); before each Dallas snap the top 2 most likely plays are drawn as dashed, translucent shadow plays in that same shape language with "1 · Deep shot (20+) · 31%" text underneath.
+
 Status: candidate directions for the replacement visual world, derived with Impeccable `new-work.md` section 3 (steps 1 to 3) and section 4. The concept roll, the decision page and DESIGN.md come later and are not part of this file.
 
 Mode: **Operate** (a live tool read between snaps) carrying **demo-on-a-big-screen** weight. Expression may never hide the next call, the situation or the keys. Signature motion is one moment per snap, driven by state, and every moment degrades to an instant state change under `prefers-reduced-motion`.

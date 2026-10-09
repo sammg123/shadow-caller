@@ -1,0 +1,86 @@
+/* Layout (ui-architecture.md 1.1; owner A0). Two layers, both at zero specificity so a world's layout.css wins:
+   1. Baseline for every world: regions never force the page wider than the viewport (#8, G17), wide tables
+      scroll inside their own region, the field host keeps the world's --sc-field-aspect.
+   2. The neutral grid (#app[data-layout="neutral"], set by the neutral world's arrange): header, feed bar and
+      scoreboard across the top, then the main column (situation, field, transport, call, entry, flags, log) and a
+      right rail (scorecard, tendencies, win probability, drives, box score, plays). Breakpoints: 1040 px stacks
+      the rail under the main column (#7), 760 px tightens the spacing, 390 px is a phone with a 16 px gutter. */
+
+/* ---------------------------------------------------------------- baseline (every world) */
+:where(#app) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-4);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--sc-space-4) var(--sc-gutter) var(--sc-space-6);
+}
+
+:where(#app [data-region], #app .sc-col) { min-width: 0; max-width: 100%; }
+
+/* Regions that hold tables or long rows scroll sideways inside themselves, never the page. */
+:where(#rg-log, #rg-box, #rg-plays, #rg-drives) { overflow-x: auto; overscroll-behavior-x: contain; }
+
+:where(#rg-field) { position: relative; }
+:where(#rg-field #field) {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--sc-field-aspect);
+  overflow: hidden;
+}
+
+/* Overlays outside #app sit above it. */
+:where(#rg-conn) { position: sticky; top: 0; z-index: 900; }
+:where(#rg-boot) { position: relative; z-index: 1000; }
+
+/* ---------------------------------------------------------------- the neutral grid */
+:where(#app[data-layout="neutral"]) {
+  grid-template-columns: minmax(0, 1fr) var(--sc-layout-rail, 22rem);
+  grid-template-areas:
+    "masthead   masthead"
+    "feed       feed"
+    "scoreboard scoreboard"
+    "main       rail";
+  align-items: start;
+  column-gap: var(--sc-space-5);
+  row-gap: var(--sc-space-4);
+  max-width: 1600px;
+  margin-inline: auto;
+}
+
+:where(#app[data-layout="neutral"] > #rg-masthead) { grid-area: masthead; }
+:where(#app[data-layout="neutral"] > #rg-feed) { grid-area: feed; }
+:where(#app[data-layout="neutral"] > #rg-scoreboard) { grid-area: scoreboard; }
+:where(#app[data-layout="neutral"] > .sc-col-main) { grid-area: main; }
+:where(#app[data-layout="neutral"] > .sc-col-rail) { grid-area: rail; }
+
+:where(#app[data-layout="neutral"] .sc-col) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--sc-space-4);
+}
+
+/* The play feed is long (a whole game): it scrolls inside the rail on wide screens. */
+:where(#app[data-layout="neutral"] .sc-col-rail > #rg-plays) { max-height: min(70vh, 48rem); overflow-y: auto; }
+
+/* 1040 px and below: one column, the rail under the main column (#7). */
+@media (max-width: 1040px) {
+  :where(#app[data-layout="neutral"]) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "masthead" "feed" "scoreboard" "main" "rail";
+  }
+  :where(#app[data-layout="neutral"] .sc-col-rail > #rg-plays) { max-height: none; overflow-y: visible; }
+}
+
+/* 760 px and below: tighter spacing. */
+@media (max-width: 760px) {
+  :where(#app) { gap: var(--sc-space-3); padding-block: var(--sc-space-3) var(--sc-space-5); }
+  :where(#app[data-layout="neutral"] .sc-col) { gap: var(--sc-space-3); }
+}
+
+/* Phones (390 px): never less than a 16 px gutter, nothing wider than the screen (#8). */
+@media (max-width: 420px) {
+  :where(#app) { padding-inline: max(16px, var(--sc-gutter)); }
+}

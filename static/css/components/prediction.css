@@ -1,0 +1,285 @@
+/* The next call (#heroArea; ui/prediction.js; owner A7). Structure and token references only: every color, font,
+   size and duration is a --sc-* token, and a world skins this in css/worlds/<id>/components/prediction.css.
+   Data the component writes for geometry and tone:
+     --sc-share, --sc-league-share  bar shares, "0%" to "100%" (split bar, family bars, play bars)
+     data-family                    run | dropback | pa | screen | rpo, turned into --sc-tone below
+     data-hot, data-picked, data-highlighted, data-flag, .sc-call[data-enter="a" | "b"] (a new call)
+   Families sit in five columns, two at 760 px and below (#7). */
+
+:where(#heroArea) { min-width: 0; }
+
+/* ---------------------------------------------------------------- tone: run amber, passes blue, RPO purple (FI 0) */
+:where(#heroArea) [data-family] { --sc-tone: var(--sc-pass); }
+:where(#heroArea) [data-family="run"] { --sc-tone: var(--sc-run); }
+:where(#heroArea) [data-family="rpo"] { --sc-tone: var(--sc-rpo); }
+
+/* ---------------------------------------------------------------- the two faces */
+.sc-offfield,
+.sc-call {
+  display: grid;
+  gap: var(--sc-space-4);
+  min-width: 0;
+  padding: var(--sc-space-5);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+.sc-offfield { gap: var(--sc-space-3); }
+.sc-offfield-heading {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+  text-wrap: balance;
+}
+.sc-offfield-body {
+  max-width: 62ch;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-m);
+  line-height: var(--sc-leading-body);
+}
+.sc-offfield-body strong { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+
+/* ---------------------------------------------------------------- head: the kicker */
+.sc-call-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sc-space-3); }
+.sc-call-kicker {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.sc-call-snap { font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- the top pick: name, figure, pill */
+.sc-call-top { display: grid; gap: var(--sc-space-2); min-width: 0; }
+.sc-call-name {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+  overflow-wrap: break-word;
+}
+.sc-call-figure { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sc-space-3) var(--sc-space-4); }
+.sc-call-pct {
+  color: var(--sc-tone, var(--sc-ink));
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-call);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sc-weight-display);
+  line-height: 1;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--sc-space-1) var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  white-space: nowrap;
+}
+.pill.tiltpass { background: var(--sc-pass); border-color: var(--sc-pass); color: var(--sc-ink-inverse); }
+.pill.tiltrun { background: var(--sc-run); border-color: var(--sc-run); color: var(--sc-ink-inverse); }
+.pill.leanpass { border-color: var(--sc-pass); color: var(--sc-pass); }
+.pill.leanrun { border-color: var(--sc-run); color: var(--sc-run); }
+
+/* ---------------------------------------------------------------- then-line */
+.sc-then { color: var(--sc-ink-muted); font-size: var(--sc-size-m); line-height: var(--sc-leading-body); }
+.sc-then-lead { font-weight: var(--sc-weight-strong); }
+.sc-then-name { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+.sc-then-pct { font-family: var(--sc-font-num); font-variant-numeric: tabular-nums; }
+.sc-then-item { border-radius: var(--sc-radius-s); }
+
+/* ---------------------------------------------------------------- pass/run split with the league mark */
+.sc-split { display: grid; gap: var(--sc-space-2); }
+.sc-split-bar {
+  position: relative;
+  height: var(--sc-space-3);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-run);
+}
+.sc-split-pass {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--sc-share, 50%);
+  border-radius: var(--sc-radius-s) 0 0 var(--sc-radius-s);
+  background: var(--sc-pass);
+}
+.lgmark {
+  position: absolute;
+  inset-block: calc(-1 * var(--sc-space-1));
+  inset-inline-start: var(--sc-league-share, 50%);
+  width: 0;
+  border-inline-start: calc(var(--sc-border-w) * 2) dashed var(--sc-ink);
+  transform: translateX(-50%);
+}
+.sc-split-labels {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--sc-space-1) var(--sc-space-4);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+.sc-split-labels [data-side="pass"] { color: var(--sc-pass); font-weight: var(--sc-weight-strong); }
+.sc-split-labels [data-side="run"] { color: var(--sc-run); font-weight: var(--sc-weight-strong); }
+
+/* ---------------------------------------------------------------- five families */
+.sc-fams {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--sc-space-4) var(--sc-space-3);
+  padding-block-start: var(--sc-space-2);
+  border-block-start: var(--sc-border-w) solid var(--sc-rule);
+}
+.fam { display: grid; align-content: start; gap: var(--sc-space-2); min-width: 0; }
+.sc-fam-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sc-space-1);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.sc-fam-name { min-width: 0; overflow-wrap: break-word; }
+.sc-fam-pct {
+  color: var(--sc-tone);
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sc-weight-display);
+  line-height: 1;
+}
+.sc-fam-bar {
+  position: relative;
+  height: var(--sc-space-2);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+}
+.sc-fam-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--sc-share, 0%);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-tone);
+}
+.sc-fam-tick {
+  position: absolute;
+  inset-block: calc(-1 * var(--sc-space-1));
+  inset-inline-start: var(--sc-league-share, 0%);
+  width: 0;
+  border-inline-start: calc(var(--sc-border-w) * 2) solid var(--sc-ink);
+  transform: translateX(-50%);
+}
+.sc-fam-league { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- the specific plays: buttons (G18) */
+.sc-leaves { display: grid; gap: var(--sc-space-1); margin: 0; padding: 0; list-style: none; }
+.leaf {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas: "name hot pct" "bar bar bar";
+  align-items: baseline;
+  gap: var(--sc-space-1) var(--sc-space-1);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--sc-space-1) var(--sc-space-2);
+  border: var(--sc-border-w) solid transparent;
+  border-radius: var(--sc-radius-m);
+  background: transparent;
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  line-height: var(--sc-leading-tight);
+  text-align: start;
+  transition: background-color var(--sc-dur-fast) var(--sc-ease-out),
+    border-color var(--sc-dur-fast) var(--sc-ease-out);
+}
+.sc-leaf-name { grid-area: name; min-width: 0; overflow-wrap: break-word; }
+.leaf .sc-hot { grid-area: hot; }
+.sc-leaf-pct {
+  grid-area: pct;
+  font-family: var(--sc-font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sc-weight-strong);
+}
+.sc-leaf-bar {
+  grid-area: bar;
+  position: relative;
+  height: 5px;
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+}
+.sc-leaf-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: var(--sc-share, 0%);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-tone);
+}
+.leaf:hover,
+.leaf[data-highlighted="true"] { border-color: var(--sc-rule-strong); background: var(--sc-surface-2); }
+.leaf[aria-pressed="true"] {
+  border-color: var(--sc-tone);
+  background: color-mix(in srgb, var(--sc-tone) 12%, var(--sc-surface));
+}
+.leaf[aria-pressed="true"] .sc-leaf-name { font-weight: var(--sc-weight-strong); }
+
+/* ---------------------------------------------------------------- hot arrows (#34): green above, red below */
+.sc-hot { font-size: var(--sc-size-xs); line-height: 1; }
+.sc-hot.up { color: var(--sc-good); }
+.sc-hot.down { color: var(--sc-bad); }
+
+/* ---------------------------------------------------------------- why lines and the legend */
+.sc-call-more {
+  display: grid;
+  gap: var(--sc-space-2);
+  padding-block-start: var(--sc-space-2);
+  border-block-start: var(--sc-border-w) solid var(--sc-rule);
+}
+.why {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-space-1) var(--sc-space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--sc-size-s);
+}
+.sc-why-pts {
+  font-family: var(--sc-font-num);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sc-weight-strong);
+}
+.sc-why-item[data-sign="up"] .sc-why-pts { color: var(--sc-pass); }
+.sc-why-item[data-sign="down"] .sc-why-pts { color: var(--sc-run); }
+.sc-why-item[data-kind="script"] { color: var(--sc-ink-muted); }
+.sc-legend {
+  max-width: 75ch;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  line-height: var(--sc-leading-body);
+}
+
+/* ---------------------------------------------------------------- a new call steps in (instant, reduced motion) */
+.sc-call[data-enter="a"] .sc-call-top { animation: sc-call-in-a var(--sc-dur-slow) var(--sc-ease-out); }
+.sc-call[data-enter="b"] .sc-call-top { animation: sc-call-in-b var(--sc-dur-slow) var(--sc-ease-out); }
+@keyframes sc-call-in-a { from { opacity: 0.35; transform: translateY(0.2em); } }
+@keyframes sc-call-in-b { from { opacity: 0.35; transform: translateY(0.2em); } }
+
+/* ---------------------------------------------------------------- 760 px and below: two family columns (#7) */
+@media (max-width: 760px) {
+  .sc-offfield, .sc-call { padding: var(--sc-space-4); }
+  .sc-fams { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

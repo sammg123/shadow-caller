@@ -1,0 +1,163 @@
+/* Scoreboard (ui/scoreboard.js; owner A8). Structure and token references only; a world skins it in
+   css/worlds/<id>/components/scoreboard.css. Hooks a world styles against:
+     .sc-scoreboard[data-state="pre|in|post"][data-poss][data-source]
+     .sc-sb-team[data-team][data-caller][data-home][data-side][data-poss][data-logo="shown|failed|none"]
+     .sc-digits[data-ghost]   a digit window; data-ghost is its unlit pattern ("88", "88:88"); hidden here
+     --sc-logo-variant: dark  (on any ancestor) makes the scoreboard load ESPN's dark-background logos
+   Team colors come from the runtime tokens --sc-team-caller / --sc-team-opp (theme/apply.js). */
+
+:where(:root[data-ambient="dark"]) { --sc-logo-variant: dark; }
+
+.sc-scoreboard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-3) var(--sc-space-6);
+  min-width: 0;
+  padding: var(--sc-space-3) var(--sc-space-5);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+/* ---------------------------------------------------------------- teams, away then home */
+.sc-sb-teams {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sc-space-3) var(--sc-space-6);
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sc-sb-team {
+  --sc-sb-team: var(--sc-team-opp);
+  display: grid;
+  grid-template-columns: auto minmax(0, auto) auto auto;
+  grid-template-areas: "logo who score poss" "logo tos score poss";
+  align-items: center;
+  column-gap: var(--sc-space-3);
+  min-width: 0;
+  padding-inline-start: var(--sc-space-3);
+  border-inline-start: calc(var(--sc-border-w) * 4) solid var(--sc-sb-team);
+}
+.sc-sb-team[data-caller="true"] { --sc-sb-team: var(--sc-team-caller); }
+
+.sc-sb-logo {
+  grid-area: logo;
+  display: inline-grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  overflow: hidden;
+}
+.sc-sb-logo-img { width: 100%; height: 100%; object-fit: contain; }
+.sc-sb-mono {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-display);
+  color: var(--sc-ink-muted);
+}
+.sc-sb-team[data-logo="shown"] .sc-sb-mono { display: none; }
+
+.sc-sb-who { grid-area: who; display: flex; align-items: baseline; gap: var(--sc-space-2); min-width: 0; }
+.sc-sb-name {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-m);
+  font-weight: var(--sc-weight-strong);
+  line-height: var(--sc-leading-tight);
+  white-space: nowrap;
+}
+.sc-sb-abbr { display: none; font-weight: var(--sc-weight-strong); }
+
+.sc-sb-score {
+  grid-area: score;
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: 1;
+  text-align: end;
+  min-width: 2ch;
+}
+
+/* The possession lamp: always takes its room, lit when the team has the ball. */
+.sc-sb-poss {
+  grid-area: poss;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: transparent;
+  border: var(--sc-border-w) solid var(--sc-rule);
+}
+.sc-sb-poss[data-on="true"] { background: var(--sc-ink); border-color: var(--sc-ink); }
+
+.sc-sb-tos { grid-area: tos; display: inline-flex; gap: 3px; }
+.sc-sb-to { width: 0.875rem; height: 0.25rem; border-radius: 1px; background: var(--sc-rule); }
+.sc-sb-to[data-on="true"] { background: var(--sc-ink); }
+
+/* ---------------------------------------------------------------- the game facts */
+.sc-sb-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sc-space-2) var(--sc-space-5);
+  margin-inline-start: auto;
+  min-width: 0;
+}
+.sc-sb-fact {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas: "cap cap" "value tag";
+  align-items: baseline;
+  column-gap: var(--sc-space-1);
+  row-gap: 2px;
+  min-width: 0;
+}
+.sc-sb-cap {
+  grid-area: cap;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.sc-sb-fact > .sc-sb-value,
+.sc-sb-fact > .sc-digits {
+  grid-area: value;
+  min-height: 1.2em;
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-strong);
+  line-height: var(--sc-leading-tight);
+  white-space: nowrap;
+}
+/* Nothing to say yet (between plays, after the final whistle): a quiet dash keeps the cell. */
+.sc-sb-fact > .sc-sb-value:empty::before { content: "–" / ""; color: var(--sc-rule-strong); }
+.sc-sb-est,
+.sc-sb-final {
+  grid-area: tag;
+  color: var(--sc-warn);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.sc-sb-final { color: var(--sc-ink); }
+
+/* Digit windows: the value sits right-aligned; the unlit ghost exists for worlds that light it. */
+.sc-digits { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* ---------------------------------------------------------------- narrow screens */
+@media (max-width: 760px) {
+  .sc-scoreboard { padding: var(--sc-space-3); gap: var(--sc-space-3); }
+  .sc-sb-teams { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: var(--sc-space-3); }
+  .sc-sb-team { column-gap: var(--sc-space-2); padding-inline-start: var(--sc-space-2); }
+  .sc-sb-logo { width: 2rem; height: 2rem; }
+  .sc-sb-name { display: none; }
+  .sc-sb-abbr { display: inline; }
+  .sc-sb-score { font-size: var(--sc-size-l); }
+  .sc-sb-facts { width: 100%; margin-inline-start: 0; justify-content: space-between; }
+}

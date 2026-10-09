@@ -36,6 +36,7 @@ function buildPresented(timeline, drawnThrough) {
   const snap = snapshotAt(timeline, drawnThrough);
   return Object.freeze({
     rows, drives: snap?.drives ?? [], status: snap?.status ?? null, box: snap?.box ?? null, unlinked: snap?.unlinked ?? [],
+    boxEspn: snap?.boxEspn ?? null,                // v1.2 (A8): ESPN's own box score when the server sent it
     wpStart: timeline.wpStart, teams: timeline.teams, field: timeline.field, meta: timeline.meta,
     source: timeline.source, mode: timeline.mode,
   });

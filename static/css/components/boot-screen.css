@@ -1,0 +1,52 @@
+/* Boot screen (ui/boot-screen.js; owner A9; #119, #120): covers the page until the first state loads.
+   States: .sc-boot[data-phase="loading|failed|restart"]; hidden when ready. */
+
+.sc-boot {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--sc-gutter);
+  background: var(--sc-bg);
+  color: var(--sc-ink);
+}
+
+.sc-boot-board {
+  display: grid;
+  justify-items: center;
+  gap: var(--sc-space-3);
+  max-width: 34rem;
+  text-align: center;
+}
+
+.sc-boot-plate {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  text-transform: var(--sc-case-label);
+  letter-spacing: var(--sc-tracking-label);
+}
+.sc-boot[data-phase="loading"] .sc-lamp { background: var(--sc-warn); }
+.sc-boot[data-phase="failed"] .sc-lamp,
+.sc-boot[data-phase="restart"] .sc-lamp { background: var(--sc-bad); }
+
+.sc-boot-heading {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.sc-boot-text { color: var(--sc-ink-muted); }
+.sc-boot-text:empty { display: none; }
+.sc-boot-text strong {
+  padding: 0 0.2em;
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-num);
+  font-weight: var(--sc-weight-strong);
+}

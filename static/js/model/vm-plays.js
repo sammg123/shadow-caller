@@ -12,7 +12,13 @@ function timelineIdOf(logRow) {
   return logRow.espn_id ? String(logRow.espn_id) : `log-${logRow.seq}`;
 }
 
-function playRow(row, retagId) {
+/** The client review cursor (view.review.seq), or null at the live edge. */
+function reviewSeqOf(pv) {
+  const seq = pv && pv.view && pv.view.review ? pv.view.review.seq : null;
+  return Number.isInteger(seq) ? seq : null;
+}
+
+function playRow(row, retagId, reviewSeq) {
   const pred = row.pred || null;
   const verdict = verdictOf(pred).key;
   return {
@@ -33,6 +39,8 @@ function playRow(row, retagId) {
     retagged: Boolean(pred && pred.retagged),
     scoring: Boolean(row.scoring),
     retag: pred && retagId !== null && row.id === retagId ? retagButtons(pred) : null,
+    reviewable: row.kind !== "admin",           // v1.2 (A8): admin rows draw nothing (core/review.js drawableSeqs)
+    reviewing: row.seq === reviewSeq,
   };
 }
 
@@ -55,14 +63,15 @@ function groupsOf(rows, drives) {
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, rows: {seq, id, kind, team, caller, drive, time, situation, text, result, call,
- *   verdict, verdictText, nullified, retagged, scoring, retag}[] (newest first), groups: {idx, team, caller,
- *   resultText, summary, complete, rows}[], retagSeq, unlinkedNote}
+ *   verdict, verdictText, nullified, retagged, scoring, retag, reviewable, reviewing}[] (newest first), groups: {idx,
+ *   team, caller, resultText, summary, complete, rows}[], retagSeq, unlinkedNote, reviewSeq}
  */
 export function playsVm(pv) {
   const tl = pv && pv.tl;
   const source = (tl && Array.isArray(tl.rows) ? tl.rows : []).filter((row) => row && Number.isInteger(row.seq));
   const retagId = timelineIdOf(retagTarget(pv && pv.presented && pv.presented.log));
-  const rows = [...source].sort((a, b) => b.seq - a.seq).map((row) => playRow(row, retagId));
+  const reviewSeq = reviewSeqOf(pv);
+  const rows = [...source].sort((a, b) => b.seq - a.seq).map((row) => playRow(row, retagId, reviewSeq));
   const retagRow = rows.find((row) => row.retag);
   const unlinked = tl && Array.isArray(tl.unlinked) ? tl.unlinked.length : 0;
   return freezeDeep({
@@ -71,5 +80,6 @@ export function playsVm(pv) {
     groups: groupsOf(rows, (tl && Array.isArray(tl.drives) ? tl.drives : []).filter(Boolean)),
     retagSeq: retagRow ? retagRow.seq : null,
     unlinkedNote: unlinked ? PLAYS.unlinked(unlinked) : "",
+    reviewSeq,
   });
 }

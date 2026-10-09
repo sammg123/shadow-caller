@@ -171,3 +171,15 @@ test("checkTimelineBody rejects malformed responses at the boundary", () => {
     { ...reset([]), drives: {} }];
   for (const b of bad) assert.equal(typeof checkTimelineBody(b), "string", JSON.stringify(b)?.slice(0, 80));
 });
+
+// v1.2 (A8, additive): ESPN's own box score rides along in each snapshot, so the box score can prefer it.
+test("snapshots keep ESPN's own box (box_espn) beside the derived one, null when the server sends none", () => {
+  const espnBox = deepFreeze({ DAL: { yards: 366 }, TB: { yards: 419 } });
+  const withEspn = { ...reset(TL.rows(1, 15)), box_espn: espnBox, box_source: "espn" };
+  const { cache } = mergeTimeline(deepFreeze(emptyTimeline()), deepFreeze(withEspn));
+  assert.deepEqual(cache.snapshots[0].boxEspn, espnBox);
+  assert.ok(Object.isFrozen(cache.snapshots[0].boxEspn));
+  const later = mergeTimeline(deepFreeze(cache), deepFreeze(append(TL.rows(16, 17), 15))).cache;
+  assert.equal(later.snapshots[later.snapshots.length - 1].boxEspn, null, "a body without box_espn stores null");
+  assert.equal(cacheThrough100().snapshots[0].boxEspn, null);
+});

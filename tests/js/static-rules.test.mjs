@@ -16,7 +16,13 @@ const PURE = Object.freeze([
     "timeline-cache", "sync-plan", "present", "anim-queue", "domain", "keymap", "selection", "strip", "flags", "review"]
     .map((m) => `core/${m}.js`),
   ...["coords", "grammar", "paths", "ghosts", "timing", "camera-plan"].map((m) => `field/${m}.js`),
+  // v1.2 (A6): the 2D field's drawing data
+  ...["fallback-draw", "fallback-ghosts", "fallback-pixels", "fallback-plays", "fallback-steps", "fallback-bowl"]
+    .map((m) => `field/${m}.js`),
+  // v1.2 (A5 part 1): the 3D stage's numbers: field layout, DPR, safe area, poses, #field hooks
+  ...["field-spec", "stage-math", "engine-state"].map((m) => `field/${m}.js`),
   ...["tokens", "look-schema", "neutral-look", "team-colors"].map((m) => `theme/${m}.js`),
+  "shell/prefs.js",
 ]);
 const PURE_STAR = new Set(["core/api.js"]);
 const isPure = (path) => PURE.includes(path) || (path.startsWith("model/") && path.endsWith(".js"));
@@ -53,14 +59,20 @@ function stripComments(src) {
 
 const code = (full) => stripComments(readFileSync(full, "utf8"));
 
-/** Every module specifier: static imports, re-exports and dynamic import(). */
-function specifiers(src) {
+const STATIC_PATTERNS = [/\bimport\s+(?:[\w*{}\s,$]+\s+from\s+)?["']([^"']+)["']/g,
+  /\bexport\s+[\w*{}\s,$]+\s+from\s+["']([^"']+)["']/g];
+const DYNAMIC_PATTERN = /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g;
+
+/** Module specifiers: static imports and re-exports, plus dynamic import() unless `dynamic` is false. */
+function specifiers(src, { dynamic = true } = {}) {
   const found = [];
-  const patterns = [/\bimport\s+(?:[\w*{}\s,$]+\s+from\s+)?["']([^"']+)["']/g, /\bexport\s+[\w*{}\s,$]+\s+from\s+["']([^"']+)["']/g,
-    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g];
-  for (const re of patterns) for (const m of src.matchAll(re)) found.push(m[1]);
+  for (const re of dynamic ? [...STATIC_PATTERNS, DYNAMIC_PATTERN] : STATIC_PATTERNS) {
+    for (const m of src.matchAll(re)) found.push(m[1]);
+  }
   return found;
 }
+
+const targetOf = (full, spec) => relative(JS_ROOT, resolve(dirname(full), spec)).split(sep).join("/");
 
 const firstHit = (src, rules) => rules.find(([re]) => re.test(src));
 
@@ -119,4 +131,38 @@ test("the rules catch what they claim to catch", () => {
   assert.equal(stripComments('const u = "https://x.org/a";').includes("https://x.org/a"), true, "URLs in strings survive");
   assert.deepEqual(specifiers('import a from "./a.js";\nexport { b } from "../b.js";\nconst c = import("./c.js");'),
     ["./a.js", "../b.js", "./c.js"]);
+});
+
+/** Scene code: the engine (field/, except its pure geometry) and a world's scene modules. Only they touch three.js. */
+const isSceneCode = (path) => (path.startsWith("field/") && !isPure(path)) || /^theme\/worlds\/[^/]+\//.test(path);
+
+test("only scene code imports three.js, so the bundle loads only when the engine does (3.1 step 3)", () => {
+  const bad = FILES.filter(({ path }) => !isSceneCode(path)).flatMap(({ path, full }) => specifiers(code(full))
+    .filter((spec) => spec === "three" || spec.startsWith("three/")).map((spec) => `${path}: imports "${spec}"`));
+  assert.deepEqual(bad, []);
+});
+
+/** Loaded only through import(): a missing or broken one leaves a notice instead of stopping boot (9.1). */
+const isLazy = (target) => (target.startsWith("ui/") && !["ui/dom.js", "ui/scheduler.js"].includes(target))
+  || ["field/scene.js", "field/fallback-2d.js", "field/webgl-support.js"].includes(target)
+  || /^theme\/worlds\/[^/]+\//.test(target);
+
+test("main.js and shell/ import components, the engine and worlds only dynamically", () => {
+  const boot = FILES.filter(({ path }) => path === "main.js" || path.startsWith("shell/") || path === "theme/registry.js");
+  assert.ok(boot.some(({ path }) => path === "main.js"), "main.js is scanned");
+  const bad = boot.flatMap(({ path, full }) => specifiers(code(full), { dynamic: false })
+    .filter((spec) => spec.startsWith(".")).map((spec) => [spec, targetOf(full, spec)])
+    .filter(([, target]) => isLazy(target)).map(([spec]) => `${path}: static import of ${spec}`));
+  assert.deepEqual(bad, []);
+});
+
+test("the boot rules recognize what they police", () => {
+  assert.equal(isSceneCode("field/scene.js"), true);
+  assert.equal(isSceneCode("field/paths.js"), false, "pure geometry never touches three.js");
+  assert.equal(isSceneCode("theme/worlds/under-the-lights/props.js"), true);
+  assert.equal(isSceneCode("ui/field-host.js"), false);
+  assert.equal(isLazy("ui/masthead.js"), true);
+  assert.equal(isLazy("ui/dom.js"), false);
+  assert.equal(isLazy("field/scene.js"), true);
+  assert.deepEqual(specifiers('import a from "./a.js"; const b = import("./b.js");', { dynamic: false }), ["./a.js"]);
 });

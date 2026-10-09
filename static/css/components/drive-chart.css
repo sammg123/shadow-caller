@@ -1,0 +1,106 @@
+/* Drive chart (ui/drive-chart.js; owner A8). Structure and token references only; a world skins it in
+   css/worlds/<id>/components/drive-chart.css. Hooks a world styles against:
+     .sc-dc-item[data-idx][data-team][data-caller][data-dir="1|-1"][data-result][data-complete][data-current]
+                [data-reviewing]
+     .sc-dc-btn (aria-pressed="true" for the drive holding the play shown on the field; disabled before it is drawn)
+     svg.sc-dc-track: .sc-dc-field, .sc-dc-yard, .sc-dc-mid, .sc-dc-bar, .sc-dc-end  (x 0 to 100, caller's goal left)
+   Bars take the drive team's runtime color (--sc-team-caller / --sc-team-opp). */
+
+.sc-drives {
+  container: sc-drives / inline-size;
+  display: grid;
+  gap: var(--sc-space-3);
+  min-width: 0;
+  padding: var(--sc-space-4);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+.sc-drives > .sc-panel-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+
+.sc-dc-empty { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+
+.sc-dc-list { display: grid; gap: 1px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+
+.sc-dc-item { --sc-dc-team: var(--sc-team-opp); min-width: 0; }
+.sc-dc-item[data-caller="true"] { --sc-dc-team: var(--sc-team-caller); }
+
+.sc-dc-btn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label summary" "track track";
+  align-items: center;
+  gap: 2px var(--sc-space-2);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: var(--sc-space-1);
+  border: 0;
+  border-radius: var(--sc-radius-s);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--sc-size-xs);
+  text-align: start;
+  transition: background-color var(--sc-dur-fast) var(--sc-ease-out);
+}
+.sc-dc-btn:hover:not(:disabled) { background: var(--sc-surface-2); }
+.sc-dc-btn:disabled { cursor: default; }
+.sc-dc-btn[aria-pressed="true"] {
+  background: var(--sc-surface-2);
+  outline: calc(var(--sc-border-w) * 2) solid var(--sc-ink);
+  outline-offset: -2px;
+}
+.sc-dc-btn:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus); outline-offset: 1px; }
+
+.sc-dc-label { grid-area: label; display: flex; align-items: baseline; gap: var(--sc-space-1); min-width: 0; white-space: nowrap; }
+.sc-dc-team { font-weight: var(--sc-weight-display); }
+.sc-dc-result {
+  overflow: hidden;
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-strong);
+  text-overflow: ellipsis;
+}
+.sc-dc-item[data-result="TD"] .sc-dc-result { color: var(--sc-good); }
+.sc-dc-item[data-current="true"] .sc-dc-result { color: var(--sc-live); }
+
+.sc-dc-track { grid-area: track; display: block; width: 100%; height: 0.625rem; overflow: visible; }
+.sc-dc-field { fill: var(--sc-surface-2); }
+.sc-dc-yard,
+.sc-dc-mid { stroke: var(--sc-rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sc-dc-mid { stroke: var(--sc-rule-strong); }
+/* A team color can sit at the track's own luminance (DC C2: DAL navy at night, TB red on turf), so every bar
+   carries a faint ink edge: the color is never the only thing that shows it. */
+.sc-dc-bar {
+  fill: var(--sc-dc-team);
+  stroke: var(--sc-ink);
+  stroke-opacity: 0.35;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.sc-dc-end { stroke: var(--sc-ink); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.sc-dc-item[data-current="true"] .sc-dc-bar { fill-opacity: 0.7; }
+
+.sc-dc-summary {
+  grid-area: summary;
+  color: var(--sc-ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* A wide region (the rail stacked under the main column, or a world's stat board): one line per drive. */
+@container sc-drives (min-width: 34rem) {
+  .sc-dc-btn {
+    grid-template-columns: 10.5em minmax(0, 1fr) 11.5em;
+    grid-template-areas: "label track summary";
+    padding-block: 3px;
+  }
+  .sc-dc-track { height: 0.875rem; }
+}

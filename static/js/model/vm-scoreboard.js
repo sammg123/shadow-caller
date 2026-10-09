@@ -47,6 +47,7 @@ function teamEntry(abbr, t, info) {
     name: known.name || abbr,
     location: known.location || "",
     logo: safeLogoUrl(known.logo),                // only the app's own logo proxy (ui-architecture section 1)
+    logoDark: safeLogoUrl(known.logo_dark),       // v1.2 (A8): ESPN's dark-background variant, for LED windows
     score: finite(info.scores[abbr]) ? String(info.scores[abbr]) : "",
     poss: info.poss === abbr,
     timeouts: Number.isInteger(info.timeouts[abbr]) ? info.timeouts[abbr] : null,
@@ -125,7 +126,7 @@ function manualBoard(pv, t) {
 
 /**
  * @param {object} pv  presented view
- * @returns {object} frozen {teams: {abbr, name, location, logo, score, poss, timeouts, caller, side, home}[],
+ * @returns {object} frozen {teams: {abbr, name, location, logo, logoDark, score, poss, timeouts, caller, side, home}[],
  *   qtr, qtrText, clock, clockEst, downText, ballOn, situation, state, poss, wpCaller, wpText, source}
  */
 export function scoreboardVm(pv) {

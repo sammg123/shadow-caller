@@ -1,0 +1,31 @@
+/* Toast (ui/toast.js; owner A9; FI 4.5): fixed at the bottom center, at most 90vw, ink ground (red when .err).
+   Shown with .show (legacy hook, mirrored by data-tone). Hidden by opacity only, never display or visibility, so the
+   live region stays in the accessibility tree and every new message is announced; the words stay after it hides. */
+
+.toast {
+  position: fixed;
+  inset-block-end: var(--sc-space-5);
+  inset-inline-start: 50%;
+  z-index: 960;
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-3);
+  width: max-content;
+  max-width: min(90vw, 40rem);
+  padding: var(--sc-space-3) var(--sc-space-4);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-ink);
+  color: var(--sc-ink-inverse);
+  font-size: var(--sc-size-m);
+  line-height: var(--sc-leading-tight);
+  opacity: 0;
+  transform: translate(-50%, var(--sc-space-2));
+  pointer-events: none;
+  transition: opacity var(--sc-dur-med) var(--sc-ease-out), transform var(--sc-dur-med) var(--sc-ease-out);
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+.toast.err { background: var(--sc-bad); }
+.toast:empty { display: none; }
+
+.sc-toast .sc-lamp { background: currentColor; }
+.sc-toast-text { min-width: 0; overflow-wrap: anywhere; }

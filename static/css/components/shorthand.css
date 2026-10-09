@@ -1,0 +1,32 @@
+/* The shorthand bar ([data-mount="shorthand"] inside #entry; ui/shorthand.js; owner A7). Structure and token
+   references only; a world skins it in css/worlds/<id>/components/shorthand.css (W4). #cmdBtn[aria-busy] while a
+   line runs. */
+
+.sc-short { display: flex; gap: var(--sc-space-2); min-width: 0; }
+.sc-short-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 2.75rem;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-s);
+  text-overflow: ellipsis;
+}
+.sc-short-input::placeholder { color: var(--sc-ink-muted); opacity: 1; }
+.sc-short-input:focus { border-color: var(--sc-focus); background: var(--sc-surface); }
+.sc-short-run {
+  flex: none;
+  min-height: 2.75rem;
+  padding: var(--sc-space-2) var(--sc-space-4);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+}
+.sc-short-run:hover { border-color: var(--sc-ink); }
+.sc-short-run[aria-busy="true"] { color: var(--sc-ink-muted); cursor: progress; }

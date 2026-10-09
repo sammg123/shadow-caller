@@ -84,3 +84,9 @@ test("no opening value and no points: nothing to say yet", () => {
   const vm = wpVm(makePv({ tl: tlOf(patch(body, { wp_start: null, rows: body.rows.map((r) => ({ ...r, wp: null })) })) }));
   assert.deepEqual([vm.available, vm.start, vm.current, vm.currentText, vm.ariaLabel], [true, null, null, "", ""]);
 });
+
+// v1.2 (A8, additive): the readout names whose side the line is on.
+test("the caller's abbreviation rides along for the readout; none when unavailable", () => {
+  assert.equal(finalVm().caller, "DAL");
+  assert.equal(wpVm(makePv()).caller, null);
+});

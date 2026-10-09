@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { logVm } from "../../static/js/model/vm-log.js";
-import { makePv, state, patch, isDeepFrozen } from "./model-fixtures.mjs";
+import { makePv, state, patch, isDeepFrozen, timeline, tlOf } from "./model-fixtures.mjs";
 
 const withLog = (log) => patch(state.final(), { log });
 const plain = (row) => ({ ...row, rank: { ...row.rank } });
@@ -25,7 +25,7 @@ test("every row, newest first, with the FI 3.9 cells", () => {
   assert.deepEqual(plain(vm.rows[0]), {
     seq: 59, snap: "55", time: "Q4 1:22", situation: "2nd & 1 at TB 24", topPick: "Short (0–9 air yds) 39%",
     actual: "Short (0–9 air yds), turnover", hisP: "39%", lgP: "43%", rank: { text: "1", tone: "good" }, yds: "0",
-    nullified: false,
+    nullified: false, verdict: "top1", tlSeq: null, reviewing: false,
   });
 });
 
@@ -58,7 +58,7 @@ test("a hand-entered snap from the FI #30 state", () => {
   assert.deepEqual(plain(vm.rows[0]), {
     seq: 1, snap: "1", time: "Q1 15:00", situation: "1st & 10 at DAL 25", topPick: "Inside run (A/B gap) 30%",
     actual: "Inside run (A/B gap)", hisP: "30%", lgP: "27%", rank: { text: "1", tone: "good" }, yds: "-3",
-    nullified: false,
+    nullified: false, verdict: "top1", tlSeq: null, reviewing: false,
   });
 });
 
@@ -86,4 +86,17 @@ test("a row with no prediction numbers and no yards still renders", () => {
   const bare = { ...base, top_leaf: null, p: null, yards: null, snap: null };
   const vm = logVm(makePv({ presented: withLog([bare]) }));
   assert.deepEqual([vm.rows[0].topPick, vm.rows[0].yds, vm.rows[0].snap], ["—", "", ""]);
+});
+
+// v1.2 (A8, additive): each logged snap knows its row on the field (to review it there) and its verdict.
+test("each logged snap links to its drawn row on the field and carries its verdict", () => {
+  const pv = (extra = {}) => makePv({ presented: state.final(), tl: tlOf(timeline.final()), ...extra });
+  const vm = logVm(pv());
+  assert.deepEqual(vm.rows.slice(3, 6).map((r) => [r.seq, r.verdict]), [[56, "top3"], [55, "top1"], [54, "miss"]]);
+  assert.deepEqual(vm.rows.slice(0, 3).map((r) => [r.seq, r.tlSeq]), [[59, 176], [58, 175], [57, 174]]);
+  assert.equal(vm.rows.filter((r) => r.tlSeq !== null).length, 59, "every snap of the replayed game is on the field");
+  const reviewing = logVm(pv({ view: { review: { seq: 175 } } }));
+  assert.deepEqual(reviewing.rows.filter((r) => r.reviewing).map((r) => r.seq), [58]);
+  const early = logVm(makePv({ presented: state.final(), tl: tlOf(timeline.final(), 100) }));
+  assert.equal(early.rows[0].tlSeq, null, "a snap whose row isn't drawn yet has no link");
 });

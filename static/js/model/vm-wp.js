@@ -37,12 +37,12 @@ function ticksOf(drives, rows) {
 }
 
 const unavailable = (note) => freezeDeep({ heading: WP.heading, available: false, note, points: [], markers: [],
-  ticks: [], start: null, current: null, currentText: "", ariaLabel: "", tMax: REGULATION_S });
+  ticks: [], start: null, current: null, currentText: "", ariaLabel: "", tMax: REGULATION_S, caller: null });
 
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, available, note, points: {seq, wp, t, qtr}[], markers: {seq, t, wp, kind, team,
- *   text}[], ticks: {idx, team, t}[], start, current, currentText, ariaLabel, tMax}
+ *   text}[], ticks: {idx, team, t}[], start, current, currentText, ariaLabel, tMax, caller}
  */
 export function wpVm(pv) {
   const tl = pv && pv.tl;
@@ -67,5 +67,6 @@ export function wpVm(pv) {
     currentText: current === null ? "" : pct(current),
     ariaLabel: current === null ? "" : WP.aria(t.caller, pct(current)),
     tMax: Math.max(REGULATION_S, ...points.map((p) => (finite(p.t) ? p.t : 0))),
+    caller: t.caller || null,                      // v1.2 (A8): whose side the line is on, for the readout
   });
 }

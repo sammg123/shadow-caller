@@ -437,3 +437,18 @@ test("createActions validates its injected clock and timers", () => {
   assert.throws(() => createActions({ store, api: fakeApi(), sync: null, form: null, dialogs: {}, now: () => 1, timers: {} }),
     TypeError);
 });
+
+// v1.2 (A8, additive): the play feed and the drive chart jump the review cursor to one drawn play.
+test("reviewAt jumps to a drawn play that draws something; null returns to live; anything else is ignored", async () => {
+  const ctx = setup({ state: { watch: { state: "playing" } } });
+  ctx.actions.reviewAt(2);
+  assert.deepEqual(ctx.view().review, { seq: 2 });
+  ctx.actions.reviewAt(13);
+  assert.deepEqual(ctx.view().review, { seq: 2 }, "row 13 is an admin row (a timeout): nothing to draw");
+  for (const bad of [16, 0, -1, 2.5, "3", undefined]) ctx.actions.reviewAt(bad);
+  assert.deepEqual(ctx.view().review, { seq: 2 }, "rows not drawn yet, and junk, change nothing");
+  ctx.actions.reviewAt(null);
+  assert.deepEqual(ctx.view().review, { seq: null });
+  await settle();
+  assert.equal(ctx.api.posts.length, 0, "the server is never stepped or paused");
+});

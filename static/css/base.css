@@ -1,0 +1,196 @@
+/* Base (ui-architecture.md 1.1; owner A0): reset, [hidden], focus ring, .sr-only, reduced motion, and the shell's
+   own pieces (skip link, boot placeholder, notices). Tokens only: every color, font, size and duration is a
+   --sc-* token a world defines (theme/tokens.js). Specificity stays low (:where) so components and worlds win. */
+
+/* Runtime team tokens: theme/apply.js sets the real values from the game's teams (DC C2). These neutral
+   defaults only keep var() resolvable before the teams are known and in manual mode without ESPN colors. */
+:root {
+  --sc-team-caller: #5b6470;
+  --sc-team-caller-alt: #c9ced4;
+  --sc-team-caller-ink: #ffffff;
+  --sc-team-opp: #6f6a63;
+  --sc-team-opp-alt: #d2cdc6;
+  --sc-team-opp-ink: #ffffff;
+  --sc-team-off: #5b6470;
+  --sc-team-off-ink: #ffffff;
+  --sc-team-def: #6f6a63;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+[hidden] { display: none !important; }
+
+:where(html) {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  background: var(--sc-bg);
+}
+
+:where(body) {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--sc-bg);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-text);
+  font-size: var(--sc-size-m);
+  font-weight: var(--sc-weight-regular);
+  line-height: var(--sc-leading-body);
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+}
+
+:where(h1, h2, h3, h4, h5, h6, p, ol, ul, dl, dd, figure, blockquote) { margin: 0; }
+:where(ol, ul)[class] { padding: 0; list-style: none; }
+:where(button, input, select, textarea) { font: inherit; color: inherit; letter-spacing: inherit; }
+:where(button) { cursor: pointer; }
+:where(button:disabled) { cursor: not-allowed; }
+:where(img, video, canvas) { max-width: 100%; }
+:where(img) { height: auto; }
+:where(table) { border-collapse: collapse; }
+:where(a) { color: inherit; }
+
+/* Numbers that change in place keep their width. */
+:where(.sc-num, [data-num]) { font-family: var(--sc-font-num); font-variant-numeric: tabular-nums; }
+
+:where(:focus-visible) {
+  outline: var(--sc-focus-w) solid var(--sc-focus);
+  outline-offset: 2px;
+}
+:where(:focus:not(:focus-visible)) { outline: none; }
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link: off screen until focused. */
+.sc-skip {
+  position: absolute;
+  inset-block-start: var(--sc-space-2);
+  inset-inline-start: var(--sc-space-2);
+  z-index: 1100;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-raised);
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+.sc-skip:focus-visible { transform: none; }
+
+/* Boot placeholder in index.html: covers the page until main.js mounts the boot screen. */
+.sc-boot-static {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--sc-space-3);
+  padding: var(--sc-gutter);
+  background: var(--sc-bg);
+  color: var(--sc-ink);
+  text-align: center;
+}
+.sc-boot-static-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.sc-boot-static-text { color: var(--sc-ink-muted); }
+.sc-boot-static-stuck {
+  max-width: 36rem;
+  color: var(--sc-ink);
+  visibility: hidden;
+  animation: sc-boot-stuck 1ms linear 12s forwards;
+}
+@keyframes sc-boot-stuck { to { visibility: visible; } }
+
+.sc-noscript {
+  position: fixed;
+  inset: auto 0 0;
+  z-index: 1200;
+  margin: 0;
+  padding: var(--sc-space-3) var(--sc-gutter);
+  background: var(--sc-surface-raised);
+  color: var(--sc-ink);
+}
+
+/* Notices from the shell (shell/notices.js): a region whose component failed, and the page-level tray. */
+.sc-region-notice {
+  display: grid;
+  gap: var(--sc-space-1);
+  padding: var(--sc-space-3) var(--sc-space-4);
+  border: var(--sc-border-w) dashed var(--sc-rule-strong);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+}
+.sc-region-notice-title { font-weight: var(--sc-weight-strong); }
+.sc-region-notice-detail { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+
+.sc-notices {
+  position: fixed;
+  inset-block-end: var(--sc-space-4);
+  inset-inline-end: var(--sc-gutter);
+  z-index: 950;
+  display: grid;
+  gap: var(--sc-space-2);
+  width: min(26rem, calc(100vw - 2 * var(--sc-gutter)));
+  pointer-events: none;
+}
+.sc-notices:empty { display: none; }
+.sc-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sc-space-3);
+  padding: var(--sc-space-3) var(--sc-space-4);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-inline-start-width: calc(var(--sc-border-w) * 4);
+  border-inline-start-color: var(--sc-warn);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface-raised);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  pointer-events: auto;
+}
+.sc-notice[data-tone="error"] { border-inline-start-color: var(--sc-bad); }
+.sc-notice-text { flex: 1 1 auto; min-width: 0; }
+.sc-notice-close {
+  flex: none;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-s);
+  background: transparent;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  line-height: 1.8;
+}
+.sc-notice-close:hover { color: var(--sc-ink); border-color: var(--sc-rule-strong); }
+
+/* Reduced motion: the OS setting and the app's own data-motion="reduced" both turn motion off. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion="reduced"] *, :root[data-motion="reduced"] *::before, :root[data-motion="reduced"] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0ms !important;
+  scroll-behavior: auto !important;
+}

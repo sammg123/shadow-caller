@@ -1,5 +1,7 @@
 # GameCast 3D: three.js r185 recipe (field, overlays, cameras, play animation)
 
+> **v1.3 OVERRIDE (2026-10-09), Sam's direction: read `docs/design/play-drawing.md` first.** It is binding and overrides this file wherever they disagree (2.4 drawing grammar, 2.5 engine visuals, the ghost zones, the W1 projection shapes) and any task prompt that says otherwise: every play starts on the line of scrimmage (no QB drop, no handoff mesh, no PA fake step); a pass is an arc, an incompletion an arc ending in an X, a run a straight flat 2D line with its yards; every play is labeled on the field ("Deep pass left · +21", "Inside run (up the middle) · +4"); before each Dallas snap the top 2 most likely plays are drawn as dashed, translucent shadow plays in that same shape language with "1 · Deep shot (20+) · 31%" text underneath.
+
 Status: implementation recipe. Every code block below was built and run as a working prototype against the
 vendored three.js r185 (`static/vendor/three`, `REVISION "185"`), loaded through the same import map the app will
 use, in headless Chromium (Playwright 1.60) on two GL backends (ANGLE Metal on Apple M4 Max, and SwiftShader), fed by the saved

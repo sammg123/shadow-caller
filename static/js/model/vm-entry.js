@@ -11,7 +11,7 @@ const HINTS = Object.freeze({ manual: ENTRY.hintManual, feed: ENTRY.hintFeed, wa
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {mode, manualHidden, dim, chosen: {text, placeholder, hint}, keysOn: {J..O}, outOn:
- *   {incomplete, sack, scramble}, logDisabled, hint}
+ *   {incomplete, sack, scramble}, logDisabled, hint, flagOpen}   flagOpen: v1.2 (A7), #flagBtn.on / aria-expanded
  */
 export function entryVm(pv) {
   const presented = (pv && pv.presented) || null;
@@ -29,5 +29,6 @@ export function entryVm(pv) {
     outOn: Object.fromEntries(OUTCOMES.map((out) => [out, pick.out === out])),
     logDisabled: !canLog(pick, keys, active),
     hint: HINTS[mode],
+    flagOpen: Boolean(pv && pv.view && pv.view.flag && pv.view.flag.open),
   });
 }

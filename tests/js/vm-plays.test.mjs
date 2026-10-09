@@ -21,7 +21,7 @@ test("the first DAL snap reads like the contract row (DC B2)", () => {
     seq: 2, id: "40187298068", kind: "play", team: "DAL", caller: true, drive: 1, time: "Q1 14:54",
     situation: "1st & 10 at DAL 30", text: "D.Prescott pass incomplete short middle to B.Spann-Ford (C.Rozeboom).",
     result: "INC", call: "Short (0–9 air yds), incomplete", verdict: "top3", verdictText: "In his top 3",
-    nullified: false, retagged: false, scoring: false, retag: null,
+    nullified: false, retagged: false, scoring: false, retag: null, reviewable: true, reviewing: false,
   });
 });
 
@@ -106,4 +106,17 @@ test("nothing presented yet gives an empty feed, deep-frozen", () => {
   const vm = playsVm(makePv());
   assert.deepEqual([vm.rows.length, vm.groups.length, vm.retagSeq, vm.unlinkedNote], [0, 0, null, ""]);
   assert.ok(isDeepFrozen(playsVm(finalPv())));
+});
+
+// v1.2 (A8, additive): rows that draw something can be reviewed on the field; the reviewed row is marked.
+test("every drawn row except admin rows can be reviewed; the reviewed row is marked", () => {
+  const live = playsVm(finalPv());
+  assert.equal(live.reviewSeq, null);
+  assert.equal(live.rows.filter((r) => r.reviewable).length, 183 - 27, "27 admin rows draw nothing");
+  assert.deepEqual([bySeq(live, 13).reviewable, bySeq(live, 2).reviewable, bySeq(live, 1).reviewable], [false, true, true]);
+  assert.equal(live.rows.some((r) => r.reviewing), false);
+  const reviewing = playsVm(finalPv({ view: { review: { seq: 104 } } }));
+  assert.equal(reviewing.reviewSeq, 104);
+  assert.deepEqual(reviewing.rows.filter((r) => r.reviewing).map((r) => r.seq), [104]);
+  assert.equal(reviewing.groups.flatMap((g) => g.rows).filter((r) => r.reviewing).length, 1);
 });

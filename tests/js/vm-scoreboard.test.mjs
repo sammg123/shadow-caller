@@ -10,8 +10,8 @@ test("final whistle from the timeline status (DC C5)", () => {
   const vm = scoreboardVm(espnPv(timeline.final()));
   assert.deepEqual(vm.teams.map((t) => t.abbr), ["TB", "DAL"]);
   assert.deepEqual({ ...team(vm, "TB"), }, {
-    abbr: "TB", name: "Buccaneers", location: "Tampa Bay", logo: "/api/logo/TB", score: "24", poss: false,
-    timeouts: 2, caller: false, side: "right", home: false,
+    abbr: "TB", name: "Buccaneers", location: "Tampa Bay", logo: "/api/logo/TB", logoDark: "/api/logo/TB?v=dark",
+    score: "24", poss: false, timeouts: 2, caller: false, side: "right", home: false,
   });
   assert.deepEqual([team(vm, "DAL").score, team(vm, "DAL").timeouts, team(vm, "DAL").caller], ["16", 1, true]);
   assert.deepEqual([vm.qtr, vm.qtrText, vm.clock, vm.clockEst, vm.downText, vm.ballOn, vm.situation, vm.state, vm.poss],
@@ -95,4 +95,14 @@ test("no spot yet, or the half just ended: no down text", () => {
   assert.deepEqual([timeoutOnly.downText, timeoutOnly.ballOn], ["", ""]);
   const halftime = scoreboardVm(espnPv(patch(body, { rows: body.rows.slice(0, 93), status: inGame })));
   assert.deepEqual([halftime.downText, halftime.ballOn], ["", ""]);
+});
+
+// v1.2 (A8, additive): the dark-background logo for LED windows (DESIGN.md), validated like the default one.
+test("each team carries ESPN's dark-background logo too, only as the app's own proxy URL", () => {
+  const body = timeline.final();
+  const teams = { ...body.teams, TB: { ...body.teams.TB, logo_dark: "https://evil.example/x.png" } };
+  const vm = scoreboardVm(espnPv(patch(body, { teams })));
+  assert.equal(team(vm, "TB").logoDark, null);
+  assert.equal(team(vm, "DAL").logoDark, "/api/logo/DAL?v=dark");
+  assert.equal(scoreboardVm(makePv({ presented: state.tilt() })).teams[0].logoDark, null, "no ESPN teams, no logos");
 });

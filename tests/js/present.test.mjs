@@ -89,3 +89,14 @@ test("presentedView is the pv every view model takes (2.3)", () => {
   assert.deepEqual([pv.version, pv.view, pv.prefs, pv.conn, pv.boot, pv.anim, pv.now],
     [state.version, state.view, state.prefs, state.conn, state.boot, state.anim, 77]);
 });
+
+// v1.2 (A8, additive): the presented timeline carries ESPN's own box from the matching snapshot.
+test("presentedTimeline passes ESPN's own box (boxEspn) from the snapshot at the drawn row, else null", () => {
+  const espn = deepFreeze({ DAL: { yards: 366 }, TB: { yards: 419 } });
+  const snapshots = deepFreeze([{ n: 104, drives: [], status: null, box: { DAL: {} }, boxEspn: null, unlinked: [] },
+    { n: 183, drives: [], status: null, box: { DAL: {} }, boxEspn: espn, unlinked: [] }]);
+  const timeline = deepFreeze({ ...emptyTimeline(), epoch: EPOCH, n: 183, rows: stubRows(1, 183), snapshots });
+  assert.equal(presentedTimeline(deepFreeze({ timeline, anim: anim(150) })).boxEspn, null);
+  assert.equal(presentedTimeline(deepFreeze({ timeline, anim: anim(183) })).boxEspn, espn);
+  assert.equal(presentedTimeline(deepFreeze({ timeline: emptyTimeline(), anim: anim(0) })).boxEspn, null);
+});

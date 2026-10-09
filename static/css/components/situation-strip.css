@@ -1,0 +1,132 @@
+/* The situation strip (#rg-situation; ui/situation-strip.js; owner A7). Structure and token references only; a world
+   skins it in css/worlds/<id>/components/situation-strip.css. Hooks: input.bad[aria-invalid] (a rejected value kept,
+   FI 4.4), #iSide.opp[data-side="opp"], #clockEst[hidden], #endRow[hidden], #driveInfo[data-cue] (off the field). */
+
+.sc-strip {
+  display: grid;
+  gap: var(--sc-space-3);
+  min-width: 0;
+  padding: var(--sc-space-3) var(--sc-space-5);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+.sc-strip-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sc-space-3) var(--sc-space-5);
+  min-width: 0;
+}
+.sc-strip-group { display: flex; align-items: flex-end; gap: var(--sc-space-2); min-width: 0; }
+.sc-strip .sc-strip-field { display: grid; gap: var(--sc-space-1); min-width: 0; }
+.sc-strip .sc-strip-label {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  line-height: var(--sc-leading-tight);
+  text-transform: var(--sc-case-label);
+  white-space: nowrap;
+}
+.sc-est { margin-inline-start: var(--sc-space-1); color: var(--sc-warn); text-transform: none; }
+
+/* Inputs: digits that change in place keep their width. */
+.sc-strip-input {
+  width: calc(var(--sc-strip-chars, 3) * 1ch + 2 * var(--sc-space-2));
+  min-height: 2.75rem;
+  padding: var(--sc-space-1) var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-l);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--sc-weight-strong);
+  text-align: center;
+  transition: border-color var(--sc-dur-fast) var(--sc-ease-out);
+}
+.sc-strip-input:hover { border-color: var(--sc-rule-strong); }
+.sc-strip-input:focus { border-color: var(--sc-focus); background: var(--sc-surface); }
+/* A rejected value keeps its text with a red underline (FI 4.4, #14). */
+.sc-strip-input.bad {
+  border-color: var(--sc-bad);
+  background-image: linear-gradient(var(--sc-bad), var(--sc-bad));
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  background-size: 100% calc(var(--sc-border-w) * 3);
+  color: var(--sc-bad);
+}
+:where(#iQtr, #iDown) { --sc-strip-chars: 2; }
+:where(#iClock) { --sc-strip-chars: 5; }
+:where(#iOff, #iOpp) { --sc-strip-chars: 3; }
+:where(#iTogo) { --sc-strip-chars: 3; }
+:where(#iYard) { --sc-strip-chars: 4; }
+
+.sc-strip-dash,
+.sc-strip-amp {
+  align-self: flex-end;
+  padding-block-end: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-m);
+}
+
+/* Ball on: the side chip and the yard joined into one control. */
+.sc-spot { display: flex; align-items: stretch; }
+.sc-spot .sc-strip-input { border-start-start-radius: 0; border-end-start-radius: 0; }
+.sc-side {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-1);
+  min-height: 2.75rem;
+  padding: 0 var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-ink);
+  border-inline-end: 0;
+  border-radius: var(--sc-radius-s) 0 0 var(--sc-radius-s);
+  background: var(--sc-ink);
+  color: var(--sc-ink-inverse);
+  font-weight: var(--sc-weight-strong);
+  white-space: nowrap;
+}
+.sc-side.opp { background: var(--sc-surface); color: var(--sc-ink); }
+.sc-side-glyph { opacity: 0.75; }
+
+/* The drive line and the end-of-drive keys. */
+.sc-strip-drive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-2) var(--sc-space-4);
+  padding-block-start: var(--sc-space-2);
+  border-block-start: var(--sc-border-w) solid var(--sc-rule);
+}
+.sc-drive-info { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.sc-drive-info[data-cue="true"] { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+.sc-end-row { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); }
+.sc-end {
+  min-height: 2.5rem;
+  padding: var(--sc-space-1) var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+}
+.sc-end:hover { border-color: var(--sc-ink); }
+
+.sc-strip-note {
+  max-width: 80ch;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  line-height: var(--sc-leading-body);
+}
+
+@media (max-width: 760px) {
+  .sc-strip { padding: var(--sc-space-3) var(--sc-space-4); }
+  .sc-strip-fields { column-gap: var(--sc-space-4); }
+}

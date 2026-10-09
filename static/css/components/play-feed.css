@@ -1,0 +1,149 @@
+/* Play feed (ui/play-feed.js; owner A8). Structure and token references only; a world skins it in
+   css/worlds/<id>/components/play-feed.css. Hooks a world styles against:
+     .sc-pf-group[data-drive][data-team][data-caller][data-complete]   a drive and its header (.sc-pf-ghead)
+     .sc-pf-row[data-seq][data-kind][data-team][data-caller][data-verdict="top1|top3|miss|none"][data-nullified]
+               [data-retagged][data-scoring][data-reviewing][data-newest]
+     .sc-pf-btn  the row's button (a div on admin rows); aria-pressed="true" on the play shown on the field
+   Team colors come from the runtime tokens --sc-team-caller / --sc-team-opp. */
+
+.sc-plays {
+  display: grid;
+  gap: var(--sc-space-3);
+  min-width: 0;
+  padding: var(--sc-space-4);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+.sc-plays > .sc-panel-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+
+.sc-pf-unlinked,
+.sc-pf-empty { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+
+.sc-pf-feed,
+.sc-pf-rows { display: grid; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.sc-pf-feed { gap: var(--sc-space-4); }
+.sc-pf-rows { gap: 2px; }
+
+/* ---------------------------------------------------------------- a drive: header, then its plays */
+.sc-pf-group { --sc-pf-team: var(--sc-team-opp); display: grid; gap: var(--sc-space-1); min-width: 0; }
+.sc-pf-group[data-caller="true"] { --sc-pf-team: var(--sc-team-caller); }
+
+.sc-pf-ghead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--sc-space-2);
+  padding: var(--sc-space-1) var(--sc-space-2);
+  border-bottom: var(--sc-border-w) solid var(--sc-rule);
+  background: var(--sc-surface);
+  font-size: var(--sc-size-xs);
+}
+.sc-pf-gteam {
+  padding-inline-start: var(--sc-space-2);
+  border-inline-start: calc(var(--sc-border-w) * 4) solid var(--sc-pf-team);
+  font-weight: var(--sc-weight-display);
+}
+.sc-pf-gresult { font-weight: var(--sc-weight-strong); letter-spacing: var(--sc-tracking-label); }
+.sc-pf-group[data-complete="false"] .sc-pf-gresult { color: var(--sc-live); }
+.sc-pf-gsum { margin-inline-start: auto; color: var(--sc-ink-muted); font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- a play */
+.sc-pf-row { --sc-pf-team: var(--sc-team-opp); min-width: 0; }
+.sc-pf-row[data-caller="true"] { --sc-pf-team: var(--sc-team-caller); }
+
+.sc-pf-btn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "meta result" "text text" "call call";
+  gap: 2px var(--sc-space-2);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: var(--sc-space-2) var(--sc-space-2) var(--sc-space-2) var(--sc-space-3);
+  border: 0;
+  border-inline-start: calc(var(--sc-border-w) * 2) solid transparent;
+  border-radius: var(--sc-radius-s);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  transition: background-color var(--sc-dur-fast) var(--sc-ease-out);
+}
+.sc-pf-row[data-caller="true"] .sc-pf-btn { border-inline-start-color: var(--sc-pf-team); }
+button.sc-pf-btn:hover { background: var(--sc-surface-2); }
+button.sc-pf-btn[aria-pressed="true"] {
+  background: var(--sc-surface-2);
+  outline: calc(var(--sc-border-w) * 2) solid var(--sc-ink);
+  outline-offset: -2px;
+}
+button.sc-pf-btn:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus); outline-offset: 1px; }
+
+.sc-pf-meta {
+  grid-area: meta;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--sc-space-2);
+  min-width: 0;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+}
+.sc-pf-time { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+.sc-pf-team { font-weight: var(--sc-weight-strong); }
+.sc-pf-noplay { color: var(--sc-warn); font-weight: var(--sc-weight-strong); }
+
+.sc-pf-result {
+  grid-area: result;
+  align-self: start;
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-display);
+  white-space: nowrap;
+}
+.sc-pf-row[data-scoring="true"] .sc-pf-result { color: var(--sc-good); }
+
+.sc-pf-text {
+  grid-area: text;
+  min-width: 0;
+  font-size: var(--sc-size-s);
+  line-height: var(--sc-leading-body);
+}
+.sc-pf-row[data-nullified="true"] .sc-pf-text { color: var(--sc-ink-muted); text-decoration: line-through; }
+.sc-pf-row[data-kind="admin"] .sc-pf-btn { color: var(--sc-ink-muted); }
+.sc-pf-row[data-kind="admin"] .sc-pf-text { font-size: var(--sc-size-xs); }
+
+/* The caller's call and how the model did on it: top pick, in his top 3, miss. */
+.sc-pf-call {
+  grid-area: call;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--sc-space-2);
+  min-width: 0;
+  font-size: var(--sc-size-xs);
+}
+.sc-pf-verdict {
+  padding: 0 var(--sc-space-1);
+  border: var(--sc-border-w) solid currentColor;
+  border-radius: var(--sc-radius-s);
+  font-weight: var(--sc-weight-display);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+  white-space: nowrap;
+}
+.sc-pf-verdict:empty { display: none; }
+.sc-pf-row[data-verdict="top1"] .sc-pf-verdict { color: var(--sc-good); }
+.sc-pf-row[data-verdict="top3"] .sc-pf-verdict { color: var(--sc-ink); }
+.sc-pf-row[data-verdict="miss"] .sc-pf-verdict { color: var(--sc-bad); }
+.sc-pf-callname { min-width: 0; color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+.sc-pf-retagged { color: var(--sc-ink-muted); font-style: italic; }

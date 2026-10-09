@@ -213,6 +213,8 @@ components:
     size: "clamp(10px, calc(0.4167vw + 4px), 12px)"
 ---
 
+> **v1.3 OVERRIDE (2026-10-09), Sam's direction: read `docs/design/play-drawing.md` first.** It is binding and overrides this file wherever they disagree (2.4 drawing grammar, 2.5 engine visuals, the ghost zones, the W1 projection shapes) and any task prompt that says otherwise: every play starts on the line of scrimmage (no QB drop, no handoff mesh, no PA fake step); a pass is an arc, an incompletion an arc ending in an X, a run a straight flat 2D line with its yards; every play is labeled on the field ("Deep pass left · +21", "Inside run (up the middle) · +4"); before each Dallas snap the top 2 most likely plays are drawn as dashed, translucent shadow plays in that same shape language with "1 · Deep shot (20+) · 31%" text underneath.
+
 <!-- SEED: established with the user before implementation; re-run /impeccable document once there's code to capture the actual tokens and components. Chosen world: "Under the Lights" (docs/design/directions.md, Direction 5). Contract: docs/design/direction-contract.md. Every clamp() above is exact at the two reference viewports (1440x900 and 1920x1080) and holds its laptop value below 1440. Values measured during the seed are marked (measured); values the first build must confirm are marked (provisional). -->
 
 # Design System: Shadow Play-Caller

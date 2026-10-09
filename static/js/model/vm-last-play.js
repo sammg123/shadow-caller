@@ -4,9 +4,16 @@ import { LAST_PLAY } from "./copy.js";
 import { freezeDeep } from "./format.js";
 import { inputMode } from "./vm-feed.js";
 import { actualText } from "./vm-log.js";
+import { watchOf } from "./vm-transport.js";
 
 const HIDDEN = Object.freeze({ hidden: true, kind: "waiting", heading: "", name: "", yardsText: "", text: "",
-  buttons: Object.freeze([]), seq: null });
+  buttons: Object.freeze([]), seq: null, pauseFirst: false });
+
+/** v1.2 (A7): a retag key clicked while a watched game plays pauses it first (DC E2.8), like the keyboard does. */
+const pausesFirst = (pv) => {
+  const watch = watchOf(pv);
+  return Boolean(watch && watch.state === "playing");
+};
 
 /**
  * The retag keys for a logged pass or run: pass A N O P, run O J K L. The key matching the row's family is
@@ -37,7 +44,7 @@ function yardsText(row) {
 
 /**
  * @param {object} pv  presented view
- * @returns {object} frozen {hidden, kind: "waiting"|"play", heading, name, yardsText, text, buttons[], seq}
+ * @returns {object} frozen {hidden, kind: "waiting"|"play", heading, name, yardsText, text, buttons[], seq, pauseFirst}
  */
 export function lastPlayVm(pv) {
   const presented = pv && pv.presented;
@@ -46,7 +53,7 @@ export function lastPlayVm(pv) {
   const off = (presented.game && presented.game.offense) || "";
   if (!row) {
     return freezeDeep({ hidden: false, kind: "waiting", heading: LAST_PLAY.waiting(off), name: "", yardsText: "",
-      text: LAST_PLAY.waitingText, buttons: [], seq: null });
+      text: LAST_PLAY.waitingText, buttons: [], seq: null, pauseFirst: pausesFirst(pv) });
   }
   return freezeDeep({
     hidden: false,
@@ -57,5 +64,6 @@ export function lastPlayVm(pv) {
     text: typeof row.feed_text === "string" ? row.feed_text : "",
     buttons: retagButtons(row),
     seq: row.seq,
+    pauseFirst: pausesFirst(pv),
   });
 }

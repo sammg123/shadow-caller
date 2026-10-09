@@ -7,7 +7,7 @@
 import { CONFIRMS, TOASTS } from "../model/copy.js";
 import { ROUTES } from "./api.js";
 import { isPlainObject, isStateBody } from "./domain.js";
-import { stepReview } from "./review.js";
+import { drawableSeqs, stepReview } from "./review.js";
 import { canLog, flagPayload, pickLeaf as findLeaf, playPayload } from "./selection.js";
 import { commit, sideSwitch, stripValues } from "./strip.js";
 
@@ -269,6 +269,18 @@ async function review(c, delta, { repeat = false } = {}) {
   await send(c, ROUTES.watchStep, {}, QUIET);
 }
 
+/** v1.2 (A8): jump the review cursor to one drawn play (play feed, drive chart); null returns to the live edge.
+ * A row that is not drawn yet, or draws nothing (admin), changes nothing. Client only: the server is never stepped. */
+function reviewAt(c, seq) {
+  if (seq === null) {
+    c.dispatch({ type: "review/set", seq: null });
+    return;
+  }
+  const s = c.st();
+  if (!Number.isInteger(seq) || !drawableSeqs(s.timeline.rows, s.anim.drawnThrough).includes(seq)) return;
+  c.dispatch({ type: "review/set", seq });
+}
+
 // ---------------------------------------------------------------- view
 function setCamera(c, id) {
   if (typeof id !== "string" || id === "") return;
@@ -337,6 +349,7 @@ function watchAndViewActions(c) {
     toggleScorecard: () => c.dispatch({ type: "scorecard/toggle" }),
     closeScorecard: () => c.dispatch({ type: "scorecard/close" }),
     review: (delta, opts) => review(c, delta, opts),
+    reviewAt: (seq) => reviewAt(c, seq),
     exitReview: () => c.dispatch({ type: "review/set", seq: null }),
     hoverLeaf: (leaf) => c.dispatch({ type: "hover/leaf", leaf: leaf ?? null }),
     retryNow: () => c.sync?.kick(),

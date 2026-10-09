@@ -1,0 +1,138 @@
+/* Masthead (ui/masthead.js; owner A9), plus the key caps and lamps every A9 component builds with ui/keycap.js.
+   Structure and token references only: a world skins these in css/worlds/<id>/components/masthead.css. */
+
+/* ---------------------------------------------------------------- key caps (ui/keycap.js), shared */
+.sc-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-height: 2.5rem;
+  padding: 0 var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-text);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  line-height: 1.1;
+  text-align: start;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color var(--sc-dur-fast) var(--sc-ease-out), border-color var(--sc-dur-fast) var(--sc-ease-out),
+    color var(--sc-dur-fast) var(--sc-ease-out);
+}
+.sc-key:hover:not(:disabled) { border-color: var(--sc-ink); }
+.sc-key:active:not(:disabled) { background: var(--sc-surface-2); }
+.sc-key:disabled { color: var(--sc-ink-muted); border-color: var(--sc-rule); background: var(--sc-surface-2); }
+
+/* The keyboard key printed on the cap: decoration (aria-hidden); the name is the label. */
+.sc-key-cap {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.75em;
+  height: 1.75em;
+  padding: 0 0.4em;
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink-muted);
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  line-height: 1;
+}
+.sc-key-value { color: var(--sc-ink-muted); font-weight: var(--sc-weight-regular); }
+.sc-key-value:empty { display: none; }
+
+/* On: a toggle that is pressed or open. */
+.sc-key[aria-pressed="true"],
+.sc-key[aria-expanded="true"] {
+  border-color: var(--sc-ink);
+  background: var(--sc-ink);
+  color: var(--sc-ink-inverse);
+}
+.sc-key[aria-pressed="true"] .sc-key-cap,
+.sc-key[aria-expanded="true"] .sc-key-cap,
+.sc-key[aria-pressed="true"] .sc-key-value,
+.sc-key[aria-expanded="true"] .sc-key-value {
+  border-color: currentColor;
+  background: transparent;
+  color: inherit;
+}
+
+/* Lamps: always beside words that say the same thing. Unlit by default; components light them by state. */
+.sc-lamp {
+  display: inline-block;
+  flex: none;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--sc-rule-strong);
+}
+
+@media (pointer: coarse) {
+  .sc-key { min-height: 2.75rem; }
+}
+/* A touch screen has no keyboard to learn: the caps step aside (aria-keyshortcuts still names the keys). */
+@media (hover: none) and (pointer: coarse) {
+  .sc-key-cap { display: none; }
+}
+
+/* ---------------------------------------------------------------- masthead */
+.sc-masthead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-3) var(--sc-space-5);
+  min-width: 0;
+}
+
+.sc-masthead-plate { display: grid; gap: var(--sc-space-1); min-width: 0; }
+
+.sc-masthead-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+
+.sc-masthead-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+}
+.sc-masthead-game { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
+/* The dot rides on the game label, so a wrapped line never starts with it. */
+.sc-masthead-game:not(:empty):has(+ .sc-masthead-who:not(:empty))::after {
+  content: "·" / "";
+  margin-inline-start: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-regular);
+}
+
+.sc-masthead-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-4);
+  min-width: 0;
+}
+.sc-masthead-keys { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); }
+.sc-masthead-view-keys {
+  padding-inline-start: var(--sc-space-4);
+  border-inline-start: var(--sc-border-w) solid var(--sc-rule);
+}
+.sc-key-danger:hover:not(:disabled) { border-color: var(--sc-bad); color: var(--sc-bad); }
+
+@media (max-width: 760px) {
+  .sc-masthead-view-keys { padding-inline-start: 0; border-inline-start: 0; }
+}
+/* Narrow: the game and the modelled caller stack, so the dot between them goes. */
+@media (max-width: 520px) {
+  .sc-masthead-meta { flex-direction: column; }
+  .sc-masthead-game:not(:empty):has(+ .sc-masthead-who:not(:empty))::after { content: none; }
+}

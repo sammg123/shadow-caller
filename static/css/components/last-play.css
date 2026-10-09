@@ -1,0 +1,68 @@
+/* The last play and its retag keys (#lastPlay inside #entry; ui/last-play.js; owner A7). Structure and token
+   references only; a world skins it in css/worlds/<id>/components/last-play.css (W4). Hooks:
+   #lastPlay[data-kind="waiting" | "play"], #lastPlay[data-fresh="true"] (8 s after each new caller play),
+   [data-retag].cur[aria-current] (the key matching the row's family), data-tone="pass | run | rpo". */
+
+:where(#lastPlay) { display: grid; gap: var(--sc-space-2); min-width: 0; }
+
+.sc-last-heading {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+:where(#lastPlay[data-kind="waiting"]) .sc-last-heading {
+  color: var(--sc-ink);
+  font-size: var(--sc-size-m);
+  text-transform: none;
+}
+.sc-last-name {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.sc-last-yards { color: var(--sc-ink-muted); font-size: var(--sc-size-s); font-variant-numeric: tabular-nums; }
+.sc-last-text {
+  max-width: 75ch;
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  line-height: var(--sc-leading-body);
+  overflow-wrap: break-word;
+}
+
+.sc-retag { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); padding-block-start: var(--sc-space-1); }
+.sc-retag .sc-key { --sc-tone: var(--sc-pass); }
+.sc-retag .sc-key[data-tone="run"] { --sc-tone: var(--sc-run); }
+.sc-retag .sc-key[data-tone="rpo"] { --sc-tone: var(--sc-rpo); }
+.sc-retag .sc-key {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-height: 2.75rem;
+  padding: var(--sc-space-1) var(--sc-space-3) var(--sc-space-1) var(--sc-space-1);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  white-space: normal;
+  transition: border-color var(--sc-dur-fast) var(--sc-ease-out);
+}
+.sc-retag .sc-key-cap {
+  display: grid;
+  place-items: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  font-family: var(--sc-font-display);
+  font-weight: var(--sc-weight-display);
+}
+.sc-retag .sc-key:hover { border-color: var(--sc-tone); }
+/* The key matching the row's family: an ink frame (FI 3.6). */
+.sc-retag .sc-key.cur { border-color: var(--sc-ink); box-shadow: inset 0 0 0 var(--sc-border-w) var(--sc-ink); }
+/* Just after a caller play the keys invite a retag. */
+:where(#lastPlay[data-fresh="true"]) .sc-retag .sc-key-cap { background: var(--sc-tone); color: var(--sc-ink-inverse); }

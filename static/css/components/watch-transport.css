@@ -1,0 +1,60 @@
+/* Watch this game transport (ui/watch-transport.js; owner A9). Structure and token references only; key caps live
+   in masthead.css. States: .sc-transport[data-watch-state="idle|playing|paused|done|error|stopped"][data-active],
+   speeds by aria-pressed, keys hidden or disabled by state. A world skins it in its watch-transport.css (W5). */
+
+.sc-transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-4);
+  min-width: 0;
+  padding: var(--sc-space-3) var(--sc-space-4);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface);
+}
+.sc-transport[data-active="true"] { border-color: var(--sc-rule-strong); }
+
+.sc-transport-keys,
+.sc-transport-speeds {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: 0;
+}
+.sc-transport-speeds {
+  padding-inline-start: var(--sc-space-4);
+  border-inline-start: var(--sc-border-w) solid var(--sc-rule);
+}
+
+/* While a game plays back, Pause carries the live mark so the state reads at a glance. */
+.sc-transport[data-watch-state="playing"] .sc-transport-pause { border-color: var(--sc-live); }
+.sc-transport[data-watch-state="playing"] .sc-transport-pause .sc-key-cap { border-color: var(--sc-live); }
+
+.sc-transport-progress {
+  margin-inline-start: auto;
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-strong);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.sc-transport-error {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: 0;
+  color: var(--sc-bad);
+  font-size: var(--sc-size-s);
+}
+.sc-transport-error .sc-lamp { background: var(--sc-bad); }
+.sc-transport-error-text { min-width: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 760px) {
+  .sc-transport-speeds { padding-inline-start: 0; border-inline-start: 0; }
+  .sc-transport-progress { margin-inline-start: 0; }
+}

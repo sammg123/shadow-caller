@@ -1,0 +1,54 @@
+/* Box score (ui/box-score.js; owner A8). Structure and token references only; a world skins it in
+   css/worlds/<id>/components/box-score.css. Hooks a world styles against:
+     table.sc-box[data-source="espn|derived"], th[data-team] (team columns), td[data-team] (their cells),
+     .sc-box-source (which box is showing), .sc-box-empty */
+
+.sc-boxscore {
+  display: grid;
+  gap: var(--sc-space-3);
+  min-width: 0;
+  padding: var(--sc-space-4);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+.sc-boxscore > .sc-panel-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+
+.sc-box-scroll { min-width: 0; overflow-x: auto; }
+
+.sc-box {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--sc-size-s);
+}
+.sc-box th,
+.sc-box td { padding: var(--sc-space-1) var(--sc-space-2); }
+.sc-box th:first-child,
+.sc-box td:first-child { padding-inline-start: 0; }
+.sc-box th:last-child,
+.sc-box td:last-child { padding-inline-end: 0; }
+
+.sc-box thead th {
+  padding-block-end: var(--sc-space-2);
+  border-bottom: calc(var(--sc-border-w) * 2) solid var(--sc-rule-strong);
+  font-weight: var(--sc-weight-display);
+  letter-spacing: var(--sc-tracking-label);
+  text-align: end;
+}
+.sc-box tbody th {
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-regular);
+  text-align: start;
+}
+.sc-box tbody td { font-weight: var(--sc-weight-strong); text-align: end; white-space: nowrap; }
+.sc-box tbody tr + tr { border-top: var(--sc-border-w) solid var(--sc-rule); }
+
+.sc-box-empty,
+.sc-box-source { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }

@@ -1,0 +1,90 @@
+/* Win probability (ui/win-prob.js; owner A8). Structure and token references only; a world skins it in
+   css/worlds/<id>/components/win-prob.css. Hooks a world styles against:
+     .sc-wp[data-available][data-wp-caller]       the chart (role="img" with the spoken value)
+     svg.sc-wp-svg (viewBox 0 0 360 100, stretched): .sc-wp-bg, .sc-wp-q (quarter ends), .sc-wp-even (50%),
+       .sc-wp-area-caller / .sc-wp-area-opp (the area above and below 50%), .sc-wp-line, .sc-wp-mark[data-kind]
+       (score | turnover, zero-length lines: their stroke width is the dot size), .sc-wp-now (the newest point)
+     .sc-wp-plot[data-ot="true"]  the axis gains an OT column */
+
+.sc-winprob {
+  display: grid;
+  gap: var(--sc-space-2);
+  min-width: 0;
+  padding: var(--sc-space-4);
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+
+.sc-winprob > .sc-panel-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+
+.sc-wp { display: grid; gap: var(--sc-space-2); min-width: 0; }
+
+.sc-wp-head { display: flex; align-items: baseline; gap: var(--sc-space-2); }
+.sc-wp-head:has(.sc-wp-value:empty) { display: none; }
+.sc-wp-team {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+}
+.sc-wp-value {
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: 1;
+}
+
+.sc-wp-plot { position: relative; display: grid; gap: var(--sc-space-1); min-width: 0; }
+.sc-wp-svg { display: block; width: 100%; height: 7.5rem; overflow: visible; }
+
+.sc-wp-bg { fill: var(--sc-surface-2); }
+.sc-wp-q { stroke: var(--sc-rule); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.sc-wp-even {
+  stroke: var(--sc-rule-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+  vector-effect: non-scaling-stroke;
+}
+.sc-wp-area-caller { fill: var(--sc-team-caller); fill-opacity: 0.22; }
+.sc-wp-area-opp { fill: var(--sc-team-opp); fill-opacity: 0.22; }
+.sc-wp-line {
+  fill: none;
+  stroke: var(--sc-ink);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.sc-wp-mark,
+.sc-wp-now { stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.sc-wp-mark { stroke: var(--sc-ink); stroke-width: 7; }
+.sc-wp-mark[data-kind="turnover"] { stroke: var(--sc-bad); }
+.sc-wp-now { stroke: var(--sc-focus); stroke-width: 9; }
+
+.sc-wp-evenlabel {
+  position: absolute;
+  inset-block-start: calc(3.75rem - 0.6em);
+  inset-inline-end: var(--sc-space-1);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.sc-wp-axis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  text-align: center;
+}
+.sc-wp-plot[data-ot="true"] .sc-wp-axis { grid-template-columns: 9fr 9fr 9fr 9fr 6fr; }
+
+.sc-wp-note { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }

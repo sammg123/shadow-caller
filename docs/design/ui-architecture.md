@@ -1,5 +1,7 @@
 # UI architecture for the 3D GameCast rebuild
 
+> **v1.3 OVERRIDE (2026-10-09), Sam's direction: read `docs/design/play-drawing.md` first.** It is binding and overrides this file wherever they disagree (2.4 drawing grammar, 2.5 engine visuals, the ghost zones, the W1 projection shapes) and any task prompt that says otherwise: every play starts on the line of scrimmage (no QB drop, no handoff mesh, no PA fake step); a pass is an arc, an incompletion an arc ending in an X, a run a straight flat 2D line with its yards; every play is labeled on the field ("Deep pass left · +21", "Inside run (up the middle) · +4"); before each Dallas snap the top 2 most likely plays are drawn as dashed, translucent shadow plays in that same shape language with "1 · Deep shot (20+) · 31%" text underneath.
+
 Status: architecture v1, nothing built yet. This file is the contract between the frontend agents. It sits on top of three binding specs and never overrides them:
 
 - `docs/design/data-contract.md` (cited as **DC**): API, row shape, field frame (A1 to A5), geometry (B5), derivations (B6), pred link (B7), manual mode (D), watch (E), polling (E4), payloads (F).
@@ -9,6 +11,67 @@ Status: architecture v1, nothing built yet. This file is the contract between th
 `docs/design/three-recipe.md` did not exist when this was written. If it lands, it governs materials and passes *inside* the scene-engine package (A5); it may not change the interfaces below.
 
 **v1.1 (review fixes, 2026-10-09).** Interface changes since v1, each marked "v1.1" where it lands: `createStore` takes `{onError}` and never throws a reducer or listener error into the dispatcher (2.2); `createSync` takes `onError`, and sync, api, actions and the conductor call injected timers, `fetch` and `now` bare, with `now` in epoch ms (2.8, 3.5); `ViewState.bgPending` holds a G12 message until its state is presented, and the feed bar's `last_play`, `skipped` and `plays_logged` come from the presented state only (2.1, 2.3, 4.6); the snap step and approximate pass arcs (2.4, 7.1); `runIntent` routes an action's rejection to `onError` (2.8); `node --test tests/js/` runs through `tests/js/index.js` (decision 8); missing fixtures fail loudly (7.1).
+
+**v1.2 (shell and theme, 2026-10-09, A0 + A10).** Additive; nothing in v1.1 changes meaning. Details in section 9.
+`ui/dom.js` moved to A0 so A7, A8 and A9 can start together (it shipped first: `el`, `svgEl`, `setText`, `setAttr`,
+`setData`, `setHidden`, `reconcile`, plus `setClass` and `clear`). `main.js` passes the component roots in the 9.1
+table and mounts every component through a dynamic import, so a missing or throwing component leaves a visible notice
+in its region and boot continues. The default world is `under-the-lights` (`?world=neutral` forces neutral; an unknown
+or broken world falls back to neutral with a notice). New A0 files: `static/js/shell/*.js`, `tests/js/fake-dom.mjs`.
+
+**v1.2 (world needs from DESIGN.md, 2026-10-09, design-system seed; proposed, the owning package decides).** Under the
+Lights (`/DESIGN.md`, `docs/design/direction-contract.md`) needs, beyond 2.7: (1) camera insets: the board column
+covers the right 456 px at 1440 and 624 px at 1920, so `Engine`/`Look` should pass HUD margins (top, right, bottom,
+in px or fractions) to `camera-plan.poseFor`, which already takes `margins` (A5); (2) a kickoff-chosen scene variant,
+e.g. `look.world.day` merged over the look at `setGameFrame` when the first row's `wall` is before 5 pm Eastern
+(lights, sky, fog, exposure), since `Look` is static and `props` cannot reach lights or fog (A5, A10); (3) camera
+choreography that modes cannot express: cut to `tight` at the snap, settle to `wide` after, rise to `blimp` and drift
+between drives in Watch this game (A5); (4) an ambient hook so `data-ambient="room"` lifts exposure about +0.5 EV
+(A5); (5) optional `D` key → `toggleBoard` with `#app[data-board-open]` (A2; until then the board expands on
+`:hover`/`:focus-within`); (6) per-pair hooks on the scorecard's `pairs` (`data-pair`, `data-leader`) so the band can
+show three of them (A8). World moments read the app mode from `#app[data-mode]` and the dip setting from
+`sc:uls:dip-live` unless (3) adds them to the moments context.
+
+**v1.2 (game surfaces, 2026-10-09, A8).** Additive. Details and every world hook in section 10. New action
+`actions.reviewAt(seq)` (a play-feed row, a drive or a logged snap shows its play on the field; `null` returns to
+live); the box score shows ESPN's own box (`box_espn`) when the server sends it, so timeline snapshots and
+`presentedTimeline` carry it as `boxEspn`; `playsVm`, `drivesVm` and `logVm` mark the reviewed play, and the
+play-feed, drive-chart and play-log bindings follow `view.review`; (6) above is built (`data-pair`, `data-leader`).
+
+**v1.2 (input surfaces, 2026-10-09, A7).** Additive. Details and every world hook in section 11. Three view-model
+fields (`entryVm.flagOpen`, `lastPlayVm.pauseFirst`, `predictionVm` families' `barPct` and `leagueBarPct`), the
+entry-pad binding follows `view.flag`, and one new A7 file, `ui/input-kit.js` (key caps, select-on-focus, bar shares,
+safe action calls). Hover or focus on a play, a then-line item, the top pick or a family row (its top play) calls
+`actions.hoverLeaf`, which the conductor already turns into `engine.highlightGhost`.
+
+**v1.2 (chrome, 2026-10-09, A9).** Additive. Details and every world hook in section 12. `shell/bindings.js` gains
+`fieldHostVm` (fieldVm plus the store's drawn seq, queue, playing seq, rebuild, review seq and the presented epoch), and
+the field-host binding selects it with `anim` and `view.review` as deps, so the 5.3 animation hooks come from the store.
+The field host never creates the engine (main.js does, 9.5); it builds `#field`, writes the 5.3 hooks, mirrors
+`debugState()` on engine events and wires resize and visibility. New A9 file `ui/keycap.js` (key caps and lamps, the
+markup A7's input kit shares). `model/copy.js` gains six A9 strings. `#feedEvent` follows the server's event id only
+when that id changes, so text typed there survives polls (#104).
+
+**v1.2 (2D field, 2026-10-09, A6).** Additive. Details in section 13. The fallback implements every 2.5 method plus the
+two extras the WebGL engine has: `setGameFrame`'s optional 4th argument `game` (a day kickoff merges `look.world.day`,
+as `field/scene.js` does) and `setSafeArea(insets)`. Both engines read the same optional safe-area properties,
+`--sc-field-safe-top|right|bottom|left` (values in `px`) on `#field` or an ancestor, which a full-bleed world sets so the
+field clears its HUD (Under the Lights at 1440: top 44px, right 456px, bottom 184px). Asks, both optional: A1's
+conductor passes the timeline body's `game` as `setGameFrame`'s 4th argument (then both engines honor a day kickoff);
+W3's layout sets the `--sc-field-safe-*` properties. Eleven A6 files (1.1: the two first listed plus nine); the six
+pure ones are policed by `static-rules.test.mjs`. The fallback is forced with `?scene=2d` (there is no `?engine=`).
+
+**v1.2 (3D stage, 2026-10-09, A5 part 1).** Additive. Details, and the internal API A5 part 2 builds on, in section 14.
+`field/scene.js` implements every 2.5 method with a complete static world (the regulation field, its paint, the
+situation, cameras, labels, lights, bloom, world props) and contract-correct placeholders for plays and ghosts that
+part 2 replaces through one table (`field/layers.js` `LAYER_FACTORIES`). Changes outside A5's files, each minimal:
+`createEngine` takes `opts.world` (the WorldModule, for `props`, `moments` and `passes`; `shell/engine.js` and
+`main.js` pass it, A0); three pure A5 modules are listed in `static-rules.test.mjs`. The engine writes no 5.3 hooks
+in the app: the field host (A9, 12) mirrors `debugState()`, whose `ready` now means "the first frame after the latest
+`setGameFrame` is on screen". Same extras as the 2D engine: `setGameFrame`'s 4th argument `game`, `setSafeArea`, the
+`--sc-field-safe-*` properties. Asks, both optional: A1 passes the timeline's `game` to `setGameFrame` (day games);
+W3 sets `--sc-field-safe-*` for Under the Lights (and `--sc-font-display`, which the field's numerals and end-zone
+names are painted in). Thirteen new A5 files (1.1).
 
 The visual world (palette, type, HUD composition, materials, lighting) is **not chosen**. Nothing in this architecture picks a color, a font, a size or a placement. Every visual decision enters through the theme layer (section 2.7). The app ships with a deliberately plain `neutral` world so it is usable and testable before a world exists.
 
@@ -118,13 +181,27 @@ static/
       scene.js renderer.js lighting.js post.js field-mesh.js cameras.js
       materials.js player.js ghost-layer.js overlays.js residue.js
       labels.js dispose.js webgl-support.js                                  A5  three.js
+      stage.js layers.js moments.js lines.js turf.js decals.js structures.js
+      shaders.js                                                             A5  three.js (v1.2: the stage's parts, 14.1)
+      field-spec.js stage-math.js engine-state.js                            A5  pure (v1.2, 14.1)
       fallback-2d.js fallback-draw.js                                        A6  DOM (SVG)
+      fallback-runtime.js fallback-layers.js fallback-player.js fallback-svg.js   A6  DOM (v1.2: the engine's parts, 13.1)
+      fallback-ghosts.js fallback-plays.js fallback-steps.js fallback-pixels.js fallback-bowl.js   A6  pure (v1.2;
+                                                                             fallback-draw.js is pure too, 13.1)
+    shell/                                                                  A0  v1.2: main.js's helpers
+      prefs.js                       A0  pure   URL and stored choices -> boot prefs
+      bindings.js                    A0         component table: root, loader, view model, deps (9.1)
+      mount.js                       A0  DOM    dynamic import + mount with notices, the Form hub
+      engine.js                      A0  DOM    WebGL engine or the 2D fallback, with a timeout and notices
+      notices.js                     A0  DOM    region notices and the page notice tray (#sc-notices)
     ui/
-      dom.js scheduler.js                                                   A9 / A0
+      dom.js scheduler.js                                                   A0 (v1.2: dom.js moved to A0 so A7/A8/A9 can start together)
       masthead.js feed-bar.js watch-transport.js field-host.js review-banner.js
       toast.js conn-banner.js boot-screen.js dialogs.js                     A9
+      keycap.js                                                             A9  v1.2: key caps and lamps the chrome builds with (12)
       situation-strip.js entry-pad.js flag-panel.js shorthand.js
       last-play.js prediction.js                                            A7
+      input-kit.js                                                          A7  v1.2: key caps, select-on-focus, bar shares (11)
       scoreboard.js play-feed.js drive-chart.js win-prob.js box-score.js
       scorecard.js tendencies.js play-log.js                                A8
       scrub.js                                                              W5
@@ -139,6 +216,8 @@ static/
 tests/
   js/<module>.test.mjs               owner of the module under test
   js/static-rules.test.mjs           A0  bans innerHTML, console.log, impure imports in pure modules
+  js/fake-dom.mjs                    A0  v1.2: a small fake DOM (focus, attributes, events) for node tests of DOM modules
+  js/three-env.mjs three-hooks.mjs   A5  v1.2: the import map in node (vendored three r185), for node tests of scene code
   js/index.js                        A1  v1.1: lets `node --test tests/js/` load every *.test.mjs (decision 8)
   js/fixtures.mjs                    A1  loads tests/fixtures/*.json for node tests
   fixtures/state_fresh.json state_drive_d25.json state_final.json state_feed_on.json
@@ -1211,6 +1290,7 @@ Children: `canvas[data-testid="field-canvas"]` (WebGL) or `svg[data-testid="fiel
 | Connection | `[data-testid="conn"]`, `[data-testid="conn-retry"]` | `data-conn` |
 | Boot and restart screens | `[data-testid="boot"]` | `data-phase` |
 | Background message (G12) | `[data-testid="bg-message"]` | `role="status"`, `aria-live="polite"` |
+| Tendency rows (v1.2, A11, 2026-10-09) | `#profArea [data-term]`, one per forest-plot row | `data-term="<coef key>"`, `data-sure="true \| false"` (true: filled, the 90% interval excludes zero; `tendenciesVm` rows' `key` and `sure`). #114 can't see "filled" in an SVG any other way. |
 
 ---
 
@@ -1366,3 +1446,756 @@ Owned by the backend agents; listed so no frontend package works around them.
 | 6 | `SHADOW_WATCH_SCALE` (DC E3) | `test_ui_watch.py` | watch e2e runs at real pace (minutes) |
 | 7 | `fg` refused with no drive (G22) | #85 | #85 stays red |
 | 8 | v1.1: `status`, `drives` and `box` as of each row (or an `until` on `/api/timeline`), so a poll that brings several rows can snapshot every seq (2.2 snapshots) | scoreboard, drives, box while a batch of rows animates | those panels wait for the batch's last row (never ahead of the field; at most one batch, and the 4 s valve) |
+
+**v1.2 (backend, 2026-10-09).** #5, #7 and #8 are built, plus four additions. Pinned by `tests/test_backend_gaps.py`
+and `tests/test_api_backend_gaps.py`.
+
+- **#5, G8: versions only go up.** Every save takes a version one above any the engine has used: after an undo, a
+  reset, a replay, a watch start or a watch restore too. `/api/version` reads it lock-free and never sees it drop,
+  not even halfway through a reset. `!==` (sync-plan) keeps working. A shorthand line is one save, so one new version.
+- **#7, G22.** `POST /api/drive {"end": "fg"}` and the shorthand `fg` with no drive active answer 400 with
+  `error` "No DAL drive in progress, so there's no field goal to add. To fix the score, type it like 'DAL 3 TB 0'."
+  and change nothing. `end` must be `punt`, `fg`, `fg_miss` or `half` (400 otherwise); punt, fg_miss and half stay
+  harmless off the field.
+- **#8: `GET /api/timeline?since=s&until=m&epoch=e`.** `until` is optional, checked like `since` (400
+  `{"error": "until must be a whole number"}`) and never below it (400 `{"error": "until can't be before since"}`).
+  The answer is the timeline as of row m: `n = min(m, applied rows)`, `rows` are `s < seq <= n`, and `drives`,
+  `status` and `box` are what the response said when row n was the newest (manual mode too: a drive that goes on
+  past n is still in progress, and the status is the one right after row n). The body echoes `until: n`; without
+  `until` it is C1's, unchanged. `since=k&until=k` is a snapshot alone (no rows). A stale epoch still answers from
+  row 1 (`reset: true`), up to `until`. So one `since=local.n` poll brings the batch and its newest snapshot, and
+  `since=k&until=k` for each earlier k of the batch fills `snapshots`.
+- **`game`: facts for the scene,** with `field`, `teams`, `team_order` and `meta` (only when `since` is 0 or
+  `reset`): `{"kickoff": "2026-10-09T00:15:00Z", "kickoff_local": "2026-10-08T19:15:00-05:00", "venue": "AT&T
+  Stadium", "city": "Arlington", "indoor": null, "grass": false, "light": "night"}`. `kickoff` is the header's
+  `competitions[0].date` in UTC. `kickoff_local` is that moment at the venue (the zone of its US state, or of its
+  country abroad; null when unknown). `indoor` and `grass` are ESPN's own booleans from `gameInfo.venue` (then the
+  header's venue), null when ESPN doesn't say: none of the 65 cached 2026 summaries has `indoor`, so null means
+  unknown, not outdoors. `light` is `"night"` when the local kickoff hour is 17 or later or unknown, else `"day"`.
+  Never a score, record, winner or result. With no summary every field is null and `light` is `"night"`.
+- **`box_espn` and `box_source`,** in every timeline body. Over the 65 cached 2026 games the derived `box` equals
+  ESPN's final box in every field on only 22 of 130 team-games (total yards differ on 74; TB at DAL matches
+  exactly), and ESPN's own box parses on all 65. Outside Watch mode `box_espn` is ESPN's own
+  `boxscore.teams[].statistics` (display values) in exactly the shape of `box` (`top_s` and `top` included) and
+  `box_source` is `"espn"`. It is `null`, with `box_source: "derived"`, in Watch mode (spoilers), in manual mode,
+  for an `until` short of the newest row, while any play of the summary isn't applied yet (a watch stopped part way
+  leaves a finished game on screen in replay mode, and its final box would run ahead of the field), and when any
+  field fails to parse (never a mix). The UI shows `box_espn` when it is there, else `box`. Outside Watch mode this
+  replaces DC C4's "Don't use ESPN's boxscore for display".
+- **Undo never takes an ESPN play back out.** Every play the feed, a replay or a watch applies seals the undo
+  history. A `POST /api/undo` that would step back past it answers **409** with the state body and `error` "Undo
+  can't take back a play ESPN logged: the feed would never log it again. Retag the last play with A, N, O or P, or
+  type the fix." and changes nothing (same version, same epoch). Changes made after the newest ESPN play (a retag, a
+  typed fix) still undo with 200. A reset or replay of an ESPN game, a watch start and a watch restore clear the
+  history instead, so the next U says "Nothing to undo." (200). Chosen over forgetting the play's id: the feed
+  would then re-apply it after the plays applied since (out of order), and a watch's index would drift. For the
+  checklist: #99's "U undoes" now means U sends `/api/undo` and a fed play gives the 409 as a red toast; #88 holds
+  in manual mode; DC E2.8 ("undo stays allowed during a watch") is bounded by the same rule; the client-side
+  refusal while a game plays back (4.3) stays.
+- **A shorthand line is all or nothing on disk too.** Its segments write nothing; the line is one save at the end.
+  A bad segment, or a save that fails, leaves the game, `live_state.json`, the DuckDB archive and the version as
+  they were (it used to leave the half-done line on disk and hand its version out twice).
+
+---
+
+## 9. v1.2: shell and theme as built (A0 + A10, 2026-10-09)
+
+Additive to sections 1 to 8. Where this section is more specific than an earlier one, it is how the code works.
+
+### 9.1 Component roots, view models and deps (`shell/bindings.js`)
+
+`main.js` imports every component module dynamically, mounts them in this order with `mount(root, ctx)`, and binds
+each to the scheduler. A component reads and writes only inside its root.
+
+| Component | Root passed to `mount` | View model | Re-renders when (deps, by identity) |
+| --- | --- | --- | --- |
+| `boot-screen.js` | `#rg-boot` | `bootVm` | `boot`, `conn`, the seconds the retry countdown shows |
+| `conn-banner.js` | `#rg-conn` | `connVm` | `conn`, the seconds the retry countdown shows |
+| `toast.js` | `#toast` | `view.toast` | `view.toast` |
+| `masthead.js` | `#rg-masthead` | `mastheadVm` | `presented`, `view.camera`, `view.booth`, `view.scorecardOpen`, camera modes |
+| `feed-bar.js` | `#rg-feed` | `feedVm` | `presented`, `version`, `view.bgMessage` |
+| `scoreboard.js` | `#rg-scoreboard` | `scoreboardVm` | `presented`, `timeline`, `anim.drawnThrough` |
+| `situation-strip.js` | `#rg-situation` | `situationVm` | `presented`, `view.sideAtFifty`, `view.stripRejected`, `timeline`, `anim.drawnThrough` |
+| `field-host.js` | `#rg-field` | `fieldVm` | `presented`, `timeline`, `anim.drawnThrough`, and the engine (`env.extras` changes whenever the engine is created or swapped, so the host re-reads `ctx.engine()` and re-subscribes to its events) |
+| `review-banner.js` | `#rg-field` (appends its banner; the field host does not mount it) | `reviewVm` | `view.review`, `timeline`, `anim.drawnThrough` |
+| `watch-transport.js` | `#rg-transport` | `transportVm` | `version`, `presented`, `prefs` |
+| `prediction.js` | `#heroArea` | `predictionVm` | `presented`, `view.pick`, `view.hoverLeaf`, input mode |
+| `entry-pad.js` | `#entry` (finds `#manualEntry` and `#entryHint` inside it and writes `#entry[data-dim]`; it must not clear `#entry`, which also holds the last-play and shorthand roots) | `entryVm` | `presented`, `view.pick`, input mode |
+| `last-play.js` | `#lastPlay` | `lastPlayVm` | `presented`, input mode |
+| `shorthand.js` | `[data-mount="shorthand"]` | `null` (static) | never after the first render |
+| `flag-panel.js` | `#flagPanel` | `flagsVm` | `presented`, `view.flag`, `view.pick`, input mode |
+| `play-feed.js` | `#rg-plays` | `playsVm` | `presented`, `timeline`, `anim.drawnThrough` |
+| `drive-chart.js` | `#rg-drives` | `drivesVm` | `presented`, `timeline`, `anim.drawnThrough` |
+| `win-prob.js` | `#rg-wp` | `wpVm` | `presented`, `timeline`, `anim.drawnThrough` |
+| `scorecard.js` | `#kpiArea` | `scorecardVm` | `presented`, `view.scorecardOpen` |
+| `box-score.js` | `#rg-box` | `boxVm` | `presented`, `timeline`, `anim.drawnThrough` |
+| `tendencies.js` | `#rg-tendencies` | `tendenciesVm` | `presented` |
+| `play-log.js` | `#logArea` | `logVm` | `presented` |
+
+"Input mode" is `version.watch.state`, `version.feed.on` and the presented watch state (what `inputMode(pv)` reads).
+`ctx` is `{ actions, form, engine: () => Engine | null, copy }` (`copy` is the `model/copy.js` namespace).
+
+**Form.** The object `mount` returns may carry any of the `Form` methods (`readYards`, `writeYards`, `readTD`,
+`writeTD`, `readTO`, `writeTO`, `readAutoFirst`, `writeAutoFirst`, `focusYards`), directly or under `.form`.
+`ctx.form` is a hub that forwards each call to the first mounted component that has the method (entry pad: yards,
+TD, TO, focus; flag panel: auto first down); with none, reads return empty values and writes do nothing.
+
+**Integrity.** After each mount the shell checks that every id `index.html` provides (`SHELL_IDS` in
+`shell/bindings.js`) is still on the page; a component that removed one is named in a notice.
+
+**Failures.** A module that fails to load, has no `mount`, or throws in `mount` leaves a `.sc-region-notice`
+(`[data-testid="region-notice"][data-region=<name>]`) in its root and one summary line in the page tray. An `update`
+that throws is reported in the tray and retried only when that binding's deps change. The boot screen and the toast
+have built-in fallbacks (the static placeholder in `index.html` and a text-only toast), so neither can go blank.
+
+### 9.2 `ui/dom.js` details
+
+- `el(tag, { id, cls, attrs, data, text, on }, children)`: unknown option names throw (no `className`, no
+  `class`); `cls` is a string or a list; children are nodes, or strings and numbers added as text.
+- `setAttr` refuses `on*` attributes, `srcdoc`, and `javascript:`, `vbscript:` and `data:` URLs (except
+  `data:image/png|gif|jpeg|webp`) in URL attributes. `null`, `undefined` and `false` remove; `true` sets `""`.
+- `setData(node, "sceneReady", true)` writes `data-scene-ready="true"`: booleans are written as `"true"` / `"false"`
+  (the 5.3 and 5.4 hooks read them that way); `null` removes.
+- Every setter skips writes when the value is already there.
+- `reconcile(parent, items, { key, create, update })`: `parent` belongs to the list (children it did not create are
+  removed); kept nodes are never rebuilt; the fewest nodes move (longest increasing subsequence); a focused row keeps
+  focus; `update(node, item, index)` runs for every item, right after `create` for new ones; duplicate keys throw.
+- `setClass(node, cls, on)` toggles one class (HTML and SVG); `clear(node)` removes every child.
+
+### 9.3 `ui/scheduler.js` details
+
+`createScheduler(store, bindings, { raf, now, cancelRaf?, onError?, view?, extras? })` returns
+`{ start, flush, invalidate, add, stop }`. `deps(state, env)` gets `env = { now, extras }`; `select(pv)` gets
+`presentedView(state, now)` merged with `extras()` (main.js passes `{ cameraModes, engine }`, replaced whenever the
+engine is created or swapped; `mastheadVm` reads `pv.cameraModes`). `start` renders every binding at once; later changes render once per frame.
+`invalidate` asks for a frame without a store change (main.js calls it every 250 ms while a retry is pending, so
+"Retrying in N s" counts down on time).
+`add(binding)` returns its remover. `onError(err, binding)` sees every throw.
+
+### 9.4 Theme (A10)
+
+- `theme/tokens.js`: `REQUIRED_TOKENS` (54 names, the 2.7 table in its order, grouped in `TOKEN_GROUPS`) and
+  `RUNTIME_TOKENS` (9). `TOKEN_KIND` gives each required token a value kind; `checkTokenValue`, `tokenProblems`,
+  `parseTokenBlocks` and `tokensFor(cssText, ':root[data-world="<id>"]')` let a world check its `tokens.css` in node,
+  and `missingTokens(read)` checks the page. `base.css` gives the runtime tokens neutral defaults on `:root`.
+- `theme/apply.js`: `applyWorld(world, doc, { timeoutMs })` resolves `{ loaded, failed }` after the new stylesheets
+  load next to the old ones, then flips `<html data-world>`; font files are preloaded. `applyRootAttrs(doc,
+  { motion, ambient, scene })` writes the other `<html>` hooks. `applyTeams(teams, doc, look)` sets the caller and
+  opponent tokens (`-alt` is the validated alternate color, `-ink` the text color on the fill) and
+  `applyPossession(poss, doc)` moves `--sc-team-off`, `--sc-team-off-ink` and `--sc-team-def` with the ball (the
+  caller is the offense when nobody has it). `missingWorldTokens(doc)` reads the computed root style.
+- `theme/team-colors.js` also exports `NEUTRAL_TEAM`, `REFERENCE_BACKGROUNDS` (turf, night, white),
+  `minContrastAgainst`, `inkOn`, `mixHex`, `liftToLuminance` (three-recipe 10.3 glow lift) and `legibility(team)`.
+  `teamPaint` returns `{ fill, edge, core, ink, alt, usedAlt, needsCore, neutral }`.
+- Look (2.7) as validated: unknown keys are errors at every level; `motion` holds every `field/timing.js`
+  `DEFAULT_MOTION` key (including `minRowMs`) plus `ghostInMs`, `ghostOutMs`, `verdictMs`; a world may keep its own
+  data under `look.world` (plain JSON, never validated beyond that). Directional and spot lights need `position`.
+- WorldModule: the module's `default` export, or a named `world` export, or the module's own fields. `css` paths must
+  sit under `/static/css/worlds/<id>/`, `fonts` under `/static/fonts/<id>/`. New optional fields:
+  `booth: { holds: RegionName[] }`, the regions the world shows in its booth (`actions.openFlag` opens the booth
+  automatically when it holds `flags`); `ambient: "room" | "dark"`, the world's default room lights when the viewer
+  has chosen none (`?ambient=` and `sc:ambient` win; the app default is `room`; Under the Lights sets `dark`).
+  `REGION_NAMES` is exported by `theme/registry.js`.
+- World choice: `?world=<id>` (map keys only), then `localStorage sc:world`, then `DEFAULT_WORLD`
+  (`under-the-lights`), then `neutral`. An ignored id, a world that fails to load or validate, a look that fails
+  `resolveLook` (the scene then uses `NEUTRAL_LOOK`), stylesheets that fail, and missing tokens each show a notice.
+  The neutral world's `arrange` wraps the regions in `.sc-col-main` and `.sc-col-rail` and sets
+  `#app[data-layout="neutral"]`, which `css/layout.css` turns into the two-column page.
+- `index.html` links `css/components/scrub.css` once W5 ships it (W5 asks the A0 owner); a link to a missing file
+  would be a console error (#2).
+
+### 9.5 Boot order (`main.js`, section 3.1 as built)
+
+1. Read boot prefs (`?world`, `?scene=2d`, `?ambient=dark`, `?capture=1`, `?debug=1`, `sc:world`, `sc:camera`,
+   `sc:ambient`, `prefers-reduced-motion`); start fetching every component module and the 2D engine in parallel.
+2. Choose and load the world (fallback rules above), resolve its look, apply `<html>` hooks and the world CSS, check
+   the tokens, run `world.arrange(app, regions)`.
+3. Create the store (`initialState({ prefs })`), the API client, the Form hub, dialogs, sync and actions.
+4. Mount every component in the 9.1 order and start the scheduler (plus three shell bindings: teams to
+   `applyTeams`, possession to `applyPossession`, prefs to `applyRootAttrs` and `engine.setReducedMotion`).
+5. Create the engine in `#field`: the 2D fallback when `?scene=2d` or no WebGL2, else `field/scene.js`
+   `createEngine` (8 s limit); any failure falls back to 2D with `#field[data-scene-error]` and a notice. Then
+   `<html data-scene>`, the camera modes, and the stored or default camera.
+6. Start the conductor (its `createFallback` swaps in the 2D engine at run time), attach the keyboard, watch
+   `prefers-reduced-motion`, then `sync.start()`. With `?debug=1`, `window.__shadowDebug = () => engine.debugState()`.
+
+## 10. v1.2: game surfaces as built (A8, 2026-10-09)
+
+Additive to sections 2.3, 2.6, 5.4 and 9.1. Where this section is more specific, it is how the code works.
+
+### 10.1 Interface additions outside A8's files (each minimal, each tested where it lands)
+
+| Where (owner) | Addition | Why |
+| --- | --- | --- |
+| `core/actions.js` (A2) | `reviewAt(seq)`: sets `view.review` to a drawn row that draws something (`review.drawableSeqs`); `null` returns to live; anything else is ignored; never steps or pauses the server | a play-feed row, a drive or a logged snap shows its play on the field (W5's scrub can use it too) |
+| `core/timeline-cache.js`, `core/present.js` (A1) | snapshots keep `boxEspn` (the body's `box_espn`, else `null`); `presentedTimeline` passes it | Appendix B v1.2: the UI shows `box_espn` when it is there |
+| `model/vm-box.js` (A3) | prefers `tl.boxEspn` when it has team columns; adds `source` (`espn`, `derived`, `null`), `sourceText`, `emptyText` | the box says which box it is |
+| `model/vm-plays.js` (A3) | `reviewSeq`; rows `reviewable` (not admin) and `reviewing` | the reviewed row is pressed |
+| `model/vm-drives.js` (A3) | `reviewSeq`; drives `firstSeq` (first drawn row that draws something) and `reviewing` | a drive shows its first play |
+| `model/vm-log.js` (A3) | rows `verdict` (`verdictOf`), `tlSeq` (its drawn timeline row, by `espn_id` or `log-<seq>`), `reviewing` | a logged snap shows its play |
+| `model/vm-scoreboard.js`, `model/vm-wp.js` (A3) | teams `logoDark` (validated like `logo`); `caller` | LED windows use ESPN's dark logo (DESIGN.md); the readout names the side |
+| `model/copy.js` (A3) | new keys in `BOX`, `PLAYS`, `DRIVES`, `WP`, `SCOREBOARD`, `SCORECARD`, `TENDENCIES` (marked "v1.2 (A8)") | every string stays in copy.js |
+| `shell/bindings.js` (A0) | the play-feed, drive-chart and play-log deps add `view.review` (the log also the timeline) | they mark the reviewed play |
+
+### 10.2 Hooks a world styles against
+
+Text only; component CSS holds structure and token references; every state is a data attribute or an ARIA state on
+markup the component always builds; lists are reconciled by key, so nodes and focus survive renders. A press on a
+row whose play is on the field (`aria-pressed="true"`) returns to live.
+
+- **Scoreboard** (`#rg-scoreboard`): `.sc-scoreboard[data-testid="scoreboard"][data-state][data-poss][data-source]`;
+  `li.sc-sb-team[data-team][data-caller][data-home][data-side][data-poss][data-logo="shown|failed|none"]` with
+  `.sc-sb-logo` (`img[data-testid="team-logo"]`, else the `.sc-sb-mono` monogram), `.sc-sb-name`, `.sc-sb-abbr`,
+  `.sc-sb-score[data-testid="team-score"]`, the lamp `.sc-sb-poss[data-on]` and `.sc-sb-tos` (three
+  `.sc-sb-to[data-on]`); `.sc-sb-fact[data-fact="qtr|clock|down|ball"]` (`.sc-sb-cap`, a value), `.sc-sb-est`,
+  `.sc-sb-final`. A world sets `--sc-logo-variant: dark` to load `logo_dark` (neutral does under `data-ambient="dark"`).
+- **Digit windows**: `.sc-digits[data-ghost]` (scores `88`, the clock `88:88`, `88%`, scorecard values as 8s). The
+  ghost is the unlit pattern a world may light behind the value (DESIGN.md, the Ticking Number Rule); neutral doesn't.
+- **Play feed** (`#rg-plays`): `ol[data-testid="play-feed"] > li.sc-pf-group[data-drive][data-team][data-caller]
+  [data-complete]` (sticky header `.sc-pf-ghead`: team, result or "Drive in progress", summary) `> ol.sc-pf-rows >
+  li[data-testid="play-row"]` (the 5.4 attributes plus `data-reviewing`, `data-newest`) `> button.sc-pf-btn`
+  (a `div` on admin rows): `.sc-pf-time`, `.sc-pf-team`, `.sc-pf-sit`, `.sc-pf-noplay`, `.sc-pf-result`,
+  `.sc-pf-text`, `.sc-pf-call` (`.sc-pf-verdict`, `.sc-pf-callname`, `.sc-pf-retagged`).
+- **Drive chart** (`#rg-drives`): `ol[data-testid="drive-chart"] > li[data-testid="drive"][data-idx][data-team]
+  [data-caller][data-dir][data-result][data-complete][data-current][data-reviewing] > button.sc-dc-btn` (disabled
+  until its first row is drawn): `.sc-dc-team`, `.sc-dc-result`, `.sc-dc-summary`, `svg.sc-dc-track` (x 0 to 100, the
+  caller's goal on the left: `.sc-dc-field`, `.sc-dc-yard`, `.sc-dc-mid`, `.sc-dc-bar`, `.sc-dc-end`). Two lines per
+  drive in a narrow region, one line from 34rem (container query `sc-drives`).
+- **Win probability** (`#rg-wp`): `.sc-wp[data-testid="wp-chart"]` (5.4), `.sc-wp-team`, `.sc-wp-value`;
+  `svg.sc-wp-svg` (viewBox 360x100, stretched, non-scaling strokes): `.sc-wp-bg`, `.sc-wp-q`, `.sc-wp-even`,
+  `.sc-wp-area-caller` and `-opp` (clipped above and below 50%), `.sc-wp-line`,
+  `.sc-wp-mark[data-kind="score|turnover"][data-team][data-seq]`, `.sc-wp-now`; `.sc-wp-axis` (`.sc-wp-ot`); `.sc-wp-note`.
+- **Box score** (`#rg-box`): `table.sc-box[data-testid="box-score"][data-source]`, `th[data-team]`, `td[data-team]`,
+  `.sc-box-source`, `.sc-box-empty`.
+- **Scorecard** (`#kpiArea`): `.sc-scorecard[data-expanded][data-empty]` (container `sc-scorecard`);
+  `li.sc-card-pair[data-pair][data-leader][data-better]` with `.sc-card-plabel`, two
+  `.sc-card-side[data-side][data-lead]` (caption, `.sc-card-full` "0.421", `.sc-card-brief` ".421" hidden in neutral,
+  `.sc-card-lamp`) and `.sc-card-basis`; the band's three are `called_right`, `top3`, `passrun_logloss`. Then
+  `.sc-card-group[data-group="leaf|family|passrun"]` (`dl.sc-card-kpis` of `.sc-kpi`: `dt.sc-kpi-label`,
+  `dd.sc-kpi-value[data-tone]` with the legacy `.better` / `.worse`) and `.sc-card-note`.
+- **Tendencies** (`#rg-tendencies`): `h2#profTitle`, `#profArea`; `ul.sc-tend-terms` of `li.sc-tend-ghead` and
+  `li.sc-tend-row[data-term][data-group][data-sure][data-sign]` (`.sc-tend-label`; `svg.sc-tend-svg` with
+  `.sc-tend-zero`, `.sc-tend-ci`, `.sc-tend-dot`, `.sc-tend-hole`); `.sc-tend-axis`, `.sc-tend-note`,
+  `table.sc-tend-mix tr[data-family]`, `.sc-tend-heldout`.
+- **Play log** (`#logArea`): `table.sc-log[data-testid="play-log"]`, `tr[data-seq][data-nullified][data-verdict]
+  [data-reviewing][data-tl-seq]`; the Actual name is `button.sc-log-link` (disabled until its row is drawn);
+  `.sc-log-rank` with `.ok` / `.no` and `data-tone`.
+
+### 10.3 Tests
+
+Node: `tests/js/{scoreboard,play-feed,drive-chart,win-prob,box-score,scorecard,tendencies,play-log}.test.mjs` on the
+real captures through `tests/js/game-surfaces-harness.mjs`, plus additive cases in the tests of every file in 10.1.
+E2E: `tests/e2e/test_ui_game_surfaces.py` (#6 for these panels, #107, #108, #110 to #115, G15, G16, G18, the 5.4
+hooks after a replay, review from a play row, a drive and a logged snap, no sideways scroll at 390 px).
+
+---
+
+## 11. v1.2: input surfaces as built (A7, 2026-10-09)
+
+Additive to sections 2.3, 2.6, 4.5, 4.6, 5.1 and 9.1. Where this section is more specific, it is how the code works.
+
+### 11.1 Interface additions outside A7's files (each minimal, each tested where it lands)
+
+| Where (owner) | Addition | Why |
+| --- | --- | --- |
+| `model/vm-entry.js` (A3) | `flagOpen` (`view.flag.open`) | `#flagBtn.on` and `aria-expanded` (5.1) live on the entry pad |
+| `shell/bindings.js` (A0) | the entry-pad deps add `view.flag` | the flag key follows X and Escape |
+| `model/vm-last-play.js` (A3) | `pauseFirst` (the watch is `playing`) | a retag key clicked during a playing watch pauses first, like the keyboard (DC E2.8) |
+| `model/vm-prediction.js` (A3) | families `barPct` and `leagueBarPct` (0 to 100, `null` when unknown) | the family bar and its league notch |
+
+### 11.2 Behavior as built
+
+- **Situation strip** (4.5, G1, G2, G3): focus selects the value, and selects again on the next task so a mouse
+  click's caret can't undo it (skipped once typing starts). An `input` event marks the field edited. Enter: an edited
+  field commits (`actions.commitStrip(id, text, true)`), an unedited one with a kept rejection lets it go; then blur,
+  then `form.focusYards()` when a drive was on before the save (#21). A blur (Tab) commits an edited field (#20).
+  Escape: the last rendered server value comes back with no request (#22, #23); a kept rejection is cleared in the
+  store through `actions.commitStrip(id, value, false)`, which never sends. A commit that sends nothing (an emptied
+  field) restores the server value (#24). A render never writes the focused field (#25). The side chip calls
+  `actions.flipSide(typed text)` and, once it saved, focuses and selects Ball on (#18).
+- **Entry pad**: the entry line (chosen play, Yards, Touchdown, Turnover, Log play) comes before the keypad, so a world
+  can pin it (DESIGN.md desk). It is the Form for Yards, TD, TO and the Yards focus: `focusYards` focuses and selects
+  unless Yards is already focused (FI 4.6); `writeYards` while focused selects, so after a log the next digit
+  replaces the 0.
+- **Next call**: one delegated `pointerover` on `.sc-call` lights whatever play is under the pointer: the nearest
+  `data-leaf` (a play button, a then-line item, the top pick), else a family row's `data-top-leaf` (its most likely
+  play); `pointerleave` clears it; focus on a play button lights it too and comes back when the pointer leaves. Each
+  change calls `actions.hoverLeaf(leaf | null)` once. Leaving the call face (drive over) clears it.
+- **Shorthand**: lines go out in order through the FIFO actions queue; a new line typed while one is out runs after
+  it (#82); a repeat Enter on the line already out is ignored; an answer clears the box only when it still holds that
+  line, so text typed since is never wiped; a refused line stays (#83).
+- **Last play**: `data-fresh="true"` for `RETAG_FRESH_MS` (8 s) after the row changes to a newer play, never for the
+  play on screen at load (DESIGN.md: the retag keys light after each caller play). `ctx.timers` may inject timers.
+- **Flag panel**: `role="region"` labelled by its title (`#flagTitle`); the Form's `readAutoFirst`/`writeAutoFirst`.
+
+### 11.3 Hooks a world styles against
+
+Text only; component CSS holds structure and token references. Every state below is a class, a data attribute or an
+ARIA state on markup the component always builds; lists are reconciled by key, so nodes and focus survive renders.
+
+- **Key caps** (entry keys, foul keys, retag keys): `button.sc-key` > `.sc-key-cap[aria-hidden="true"]` (the key),
+  `.sc-key-name`, `.sc-key-hint` (hidden when empty), `aria-keyshortcuts`. The same markup as A9's `ui/keycap.js`
+  (which adds `.sc-key-value`). A9's `masthead.css` styles `.sc-key` page-wide, so A7's key rules are scoped to
+  `.sc-keypad`, `#flagPanel` and `.sc-retag`.
+- **Situation strip** (`#rg-situation`): `.sc-strip` > `.sc-strip-fields` (`.sc-strip-group[data-group="time|score|
+  down|spot"]`, `label.sc-strip-field[data-field]` > `.sc-strip-label` + `input.sc-strip-input`, `.sc-spot` holding
+  `#iSide.sc-side` and `#iYard`), `.sc-strip-drive` (`#driveInfo.sc-drive-info[data-cue]`, `#endRow.sc-end-row` >
+  `button.sc-end[data-end]`), `.sc-strip-note`. Rejected: `input.bad[aria-invalid="true"]`. Est.: `#clockEst.sc-est`.
+  Chip: `#iSide.opp[data-side="own|opp"]`. Field widths read `--sc-strip-chars`.
+- **Next call** (`#heroArea[data-kind="empty|offfield|call"]`): `.sc-offfield` (`.sc-offfield-heading`,
+  `.sc-offfield-body` with `strong`); `article.sc-call[data-enter="a|b"]` (flips on every new call: another snap, top
+  pick or share, so a world's entrance replays) > `.sc-call-head` (`.sc-call-kicker` > `.sc-call-label`,
+  `.sc-call-sep`, `.sc-call-snap`), `.sc-call-top[data-leaf][data-family]` (`h2.sc-call-name`, `.sc-call-figure` >
+  `.sc-call-pct` + `.pill[data-flag][data-tilt][data-side]` with the legacy kind class), `.sc-then` (`.sc-then-lead`,
+  `.sc-then-item[data-leaf]` > `.sc-then-sep`, `.sc-then-name`, `.sc-then-pct`), `.sc-split` (`.sc-split-bar
+  [role="img"]` > `.sc-split-pass`, `.lgmark`; `.sc-split-labels > span[data-side="pass|league|run"]`), `.sc-fams` >
+  `section.fam[data-family][data-top-leaf][data-hot]` (`.sc-fam-head` > `.sc-fam-name` + `.sc-hot`; `.sc-fam-pct`;
+  `.sc-fam-bar` > `.sc-fam-fill` + `.sc-fam-tick`; `.sc-fam-league`; `ul.sc-leaves` > `li.sc-leaf-row` >
+  `button.leaf[data-leaf][data-family][aria-pressed][data-picked][data-highlighted]` with `.sc-leaf-name`, `.sc-hot`,
+  `.sc-leaf-pct`, `.sc-leaf-bar` > `.sc-leaf-fill`), `.sc-call-more` (`ul.why` > `li.sc-why-item[data-kind=
+  "habits|script|memory"][data-sign="up|down|none"]` > `.sc-why-pts` + `.sc-why-text`; `.sc-legend`). Hot arrows:
+  `.sc-hot.up|.down[data-hot][title][role="img"]`, hidden and empty when not hot.
+- **Entry desk** (`#entry[data-dim][data-entry-mode="manual|feed|watch"]`): `#manualEntry` > `.sc-pad-title`,
+  `.sc-entry-line` (`#chosen.sc-chosen[data-placeholder]` > `.sc-chosen-name`, `.sc-chosen-sep`, `.sc-chosen-hint`;
+  `label.sc-yards` > `.sc-yards-label` + `#yards`; `label.sc-check[data-check="fTD|fTO"]` > checkbox +
+  `.sc-check-label` (`.sc-check-key`); `#logBtn.sc-log-play`), `.sc-keypad` > `.sc-keyrow[data-row="run|pass|rpo|
+  result"]` > `.sc-keyrow-label` + `.sc-keyrow-keys` > `.key.sc-key[data-k|data-out][data-tone="run|pass|rpo|result"]`
+  and `#flagBtn.key.sc-key[data-tone="flag"][aria-expanded]`; `#entryHint`.
+- **Shorthand** (`[data-mount="shorthand"]`): `.sc-short` > `#cmd.sc-short-input`, `#cmdBtn.sc-short-run[aria-busy]`.
+- **Last play** (`#lastPlay[data-kind="waiting|play"][data-fresh][role="region"]`): `.sc-last-heading`,
+  `.sc-last-name`, `.sc-last-yards`, `.sc-last-text`, `.sc-retag` > `.sc-key[data-retag][data-tone].cur
+  [aria-current]`.
+- **Flag panel** (`#flagPanel[role="region"]`): `.sc-flag-head` (`h2#flagTitle.sc-flag-title`, `#flagClose`),
+  `#flagNote.sc-flag-note`, `.sc-flag-cols` > `section.sc-flag-col[data-against="def|off"]` (`.sc-flag-heading`,
+  `ul.sc-flag-list` > `li.sc-flag-row` > `.sc-key.sc-flag[data-pen]`, `.sc-flag-other` with Other and, on defense,
+  `label.sc-check` > `#otherFirst`), `.sc-flag-offset` > `[data-pen="OFFSET"]`, `.sc-flag-hint`.
+- **Data properties** the components write: `--sc-share` and `--sc-league-share` ("0%" to "100%") on
+  `.sc-split-bar`, `.sc-fam-bar` and each `button.leaf`. The component CSS sets `--sc-tone` from `data-family` and
+  `data-tone`; a world may set its own. `--sc-entry-dim` is the pad's opacity off the field.
+- Avoided on purpose: `.sc-field` is the field host (A9) and `.sc-log` the play-log table (A8).
+
+### 11.4 Tests
+
+Node: `tests/js/{situation-strip,entry-pad,flag-panel,shorthand,last-play,prediction,input-kit}.test.mjs` on the real
+state captures through `tests/js/ui-input-harness.mjs` (fake DOM, recording actions and Form stubs, fake timers).
+E2E: A11's `test_ui_checklist_strip.py` (#9 to #26, G3), `test_ui_checklist_prediction.py` (#29 to #37, #122, G24)
+and `test_ui_checklist_field.py` (#27, #28) are the checklist; `tests/e2e/test_ui_input_surfaces.py` (A7) adds what
+they don't pin: select-on-focus by mouse, hover and focus round trips, the family-row link, the flag key's state,
+the desk's mode and dim hooks, the retag keys' fresh window, the shorthand queue, the 760 px and 390 px layouts.
+
+---
+
+## 12. v1.2: chrome as built (A9, 2026-10-09)
+
+Additive to sections 2.5, 2.6, 3.8, 3.9, 5.3, 5.4 and 9.1. Where this section is more specific, it is how the code works.
+
+### 12.1 Interface additions outside A9's files (each minimal, each tested)
+
+| Where (owner) | Addition | Why |
+| --- | --- | --- |
+| `shell/bindings.js` (A0) | `fieldHostVm(pv)`: `fieldVm(pv)` plus `anim: { drawnSeq, queue, playingSeq, rebuilding }`, `reviewSeq` and `epoch` (the presented state's `timeline.epoch`); the field-host binding selects it, and its deps add `anim` and `view.review` | `#field[data-drawn-seq]`, `[data-queue]`, `[data-playing-seq]`, `[data-review-seq]`, `[data-epoch]` and `[data-anim-state]` (5.3) are store facts `fieldVm` does not carry |
+| `model/copy.js` (A3) | `MASTHEAD.gameGroup`, `MASTHEAD.viewGroup`, `REVIEW.earlier`, `REVIEW.later`, `REVIEW.live`, `FIELD.label` | the masthead's key groups, the review banner's keys, `#field`'s name before a game loads |
+
+New A9 file: `ui/keycap.js` (`keycap`, `setKeyName`, `setKeyValue`, `lamp`).
+
+### 12.2 Behavior as built
+
+- **Field host.** Builds `#field` (`role="img"`; `aria-label` from `fieldVm`, "Football field" before a game) with the
+  legend inside it. It never creates the engine (main.js does, 9.5) and never writes `data-scene-error` (main.js
+  does). Hooks: from `fieldVm`, `data-drive-active`, `data-los`, `data-ltg`, `data-poss`, `data-ball-x`, `data-ltg-x`
+  (absent when unknown); from the store, `data-drawn-seq`, `data-queue`, `data-playing-seq`, `data-review-seq`,
+  `data-epoch`; from `engine.debugState()`, read on every engine event (`ready anim camera frame contextlost
+  contextrestored`) and on attach, `data-scene` (the engine's `kind`), `data-scene-ready`, `data-frames`,
+  `data-ghosts`, `data-ghost-highlight`, `data-camera`. `data-ghosts` and `data-ghost-highlight` start empty, so they
+  exist before an engine does. `data-anim-state`: `rebuilding` while the store rebuilds; `playing` while a row is
+  queued or playing; else the engine's own non-idle state (it may still be finishing); else `reviewing` while the
+  review cursor is set; else `idle`. Whenever `ctx.engine()` changes (the scheduler re-runs the host on `env.extras`),
+  the host re-subscribes, calls `engine.resize(clientWidth, clientHeight)` and, in a hidden tab, `setVisible(false)`.
+  A ResizeObserver feeds `engine.resize` (a zero size is skipped); `visibilitychange` calls `setVisible`. An engine
+  call or `debugState` that throws goes to `reportError`; the store hooks are still written.
+- **Review banner.** Appended after `#field` in `#rg-field` (the field host leaves it alone): an amber lamp, the
+  `reviewVm` text, and three keys so a mouse or a phone can step and leave review too: `[data-review="earlier"]` (cap
+  ←, `actions.review(-1)`), `[data-review="later"]` (→, `actions.review(1)`), `[data-review="live"]` (Esc,
+  `actions.exitReview()`). A `.sr-only` polite line beside it (`.sc-review-live`, always rendered) speaks each
+  reviewed play and goes quiet at the live edge; the banner itself is not a live region, so its keys are not read as
+  news.
+- **Feed bar.** `#feedEvent` follows the server's `feed.event_id` only when that id changes, and never while focused,
+  so text typed there survives the polls until the server moves to another game (#104, FI 5.17); Enter blurs it.
+  `#feedBtn`, `#replayBtn` and `[data-watch="start"]` hand the box's text, untrimmed, to `actions.feedToggle`,
+  `actions.replay` and `actions.watchStart` (which trim). G12: the polite `[data-testid="bg-message"]` region is
+  always rendered; each new message is a new `.sc-feed-bg-line`, so a world can step it in.
+- **Watch transport.** Keys shown per state: `idle`/`stopped` start; `playing` pause, step (disabled), stop; `paused`
+  play, step, stop; `done` back, again; `error` start, stop and the error line (`role="alert"`). `disabled` follows
+  `transportVm`; a click on a disabled or hidden key never reaches an action. The four speeds always show (before a
+  start they set `prefs.watchSpeed`). Start and Watch again send no id: actions use `feed.event_id`, then
+  `watch.event_id`. The caps print the keyboard key: Space (play, pause), → (step), 1 to 4 (1x, 2x, 4x, 10x).
+- **Toast.** `#toast` keeps the shell's `role` and `aria-live`; it holds a lamp and `.sc-toast-text`. A new toast id
+  is a new text node, so the same words twice are announced twice; the words stay once it hides (FI 4.5). It hides
+  by opacity only (never `display` or `visibility`), so the live region never leaves the accessibility tree.
+- **Connection banner and boot screen.** One `.sr-only` polite line each (`.sc-conn-live`, `.sc-boot-live`) speaks
+  when the state or phase changes; the "Retrying in N s" countdown updates on screen without being announced. Retry
+  now (`[data-testid="conn-retry"]`, offline only; `[data-testid="boot-retry"]`, failed only) calls
+  `actions.retryNow()`. The boot screen has `aria-busy="true"` while loading and hides once ready.
+- **Dialogs.** `confirmAction(text)` is `globalThis.confirm(String(text))` behind a promise; no confirm, or one that
+  throws, is No.
+
+### 12.3 Hooks a world styles against
+
+Text only; component CSS holds structure and token references. States are classes, data attributes or ARIA states
+on markup the components always build.
+
+- **Key caps** (`ui/keycap.js`, shared with A7): `.sc-key` (`button type="button"`, or `a`) > `.sc-key-cap
+  [aria-hidden="true"]`, `.sc-key-name`, `.sc-key-value` (the camera mode); `aria-keyshortcuts`, `title`; on is
+  `[aria-pressed="true"]` or `[aria-expanded="true"]`. `.sc-lamp` is decorative and always beside words.
+  `css/components/masthead.css` holds the shared key and lamp structure; on a touch screen with no hover
+  (`(hover: none) and (pointer: coarse)`) the caps step aside, since there is no keyboard to learn.
+- **Masthead** (`#rg-masthead`): `.sc-masthead[data-has-game]` > `.sc-masthead-plate` (`h1.sc-masthead-title`,
+  `p.sc-masthead-meta` > `#gameLabel.sc-masthead-game`, `#whoLabel.sc-masthead-who`), `.sc-masthead-controls` >
+  `.sc-masthead-keys.sc-masthead-game-keys[role="group"]` (`#undoBtn`, `a.sc-key-link[href="/api/export.csv"]`,
+  `#resetBtn.sc-key-danger`) and `.sc-masthead-keys.sc-masthead-view-keys[role="group"]` (`[data-testid=
+  "camera-mode"][data-camera]`, `[data-testid="booth-toggle"][aria-expanded]`, `[data-testid="scorecard-toggle"]
+  [aria-expanded][aria-controls="rg-score"]`).
+- **Feed bar** (`#rg-feed`): `.sc-feed[data-feed-state="off|live|retrying"]` > `.sc-feed-controls` (`#feedBtn.sc-key.
+  sc-feed-btn[data-feed-state]` with `.on` and `.err`, no `aria-pressed`: its words already say on or off, > `.sc-lamp.
+  sc-feed-lamp` + `#feedBtnTxt`;
+  `.sc-feed-event` > `label.sc-feed-event-label` + `#feedEvent.sc-feed-event-input`; `#replayBtn.sc-key`;
+  `.sc-key.sc-feed-watch[data-watch="start"]`), `#feedStatus.sc-feed-status` (`strong` labels),
+  `.sc-feed-bg[data-testid="bg-message"][data-empty]` > `.sc-feed-bg-line`.
+- **Transport** (`#rg-transport`): `.sc-transport[data-testid="watch"][data-watch-state][data-active]` >
+  `.sc-transport-keys` > `.sc-key.sc-transport-key.sc-transport-<start|play|pause|step|stop|back|again>[data-watch]`,
+  `.sc-transport-speeds[role="group"]` > `.sc-key.sc-transport-speed[data-speed][aria-pressed]`,
+  `.sc-transport-progress.sc-num[data-testid="watch-progress"]`, `.sc-transport-error[data-testid="watch-error"]` >
+  `.sc-lamp` + `.sc-transport-error-text`.
+- **Field** (`#rg-field`): `#field.sc-field` (5.3) > `.sc-field-legend[data-testid="field-legend"]` and the engine's
+  canvas or SVG (the component CSS makes them fill the host); `.sc-review[data-testid="review"][data-seq]` >
+  `.sc-lamp`, `.sc-review-text`, `.sc-review-keys` > `.sc-key.sc-review-key[data-review]`; `.sc-review-live.sr-only`.
+- **Toast**: `#toast.toast.sc-toast` (`.show`, `.err`, `[data-tone="info|error"]`) > `.sc-lamp.sc-toast-lamp`,
+  `.sc-toast-text`.
+- **Connection** (`#rg-conn`): `.sc-conn[data-testid="conn"][data-conn="retrying|offline"]` (fixed across the top) >
+  `.sc-lamp`, `.sc-conn-text`, `.sc-key.sc-conn-retry[data-testid="conn-retry"]`.
+- **Boot** (`#rg-boot`): `section.sc-boot[data-testid="boot"][data-phase][aria-busy]` > `.sc-boot-board` >
+  `.sc-boot-plate` (`.sc-lamp`, `.sc-boot-title`), `h2.sc-boot-heading`, `p.sc-boot-text` (`strong` is the command),
+  `.sc-key.sc-boot-retry[data-testid="boot-retry"]`.
+
+### 12.4 Tests
+
+Node: `tests/js/{keycap,masthead,feed-bar,watch-transport,field-host,review-banner,toast,conn-banner,boot-screen,
+dialogs}.test.mjs` through `tests/js/chrome-ctx.mjs` (a fake-DOM page with an outsider node no component may touch,
+recording actions, the real copy). E2E: `tests/e2e/test_ui_chrome.py` (A9) on the neutral world: #92 to #109, Watch
+this game on A11's `watch_server` (start at a picked speed, Space, Right steps exactly one play, 1 to 4, the spoiler
+check, Stop restores the pre-watch log, done then Back to my game and Watch again with the stop before the start),
+G12 (news from a poll lands in the feed bar's polite region, never a toast), the connection banner (retrying,
+offline, back), the boot screen (#119, #120), toasts (#117, #118, #121), the masthead's keys, the field host's hooks,
+the review banner, and the chrome at 390 px.
+
+---
+
+## 13. v1.2: the 2D field as built (A6, 2026-10-09)
+
+Additive to 2.5 and 6.2. Where this section is more specific, it is how `field/fallback-2d.js` works.
+
+### 13.1 Files
+
+| File | Kind | Role |
+| --- | --- | --- |
+| `fallback-2d.js` | DOM | `createFallbackEngine(host, look, opts)`: state, lifecycle, the guarded Engine object; exports `CAMERA_MODES` |
+| `fallback-runtime.js` | DOM | plays (animated or instant), situation, ghosts (deferral, after-snap), review, verdicts, relabels, the frame loop |
+| `fallback-layers.js` | DOM | draws the state into the layers: field, situation, keyed ghost zones with fades, residue, last play, tags |
+| `fallback-player.js` | DOM | one play by progress on a stage, ticked by the engine's frame loop (no clock of its own) |
+| `fallback-svg.js` | DOM | specs to SVG (`ui/dom.js` only), tag panels sized to their text, `--sc-field-safe-*`, label declutter |
+| `fallback-draw.js` | pure | layout (fit inside the safe area), team paints, the static field, the situation, the ball, HUD-styled tags |
+| `fallback-ghosts.js` | pure | the prediction zones in the look's ghost style, with his percentages |
+| `fallback-plays.js` | pure | a row's Drawing as parts with partial geometry (`partAt`), carriers, labels, residue rules, trail |
+| `fallback-steps.js` | pure | the parts of each step kind (arc, ground, corridor, area, band, mark) |
+| `fallback-pixels.js` | pure | the 1-yard turf grid (lit 0.8 yd cells) and the 9 by 9 glyphs every mark is drawn with |
+| `fallback-bowl.js` | pure | the stadium around the field, only for looks lit by tower spot lights |
+
+Node tests: `tests/js/fallback-{2d, draw, ghosts, plays, pixels, bowl, svg}.test.mjs` (the engine runs on
+`tests/js/fake-dom.mjs` with an injected frame clock).
+
+### 13.2 What it draws
+
+- **One camera, `top`.** The whole field from straight above through `coords.toPlane`, the caller's end zone on the
+  left, true proportions, fitted with a 4 yd apron inside the host minus the safe-area insets (ignored when they would
+  leave less than 40% of either side). One SVG unit is one CSS pixel; `resize` and an internal ResizeObserver relayout.
+- **Height reads as a slight tilt.** A point `h` yards up is drawn `0.45 * h` yards toward the far sideline
+  (`OBLIQUE`), so a pass or kick is a true-length arc that bows by its apex while its ground track stays on the turf as
+  a dashed shadow; the ball in flight lifts off its shadow and carries a halo. Goal posts are drawn the same way.
+- **The field from the look:** `environment.background` ground, `field.surround`, the 6 ft white border, `turf`
+  stripes every `stripeYd`, team end zones (`teamPaint` fill; the name or abbreviation per `endZoneText`, ink with the
+  alternate as its outline), yard and goal lines, hashes and the try marks when `hashes`, split numerals with their
+  arrows when `numerals`, gold posts and orange pylons (the NFL fixture colors the WebGL field uses), the home team's
+  logo at midfield (only through `/api/logo/<ABBR>`, only with team end zones).
+- **The bowl, only when the look has `spot` lights:** three tiers of stands as superellipse rings rising away from the
+  field, a seeded crowd tinted by both teams, the deck fascia, a tower at each spot light (mast, lamp bank aimed at its
+  target, glow), and the light pooling on the turf and falling off toward the corners. A look without spot lights (the
+  neutral one) stays a plain field: the bowl is the look's lighting rig seen from above, not world code.
+- **Situation:** LOS and LTG from `look.lines` (at least 2 px), full width; the LTG hides on goal to go (the goal line
+  is the line) and on kickoffs; a down-and-distance tag behind the LOS at the far sideline; the ball (`look.ball.kind`)
+  in a ring on the center line.
+- **Prediction:** the top three zones from `field/ghosts.js` at `look.ghost.opacity` by rank, in `look.ghost.style`
+  (zone, outline, hatch, pixel: every cell of the top call and the outline cells of the others, marker), with his
+  percentage (`pct1`) at a lane's tip or inside a band's deep edge. Fades use `look.motion.ghostInMs` and `ghostOutMs`;
+  a pixel top call scans in top to bottom in 10 steps. `showGhosts` during a play is deferred (the last call wins); a
+  caller snap leaves only the top call at `afterSnapOpacity` until the next set. `highlightGhost(leaf)` lights that
+  zone fully and dims the rest to 35%; a leaf outside the top three gets its own zone from `leafZones`.
+- **Plays:** every Drawing step. Strokes grow along their paths, lanes grow with the ball, catch areas and marks pop
+  in, bands fade in, arrowheads land with their step; timing is `planDrawing` fitted to `durationMs`. Paths follow the
+  Light Core Rule (core = the team edge mixed 65% toward the stroke's `core`; the team color on the edge); approximate
+  steps take the stroke's `approx` style (dashed, hatch, soft, or pixel cells); ghosted steps take `ghostedOpacity`
+  and stay dashed; the penalty walk is dashed line-to-gain yellow. Marks are 9 by 9 glyphs on a small panel: TD, X
+  (turnover, missed FG, muff), flag, burst (sack, safety), check (good FG), ring, diamond, square, arrow, bar.
+  Possession flips after a turnover mark and after a kick's flight, so returns take the other team's color.
+- **What stays:** the last play at full strength, dimmed to `look.lastPlay.dimOpacity` when the next call is up (or
+  retired to residue for `until-presnap`); its result word and the verdict chip retire at that moment too (result
+  words are transient). Residue per `look.residue.keep` at `look.residue.opacity`, cleared by a new drive for `drive`.
+- **Labels** are tags (`.sc-fb-tag` plus `look.labels.className`; ghost labels also `.sc-ghost-label.rank-N`, the
+  WebGL engine's classes; the chip `.sc-fb-verdict`) styled with the world's tokens: panel `--sc-surface-2` with a
+  `--sc-rule-strong` edge, text `--sc-ink` or a meaning token (`--sc-good`, `--sc-bad`, `--sc-warn`), `--sc-font-text`
+  at `--sc-size-xs|s|m` (one step down on fields under 5 px a yard), `--sc-weight-strong`, `--sc-tracking-label`,
+  `--sc-case-label`. Colliding tags are moved apart in priority order (the play's words, the down and distance, the
+  zones) inside the free area; one with no room is hidden. `look.labels.renderer: "none"` draws no tags;
+  `labels.result: false` drops the result word.
+- **Review:** `showReview(row, set)` hides the live stage and replays the row with its own ghosts and verdict chip
+  (animated unless reduced motion or a hidden tab), `showReview(null)` returns to live. Live plays that arrive
+  meanwhile draw instantly into the hidden live stage.
+
+### 13.3 Engine contract details
+
+- `ready` resolves on the first frame after the first `setGameFrame` (a 120 ms timer stands in when no frame comes, as
+  in a hidden tab); before that the host already shows a bare field, never a blank one.
+- Events: `ready`, `anim` (`{ seq, state }`: playing, idle, reviewing), `camera` (`{ id: "top" }`), `frame` (every
+  change and every animation frame; none while idle), `error`. `debugState()` reports `kind "2d"`, `camera "top"`,
+  `ghosts` as shown (the top call alone after a snap; the review's own during review) and zero GPU counters.
+- `playRow` never rejects: a bad row resolves `completed: false`, is reported and emitted as `error`. `durationMs`
+  0, reduced motion, a hidden engine or review draw at once. `dispose` settles a running play with `completed: false`.
+- Every other public call is guarded the same way; `opts.onError` (default `globalThis.reportError`) receives errors.
+- `opts` may inject `raf`, `cancelRaf`, `now`, `setTimeout`, `clearTimeout`, `getComputedStyle` and `ResizeObserver`
+  (node tests); all are called bare.
+
+---
+
+## 14. v1.2: the 3D stage as built (A5 part 1, 2026-10-09)
+
+Additive to 2.5, 6.1 and `docs/design/three-recipe.md`. Where this section is more specific, it is how
+`field/scene.js` works. A5 part 2 (`player.js`, `ghost-layer.js`, `overlays.js`, `residue.js`) builds on 14.3 to 14.6;
+those sections replace the internal signatures in the 2.5 table (A5-internal, so the package decides).
+
+### 14.1 Files
+
+| File | Kind | Role |
+| --- | --- | --- |
+| `scene.js` | three.js | `createEngine`, `EngineInitError`: the Engine facade. Timing, tokens, the play promise, ghost deferral, review, moments, events, hooks |
+| `stage.js` | three.js | the stage (14.3): renderer rig, scene graph roots, lights, post, field, props, cameras, labels, kit, situation paint; `makeCanvas`, `bindPage` (host size, tab visibility, `<html data-ambient>`), `lookForGame` (the day look) |
+| `layers.js` | three.js | `LAYER_FACTORIES` and `createLayers(stage, factories)`: the seam part 2 fills (14.4); part 1's placeholders |
+| `renderer.js` | three.js | `createRig`: WebGLRenderer (antialias, HalfFloat output, `setEffects`), its own rAF loop on demand, DPR cap and governor, context loss, `info()` with frame CPU times |
+| `lighting.js` | three.js | `buildLighting(look, { renderer })`: lights from `look.lights` (field yards), fitted shadow cameras, background, fog, RoomEnvironment IBL; `exposureFor(look, ambient)`, `ROOM_EV` |
+| `post.js` | three.js | `buildPost(renderer, look, { scene, camera, passes, bloom })`: UnrealBloomPass and world passes through `renderer.setEffects` (no EffectComposer, no OutputPass) |
+| `field-mesh.js` | three.js | `buildField(look, frame, { doc, maxAnisotropy })`: turf, glyphs (async, `ready`), posts, pylons, plinth |
+| `turf.js` | three.js | the turf shader (recipe 4.3) driven by `look.field`; fog only on the far apron |
+| `decals.js` | three.js | numeral atlas and merged mesh, wordmark masks, the midfield logo (alpha bleed, ImageData), the field font |
+| `structures.js` | three.js | goalposts (merged per material), pylons (instanced), plinth, `neutralProps` (benches, low wall) |
+| `lines.js` | three.js | the situation paint: LOS and LTG strips, the spot ring, the ball at rest and its contact shadow, the glide |
+| `cameras.js` | three.js | `createCameraRig`: poses from `camera-plan.js`, eased cuts, damped re-aims, follow, shots, the safe-area view offset |
+| `materials.js` | three.js | `createKit`: shared materials by key (14.5), `LAYERS` (render order and polygon offset) |
+| `shaders.js` | three.js | `turfMarkMaterial(kind)`: grid (the 1-yard pixel cells), hatch, zone; `setOpacity`, `setHatchDpr` |
+| `labels.js` | three.js | `createLabels`: css2d, decal, sprite or none; at most 12 live |
+| `moments.js` | DOM | the event bus, world moments, `tween` on the render loop |
+| `dispose.js` | DOM-free | `disposeTree`, `markShared`, `isShared` |
+| `webgl-support.js` | DOM | `hasWebGL2`, `gpuName`, `isSoftwareGpu` |
+| `field-spec.js` | pure | NFL dimensions, numeral layout and atlas quads, pylons, wordmark and logo placement, `endZoneTeams`, `wordmarkText` |
+| `stage-math.js` | pure | `pickDpr`, `governDpr`, `safeView`, `insetsFrom`, `lerpPose`, `dampPose`, `poseGap`, `bleedAlpha` |
+| `engine-state.js` | pure | `hookValues` (the same facts and label as `vm-field.js`, checked against it), `animStateOf`, `ghostLeaves`, `hostAttrs`, `debugRecord` |
+
+### 14.2 The Engine as built
+
+- **`createEngine(host, look, opts)`**, `opts`: `reducedMotion`, `capture` (`preserveDrawingBuffer`), `world` (the
+  WorldModule, 14.6), `tier` (`"high"`, or `"low"`: DPR 1, no MSAA, shadows or bloom; the default is `low` on a
+  software rasterizer such as the e2e browser's SwiftShader, else `high`), `hooks` (default `false`; `true` makes the
+  engine write the 5.3 hooks itself, for a page without the field host), and for node tests only `createStage` and
+  `layerFactories`. It adds `canvas[data-testid="field-canvas"]` (aria-hidden) and the label layer
+  `div.sc-field-labels` to the host (a `static` host becomes `position: relative`) and draws a bare field at once.
+- **Readiness.** `engine.ready` resolves on the first frame after the first real `setGameFrame` whose glyphs are in
+  (or after 4 s). `debugState().ready` is the same fact for the latest `setGameFrame`: `false` from the call until
+  that frame, while `animState` is `rebuilding`. The field host maps it to `data-scene-ready`.
+- **Events:** `ready`; `anim` (`{ state, seq }`, as the 2D engine); `camera` (the mode id); `frame` (the frame count,
+  only while drawing); `error` (fatal for this engine: a layer threw while drawing; the conductor swaps in 2D);
+  `contextlost`, `contextrestored`; and two extras: `warning` (non-fatal: a world prop, pass, moment or day look
+  failed) and `resize` (`{ width, height, dpr }`).
+- **`setGameFrame(field, teams, teamOrder, game?)`** finishes a running play, clears every layer, then rebuilds the
+  kit's team paints, the field (end zones in the defending teams' exact primaries, their names in
+  `--sc-font-display`, the home logo at midfield), the props, and, for `game.light === "day"`, the look with
+  `look.world.day` merged over it (`resolveLook`; a bad day look is a warning and night stays).
+- **`showSituation(sit)`** paints the LOS, LTG and resting ball (lines.js; the LTG hides on goal to go, a kickoff shows
+  only the ball on its tee), calls `overlays.situation(sit)`, re-aims the camera (a glide) and fires the `possession`
+  moment when `sit.poss` changes. While reviewing it is stored and applied on return.
+- **`showGhosts(set)`** waits while a play runs (the last call wins, `null` included); else `ghosts.show(set)` (or
+  `ghosts.clear()` for `null`), the current highlight again, the camera re-aimed to include the shapes (ball-following
+  modes ignore them) and the `presnap` moment.
+- **`playRow(row, { durationMs, token })`** never rejects. Drawn at once (`player.placeAll([{ row, drawing }])`,
+  `completed: true`) when `durationMs <= 0`, under reduced motion, in a hidden tab or when the drawing has no steps.
+  Otherwise `plan = fitPlan(planDrawing(drawing, look.motion), durationMs)` and `job = player.start(drawing, plan,
+  row)`; a caller row also calls `ghosts.fade(look.ghost.afterSnapOpacity, look.motion.ghostOutMs)` and the `snap`
+  moment. Each frame: `job.update(t)` (t clamped to `plan.totalMs`) and `rig.follow(job.ball())`. It resolves
+  `{ seq, token, completed: true }` once `t >= plan.totalMs` and `update` returns `false`; the resting ball is then
+  placed at `drawing.ballEnd` (hidden when that is `null`: TD, field goal) and shown, and deferred ghosts are shown.
+  A row without a numeric `seq`, or a `start` or `update` that throws, resolves `completed: false` (a throw is also an
+  `error`).
+- **`finishNow()`** calls `job.finish()` and resolves the play at once (`completed: true`); a new `playRow`,
+  `setGameFrame`, `showReview(row)`, `setVisible(false)`, `setReducedMotion(true)` and `dispose` all finish first.
+- **`drawRowsInstant(rows)`** → `player.placeAll(items)`, every row with a `seq`, in order (rows with nothing to
+  draw have a drawing with no steps).
+- **`showReview(row, set)`** → `player.review({ row, drawing })`, `ghosts.show(set)`, the paint at
+  `situationFromRow(row)`, `animState` `reviewing`; `showReview(null)` → `player.review(null)`, the live ghosts and
+  situation. **`refreshLabels(rows)`** → `player.relabel(rows)`, `residue.relabel(rows)`. **`markVerdict(v)`** →
+  `player.verdict(v)` and the `verdict` moment.
+- **`setCamera(id, { instant })`** eases over `look.cameras.moveMs` with `look.cameras.ease`; cuts for `mode.cut`,
+  `instant` or reduced motion; unknown ids are ignored. `cameraModes()` → the look's `{ id, label }`.
+- **`resize(w, h)`**: DPR `min(device, 2)`, at most a 4K frame of pixels, stepped down 0.25 (floor 1) when animated
+  frames average over 22 ms; the camera view and safe area; labels; hatch pitch. The engine also observes its host,
+  the tab's visibility and `<html data-ambient>` itself. **`setAmbient(value)`**: `"room"` lifts the exposure
+  `ROOM_EV` (0.5) stops. **`setSafeArea(insets | null)`**: explicit `{ top, right, bottom, left }` px insets, else
+  `--sc-field-safe-*` read on every resize.
+- **`debugState()`**: the 2.5 fields plus `tier`, `gpu`, `shot` (the active mode, 14.5), `pose` (`position`,
+  `target`, `up` in world yards, `fov`), `lens` (`fov`, `aspect`, `view`), `reviewSeq`, `running` (the loop is on),
+  `programs`, `cpuMs` (`p50`, `p95`, `max` of the last 120 frames' CPU time: updaters plus draw submission).
+- **`dispose()`** finishes the play, unbinds the observers, disposes every layer and the stage (field, props, post,
+  lighting, kit, renderer) and removes the canvas; with `hooks` it removes its attributes except `aria-label`.
+
+### 14.3 The stage (every layer receives it)
+
+| Member | What it is |
+| --- | --- |
+| `THREE`, `coords` | the three.js namespace and `field/coords.js` (`toWorld(x, y, h)`: field yards to world) |
+| `look`, `frame` | getters: the resolved Look in force (the day variant when it applies); `{ field, teams, teamOrder, game }` or `null` |
+| `scene`, `roots` | the THREE.Scene and one Group per layer, in draw order: `field`, `props`, `residue`, `ghosts`, `situation`, `overlays`, `plays`, `labels` (`ROOTS`) |
+| `kit`, `labels`, `cams`, `lines` | the material kit, the label layer, the camera rig and the situation paint (14.5) |
+| `requestRender(frames = 1)` | ask for a frame (render on demand: anything async, a hover, a texture load must call it) |
+| `keepAlive(fn)` | `fn(dtMs)` runs every frame and returns `true` while it still needs frames; returns its remover |
+| `reducedMotion()`, `visible()`, `lights()` | flags; the named lights (`look.lights` ids) |
+| `layers` | the four layers, so one may hand work to another (the player to residue) |
+| `world`, `emit(event, payload)` | the WorldModule; the engine's event bus (`warning` for a problem that is not fatal) |
+| `rig`, `renderer`, `doc`, `host`, `canvas` | the renderer rig (`dpr()`, `size()`, `info()`), the raw WebGLRenderer, the page objects |
+
+### 14.4 Layers: the contract part 2 implements
+
+`field/layers.js` instantiates `LAYER_FACTORIES` once per engine (`residue`, `overlays`, `ghosts`, `player`, in that
+order). Part 2 points the table at its modules and changes nothing in `scene.js`.
+
+| Layer | Required | Optional | Called when |
+| --- | --- | --- | --- |
+| `player` | `start(drawing, plan, row) -> job`, `clear()`, `dispose()` | `placeAll(items)`, `review(item \| null)`, `relabel(rows)`, `verdict(v)` | an animated row; instant rows and rebuilds (`items` = `[{ row, drawing }]`); review; a retag; a verdict |
+| job | `update(tMs) -> boolean`, `finish()` | `ball() -> { x, y, h } \| null` (field yards), `dispose()` | every frame of the play; `finishNow`; the follow camera |
+| `ghosts` | `show(set)`, `clear()`, `dispose()` | `highlight(leaf \| null)`, `fade(k, ms)` | a new call; no call; hover or focus; a caller snap (`afterSnapOpacity`, `ghostOutMs`) |
+| `overlays` | `situation(sit)`, `clear()`, `dispose()` | | every `showSituation` (and review), after the LOS and LTG are painted |
+| `residue` | `clear()`, `dispose()` | `add(...)` (the player's to call), `relabel(rows)` | `setGameFrame`; a retag |
+
+Rules:
+
+- A layer adds its objects under `stage.roots.<its name>` and disposes what it owns with `disposeTree`. The kit's
+  materials and textures are shared: never dispose or recolor them; fade with `kit.fade(material, k)` (it keeps the
+  base opacity in `userData.opacity`, so `fade(m, 1)` restores it) and give a mesh its own material when it needs its
+  own color.
+- The player owns its jobs: the facade never disposes one. Keep the last play drawn per `look.lastPlay` until the next
+  `start`, `placeAll` or `clear`, and hand older plays to residue per `look.residue`.
+- The ball: a player that draws its own ball calls `stage.lines.setBallVisible(false)` when its job starts; when the
+  job ends the facade places the resting ball at `drawing.ballEnd` and shows it, so the player hides its own ball
+  when `update` returns `false` (part 1's placeholder disposes it then).
+- `update(tMs)` may return `true` past `plan.totalMs` (a fade after the play): the facade waits for `false`.
+- `start` and `update` may throw: the play resolves `completed: false` and the engine emits `error` (the conductor
+  then swaps in the 2D field), so throw only for a real fault.
+- Part 1's placeholders, replaced by part 2: a player that flies a plain ball along `timing.ballAt` (no strokes),
+  ghost zones as flat rectangles in `kit.ghost(rank, family).fill` with the percentage as a label, and empty overlays
+  and residue.
+
+### 14.5 Kit, labels, camera rig, situation paint, disposal
+
+- **Kit** (`materials.js`; every result cached and shared; `opts` = `{ ghosted, approx }`):
+  `paint(abbr)` (teamPaint against `look.teamColor`); `stroke(role, team, opts)` a path's light core (the team edge
+  mixed 65% toward `look.strokes[role].core`), `edge(role, team, opts)` its team-colored edge (a line2 edge is 2.2x
+  wider), `fill(role, team, opts)` a ground fill in the team's own color: `role` is `arc ground corridor area band
+  mark`, the material follows `look.strokes[role].geometry` (`line2` a LineMaterial in pixels; `tube` a lit
+  MeshStandardMaterial; `ribbon` and `decal` a flat material on the turf with polygon offset), `ghosted` uses
+  `ghostedOpacity` and mixes the color 60% toward gray, `approx` uses `look.strokes[role].approx` (`dashed`, `soft`
+  55%, `hatch`, `pixel` a checkerboard of 1-yard cells); `ghost(rank, family, { team })` `{ fill, stroke }` in
+  `look.ghost.style` (`pixel` lit 0.8 yd cells, `hatch`, `zone` feathered, `marker`, `outline` stroke only) at
+  `look.ghost.opacity[rank - 1]`; `line("los" | "ltg")`; `ball()` `{ body, accent }`; `texture("radial" | "halo")`;
+  `fade`, `setTeams`, `setDpr`, `dispose`. `shaders.js` `turfMarkMaterial(kind, opts)` makes unshared grid, hatch or
+  zone materials for per-mesh needs.
+- **Render order on the turf** (`LAYERS`, recipe 5.2): `turf 0`, `decal 1`, `ghostZone 2`, `graphic 3`, `line 5`,
+  `ring 6`, `shadow 7`, then in the air `trail 8`, `burst 9`, `ghostLine 10`, `ghostHead 11`, `glow 12`; each with its
+  polygon offset `factor` and `units`. Coplanar meshes use polygon offset and `depthWrite: false`, never a y lift.
+- **Fog:** everything on the field (the kit, paint, lines, posts, pylons) has `fog: false`; the world's haze is for
+  the stands, and the turf fades into it only on the apron beyond the border (at blimp distance a 0.0035 FogExp2
+  would wash the field about 45%). A layer that wants haze opts in.
+- **Labels** (`labels.js`): `add(pt, text, cls = "", { heightYd }) -> handle | null` (`pt` field yards `{ x, y, h }`;
+  `handle.move(pt)`, `handle.remove()`), `remove(handle)`, `clear()`, `count()`. At most 12 live: the oldest goes.
+  The markup is `<div class="sc-field-label"><span class="{look.labels.className} {cls}">text</span></div>` (text
+  only; CSS2D owns the outer transform, so offset the span); `decal` paints the text flat on the turf upright from the
+  home camera and `sprite` on a billboard, both in the font and colors the same classes get from the world's CSS.
+- **Camera rig** (`stage.cams`): `setMode(id, { instant })` the viewer's mode; `shot(id | null, { instant })` a
+  temporary mode over it (the snap's cut to a tight shot, back with `shot(null)`; `mode()` and the `camera` hook stay
+  the viewer's, `activeMode()` says what is on); `view({ situation, ghosts, drawing })`; `follow(ball | null)` for
+  `follow: "ball"` modes (the facade feeds it from `job.ball()`); `pose()`, `lens()`, `camera`.
+- **Situation paint** (`stage.lines`): `set(sit, { instant })`, `setBallVisible(on)`, `placeBall(x | null)`,
+  `ballAt()`, `state()`, and `ball` (the resting ball's Group).
+- **Disposal** (`dispose.js`): `disposeTree(root, { onError })` frees geometries, materials, textures, render targets
+  and CSS2D elements under `root` (each once) and skips anything `markShared` marked; it never throws mid-tree.
+
+### 14.6 World hooks as implemented (2.7)
+
+- **`props(ctx)`**, called at every `setGameFrame`, `ctx` = `{ THREE, coords, field, teams, look, kickoff, light,
+  paint(abbr), ambient, requestRender }`; it returns `{ object, update?(dtMs) -> boolean, dispose() }`. `update` runs
+  every drawn frame and keeps the loop alive only while it returns `true` (the 0-idle-frames budget: a prop animates
+  only while it has something to show). A throw is a `warning`, and the field still draws. A world without props gets
+  `neutralProps`: benches between the 30s and a low wall.
+- **`moments`**: `presnap(ctx, set)` on a `showGhosts` with a call, `snap(ctx, row)` when an animated caller play
+  starts, `verdict(ctx, v)`, `possession(ctx, team)` when the situation's `poss` changes; `ctx` = `{ THREE, scene,
+  camera, rig, lights, requestRender, tween(ms, fn), reducedMotion, look, frame }` (`tween` calls `fn(u)` for `u` 0
+  to 1 on the render loop and resolves). Never under reduced motion; a throw or a rejection is a `warning`. The light
+  dip is `lights[id].intensity` tweened in `presnap` and back in `snap`.
+- **`passes`**: each name in `look.post.extra` → `world.passes[name]({ THREE, renderer, scene, camera, look })`, a
+  pass with `render(renderer, writeBuffer, readBuffer)`, run after bloom on linear HDR before tone mapping; a missing
+  name is a `warning`.
+- **`look.world.day`**: a partial Look merged over the look at `setGameFrame` when `game.light === "day"`. It
+  re-lights the scene (`lights`, `environment`, `renderer`, `post`) and repaints the field (`field`); the kit's
+  strokes, lines, ball, ghost and labels keep the night look's values (they are paint and light, not weather).
+- **`warning` events** are not shown to the viewer yet: main.js could pass them to its notice tray (an A0 ask).
+- **CSS the engine reads:** `--sc-field-safe-top|right|bottom|left` (px, on `#field` or an ancestor), `--sc-font-display`
+  (field numerals and end-zone names, after `document.fonts.load`), `look.labels.className` on labels,
+  `<html data-ambient>`.
+- **Lighting units:** three's physical lights. White paint should land near 0.85 linear (recipe pitfall 1): with a
+  hemisphere light of about 0.9, four corner spots at 34 yd high and about 100 yd from midfield need an intensity of
+  about 1.5e4 each (decay 2), aimed across the field with a 0.9 penumbra; closer or brighter and the paint near the
+  towers passes the bloom threshold. Fixture colors are engine constants: posts `#ffc425`, pylons and upright ribbons
+  `#ff6a13`, pads in the defending team's color.
+
+### 14.7 Budget as measured (headless Chromium, ANGLE Metal, Apple M4 Max; `?debug=1` debugState)
+
+| Scene | Size, DPR | Draw calls | Triangles | Frames during a 4 s play | Engine CPU per frame |
+| --- | --- | --- | --- | --- | --- |
+| neutral look, drive at DAL 25 with 3 ghosts | 1440x900, 2 | 20 | 3.7k | 60 fps, p95 16.8 ms, none dropped | p50 0.2 ms, max 0.4 |
+| night test look (DESIGN.md values; bowl, towers, 20k crowd points, LED ribbon as test props) | 1440x900, 1 and 2 | 36 | 31k | 60 fps, p95 16.7 to 16.8 ms | p50 0.4 ms, max 0.5 |
+| the same | 1920x1080, 1 and 2 (8.3 MP) | 37 | 31k | 60 fps, p95 16.7 to 16.8 ms | p50 0.4 ms, max 0.6 |
+
+Idle: 0 frames and 0 `requestAnimationFrame` calls over 2 s, after the first glide and after a 1.1 s camera move.
+Memory: after a warm frame, 183 instant rows, plays, ghosts, situations and four more `setGameFrame`s leave
+geometries, textures and programs exactly where they were (neutral 21, 10, 17; night 27, 27, 33). Headless frames are
+vsync-capped at 60 Hz, so the frame column proves "no hitch", and the CPU column is the headroom.
+
+### 14.8 Found while building
+
+- **r185's `WebGLAnimation` schedules the next frame after its callback returns**, so `setAnimationLoop(null)` from
+  inside a frame leaves a `requestAnimationFrame` chain running forever, and every restart adds another (the
+  recipe's `stage.js` in 10.1 does this; frame counters never see it). `renderer.js` runs its own chain.
+- A ball-following mode framed with the ghosts was pulled back by the full-width pass bands; such modes frame the
+  ball only.
+
+### 14.9 Tests
+
+Node (`tests/js`, three.js through `three-env.mjs`): `field-spec`, `stage-math`, `engine-state` (its hooks against
+`fieldVm` on the real fixtures), `webgl-support`, `dispose`, `materials`, `cameras`, `lighting`, `lines`,
+`field-mesh`, `labels`, `stage-parts` (post, neutral props, the placeholder layers), `stage-host` (day look, canvas,
+page bindings, font) and `scene-engine` (the facade on a WebGL-free stage with spy layers: timing, tokens, instant
+paths, finishNow, ghost deferral, follow camera, ball hand-off, review, moments, hooks, dispose). The renderer, the
+turf shader, canvas glyphs and post-processing are checked in the browser at 1440x900, 1920x1080 and 390x844.

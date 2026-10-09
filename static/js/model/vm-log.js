@@ -2,6 +2,7 @@
 // goal to go reads "Goal" (G16).
 import { LOG } from "./copy.js";
 import { DASH, freezeDeep, pct, pct1, situationText } from "./format.js";
+import { verdictOf } from "./verdict.js";
 
 const TOP3_RANK = 3;
 
@@ -23,8 +24,18 @@ function rankCell(rank) {
   return { text: String(rank), tone: rank === 1 ? "good" : rank <= TOP3_RANK ? "" : "bad" };
 }
 
+/** v1.2 (A8): the timeline id of a log row (its ESPN play id, or "log-<seq>" for a typed snap, DC B7, D). */
+const timelineIdOf = (row) => (row.espn_id ? String(row.espn_id) : `log-${row.seq}`);
+
+/** Drawn rows that draw something, by timeline id -> seq (the field can show only these, core/review.js). */
+function drawnSeqs(tl) {
+  const rows = tl && Array.isArray(tl.rows) ? tl.rows : [];
+  return new Map(rows.filter((r) => r && r.kind !== "admin").map((r) => [String(r.id), r.seq]));
+}
+
 function logRow(row, ctx) {
   const hasLeaf = row.leaf_p != null;
+  const tlSeq = ctx.drawn.get(timelineIdOf(row)) ?? null;
   return {
     seq: row.seq,
     snap: row.nullified || row.snap == null ? "" : String(row.snap),
@@ -37,13 +48,16 @@ function logRow(row, ctx) {
     rank: rankCell(row.leaf_rank),
     yds: row.nullified ? LOG.flag : row.yards == null ? "" : String(row.yards),
     nullified: Boolean(row.nullified),
+    verdict: verdictOf(row).key,                 // v1.2 (A8): top1, top3, miss or none
+    tlSeq,                                       // v1.2 (A8): its drawn row on the field, or null
+    reviewing: tlSeq !== null && tlSeq === ctx.reviewSeq,
   };
 }
 
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, columns[9], empty, emptyText, rows: {seq, snap, time, situation, topPick, actual,
- *   hisP, lgP, rank: {text, tone}, yds, nullified}[]}
+ *   hisP, lgP, rank: {text, tone}, yds, nullified, verdict, tlSeq, reviewing}[]}
  */
 export function logVm(pv) {
   const presented = pv && pv.presented;
@@ -51,6 +65,8 @@ export function logVm(pv) {
   const base = { heading: LOG.heading, columns: [...LOG.columns] };
   if (!log.length) return freezeDeep({ ...base, empty: true, emptyText: LOG.empty, rows: [] });
   const game = presented.game || {};
-  const ctx = { off: game.offense, opp: game.opponent, leafNames: presented.leaf_names || {} };
+  const review = pv.view && pv.view.review ? pv.view.review.seq : null;
+  const ctx = { off: game.offense, opp: game.opponent, leafNames: presented.leaf_names || {}, drawn: drawnSeqs(pv.tl),
+    reviewSeq: Number.isInteger(review) ? review : null };
   return freezeDeep({ ...base, empty: false, emptyText: "", rows: log.map((row) => logRow(row, ctx)) });
 }

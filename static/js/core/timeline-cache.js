@@ -25,9 +25,10 @@ export function checkTimelineBody(body) {
   return null;
 }
 
+/** v1.2 (A8): `boxEspn` is ESPN's own box score (box_espn, ui-architecture Appendix B), null when not sent. */
 function snapshotOf(resp) {
   return deepFreeze({ n: resp.n, drives: resp.drives ?? [], status: resp.status ?? null, box: resp.box ?? null,
-    unlinked: resp.unlinked ?? [] });
+    boxEspn: isPlainObject(resp.box_espn) ? resp.box_espn : null, unlinked: resp.unlinked ?? [] });
 }
 
 const consecutiveFrom = (rows, first) => rows.every((r, i) => r.seq === first + i);

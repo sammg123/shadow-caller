@@ -85,10 +85,13 @@ function leafEntry(leaf, topP, marks) {
   };
 }
 
+const share = (x) => (finite(x) ? x * 100 : null);   // a 0..1 share as 0..100 for bar geometry; null when unknown
+
 function familyEntry(family, topP, marks) {
   return {
     key: family.key, name: family.name, p: family.p, pct: pct(family.p),
     leaguePct: pct(family.p_league), leagueText: PREDICTION.league(pct(family.p_league)),
+    barPct: share(family.p), leagueBarPct: share(family.p_league),   // v1.2 (A7): the LED bar and its league notch
     ...hotFields(family),
     leaves: (family.leaves || []).map((leaf) => leafEntry(leaf, topP, marks)),
   };

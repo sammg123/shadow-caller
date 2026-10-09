@@ -49,3 +49,32 @@ test("no timeline means no box score", () => {
   assert.deepEqual([vm.available, vm.teams.length, vm.rows.length], [false, 0, 0]);
   assert.ok(isDeepFrozen(boxVm(makePv({ tl: tlOf(timeline.final()) }))));
 });
+
+// v1.2 (A8, additive): the UI shows ESPN's own box score when the server sends it (Appendix B), else the derived one.
+const withEspnBox = (body, boxEspn) => ({ ...tlOf(body), boxEspn });
+
+test("ESPN's own box score wins when the server sends it, and the source line says so", () => {
+  const body = timeline.final();
+  const espn = { ...body.box, TB: { ...body.box.TB, yards: 420 } };
+  const vm = boxVm(makePv({ presented: state.final(), tl: withEspnBox(body, espn) }));
+  assert.equal(vm.source, "espn");
+  assert.equal(vm.sourceText, "ESPN box score");
+  assert.deepEqual([...vm.rows.find((r) => r.label === "Total yards").values], ["420", "366"]);
+  assert.ok(isDeepFrozen(vm));
+});
+
+test("without ESPN's box (watch mode, manual, mid-game) the derived box shows and says where it comes from", () => {
+  const vm = boxVm(makePv({ presented: state.final(), tl: withEspnBox(timeline.final(), null) }));
+  assert.equal(vm.source, "derived");
+  assert.equal(vm.sourceText, "Counted from the plays on the field");
+  assert.deepEqual([...vm.rows.find((r) => r.label === "Total yards").values], ["419", "366"]);
+  const empty = boxVm(makePv({ tl: withEspnBox(timeline.final(), {}) }));
+  assert.equal(empty.source, "derived", "an ESPN box with no team columns is ignored");
+});
+
+test("no box yet: an empty line instead of a table", () => {
+  const vm = boxVm(makePv());
+  assert.equal(vm.emptyText, "Team stats appear after the first play.");
+  assert.equal(vm.source, null);
+  assert.equal(boxVm(makePv({ tl: tlOf(timeline.final()) })).emptyText, "");
+});
