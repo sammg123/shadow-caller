@@ -159,7 +159,7 @@ function glyphMark(step, ctx, style) {
   const spot = ctx.pt(step.at.x, step.at.y, lift);
   const away = style.badge === 1 ? 1 : -1;
   const c = BADGES.has(step.role) ? { px: spot.px, py: spot.py + away * (halfH + BADGE_GAP_PX) } : spot;
-  const paint = tone === "team" ? { fill: style.core } : tone === "flag" ? { fill: ctx.look.lines.ltg.color }
+  const paint = tone === "team" || style.last ? { fill: style.core } : tone === "flag" ? { fill: ctx.look.lines.ltg.color }
     : { style: `fill: ${toneColor(tone)}` };
   const plate = node("rect", { x: r2(c.px - halfW), y: r2(c.py - halfH), width: r2(2 * halfW), height: r2(2 * halfH),
     rx: 2, style: "fill: var(--sc-surface-2); fill-opacity: 0.85" });

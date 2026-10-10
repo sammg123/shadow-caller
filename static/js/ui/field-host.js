@@ -5,6 +5,8 @@
 // (from fieldVm), the animation bookkeeping (from the store, through fieldHostVm) and the engine's own state
 // (debugState, mirrored on every engine event). It sizes the engine (ResizeObserver -> engine.resize), stops it
 // in a hidden tab (visibilitychange -> engine.setVisible) and re-subscribes whenever main.js swaps the engine.
+// play-drawing.md 4b: a small style key on the field's edge (.sc-field-key: last play / next 1 / next 2, each with
+// its stroke's swatch); the world's CSS shows it while his next call is up (#field[data-ghosts] not empty).
 import { el, setAttr, setData, setText } from "./dom.js";
 
 const ENGINE_EVENTS = Object.freeze(["ready", "anim", "camera", "frame", "contextlost", "contextrestored"]);
@@ -146,11 +148,22 @@ function observeSize(c) {
  * @param {{ engine: () => object | null, copy: object }} ctx
  * @returns {{ update(vm: ReturnType<import("../shell/bindings.js").fieldHostVm>): void, destroy(): void }}
  */
+/** 4b: the style key: the previous play's solid steel stroke, then his #1 and #2 as dashed lines in their colours. */
+function styleKey(words) {
+  const item = (role, text) => el("span", { cls: ["sc-field-key-item", `is-${role}`], data: { role } },
+    [el("i", { cls: "sc-field-key-swatch" }), text]);
+  return el("p", { cls: "sc-field-key", data: { testid: "field-key" }, attrs: { "aria-hidden": "true" } },
+    [item("last", words?.last ?? "Last play"), item("next-1", words?.next1 ?? "Next 1"),
+      item("next-2", words?.next2 ?? "Next 2")]);
+}
+
 export function mount(root, ctx) {
   const label = ctx.copy.FIELD.label;
   const legend = el("p", { cls: "sc-field-legend", data: { testid: "field-legend" }, text: ctx.copy.FIELD.legend });
+  const key = styleKey(ctx.copy.FIELD.key);
   const host = el("div", { id: "field", cls: "sc-field", attrs: { role: "img", "aria-label": label },
-    data: { sceneReady: false, animState: "idle", drawnSeq: 0, queue: 0, ghosts: "", ghostHighlight: "" } }, [legend]);
+    data: { sceneReady: false, animState: "idle", drawnSeq: 0, queue: 0, ghosts: "", ghostHighlight: "" } },
+  [legend, key]);
   root.appendChild(host);
   const c = { host, legend, ctx, label, engine: null, offs: [], anim: null, reviewSeq: null, engineState: null,
     debugFailed: null };

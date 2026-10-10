@@ -10,6 +10,11 @@
 // their font and colors from the same classes through a hidden probe element. v1.4 (G3-8): after each render a plate
 // that would run off the side of the field is moved back inside it (its inner span's `translate`, PLATE_PAD from the
 // edge), so the words on a phone are never cut; one that fits stays centered on its spot.
+// play-drawing.md 4b: a plate can carry its role and a second line, opts.words = { tag, body, sub }:
+// <span class="sc-label-tag">NEXT 1</span><span class="sc-label-sep"> · </span><span class="sc-label-body">...</span>
+// (+ sep and <span class="sc-label-sub">TOP PICK · 19%</span>), every part text only; handle.setWords changes them.
+// handle.place({ dx, dy, leader }) moves the plate off its spot by a pixel offset (presnap-words.js solves it in screen
+// space), with a thin leader line (<i class="sc-label-leader">) from the spot to the plate's nearest edge.
 import * as THREE from "three";
 import { CSS2DObject, CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js";
 import { toWorld } from "./coords.js";
@@ -52,8 +57,10 @@ function keepInside(L, camera) {
     if (!el?.style || h.object.visible === false) continue;
     anchor.setFromMatrixPosition(h.object.matrixWorld).applyMatrix4(viewProjection);
     const x = (anchor.x + 1) * (L.size.width / 2);
-    const dx = plateShift(x, el.offsetWidth, L.size.width);
-    const value = Math.abs(dx) >= 0.5 ? `${Math.round(dx)}px 0` : "";
+    const off = h.offset ?? { dx: 0, dy: 0 };
+    const dx = off.dx + plateShift(x + off.dx, el.offsetWidth, L.size.width);
+    const moved = Math.abs(dx) >= 0.5 || Math.abs(off.dy) >= 0.5;
+    const value = moved ? `${Math.round(dx)}px ${Math.round(off.dy)}px` : "";
     if ((el.style.translate ?? "") !== value) el.style.translate = value;
   }
 }
@@ -123,16 +130,57 @@ function makeLayer(doc, host) {
   return new CSS2DRenderer({ element: el });
 }
 
-function makeCss2d(doc, text, classes) {
+/** The plate's words: plain text, or (`words`) its tag, body and second line as text-only parts. */
+function fillWords(doc, inner, text, words) {
+  for (const child of [...(inner.children ?? [])]) child.remove?.();
+  inner.textContent = "";
+  if (!words || (!words.tag && !words.sub)) {
+    inner.textContent = text;
+    return;
+  }
+  const part = (cls, value) => {
+    const el = doc.createElement("span");
+    el.className = cls;
+    el.textContent = cleanText(value);
+    inner.appendChild(el);
+  };
+  if (words.tag) {
+    part("sc-label-tag", words.tag);
+    part("sc-label-sep", " · ");
+  }
+  part("sc-label-body", words.body ?? text);
+  if (words.sub) {
+    part("sc-label-sep", " · ");
+    part("sc-label-sub", words.sub);
+  }
+}
+
+function makeCss2d(doc, text, classes, words) {
   const outer = doc.createElement("div");
   outer.className = "sc-field-label";
+  const leader = doc.createElement("i");
+  leader.className = "sc-label-leader";
+  leader.style.display = "none";
+  outer.appendChild(leader);
   const inner = doc.createElement("span");
   inner.className = classes;
-  inner.textContent = text;
+  fillWords(doc, inner, text, words);
   outer.appendChild(inner);
   const object = new CSS2DObject(outer);
   object.center.set(0.5, 1);
-  return { object, element: inner };
+  return { object, element: inner, leader };
+}
+
+/** A thin line from the plate's spot (the outer element's center) to `to` (px from the spot); null hides it. */
+function drawLeader(leader, to) {
+  if (!leader?.style) return;
+  const len = to ? Math.hypot(to.x, to.y) : 0;
+  if (!(len >= 1)) {
+    leader.style.display = "none";
+    return;
+  }
+  Object.assign(leader.style, { display: "", width: `${Math.round(len)}px`,
+    transform: `rotate(${Math.atan2(to.y, to.x).toFixed(4)}rad)` });
 }
 
 // The functions below share one context `L` = { spec, host, doc, kind, group, live, counter, layer }.
@@ -148,14 +196,39 @@ function addLabel(L, pt, text, cls, opts) {
   if (L.live.length >= MAX_LABELS) removeLabel(L, L.live[0]);
   const classes = cleanClasses([L.spec.className, cls]);
   const words = cleanText(text);
-  const made = L.kind === "css2d" ? makeCss2d(L.doc, words, classes)
-    : { object: canvasObject(L.kind, L.doc, L.host, words, classes, opts), element: null };
+  const made = L.kind === "css2d" ? makeCss2d(L.doc, words, classes, opts.words)
+    : { object: canvasObject(L.kind, L.doc, L.host, words, classes, opts), element: null, leader: null };
   made.object.position.copy(worldOf(pt));
   L.counter += 1;
   made.object.name = `label-${L.counter}`;
   L.group.add(made.object);
-  const handle = { id: L.counter, kind: L.kind, object: made.object, element: made.element,
-    move(next) { made.object.position.copy(worldOf(next)); }, remove() { removeLabel(L, handle); } };
+  const handle = { id: L.counter, kind: L.kind, object: made.object, element: made.element, offset: null,
+    move(next) { made.object.position.copy(worldOf(next)); }, remove() { removeLabel(L, handle); },
+    /** New words, text only ({ tag, body, sub } or plain `text`); css2d labels only. */
+    setWords(next, plain = "") {
+      if (made.element) fillWords(L.doc, made.element, cleanText(plain || next?.body || ""), next);
+    },
+    /** The plate's size in px as the page lays it out ({ w, h }), or null (no page): a label not drawn yet is put in
+     * the layer (where the next render puts it anyway) and a hidden one shown for the measure, so a layout made before
+     * the first frame still knows each plate's true size (css2d). */
+    size() {
+      const el = made.element;
+      const outer = made.object.element;
+      if (!el || !outer || !L.layer?.domElement) return null;
+      if (outer.parentNode !== L.layer.domElement) L.layer.domElement.appendChild(outer);
+      const hidden = outer.style.display === "none";
+      if (hidden) outer.style.display = "";
+      const out = { w: el.offsetWidth ?? 0, h: el.offsetHeight ?? 0 };
+      if (hidden) outer.style.display = "none";
+      return out.w > 0 && out.h > 0 ? out : null;
+    },
+    /** Off its spot by a pixel offset, with a leader to `leader` (px from the spot) or none (css2d). */
+    place({ dx = 0, dy = 0, leader = null } = {}) {
+      handle.offset = Number.isFinite(dx) && Number.isFinite(dy) ? { dx, dy } : null;
+      const el = made.element;
+      if (el?.style) el.style.translate = handle.offset ? `${Math.round(dx)}px ${Math.round(dy)}px` : "";
+      drawLeader(made.leader, handle.offset ? leader : null);
+    } };
   L.live.push(handle);
   return handle;
 }

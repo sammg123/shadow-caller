@@ -24,6 +24,7 @@ import {
   refreshLabels, relayout, renderAll, setCamera, settleCamera, settleStage, showGhosts, showReview, showSituation,
 } from "./fallback-runtime.js";
 import { createSurface, measureHost } from "./fallback-svg.js";
+import { clarityOf } from "./fallback-words.js";
 
 /** The 2D field's cameras: the Drive view (the default: the snap, his shadows and each play large enough to read) and
  * the whole field from straight above (Top). */
@@ -170,6 +171,7 @@ function debugState(s) {
     animState: s.review ? "reviewing" : playing ? "playing" : "idle", playingSeq: playing?.entry.seq ?? null,
     ghosts: visibleGhosts(s), highlight: s.highlight, camera: s.camera, situation: s.situation,
     drawCalls: 0, triangles: 0, geometries: 0, textures: 0, dpr: s.env.dpr(), ball: s.players.live.ball(),
+    clarity: s.review || s.ghosts?.input ? clarityOf(s.review ? s.surface.review : s.surface.live) : null,
   };
 }
 

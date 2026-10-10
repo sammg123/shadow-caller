@@ -1,36 +1,38 @@
 /**
  * Before each snap of the modeled caller, his most likely plays as shadow plays on the 2D field
- * (docs/design/play-drawing.md section 4, binding; ui-architecture.md 16.3 and 16.5, owner A6). field/shadows.js
- * builds them: the top 2 in the same shapes as real plays (a pass an arc, a run a line on the turf), from the line
- * of scrimmage, the hovered play lit (and drawn when it is outside the top 2), their text laid out in this view's
- * label metrics. This module turns what the conductor hands the engine into a shadow request and draws the result:
- * every stroke dashed, edge and core alike, at 50% for #1 and 35% for #2, with "1 · Inside run (A/B gap) · 27%" on a
- * dashed plate underneath. The world may tint them (look.ghost.fill) and pick their dash (look.ghost.style); they stay
- * dashed and translucent. Pure.
+ * (docs/design/play-drawing.md sections 4 and 4b, binding; ui-architecture.md 16.3 and 16.5, owner A6).
+ * field/shadows.js builds them: the top 2 in the same shapes as real plays (a pass an arc, a run a line on the turf),
+ * each starting past the ball in its own lane, the hovered play lit (and drawn when it is outside the top 2). This
+ * module turns what the conductor hands the engine into a shadow request and draws the result as 4b asks: each a thin
+ * dashed line (plays.shadowPx, short dashes) over a thin dark ring, coloured by rank (#1 the world's amber, #2 warm
+ * white, never a team), a small arrowhead on a run and a tick where a pass lands, never a band or a ring; and each
+ * one's words on a tagged plate, "NEXT 1 · Inside run (A/B gap) · 27%" (fallback-plates.js), which fallback-words.js
+ * places in screen space. Pure.
  */
 import { LEAVES } from "../core/domain.js";
 import { mixHex } from "../theme/team-colors.js";
-import { r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
-import { strokeStyle } from "./fallback-plays.js";
-import { stepParts, viewMetrics } from "./fallback-steps.js";
-import { isFiniteNum, ownValue } from "./grammar.js";
+import { r2, node, tagSize } from "./fallback-draw.js";
+import { plateNode } from "./fallback-plates.js";
+import { liftOf, shownHeight, subPath, viewMetrics } from "./fallback-steps.js";
+import { isFiniteNum } from "./grammar.js";
+import { resolvePlayLook } from "./play-style.js";
+import { rankColor, shadowOpacity, shadowScale } from "./shadow-style.js";
 import { SHADOW_COUNT, buildShadowPlays, shadowCandidates } from "./shadows.js";
 
 /** The hovered (or focused) play's shadow: lit, still dashed and see-through. */
-export const SHADOW_HOVER_OPACITY = 0.85;
+export const SHADOW_HOVER_OPACITY = 0.95;
 /** While a play is hovered, the other shadows and their words step back by this much. */
 const HOVER_DIM = 0.6;
 const LABEL_DIM = 0.75;
 const KEY_DIGITS = 4;
-const CORE_MIX = 0.65;
 const EDGE_DARK = 0.75;
-/** As wide as a real play's strokes: a shadow is told apart by its dashes and its opacity, not by being thin. */
-const WIDTH = Object.freeze({ core: 1, edgeExtra: 2.5 });
-/** Dash and gap per ghost style, in edge widths, square-ended: short dashes read as a dashed line even on a 4-yard
- * run, and every gap shows the turf through. */
-const DASH = Object.freeze({ zone: [1.1, 0.8], outline: [1.1, 0.8], marker: [1.1, 0.8], hatch: [0.5, 0.7],
-  pixel: [0.8, 0.8] });
-const PLATE_DASH = "4 3";
+/** The thin dark ring under each dashed line, px each side, and how dark it is. */
+const CASING = Object.freeze({ extraPx: 2.5, opacity: 0.55 });
+/** Dash and gap in px: the look's yards at this view's scale, kept readable at any zoom. */
+const DASH_PX = Object.freeze({ on: [4, 16], off: [3, 12] });
+/** The end mark: a run's arrowhead, a pass's tick, the look's targetYd at this scale, in px. */
+const END_PX = Object.freeze({ min: 5, max: 12 });
+const WING = Object.freeze({ cos: Math.cos(Math.PI / 5), sin: Math.sin(Math.PI / 5) });
 
 // ---------------------------------------------------------------- the request
 /** The snap the shadows start at; its down when known (on 4th down they read "If he goes", shadows.js). */
@@ -56,7 +58,8 @@ function fromShadowPlays(list) {
   const from = list.find((s) => s?.drawing?.steps?.[0]?.from)?.drawing;
   if (!from) return null;
   return { source: { leaves: list.map((s) => ({ ...pairOf(s), name: s?.name })) },
-    situation: { ballX: from.steps[0].from.x, dir: from.dir, poss: from.team ?? null } };
+    situation: { ballX: isFiniteNum(from.snapX) ? from.snapX : from.steps[0].from.x, dir: from.dir,
+      poss: from.team ?? null } };
 }
 
 /** A request of its own: { source (/api/state prediction, a row's pred, a ghost input), situation?, leafNames?,
@@ -110,80 +113,100 @@ export function shadowPlaysFor(input, ctx, { hover = null, avoid = [], labelPx =
 }
 
 // ---------------------------------------------------------------- drawing
-/** Where each family sits on a world's ramp (look.world.plays.families; the 3D field reads the same, G3-1). */
-const RAMP_KEY = Object.freeze({ dropback: "pass", pa: "pass", screen: "pass", run: "run", rpo: "rpo" });
-const HEX_RE = /^#[0-9a-f]{6}$/i;
+const plays = (ctx) => resolvePlayLook(ctx.look);
+const clamp = (v, [lo, hi]) => Math.min(hi, Math.max(lo, v));
 
-/** The family's color with look.ghost.tint "family", else null (a family the ramp leaves out, or no ramp). */
-function rampColor(look, family) {
-  if (look.ghost.tint !== "family") return null;
-  const ramp = look.world?.plays?.families;
-  const color = ramp && typeof ramp === "object" ? ownValue(ramp, ownValue(RAMP_KEY, family)) : null;
-  return typeof color === "string" && HEX_RE.test(color) ? color.toLowerCase() : null;
-}
-
-/** The shadows' colors: with look.ghost.tint "family" the family's on the world's ramp (pass warm white, run amber,
- * RPO gold under the lights); else the caller's team ("team"), the field's paint ("neutral") or the look's own; a
- * darker edge so a dashed line still reads on the turf. */
-export function shadowPaint(ctx, team = null, family = null) {
-  const ramp = rampColor(ctx.look, family);
-  if (ramp) return { core: ramp, edge: mixHex(ramp, "#000000", EDGE_DARK) };
-  const { fill, stroke } = ctx.look.ghost;
-  if (fill === "team") {
-    const edge = paintOf(ctx, team ?? ctx.paints.left).edge;
-    return { edge, core: mixHex(edge, stroke, CORE_MIX) };
-  }
-  const core = fill === "neutral" ? ctx.look.field.paint : fill;
+/** A shadow's colours (4b): its rank's on the world's ramp (#1 amber, #2 warm white; never a team's), and a darker
+ * ring so the thin dashes hold on white paint. */
+export function shadowPaint(ctx, rank = 1) {
+  const core = rankColor(rank, plays(ctx));
   return { core, edge: mixHex(core, "#000000", EDGE_DARK) };
 }
 
-function shadowStyle(ctx, step, paint) {
-  const base = strokeStyle(ctx, ownValue({ arc: "arc", ground: "ground" }, step.t) ?? "mark", null);
-  const coreW = base.coreW * WIDTH.core;
-  const edgeW = coreW + WIDTH.edgeExtra;
-  const style = ctx.look.ghost.style;
-  const [on, off] = ownValue(DASH, style) ?? DASH.zone;
-  return { ...base, ...paint, coreW, edgeW, dash: `${r2(on * edgeW)} ${r2(off * edgeW)}`, dashEdge: true,
-    approx: true, soft: false, pixel: true };
+/** A stroke's geometry as the 2D field draws it (fallback-steps): a pass bows up the screen by its height. */
+function geomOf(step, ctx) {
+  if (step.t !== "arc") return { kind: "line", a: ctx.pt(step.from.x, step.from.y), b: ctx.pt(step.to.x, step.to.y) };
+  const a = ctx.pt(step.from.x, step.from.y);
+  const b = ctx.pt(step.to.x, step.to.y, shownHeight(step, step.endH ?? 0));
+  const lift = 2 * step.apex * liftOf(step) * ctx.layout.px;
+  return { kind: "quad", a, c: { px: (a.px + b.px) / 2, py: (a.py + b.py) / 2 - lift }, b };
 }
 
-const partNode = (p) => ({ tag: p.tag, attrs: { ...p.attrs, "data-stroke": p.role },
-  ...(p.children ? { children: p.children } : {}) });
+/** The end mark's path: a small arrowhead at a run's tip, a tick across the spot a pass lands (screen px). */
+function endPath(step, ctx, size) {
+  const [a, b] = [ctx.pt(step.from.x, step.from.y), ctx.pt(step.to.x, step.to.y)];
+  const len = Math.hypot(b.px - a.px, b.py - a.py) || 1;
+  const d = { x: (b.px - a.px) / len, y: (b.py - a.py) / len };
+  const pt = (p) => `${r2(p.x)} ${r2(p.y)}`;
+  if (step.t === "arc") {
+    const half = size / 2;
+    const [p, q] = [{ x: b.px - d.y * half, y: b.py + d.x * half }, { x: b.px + d.y * half, y: b.py - d.x * half }];
+    return `M${pt(p)}L${pt(q)}`;
+  }
+  const wing = (k) => ({ x: b.px - size * (d.x * WING.cos - k * d.y * WING.sin),
+    y: b.py - size * (d.y * WING.cos + k * d.x * WING.sin) });
+  return `M${pt(wing(1))}L${pt({ x: b.px, y: b.py })}L${pt(wing(-1))}`;
+}
 
-function opacityOf(shadow, anyHovered) {
-  if (shadow.hovered) return SHADOW_HOVER_OPACITY;
-  return anyHovered ? r2(shadow.drawing.opacity * HOVER_DIM) : shadow.drawing.opacity;
+/** The thin line's style in this view: plays.shadowPx (scaled with the view), its dashes in px, its end mark size. */
+function lineStyle(ctx) {
+  const p = plays(ctx);
+  const coreW = r2(p.shadowPx * shadowScale(ctx.layout.height));
+  const dash = `${r2(clamp(p.shadowDash[0] * ctx.layout.px, DASH_PX.on))} ${r2(clamp(p.shadowDash[1] * ctx.layout.px,
+    DASH_PX.off))}`;
+  return { coreW, dash, end: clamp(p.targetYd * ctx.layout.px, [END_PX.min, END_PX.max]) };
+}
+
+function strokeNodes(d, paint, st, role) {
+  const common = { d, fill: "none", "stroke-linecap": "butt", "stroke-linejoin": "round" };
+  return [
+    node("path", { ...common, stroke: paint.edge, "stroke-width": r2(st.coreW + CASING.extraPx),
+      "stroke-opacity": CASING.opacity, ...(role === "line" ? { "stroke-dasharray": st.dash } : {}),
+      "data-stroke": "edge", "data-role": role }),
+    node("path", { ...common, stroke: paint.core, "stroke-width": st.coreW,
+      ...(role === "line" ? { "stroke-dasharray": st.dash } : {}), "data-stroke": "core", "data-role": role }),
+  ];
+}
+
+function opacityOf(shadow, anyHovered, ctx) {
+  const p = plays(ctx);
+  if (shadow.hovered) return p.hoverOpacity;
+  const own = r2(shadowOpacity(shadow.drawing.opacity, p));
+  return anyHovered ? r2(own * HOVER_DIM) : own;
 }
 
 function zoneOf(shadow, ctx, anyHovered) {
-  const paint = shadowPaint(ctx, shadow.drawing.team, shadow.family);
-  const steps = shadow.drawing.steps;
-  const kids = steps.flatMap((step) => stepParts(step, ctx, shadowStyle(ctx, step, paint)).map(partNode));
+  const step = shadow.drawing.steps[0];
+  const paint = shadowPaint(ctx, shadow.rank);
+  const st = lineStyle(ctx);
+  const kids = [...strokeNodes(subPath(geomOf(step, ctx), 1), paint, st, "line"),
+    ...strokeNodes(endPath(step, ctx, st.end), paint, st, "end")];
   return { key: shadow.leaf, leaf: shadow.leaf, rank: shadow.rank, dir: shadow.drawing.dir, hovered: shadow.hovered,
-    opacity: opacityOf(shadow, anyHovered), origin: ctx.pt(steps[0].from.x, steps[0].from.y),
+    opacity: opacityOf(shadow, anyHovered, ctx), origin: ctx.pt(step.from.x, step.from.y),
     node: node("g", { class: "sc-fb-shadow", "data-part": "shadow", "data-leaf": shadow.leaf,
       "data-rank": shadow.rank ?? "", "data-hovered": String(shadow.hovered) }, kids) };
 }
 
 const showsLabels = (ctx) => ctx.look.ghost.labels && ctx.look.labels.renderer !== "none";
 
-/** A shadow's words on a dashed plate: what the model thinks, not what happened. Text stays fully legible. */
+/** A shadow's words on a tagged plate (4b): "NEXT 1" on a tab in its colour, then its words; fallback-words places
+ * it. Text stays fully legible. */
 function labelOf(shadow, ctx, anyHovered) {
-  const at = ctx.pt(shadow.label.at.x, shadow.label.at.y);
   const cls = `${ctx.look.labels.className} sc-ghost-label rank-${shadow.rank ?? 0} sc-fb-shadow-label`
     + ` family-${shadow.family}`;
-  const tag = tagNode({ at, text: shadow.label.text, size: tagSize(ctx, "s"), part: "shadow-label", cls });
-  const [plate, text] = tag.children;
-  const dashed = { ...plate, attrs: { ...plate.attrs, style: `${plate.attrs.style}; stroke-dasharray: ${PLATE_DASH}` } };
-  return { key: shadow.leaf, leaf: shadow.leaf, rank: shadow.rank, opacity: anyHovered && !shadow.hovered ? LABEL_DIM : 1,
-    node: { ...tag, attrs: { ...tag.attrs, "data-leaf": shadow.leaf, "data-hovered": String(shadow.hovered) },
-      children: [dashed, text] } };
+  const plate = plateNode({ tag: shadow.label.tag ?? "", body: shadow.label.body ?? shadow.label.text,
+    tab: shadowPaint(ctx, shadow.rank).core, size: tagSize(ctx, "s"), part: "shadow-label", cls,
+    role: `next-${shadow.rank ?? 0}` });
+  const opacity = anyHovered && !shadow.hovered ? LABEL_DIM : 1;
+  return { key: shadow.leaf, leaf: shadow.leaf, rank: shadow.rank, opacity,
+    node: { ...plate, attrs: { ...plate.attrs, "data-leaf": shadow.leaf, "data-hovered": String(shadow.hovered) } } };
 }
 
 /**
- * The shadows as keyed SVG specs: `zones` (one group of dashed strokes per play, `opacity` its target: 50% and 35%,
- * the hovered one lit and the rest stepped back; `origin` the line of scrimmage on screen, where it grows from) and
- * `labels` (their words). Keys are the plays, so a shadow that stays keeps its element and fades between opacities.
+ * The shadows as keyed SVG specs: `zones` (one group per play, its thin dashed line and end mark, `opacity` its
+ * target: #1 louder than #2, the hovered one lit and the rest stepped back; `origin` where it starts on screen, where
+ * it grows from) and `labels` (their tagged plates). Keys are the plays, so a shadow that stays keeps its element and
+ * fades between opacities.
  */
 export function shadowLayer(shadows, ctx) {
   const list = Array.isArray(shadows) ? shadows : [];

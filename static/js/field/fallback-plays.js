@@ -17,8 +17,11 @@ import { verdictText } from "../model/verdict.js";
 import { liftToLuminance, mixHex } from "../theme/team-colors.js";
 import { FIELD } from "./coords.js";
 import { r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
+import { plateNode } from "./fallback-plates.js";
 import { shownHeight, stepParts, subPath, viewMetrics } from "./fallback-steps.js";
 import { placePlayLabel } from "./paths.js";
+import { resolvePlayLook } from "./play-style.js";
+import { LAST_TAG } from "./shadows.js";
 import { ballAt } from "./timing.js";
 
 const CORE_MIX = 0.65;
@@ -55,19 +58,22 @@ function edgeColor(spec, paint) {
   return spec.edge;
 }
 
-/** Colors, widths, dash and opacity of one step's strokes. */
-export function strokeStyle(ctx, kind, team, { approx = false, ghosted = false, role = null } = {}) {
+/** Colors, widths, dash and opacity of one step's strokes; `last` (4b: the previous play while his next call is up)
+ * draws it in muted steel (look.world.plays.last), never amber or warm white. */
+export function strokeStyle(ctx, kind, team, { approx = false, ghosted = false, role = null, last = false } = {}) {
   const spec = ctx.look.strokes[kind];
   const march = role === "march";
-  const edge = march ? mixHex(ctx.look.lines.ltg.color, "#000000", 0.45) : edgeColor(spec, paintOf(ctx, team));
-  const core = march ? ctx.look.lines.ltg.color : mixHex(edge, spec.core, CORE_MIX);
+  const steel = last ? resolvePlayLook(ctx.look).last : null;
+  const own = march ? mixHex(ctx.look.lines.ltg.color, "#000000", 0.45) : edgeColor(spec, paintOf(ctx, team));
+  const edge = steel?.edge ?? own;
+  const core = steel?.core ?? (march ? ctx.look.lines.ltg.color : mixHex(edge, spec.core, CORE_MIX));
   const coreW = widthOf(ctx, spec);
   const loose = approx || ghosted || march;
   const dash = loose ? dashFor(march ? "dashed" : spec.approx, coreW) : spec.dash ? spec.dash.join(" ") : null;
   return {
     edge, core, coreW, edgeW: coreW + Math.max(WIDTH.edgeMin, coreW * WIDTH.edgeK), dash, approx: loose,
     approxStyle: spec.approx, soft: loose && spec.approx === "soft", pixel: spec.approx === "pixel" || ctx.pixel,
-    opacity: ghosted ? spec.ghostedOpacity : spec.opacity,
+    opacity: ghosted ? spec.ghostedOpacity : spec.opacity, last,
   };
 }
 
@@ -142,6 +148,16 @@ function labelSpec(label, ctx, side) {
   return { text: label.text, at, side, node: marked };
 }
 
+/** 4b: the previous play's words on the LAST plate, its verdict on a second line in the same muted plate. */
+function lastSpec(label, ctx, verdict, words) {
+  if (!label?.text || !showsWords(ctx)) return null;
+  const sub = typeof words === "string" && words.trim() ? words : verdictText(verdict) || "";
+  const plate = plateNode({ tag: LAST_TAG, body: label.text, sub, tab: resolvePlayLook(ctx.look).last.core,
+    tone: "muted", size: tagSize(ctx, "s"), part: "play-label", role: "last",
+    cls: `${ctx.look.labels.className} sc-fb-play-label is-last` });
+  return { text: label.text, at: ctx.pt(label.at.x, label.at.y), side: 1, node: plate };
+}
+
 function verdictSpec(label, ctx, verdict) {
   const text = verdictText(verdict);
   if (!text || !label) return null;
@@ -152,10 +168,10 @@ function verdictSpec(label, ctx, verdict) {
 
 // ---------------------------------------------------------------- the play
 /** `badge` is the screen direction a lettered mark (TD, INT) sits from its spot: away from the play's words. */
-function stepSpec(step, index, team, ctx, badge) {
+function stepSpec(step, index, team, ctx, badge, last) {
   const kind = STROKE_OF[step.t] ?? "mark";
   const style = strokeStyle(ctx, kind, team, { approx: Boolean(step.approx), ghosted: Boolean(step.ghosted),
-    role: step.role });
+    role: step.role, last });
   return { index, t: step.t, role: step.role, ghosted: Boolean(step.ghosted), approx: Boolean(step.approx), team,
     opacity: style.opacity, parts: stepParts(step, ctx, { ...style, badge }) };
 }
@@ -166,18 +182,21 @@ function stepSpec(step, index, team, ctx, badge) {
  * small field its words are deep, so they step further off the ball; `side` 1 when it sits below the end of the play
  * on screen, -1 above), verdictNode (on the far side of the words from the play), words (that label in field yards,
  * what the shadows' words keep clear of). A part is { role, tag, attrs (its finished state), anim }. `labelPx` is the
- * tags' measured size (the label model's when null). Never mutates the row or the drawing.
+ * tags' measured size (the label model's when null). `last` (4b, while his next call is up): the play in muted steel
+ * and its words on the LAST plate with the verdict (`verdictWords`, else the verdict's plain words) under them.
+ * Never mutates the row or the drawing.
  */
-export function playSpec(drawing, row, ctx, { verdict = null, labelPx = null } = {}) {
+export function playSpec(drawing, row, ctx, { verdict = null, labelPx = null, last = false,
+  verdictWords = null } = {}) {
   const carriers = carriersOf(row, drawing);
   const words = placePlayLabel(drawing, viewMetrics(ctx, drawing.ballStart?.x, labelPx));
   const side = wordsSide(words, drawing);
-  const label = labelSpec(words, ctx, side);
+  const label = last ? lastSpec(words, ctx, verdict, verdictWords) : labelSpec(words, ctx, side);
   return {
     seq: drawing.seq, drive: row.drive ?? null, team: drawing.team,
-    steps: drawing.steps.map((step, i) => stepSpec(step, i, carriers[i], ctx, -side)),
+    steps: drawing.steps.map((step, i) => stepSpec(step, i, carriers[i], ctx, -side, last)),
     label,
-    verdictNode: verdictSpec(label, ctx, verdict),
+    verdictNode: last ? null : verdictSpec(label, ctx, verdict),
     words,
   };
 }

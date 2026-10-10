@@ -9,12 +9,12 @@ import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
 import { resolveLook } from "../../static/js/theme/look-schema.js";
 import { mixHex, teamPaint } from "../../static/js/theme/team-colors.js";
 import { buildDrawing, situationFromRow } from "../../static/js/field/paths.js";
-import { buildShadowPlays, shadowForLeaf } from "../../static/js/field/shadows.js";
+import { buildShadowPlays } from "../../static/js/field/shadows.js";
 import { buildGhostSet } from "../../static/js/field/ghosts.js";
 import { CROSSBAR_YD } from "../../static/js/field/grammar.js";
 import {
-  CORE_MIX, DASH_YD, EDGE_WIDTH, GHOSTED, PLAY_LOOK, SOFT, TONE_FALLBACK, carriersOf, chipSpot, dimOpacityOf, markPop,
-  pathOf, playParts, resolvePlayLook, revealAt, shadowInputOf, shadowParts, trailStyle,
+  CORE_MIX, DASH_YD, EDGE_WIDTH, GHOSTED, PLAY_LOOK, SOFT, TONE_FALLBACK, carriersOf, chipSpot, dimOpacityOf,
+  lastPlayParts, markPop, pathOf, playParts, resolvePlayLook, revealAt, shadowInputOf, trailStyle,
 } from "../../static/js/field/play-style.js";
 import { loadJson } from "./fixtures.mjs";
 
@@ -183,33 +183,6 @@ test("pathOf and revealAt: the tip of a revealed path is where the ball is (samp
   assert.equal(pathOf({ t: "mark", at: { x: 1, y: 2 } }), null);
 });
 
-test("shadowParts: one dashed, translucent stroke in the shadow tint; the hovered one lit", () => {
-  const shadows = buildShadowPlays({ leaves: [{ leaf: "dropback_deep", p: 0.47 }, { leaf: "run_inside", p: 0.2 }] },
-    D25, { hover: "screen" });
-  const env = envFor();
-  const [deep, run] = shadows.map((s) => shadowParts(s, NEUTRAL_LOOK, env));
-  assert.equal(deep.length, 2, "the arc, then the ring it is aimed at");
-  assert.deepEqual(deep[0].dash, PLAY_LOOK.shadowDash);
-  assert.equal(deep[0].width, NEUTRAL_LOOK.strokes.arc.widthPx * PLAY_LOOK.shadowWidth);
-  const ring = deep[1];
-  assert.ok(ring.dash && ring.lag > 0 && ring.path.points.every((p) => p.h === 0));
-  const [cx, cy] = [shadows[0].drawing.steps[0].to.x, shadows[0].drawing.steps[0].to.y];
-  assert.ok(ring.path.points.every((p) => Math.abs(Math.hypot(p.x - cx, p.y - cy) - PLAY_LOOK.targetYd) < 1e-9));
-  assert.equal(run[1].dash, null, "a run's chevron");
-  assert.equal(run[1].path.points[1].x, shadows[1].drawing.steps[0].to.x, "its tip at the end of the run");
-  assert.equal(deep[0].color, NEUTRAL_LOOK.ghost.stroke, "ghost.fill neutral: the ghost stroke color");
-  assert.equal(deep[0].opacity, 0.5);
-  assert.equal(run[0].opacity, 0.35);
-  assert.ok(run[0].path.points.every((p) => p.h === 0) && deep[0].path.points.some((p) => p.h > 1));
-  assert.ok(run[0].order < deep[0].order);
-  const hovered = shadowParts(shadowForLeaf("screen", 0.05, D25, 4), NEUTRAL_LOOK, env);
-  assert.equal(hovered[0].opacity, PLAY_LOOK.hoverOpacity);
-  const team = resolveLook({ ghost: { fill: "team" } });
-  const tinted = shadowParts(shadows[0], team, envFor(team));
-  assert.equal(tinted[0].color, mixHex(paintFor(team)("DAL").edge, team.ghost.stroke, CORE_MIX));
-  assert.deepEqual(shadowParts(null, NEUTRAL_LOOK, env), []);
-});
-
 test("shadowInputOf: a GhostSet (or a shadow input) as buildShadowPlays' source and situation", () => {
   const set = buildGhostSet({ leaves: [{ leaf: "run_inside", p: 0.27 }, { leaf: "pa_short", p: 0.16 },
     { leaf: "dropback_short", p: 0.14 }], all: [{ leaf: "screen", p: 0.05 }, { leaf: "run_inside", p: 0.27 }] }, D25);
@@ -276,9 +249,6 @@ test("a stroke's edge may be the team's alternate or a color of its own", () => 
   assert.equal(run.color, paintFor(alt)("DAL").alt);
   const pass = playParts(buildDrawing(row(3)), row(3), alt, env).find((p) => p.layer === "edge" && p.step === 0);
   assert.equal(pass.color, "#123456");
-  const own = resolveLook({ ghost: { fill: "#abcdef" } });
-  const shadow = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.3 }] }, D25)[0];
-  assert.equal(shadowParts(shadow, own, envFor(own))[0].color, "#abcdef");
 });
 
 test("v1.4 (W6): a kick on display dims further once the next call is up (look.world.plays.kickDim)", () => {
@@ -292,83 +262,36 @@ test("v1.4 (W6): a kick on display dims further once the next call is up (look.w
   assert.equal(resolvePlayLook({ world: { plays: { kickDim: 2 } } }).kickDim, 1, "out of range: the default");
 });
 
-// ---------------------------------------------------------------- G3-1: two shadow plays that read as two plays
-const RAMP = Object.freeze({ pass: "#fff3d1", run: "#ffb21e", rpo: "#ffd27a" });
-const CASING = Object.freeze({ color: "#0d1424", opacity: 0.4, width: 1.8 });
-const familyLook = (plays = {}) => resolveLook({ ghost: { tint: "family" },
-  world: { plays: { families: RAMP, casing: CASING, shadowWidth: 3.2, ...plays } } });
-/** A shadow's own parts: its stroke and end cue (no casing), by type and order. */
-const lit = (list) => list.filter((p) => p.layer !== "casing");
-const casings = (list) => list.filter((p) => p.layer === "casing");
-
-test("G3-1: ghost.tint family colors each shadow by its family on the board's ramp: pass warm, run amber, RPO gold", () => {
-  const look = familyLook();
-  const env = envFor(look);
-  const shadows = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.28 }, { leaf: "pa_short", p: 0.16 },
-    { leaf: "rpo_run", p: 0.05 }, { leaf: "dropback_deep", p: 0.04 }, { leaf: "screen", p: 0.03 }] }, D25,
-  { hover: "rpo_run" });
-  const color = (leaf) => lit(shadowParts(shadows.find((s) => s.leaf === leaf), look, env)).map((p) => p.color);
-  assert.deepEqual(color("run_inside"), [RAMP.run, RAMP.run], "the run's line and its chevron in amber");
-  assert.deepEqual(color("pa_short"), [RAMP.pass, RAMP.pass], "play-action is a pass: warm white");
-  assert.deepEqual(color("rpo_run"), [RAMP.rpo, RAMP.rpo], "the RPO in gold, between the two");
-  for (const leaf of ["dropback_deep", "screen"]) {
-    const one = shadowForLeaf(leaf, 0.04, D25, 4);
-    assert.deepEqual(lit(shadowParts(one, look, env)).map((p) => p.color), [RAMP.pass, RAMP.pass], leaf);
-  }
-  const partial = resolveLook({ ghost: { tint: "family", stroke: "#abcdef" }, world: { plays: { families: { run: RAMP.run } } } });
-  assert.equal(lit(shadowParts(shadows[1], partial, envFor(partial)))[0].color, "#abcdef",
-    "a family the world gives no tone takes ghost.stroke (the fallback the 2D field draws with)");
-});
-
-test("G3-1: shadows stay dashed and translucent (0.5, 0.35) and wider; a dark casing rings each dashed stroke", () => {
-  const look = familyLook();
-  const env = envFor(look);
-  const [run, pa] = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.28 }, { leaf: "pa_short", p: 0.16 }] }, D25);
-  const runParts = shadowParts(run, look, env);
-  const paParts = shadowParts(pa, look, env);
-  const [runStroke] = lit(runParts);
-  const [paStroke, ring] = lit(paParts);
-  assert.equal(runStroke.opacity, 0.5);
-  assert.equal(paStroke.opacity, 0.35);
-  assert.deepEqual(paStroke.dash, PLAY_LOOK.shadowDash, "dashed, never solid (play-drawing.md 4)");
-  near(runStroke.width, look.strokes.ground.widthPx * 3.2, "the world's shadowWidth (a px-wide ground here)");
-  near(paStroke.width, look.strokes.arc.widthPx * 3.2);
-  for (const [own, list] of [[runParts, lit(runParts)], [paParts, lit(paParts)]]) {
-    const under = casings(own);
-    assert.equal(under.length, list.length, "one casing per part: the stroke and its end cue");
-    under.forEach((c, i) => {
-      const p = list[i];
-      assert.equal(c.path, p.path, "the same path");
-      assert.equal(c.color, CASING.color);
-      assert.equal(c.opacity, CASING.opacity);
-      near(c.width, p.width * CASING.width, "1.8x the stroke's width");
-      near(c.inner, 1 / CASING.width, "a ring outside the stroke: the stroke's own color is never darkened");
-      assert.deepEqual(c.dash, p.dash, "dashed with its stroke");
-      assert.equal(c.lag, p.lag, "and drawn as it grows");
-      assert.ok(c.order < p.order, "under it");
-      assert.equal(c.units, p.units);
+// ---------------------------------------------------------------- 4b: the previous play in steel
+test("4b: the previous play, while the next call is up, draws every part in muted steel, its dashes as they were", () => {
+  const env = envFor();
+  for (const seq of [3, 5, 8, 42]) {
+    const plain = parts(seq);
+    const steel = lastPlayParts(buildDrawing(row(seq)), row(seq), NEUTRAL_LOOK, env);
+    assert.equal(steel.length, plain.length, `#${seq}: the same parts`);
+    steel.forEach((p, i) => {
+      if (p.type === "track") assert.equal(p.color, plain[i].color, "an arc's ground track keeps its shade");
+      else assert.equal(p.color, p.layer === "edge" ? PLAY_LOOK.last.edge : PLAY_LOOK.last.core, `#${seq} ${p.type}`);
+      assert.deepEqual(p.dash, plain[i].dash, "a no-play's or an estimate's dashes keep their meaning");
+      assert.equal(p.opacity, plain[i].opacity);
     });
   }
-  assert.ok(ring.dash, "the pass's target ring is dashed too");
-  const chevron = lit(runParts)[1];
-  near(chevron.width, look.strokes.ground.widthPx * 1.6, "a wide shadow's chevron stays a chevron (at most 1.6x)");
-  near(lit(shadowParts(run, NEUTRAL_LOOK, envFor()))[1].width, NEUTRAL_LOOK.strokes.ground.widthPx
-    * PLAY_LOOK.shadowWidth, "the neutral one is as wide as its stroke");
+  const own = resolveLook({ world: { plays: { last: { core: "#8899AA", edge: "nope" } } } });
+  const custom = lastPlayParts(buildDrawing(row(3)), row(3), own, envFor(own));
+  assert.ok(custom.filter((p) => p.layer === "core" && p.type !== "track").every((p) => p.color === "#8899aa"));
+  assert.ok(custom.filter((p) => p.layer === "edge").every((p) => p.color === PLAY_LOOK.last.edge), "a bad hex: default");
 });
 
-test("G3-1: without tint family (the neutral world) a shadow keeps ghost.stroke and no casing; bad values fall back", () => {
-  const env = envFor();
-  const [run] = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.28 }] }, D25);
-  const plain = shadowParts(run, NEUTRAL_LOOK, env);
-  assert.equal(casings(plain).length, 0);
-  assert.ok(plain.every((p) => p.color === NEUTRAL_LOOK.ghost.stroke));
-  const fill = resolveLook({ ghost: { tint: "fill" }, world: { plays: { families: RAMP } } });
-  assert.ok(shadowParts(run, fill, envFor(fill)).every((p) => p.color === fill.ghost.stroke), "tint fill: one color");
-  const bad = resolvePlayLook({ world: { plays: { families: { pass: "white", run: "#FFB21E", nope: "#000000" },
-    casing: { color: "#00000", opacity: 2, width: 9 } } } });
-  assert.deepEqual(bad.families, { pass: null, run: "#ffb21e", rpo: null }, "hex colors only, lowercased");
-  assert.deepEqual(bad.casing, { color: null, opacity: PLAY_LOOK.casing.opacity, width: PLAY_LOOK.casing.width });
-  assert.deepEqual(resolvePlayLook(NEUTRAL_LOOK).casing, { color: null, opacity: 0.4, width: 1.8 }, "no casing by default");
+test("4b: rank colours and the thin stroke resolve from the world, a bad value takes the default", () => {
+  assert.deepEqual(resolvePlayLook(NEUTRAL_LOOK).ranks, [...PLAY_LOOK.ranks]);
+  const look = resolveLook({ world: { plays: { ranks: ["#FFB21E", "#fff3d1"], shadowPx: 2, shadowDash: [0.5, 0.5] } } });
+  const plays = resolvePlayLook(look);
+  assert.deepEqual([...plays.ranks], ["#ffb21e", "#fff3d1"]);
+  assert.equal(plays.shadowPx, 2);
+  assert.deepEqual(plays.shadowDash, [0.5, 0.5]);
+  const bad = resolvePlayLook(resolveLook({ world: { plays: { ranks: ["amber"], shadowPx: 99 } } }));
+  assert.deepEqual([...bad.ranks], [...PLAY_LOOK.ranks]);
+  assert.equal(bad.shadowPx, PLAY_LOOK.shadowPx);
 });
 
 test("G3-5: every kick kind the server sends (timeline.py KICKS) dims as a kick, a missed field goal included", () => {

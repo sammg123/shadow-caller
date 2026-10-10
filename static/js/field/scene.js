@@ -337,7 +337,7 @@ function debugState(c) {
     camera: s.cams.mode(), situation: c.st.review === null ? c.st.live.situation : c.st.reviewSituation, info,
     dpr: s.rig.dpr(), extra: { tier: c.tier, gpu: c.gpu, ball: ballOf(c), shot: s.cams.activeMode(), pose: s.cams.pose(),
       lens: s.cams.lens(), reviewSeq: c.st.review, running: s.rig.running(), programs: info.programs, cpuMs: info.cpuMs,
-      warnings: [...c.st.warnings] } });
+      warnings: [...c.st.warnings], clarity: c.layers.ghosts.clarity?.() ?? null } });
 }
 
 /** G2-9: a warning is kept (debugState().warnings) as well as emitted, so one raised before anyone listens is seen. */

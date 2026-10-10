@@ -45,10 +45,20 @@ export function fakeLabels(kind = "css2d") {
     kind, live,
     add(pt, text, cls = "") {
       if (kind === "none") return null;
-      const h = { pt, cls, element: kind === "css2d" ? fakeElement(text, cls) : null,
+      const h = { pt, cls, element: kind === "css2d" ? fakeElement(text, cls) : null, words: null, offset: null,
+        leader: null,
         object: { visible: true, center: { x: 0.5, y: 1, set(x, y) { this.x = x; this.y = y; } },
           material: kind === "css2d" ? undefined : { opacity: 1 } },
-        move(next) { h.pt = next; }, remove() { labels.remove(h); } };
+        move(next) { h.pt = next; }, remove() { labels.remove(h); },
+        // play-drawing.md 4b (labels.js): a plate's tag, body and second line, and its pixel offset with a leader
+        setWords(words, plain = "") {
+          h.words = words ? { ...words } : null;
+          if (h.element) h.element.textContent = [words?.tag, words?.body ?? plain, words?.sub].filter(Boolean).join(" · ");
+        },
+        place({ dx = 0, dy = 0, leader = null } = {}) {
+          h.offset = { dx, dy };
+          h.leader = leader;
+        } };
       h.text = () => (h.element ? h.element.textContent : text);
       live.push(h);
       return h;

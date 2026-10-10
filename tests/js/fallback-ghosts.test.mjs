@@ -1,6 +1,7 @@
 // field/fallback-ghosts.js (A6): before a caller snap, his top 2 plays as shadow plays on the 2D field
-// (docs/design/play-drawing.md 4, binding): the same shapes as real plays, from the line of scrimmage, dashed and
-// translucent, with "1 · Inside run (A/B gap) · 27%" underneath; a hovered play lit (and drawn when outside the top 2).
+// (docs/design/play-drawing.md 4 and 4b, binding): the same shapes as real plays, each past the ball in its own lane,
+// thin and dashed, #1 amber and #2 warm white, each with a tagged plate "NEXT 1 · Inside run (A/B gap) · 27%"; a
+// hovered play lit (and drawn when outside the top 2).
 import assert from "node:assert/strict";
 import test from "node:test";
 
@@ -57,50 +58,60 @@ test("the conductor's GhostSet becomes a shadow request: his order, his odds, th
   assert.deepEqual(shownLeaves(null), []);
 });
 
-test("the top 2 as shadow plays: a run a line on the turf, a pass an arc, both from the line of scrimmage", () => {
+test("the top 2 as shadow plays: a run a line on the turf, a pass an arc, each from 1.5 yd past the ball in its lane", () => {
   const ctx = ctxFor();
   const layer = layerOf();
-  assert.deepEqual(layer.zones.map((z) => [z.key, z.rank, z.opacity]), [["run_inside", 1, 0.5], ["pa_short", 2, 0.35]]);
+  assert.deepEqual(layer.zones.map((z) => [z.key, z.rank, z.opacity]), [["run_inside", 1, 0.95], ["pa_short", 2, 0.83]],
+    "4b: thin lines carry more ink, #2 slightly fainter");
   const [run, pass] = layer.zones;
   assert.deepEqual([run.node.attrs.class, run.node.attrs["data-part"], run.node.attrs["data-leaf"]],
     ["sc-fb-shadow", "shadow", "run_inside"]);
-  const line = walk([run.node]).find((n) => n.attrs?.["data-stroke"] === "core");
+  const line = walk([run.node]).find((n) => n.attrs?.["data-stroke"] === "core" && n.attrs["data-role"] === "line");
   const [ax, ay, bx, by] = line.attrs.d.match(/-?\d+(\.\d+)?/g).map(Number);
-  const [a, b] = [ctx.pt(30, C), ctx.pt(34, C)];
-  near(ax, a.px, "from the line of scrimmage");
+  const [a, b] = [ctx.pt(31.5, C - 2), ctx.pt(35.5, C - 2)];
+  near(ax, a.px, "1.5 yd past the line of scrimmage, in the near lane");
   near(ay, a.py);
-  near(bx, b.px, "4 yards downfield, straight ahead (A/B gap)");
+  near(bx, b.px, "4 yards on, straight ahead (A/B gap)");
   near(by, b.py);
-  const arc = walk([pass.node]).find((n) => n.attrs?.["data-stroke"] === "core");
+  const arc = walk([pass.node]).find((n) => n.attrs?.["data-stroke"] === "core" && n.attrs["data-role"] === "line");
   assert.match(arc.attrs.d, /Q/, "play-action short flies: an arc");
-  near(Number(arc.attrs.d.match(/-?\d+(\.\d+)?/g)[4]), ctx.pt(36, C).px, "6 air yards, the short bucket's typical");
+  near(Number(arc.attrs.d.match(/-?\d+(\.\d+)?/g)[4]), ctx.pt(36, C + 2).px, "6 air yards, the far lane");
   assert.equal(run.dir, 1);
 });
 
-test("shadows read as shadows: every stroke dashed, edge and core alike, never solid", () => {
+test("4b: shadows are thin dashed lines over a thin dark ring, a small arrowhead on a run, a tick on a pass", () => {
   for (const zone of layerOf().zones) {
     const all = strokes(zone);
-    assert.ok(all.length >= 2, zone.key);
-    assert.ok(all.every((n) => n.attrs["stroke-dasharray"]), `${zone.key}: dashed`);
+    const lines = all.filter((n) => n.attrs["data-role"] === "line");
+    assert.equal(lines.length, 2, `${zone.key}: a core and its ring`);
+    assert.ok(lines.every((n) => n.attrs["stroke-dasharray"]), `${zone.key}: dashed`);
+    const core = lines.find((n) => n.attrs["data-stroke"] === "core");
+    assert.ok(Number(core.attrs["stroke-width"]) >= 2 && Number(core.attrs["stroke-width"]) <= 3.5, "thin");
+    assert.ok(Number(lines.find((n) => n.attrs["data-stroke"] === "edge").attrs["stroke-width"])
+      <= Number(core.attrs["stroke-width"]) + 3, "a thin ring, never a band");
+    const end = all.find((n) => n.attrs["data-role"] === "end" && n.attrs["data-stroke"] === "core");
+    assert.ok(end, `${zone.key}: an end mark`);
+    assert.equal((end.attrs.d.match(/L/g) ?? []).length, zone.key === "run_inside" ? 2 : 1, "arrowhead / tick");
     assert.equal(zone.node.attrs["data-hovered"], "false");
   }
 });
 
-test("text underneath each shadow: rank, the engine's name, his percentage, one line apart, never overlapping", () => {
+test("each plate: 'NEXT 1' on a tab in its colour, then its words; a tagged plate placed later in screen space", () => {
   const ctx = ctxFor();
   const shadows = shadowPlaysFor(INPUT, ctx);
   const layer = shadowLayer(shadows, ctx);
-  assert.deepEqual(layer.labels.map(textOf), ["1 · Inside run (A/B gap) · 27%", "2 · PA short (0–9) · 16%"]);
+  const words = (l) => walk([l.node]).filter((n) => n.tag === "text" && n.attrs["data-role"] !== "sep").map((n) => n.text);
+  assert.deepEqual(layer.labels.map(words), [["NEXT 1", "Inside run (A/B gap) · 27%"], ["NEXT 2", "PA short (0–9) · 16%"]]);
   assert.deepEqual(layer.labels.map((l) => [l.key, l.rank, l.opacity]), [["run_inside", 1, 1], ["pa_short", 2, 1]]);
-  const los = ctx.pt(30, C);
-  assert.ok(layer.labels.every((l) => l.node.children[1].attrs.y > los.py), "underneath: toward the near sideline");
-  const m = viewMetrics(ctx, 30);
-  const [p, q] = shadows.map((s) => labelBox(s.label, m));
-  assert.ok(Math.abs(p.v - q.v) >= p.hh + q.hh - 1e-9 || Math.abs(p.u - q.u) >= p.hw + q.hw - 1e-9, "apart");
   const tag = layer.labels[0].node;
   assert.match(tag.attrs.class, /\bsc-ghost-label\b.*\brank-1\b/);
+  assert.match(tag.attrs.class, /\bsc-fb-plate\b/);
   assert.equal(tag.attrs["data-part"], "shadow-label");
-  assert.match(tag.children[0].attrs.style, /stroke-dasharray/, "a dashed plate: a shadow's words");
+  assert.equal(tag.attrs["data-plate"], "next-1");
+  const tab = walk([tag]).find((n) => n.attrs?.["data-role"] === "tab");
+  assert.equal(tab.attrs.fill, shadowPaint(ctx, 1).core, "the tab wears its prediction's colour");
+  assert.equal(walk([layer.labels[1].node]).find((n) => n.attrs?.["data-role"] === "tab").attrs.fill,
+    shadowPaint(ctx, 2).core);
 });
 
 test("hovering a play outside the top 2 draws its shadow too, lit, and dims the others", () => {
@@ -108,31 +119,33 @@ test("hovering a play outside the top 2 draws its shadow too, lit, and dims the 
   assert.deepEqual(layer.zones.map((z) => z.key), ["run_inside", "pa_short", "screen"]);
   const op = Object.fromEntries(layer.zones.map((z) => [z.key, z.opacity]));
   assert.equal(op.screen, SHADOW_HOVER_OPACITY);
-  assert.ok(op.run_inside < 0.5 && op.pa_short < 0.35, "the rest step back");
+  assert.ok(op.run_inside < 0.95 && op.pa_short < 0.83, "the rest step back");
   assert.equal(layer.zones[2].node.attrs["data-hovered"], "true");
-  assert.equal(textOf(layer.labels[2]), "10 · Screen · 2.8%", "his rank and pct1 past the top line");
+  assert.deepEqual(walk([layer.labels[2].node]).filter((n) => n.tag === "text" && n.attrs["data-role"] !== "sep")
+    .map((n) => n.text), ["NEXT 10", "Screen · 2.8%"], "his rank and pct1 past the top line");
   assert.ok(layer.labels[0].opacity < 1 && layer.labels[2].opacity === 1);
   const top = layerOf({ hover: "pa_short" });
   assert.deepEqual(top.zones.map((z) => z.key), ["run_inside", "pa_short"], "a top-2 play is only lit");
   assert.equal(top.zones[1].opacity, SHADOW_HOVER_OPACITY);
-  assert.deepEqual(layerOf({ hover: "not_a_leaf" }).zones.map((z) => z.opacity), [0.5, 0.35]);
+  assert.deepEqual(layerOf({ hover: "not_a_leaf" }).zones.map((z) => z.opacity), [0.95, 0.83]);
 });
 
-test("on 4th down the shadows read 'If he goes' and draw quieter, from the conductor's GhostSet and from a review", () => {
+test("on 4th down the plates read 'If he goes' and the lines draw quieter, from the GhostSet and from a review", () => {
   const fourth = { ...SIT, down: 4, togo: 6 };
   const input = shadowInput(buildGhostSet(ghostInputFromPred(firstSnap.pred), fourth), fourth);
   const ctx = ctxFor();
   const layer = shadowLayer(shadowPlaysFor(input, ctx), ctx);
-  assert.deepEqual(layer.zones.map((z) => [z.key, z.opacity]), [["run_inside", 0.35], ["pa_short", 0.25]]);
-  assert.deepEqual(layer.labels.map(textOf), ["If he goes · 1 · Inside run (A/B gap) · 27%",
-    "If he goes · 2 · PA short (0–9) · 16%"]);
+  assert.deepEqual(layer.zones.map((z) => [z.key, z.opacity]), [["run_inside", 0.83], ["pa_short", 0.75]]);
+  const body = (l) => walk([l.node]).filter((n) => n.tag === "text").map((n) => n.text).join("");
+  assert.deepEqual(layer.labels.map(body), ["NEXT 1 · If he goes · Inside run (A/B gap) · 27%",
+    "NEXT 2 · If he goes · PA short (0–9) · 16%"]);
   const go = rowBySeq(130);
   const review = shadowInput(buildGhostSet(ghostInputFromPred(go.pred), situationFromRow(go)), situationFromRow(go));
-  assert.match(textOf(shadowLayer(shadowPlaysFor(review, ctx), ctx).labels[0]), /^If he goes · 1 · /,
+  assert.match(body(shadowLayer(shadowPlaysFor(review, ctx), ctx).labels[0]), /^NEXT 1 · If he goes · /,
     "reviewing his 4th-and-3 go");
   const request = shadowInput({ source: firstSnap.pred, situation: fourth, leafOrder: META_LEAVES });
   assert.equal(request.situation.down, 4);
-  assert.deepEqual(layerOf().zones.map((z) => z.opacity), [0.5, 0.35], "1st down: as loud as ever");
+  assert.deepEqual(layerOf().zones.map((z) => z.opacity), [0.95, 0.83], "1st down: as loud as ever");
 });
 
 test("the shadows' text keeps clear of the previous play's words, which stay on the field dimmed", () => {
@@ -161,50 +174,20 @@ test("the 2D view as label metrics: straight down from above, a height drawn as 
   assert.equal(wider.length, 2);
 });
 
-test("the world tints the shadows (team, the field's paint, or its own color); they stay dashed", () => {
-  const neutral = shadowPaint(ctxFor());
-  assert.equal(neutral.core, NEUTRAL_LOOK.field.paint);
-  const own = shadowPaint(ctxFor(resolveLook({ ghost: { fill: "#fff3d1" } })));
-  assert.equal(own.core, "#fff3d1");
-  assert.notEqual(own.edge, own.core, "a darker edge keeps it readable on the turf");
-  const team = shadowPaint(ctxFor(resolveLook({ ghost: { fill: "team" } })), "DAL");
-  const dal = ctxFor().paints.byTeam.DAL.edge;
-  assert.equal(team.edge, dal, "the caller's color on the edge");
-  const zone = shadowLayer(shadowPlaysFor(INPUT, ctxFor(resolveLook({ ghost: { fill: "#fff3d1" } }))),
-    ctxFor(resolveLook({ ghost: { fill: "#fff3d1" } }))).zones[0];
-  assert.ok(strokes(zone).some((n) => n.attrs.stroke === "#fff3d1" && n.attrs["stroke-dasharray"]));
-});
-
-test("ghost.tint 'family' (parity with the 3D field): pass warm white, run amber, RPO gold; the fill otherwise", () => {
-  const families = { pass: "#fff3d1", run: "#ffb21e", rpo: "#ffd27a" };
-  const look = resolveLook({ ghost: { tint: "family", fill: "neutral", stroke: "#eeeeee" }, world: { plays: { families } } });
-  const ctx = ctxFor(look);
-  const req = shadowInput({ source: { leaves: [{ leaf: "run_inside", p: 0.3 }, { leaf: "pa_short", p: 0.2 },
-    { leaf: "rpo_run", p: 0.1 }] }, situation: SIT });
-  const layer = shadowLayer(shadowPlaysFor(req, ctx, { hover: "rpo_run" }), ctx);
+test("4b: colour-coded by rank, never by team or family: #1 the world's amber, #2 warm white; dashes square-ended", () => {
+  const ctx = ctxFor(resolveLook({ ghost: { fill: "team", style: "pixel" }, world: { plays: { ranks: ["#ffb21e",
+    "#fff3d1"] } } }));
+  assert.deepEqual(shadowPaint(ctx, 1).core, "#ffb21e");
+  assert.deepEqual(shadowPaint(ctx, 2).core, "#fff3d1");
+  assert.deepEqual(shadowPaint(ctx, 7).core, "#fff3d1", "a hovered third play in warm white");
+  assert.notEqual(shadowPaint(ctx, 1).edge, shadowPaint(ctx, 1).core, "a darker ring keeps it readable on paint");
+  const layer = shadowLayer(shadowPlaysFor(INPUT, ctx), ctx);
+  for (const zone of layer.zones) {
+    assert.ok(strokes(zone).every((n) => n.attrs["stroke-linecap"] === "butt"), "square-ended dashes");
+  }
   const coreOf = (zone) => strokes(zone).find((n) => n.attrs["data-stroke"] === "core").attrs.stroke;
-  assert.deepEqual(layer.zones.map((z) => [z.key, coreOf(z)]),
-    [["run_inside", "#ffb21e"], ["pa_short", "#fff3d1"], ["rpo_run", "#ffd27a"]]);
-  for (const zone of layer.zones) assert.ok(strokes(zone).every((n) => n.attrs["stroke-dasharray"]), "still dashed");
-  assert.match(layer.labels[0].node.attrs.class, /\bfamily-run\b/, "the words carry their family for the world's CSS");
-  assert.equal(shadowPaint(ctx, null, "screen").core, "#fff3d1", "a screen is a pass on the ramp");
-  const partial = resolveLook({ ghost: { tint: "family", fill: "#123456" }, world: { plays: { families: { run: "#ffb21e" } } } });
-  assert.equal(shadowPaint(ctxFor(partial), null, "pa").core, "#123456", "a family the ramp leaves out: the fill");
-  assert.equal(shadowPaint(ctxFor(resolveLook({ world: { plays: { families } } })), null, "run").core,
-    NEUTRAL_LOOK.field.paint, "no tint 'family': the ghost fill as before");
-  const odd = resolveLook({ ghost: { tint: "family" }, world: { plays: { families: { run: "orange" } } } });
-  assert.equal(shadowPaint(ctxFor(odd), null, "run").core, NEUTRAL_LOOK.field.paint, "not a color: ignored");
-});
-
-test("shadow dashes are square-ended, finer in a pixel or hatch look, like an LED board's dots", () => {
-  const dashOf = (style) => {
-    const ctx = ctxFor(resolveLook({ ghost: { style } }));
-    const zone = shadowLayer(shadowPlaysFor(INPUT, ctx), ctx).zones[0];
-    assert.ok(strokes(zone).every((n) => n.attrs["stroke-linecap"] === "butt" && n.attrs["stroke-dasharray"]), style);
-    return strokes(zone)[0].attrs["stroke-dasharray"].split(" ").map(Number);
-  };
-  const [zoneOn] = dashOf("zone");
-  assert.ok(dashOf("pixel")[0] < zoneOn && dashOf("hatch")[0] < zoneOn);
+  assert.deepEqual(layer.zones.map(coreOf), ["#ffb21e", "#fff3d1"]);
+  assert.deepEqual(shadowPaint(ctxFor()).core, "#ffb21e", "the default ramp: the board's amber for #1");
 });
 
 test("labels follow the look: none when ghost.labels is false or labels.renderer is none", () => {

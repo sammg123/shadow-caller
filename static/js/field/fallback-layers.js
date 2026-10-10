@@ -12,10 +12,11 @@ import { TAG_PAD, fieldNodes, situationNodes, tagNode, tagSize } from "./fallbac
 import { shadowLayer, shadowPlaysFor } from "./fallback-ghosts.js";
 import { playNode, playSpec } from "./fallback-plays.js";
 import { buildNode, declutter, fitTags, patchInto, renderInto } from "./fallback-svg.js";
+import { placeWords } from "./fallback-words.js";
 
 const BALL_PARTS = Object.freeze(["ball", "ball-shadow", "ball-halo"]);
-/** The previous play's words while his shadows show: dimmed with it, still readable (4.5:1 on either world's plate). */
-const LABEL_DIM = 0.65;
+/** The previous play's LAST plate while his shadows show (4b): muted, still readable. */
+const LABEL_DIM = 0.9;
 /** Measured on this text: what the shadows' words look like (a rank, a name, a percentage). */
 const PROBE_TEXT = "1 · Inside run (A/B gap) · 27%";
 const LINE_GAP_PX = 4;
@@ -36,12 +37,16 @@ function idOf(entry) {
   return ids.get(entry);
 }
 
-/** The entry's 2D spec for the current layout (cached until the layout or look changes). */
-export function specOf(s, entry) {
-  if (!s.specs.has(entry)) {
-    s.specs.set(entry, playSpec(entry.drawing, entry.row, s.ctx, { verdict: entry.verdict, labelPx: labelPxOf(s) }));
-  }
-  return s.specs.get(entry);
+/** The entry's 2D spec for the current layout (cached until the layout or look changes); `last` (4b) the previous
+ * play while his next call is up: muted steel, its words on the LAST plate with its verdict. */
+export function specOf(s, entry, { last = false } = {}) {
+  const key = last ? `last:${entry.verdictText ?? ""}` : "play";
+  const cached = s.specs.get(entry);
+  if (cached?.[key]) return cached[key];
+  const spec = playSpec(entry.drawing, entry.row, s.ctx, { verdict: entry.verdict, labelPx: labelPxOf(s), last,
+    verdictWords: entry.verdictText ?? null });
+  s.specs.set(entry, { ...(cached ?? {}), [key]: spec });
+  return spec;
 }
 
 /** The entry's drawing with its words where this view draws them (playSpec), so the shadows' words keep clear of
@@ -205,16 +210,20 @@ export function renderGhosts(s, stage, ghosts, { avoid = [] } = {}) {
   keyed(s, stage.ghosts, layer.zones);
   keyed(s, stage.tagGhost, layer.labels);
   fitTags(stage.tagGhost);
+  const last = stage === s.surface.live && s.dim && s.plays.last ? { drawing: s.plays.last.drawing } : null;
+  stage.presnap = placeWords(s, stage, shadows, { last, avoid: last ? [] : avoid,
+    ballX: ghosts.input.situation.ballX });
+  stage.shadows = shadows;
   settleTags(s, stage);
 }
 
 // ---------------------------------------------------------------- plays
-/** The last play's words (dimmed while the next call is up, still on the field) and its verdict chip (gone then). */
+/** The last play's words and its verdict chip; while the next call is up (4b) its LAST plate, the verdict in it. */
 function playTags(entry, spec, dim) {
   if (!spec?.label) return [];
   const label = { ...spec.label.node, attrs: { ...spec.label.node.attrs, opacity: dim ? LABEL_DIM : 1 } };
   const chip = !dim && spec.verdictNode ? [{ key: `${idOf(entry)}:verdict`, node: spec.verdictNode }] : [];
-  return [{ key: `${idOf(entry)}:label`, node: label }, ...chip];
+  return [{ key: `${idOf(entry)}:${dim ? "last" : "label"}`, node: label }, ...chip];
 }
 
 /**
@@ -231,7 +240,7 @@ export function renderPlays(s, stage, plays, { exclude = null, dim = false } = {
   });
   const animating = (entry) => Boolean(exclude) && (entry === exclude || entry.seq === exclude.seq);
   const last = plays.last && !animating(plays.last) ? plays.last : null;
-  const spec = last ? specOf(s, last) : null;
+  const spec = last ? specOf(s, last, { last: dim }) : null;
   renderInto(stage.last, spec ? [playNode(spec, dim ? s.look.lastPlay.dimOpacity : 1)] : []);
   keyed(s, stage.tagPlay, last ? playTags(last, spec, dim) : []);
   fitTags(stage.tagPlay);

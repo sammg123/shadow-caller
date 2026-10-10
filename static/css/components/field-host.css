@@ -80,6 +80,75 @@
 .sc-field-label > .sc-verdict-chip.is-top3 { border-inline-start-color: var(--sc-warn); }
 .sc-field-label > .sc-verdict-chip.is-miss { border-inline-start-color: var(--sc-bad); }
 
+/* play-drawing.md 4b: every plate says what it is. A prediction's tag ("NEXT 1") sits on a tab in its stroke's colour
+   (#1 --sc-next-1, #2 --sc-next-2: the engine draws the strokes in the same, look.world.plays.ranks); the previous
+   play's plate reads "LAST · ..." in muted steel (--sc-last) with its verdict on a second line. The " · " between the
+   tag and the words is for the text, not the eye (the tab separates them). A plate the layout had to move off its spot
+   gets a thin leader line back to it (labels.js). */
+.sc-field { --sc-next-1: #ffb21e; --sc-next-2: #fff3d1; --sc-last: #a3adc4; }
+.sc-field-label > span > .sc-label-tag {
+  display: inline-block;
+  margin-inline-end: 0.45em;
+  padding: 0 0.35em;
+  border-radius: 1px;
+  background: var(--sc-tab, var(--sc-last));
+  color: #0f1114;
+}
+.sc-field-label > span > .sc-label-sep {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.sc-field-label > span > .sc-label-sub {
+  display: block;
+  margin-block-start: 1px;
+  font-size: var(--sc-size-xs);
+  color: var(--sc-ink-muted);
+}
+.sc-field-label > .sc-shadow-label { --sc-tab: var(--sc-next-2); }
+.sc-field-label > .sc-shadow-label.rank-1 { --sc-tab: var(--sc-next-1); }
+.sc-field-label > .sc-play-label.is-last { --sc-tab: var(--sc-last); color: var(--sc-ink-muted); }
+.sc-field-label > .sc-label-leader {
+  position: absolute;
+  inset-inline-start: 50%;
+  inset-block-start: 50%;
+  height: 1px;
+  transform-origin: 0 50%;
+  background: var(--sc-last);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.sc-field-label:has(> .sc-shadow-label) > .sc-label-leader { background: var(--sc-next-2); }
+.sc-field-label:has(> .sc-shadow-label.rank-1) > .sc-label-leader { background: var(--sc-next-1); }
+
+/* 4b: the style key on the field's edge, shown while his next call is up: last play (solid steel), next 1 and next 2
+   (dashed, in their colours). */
+.sc-field-key {
+  position: absolute;
+  inset-inline-start: var(--sc-space-3);
+  inset-block-end: calc(var(--sc-space-3) + 2.4em);
+  z-index: 2;
+  display: none;
+  gap: var(--sc-space-3);
+  margin: 0;
+  padding: var(--sc-space-1) var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-raised);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  line-height: 1.3;
+  pointer-events: none;
+}
+.sc-field:not([data-ghosts=""]) > .sc-field-key { display: flex; }
+.sc-field-key-item { display: inline-flex; align-items: center; gap: 0.4em; white-space: nowrap; }
+.sc-field-key-swatch { display: inline-block; inline-size: 1.6em; block-size: 0; border-block-start: 2px solid var(--sc-last); }
+.sc-field-key-item.is-next-1 > .sc-field-key-swatch { border-block-start: 2px dashed var(--sc-next-1); }
+.sc-field-key-item.is-next-2 > .sc-field-key-swatch { border-block-start: 2px dashed var(--sc-next-2); }
+
 @keyframes sc-field-label-in {
   from { opacity: 0; }
   to { opacity: 1; }

@@ -116,3 +116,48 @@ test("renderer none (or no document): adding does nothing", async () => {
   const look = await lookWith();
   assert.equal(createLabels(look.labels, null, { doc: null }).add({ x: 1, y: 1 }, "x"), null);
 });
+
+test("4b: a plate's role and second line as text-only parts; setWords changes them; textContent reads them all", async () => {
+  const { labels } = await setup();
+  const h = labels.add({ x: 30, y: 26.667 }, "NEXT 1 · Inside run (A/B gap) · 21%", "sc-shadow-label rank-1",
+    { words: { tag: "NEXT 1", body: "Inside run (A/B gap) · 21%" } });
+  assert.deepEqual(h.element.children.map((c) => c.className), ["sc-label-tag", "sc-label-sep", "sc-label-body"]);
+  assert.equal(h.element.textContent, "NEXT 1 · Inside run (A/B gap) · 21%");
+  h.setWords({ tag: "LAST", body: "Short pass left · +11", sub: "<b>Top pick</b> · 19%" });
+  assert.equal(h.element.textContent, "LAST · Short pass left · +11 · <b>Top pick</b> · 19%", "text, never markup");
+  assert.equal(h.element.children.at(-1).className, "sc-label-sub");
+  const plain = labels.add({ x: 30, y: 26.667 }, "Short pass middle · +8", "sc-play-label");
+  assert.equal(plain.element.textContent, "Short pass middle · +8");
+  plain.setWords(null, "Deep pass left · +21");
+  assert.equal(plain.element.textContent, "Deep pass left · +21");
+});
+
+test("4b: place moves a plate off its spot by a pixel offset, with a leader line back to it", async () => {
+  const { labels } = await setup();
+  const h = labels.add({ x: 30, y: 26.667 }, "NEXT 2 · PA short (0–9) · 16%", "sc-shadow-label rank-2");
+  const leader = h.object.element.children[0];
+  assert.equal(leader.className, "sc-label-leader");
+  assert.equal(leader.style.display, "none", "no leader until a plate moves away");
+  h.place({ dx: 120, dy: -30, leader: { x: 30, y: -40 } });
+  assert.deepEqual(h.offset, { dx: 120, dy: -30 });
+  assert.equal(h.element.style.translate, "120px -30px");
+  assert.equal(leader.style.display, "");
+  assert.equal(leader.style.width, "50px");
+  assert.match(leader.style.transform, /^rotate\(-0\.9273rad\)$/);
+  h.place({ dx: 0, dy: 0, leader: null });
+  assert.equal(leader.style.display, "none");
+  h.place({ dx: Number.NaN, dy: 0 });
+  assert.equal(h.offset, null);
+  assert.equal(h.element.style.translate, "");
+});
+
+test("4b: size measures the plate as laid out, drawn or not yet, hidden or not; null where nothing lays out", async () => {
+  const { host, labels } = await setup();
+  const h = labels.add({ x: 30, y: 26.667 }, "NEXT 1 · Screen · 5%", "sc-shadow-label rank-1");
+  assert.equal(h.size(), null, "no layout engine here: nothing measured");
+  Object.assign(h.element, { offsetWidth: 180, offsetHeight: 27 });
+  h.object.element.style.display = "none";
+  assert.deepEqual(h.size(), { w: 180, h: 27 });
+  assert.equal(h.object.element.parentNode, host.children[0], "put in the layer, where the next render puts it");
+  assert.equal(h.object.element.style.display, "none", "hidden again after the measure");
+});

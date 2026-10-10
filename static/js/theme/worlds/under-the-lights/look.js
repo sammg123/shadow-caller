@@ -3,8 +3,9 @@
 // over NEUTRAL_LOOK: the bowl at night under four tower banks (only the two home-side towers cast shadows), the field
 // lit brightest at its center, bowl-haze FogExp2 for the stands (the field itself never takes fog), bloom above 1.05
 // only, so the tower lamps, the LED fascia and the ball's tracer are the only things that glow. Every drawn path has
-// a light core (light-cone white) with the team color on its edge (The Light Core Rule), and the shadow plays are
-// dashed LED warm white. look.world.day re-lights a day kickoff in afternoon sun; look.world.plays tunes the action
+// a light core (light-cone white) with the team color on its edge (The Light Core Rule), and the shadow plays are thin
+// dashed lines, his #1 in LED amber and #2 in LED warm white, the previous play beside them in muted steel
+// (play-drawing.md 4b). look.world.day re-lights a day kickoff in afternoon sun; look.world.plays tunes the action
 // layer (play-style PLAY_LOOK); look.world.uls is this world's own data for props.js and moments.js. Pure data.
 import { deepFreeze } from "../../../core/domain.js";
 import { DEFAULT_MOTION } from "../../../field/timing.js";
@@ -16,6 +17,9 @@ export const ULS = Object.freeze({
   ledPanel: "#0f1114", ledUnlit: "#2a2622", ledWarm: "#fff3d1", ledGold: "#ffd27a", ledAmber: "#ffb21e",
   fasciaSteel: "#1c2333", steelRaised: "#283149", steelSeam: "#2e374d", steelEdge: "#4a5571",
   tallyRed: "#ff4d3d", lampGreen: "#7ddb6a",
+  // 4b: the previous play while his next call is up, a muted slate with a steel edge (never amber or warm white): the
+  // steel frame #6f7c9d mixed 40% toward LED warm white, as the plates' CSS mixes it
+  lastSlate: "#a9acb2",
 });
 
 /** The four light towers, in field yards [x, y, height] (x from the caller's goal line, y from the home sideline).
@@ -90,10 +94,10 @@ export const look = deepFreeze({
     ground: stroke("ribbon", { widthYd: 0.62 }),
     mark: stroke("decal", { widthYd: 2.4, ghostedOpacity: 0.42, approx: "soft" }),
   },
-  // The shadow plays: dashed and translucent (play-drawing.md 4), never team-colored (DESIGN.md), tinted by family on
-  // the board's ramp (G3-1: world.plays.families), LED warm white where a family has no tone of its own.
-  ghost: { fill: "neutral", stroke: ULS.ledWarm, style: "outline", afterSnapOpacity: 0, labels: true, tint: "family" },
-  lastPlay: { keep: "until-next-snap", dimOpacity: 0.3 },
+  // The shadow plays: thin and dashed (play-drawing.md 4b), never team-colored (DESIGN.md), colour-coded by rank on
+  // the board's ramp (world.plays.ranks): #1 amber, #2 warm white. The previous play dims to muted steel.
+  ghost: { fill: "neutral", stroke: ULS.ledWarm, style: "outline", afterSnapOpacity: 0, labels: true },
+  lastPlay: { keep: "until-next-snap", dimOpacity: 0.6 },
   residue: { keep: "drive", opacity: 0.16 },
   labels: { renderer: "css2d", className: "sc-label", result: true },
   post: { bloom: { strength: 0.55, radius: 0.5, threshold: 1.05 }, extra: ["uls-lens"] },
@@ -109,12 +113,13 @@ export const look = deepFreeze({
   teamColor: { minContrast: 3, against: [ULS.turfDark, ULS.nightSky] },
   world: {
     day: DAY,
-    // G3-1: the shadows on the board's ramp (pass warm white, run amber, RPO gold), wide, each over a night-sky ring
+    // 4b: his predictions thin (2.5 px at 1440x900) and dashed, #1 LED amber and #2 LED warm white, each over a thin
+    // night-sky ring so the dashes hold over white paint; the previous play in steel while they are up
     plays: { headGlow: 3, headYd: 1.5, trackOpacity: 0.2, trackWidthPx: 1.5, trackDash: [0.5, 0.9], arrowYd: 1.8,
-      hoverOpacity: 0.9, dimOthers: 0.45, shadowDash: [1.6, 0.7], shadowWidth: 3.2, targetYd: 1.7, kickDim: 0.4,
+      hoverOpacity: 0.95, dimOthers: 0.45, shadowPx: 2.5, shadowDash: [0.7, 0.4], targetYd: 0.75, kickDim: 0.25,
       tones: { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg },
-      families: { pass: ULS.ledWarm, run: ULS.ledAmber, rpo: ULS.ledGold },
-      casing: { color: ULS.nightSky, opacity: 0.4, width: 1.8 } },
+      ranks: [ULS.ledAmber, ULS.ledWarm], last: { core: ULS.lastSlate, edge: ULS.steelEdge },
+      casing: { color: ULS.nightSky, opacity: 0.55, width: 2.2 } },
     uls: WORLD_ULS,
   },
 });

@@ -11,6 +11,8 @@ import {
   LABEL_METRICS, LABEL_SEP, MINUS, labelBox, labelFootprint, labelMetrics, placeLabelText, playLabel,
   resolveLabelMetrics,
 } from "../../static/js/field/play-label.js";
+import { boxesOverlap } from "../../static/js/field/label-place.js";
+import { LAST_ID, nextId, presnapLayout } from "../../static/js/field/presnap-layout.js";
 import { buildShadowPlays } from "../../static/js/field/shadows.js";
 import { safeView } from "../../static/js/field/stage-math.js";
 import { resolveLook } from "../../static/js/theme/look-schema.js";
@@ -365,22 +367,22 @@ const SHIPPED = Object.freeze({
 });
 
 /**
- * How many plays (of 156 with words) or Dallas snaps (of 59) each shipped camera may get wrong today, measured
- * 2026-10-10: `words` the play's words (laid out for the default cameras, as both engines draw them now) over its own
- * play or a ball; `shadows` his top 2's words over another's words (`text`) or a stroke or mark (`stroke`). The
- * default cameras at desktop sizes get none; a phone's deep lines and the end zone's sideways text are known gaps
- * (the words laid out in each camera's own view, paths.placePlayLabel, close every one but the end zone's). Only
- * fewer is allowed: a look.js camera edit that breaks a layout fails here.
+ * How many plays (of 156 with words) each shipped camera may get wrong today, measured 2026-10-10: `words` the play's
+ * words (laid out for the default cameras, as both engines draw them now) over its own play or a ball. The default
+ * cameras at desktop sizes get none; a phone's deep lines and the end zone's sideways text are known gaps (the words
+ * laid out in each camera's own view, paths.placePlayLabel, close every one but the end zone's). Only fewer is
+ * allowed: a look.js camera edit that breaks a layout fails here. (Before a Dallas snap the words are placed in screen
+ * space, 4b: SCREEN_BUDGET.)
  */
 const BUDGET = Object.freeze({
-  "neutral sideline 1440x900": { words: 24 }, "neutral sideline 390x844": { words: 156, text: 12, stroke: 28 },
+  "neutral sideline 1440x900": { words: 24 }, "neutral sideline 390x844": { words: 156 },
   "neutral endzone 1440x900": { words: 135 }, "neutral endzone 1920x1080": { words: 119 },
   "neutral endzone 390x844": { words: 156 },
   "neutral overhead 1440x900": { words: 8 }, "neutral overhead 1920x1080": { words: 8 },
   "neutral overhead 390x844": { words: 123 },
-  "under-the-lights wide 390x844": { words: 138, stroke: 13 },
-  "under-the-lights tight 1440x900": { words: 20, stroke: 1 }, "under-the-lights tight 1920x1080": { words: 20, stroke: 1 },
-  "under-the-lights tight 390x844": { words: 138, text: 28, stroke: 46 },
+  "under-the-lights wide 390x844": { words: 138 },
+  "under-the-lights tight 1440x900": { words: 20 }, "under-the-lights tight 1920x1080": { words: 20 },
+  "under-the-lights tight 390x844": { words: 138 },
   "under-the-lights blimp 1440x900": { words: 8 }, "under-the-lights blimp 1920x1080": { words: 8 },
   "under-the-lights blimp 390x844": { words: 156 },
 });
@@ -452,27 +454,39 @@ test("every shipped camera at 1440x900, 1920x1080 and 390x844: a play's words of
   assert.equal(checked, 156 * 18);
 });
 
-test("every shipped camera, every size, every Dallas snap: his top 2 in rank order, never on text, a shadow or a mark", () => {
+/** Each pre-snap plate's size from its words in a world's plate (px), a verdict line under the LAST plate. */
+const platePx = (px, words) => ({ w: [words.tag, words.body].filter(Boolean).join(" ").length * px.charPx + px.padPx
+  + 14, h: px.linePx + (words.sub ? px.linePx * 0.75 : 0) });
+
+/** 4b: how many Dallas snaps (of 59) a phone's pre-snap plates can't all find a clear spot at (a 358 or 390 px wide
+ * field holds two 200 px plates and the strokes with little room to spare), measured 2026-10-10 with the shadows in
+ * the lanes the previous play leaves them and 4 px kept around the ball; every desktop camera has none. Only fewer is
+ * allowed. */
+const SCREEN_BUDGET = Object.freeze({ "neutral sideline 390x844": 52, "neutral endzone 390x844": 58,
+  "neutral overhead 390x844": 59, "under-the-lights wide 390x844": 32, "under-the-lights tight 390x844": 23,
+  "under-the-lights blimp 390x844": 37 });
+
+test("every shipped camera, every size, every Dallas snap: 4b's plates in screen space never meet each other", () => {
   const rows = allRows();
   for (const { id, mode, size } of shippedCameras()) {
-    const bad = { order: 0, text: 0, stroke: 0 };
+    let [stuck, touching] = [0, 0];
     rows.forEach((row, i) => {
       if (!row.pred?.dist) return;
       const sit = situationFromRow(row);
-      const m = shippedMetrics(mode, size, sit, buildGhostSet(ghostInputFromPred(row.pred), sit));
+      const project = shippedView(mode, size, sit, buildGhostSet(ghostInputFromPred(row.pred), sit));
       const prevRow = rows.slice(0, i).reverse().find((r) => r.kind !== "admin");
       const prev = prevRow ? buildDrawing(prevRow) : null;
-      const shown = buildShadowPlays(row.pred, sit, { avoid: prev ? [prev] : [], metrics: m });
-      const boxes = shown.map((s) => labelBox(s.label, m));
-      bad.order += boxes.every((b, k) => k === 0 || b.v - boxes[k - 1].v >= b.hh + boxes[k - 1].hh - EPS) ? 0 : 1;
-      bad.text += shown.some((s, k) => shown.slice(k + 1).some((o) => meet(s.label, o.label, m))
-        || (prev?.label && meet(s.label, prev.label, m))) ? 1 : 0;
-      const marks = (prev?.steps ?? []).filter((st) => st.t === "mark");
-      const hard = labelFootprint([...shown.flatMap((s) => s.drawing.steps), ...marks], m);
-      bad.stroke += shown.some((s) => covered(s.label, hard, m)) ? 1 : 0;
+      const shown = buildShadowPlays(row.pred, sit, { avoid: prev ? [prev] : [] });
+      const plates = Object.fromEntries(shown.map((sp) => [nextId(sp.leaf), platePx(size.px, sp.label)]));
+      if (prev?.label) plates[LAST_ID] = platePx(size.px, { tag: "LAST", body: prev.label.text, sub: "In his top 3" });
+      const [w, h] = size.canvas;
+      const ins = { top: 0, right: 0, bottom: 0, left: 0, ...size.insets };
+      const out = presnapLayout({ shadows: shown, last: prev ? { drawing: prev } : null, ball: { x: sit.ballX, y: C },
+        project, plates, bounds: { x0: ins.left, y0: ins.top, x1: w - ins.right, y1: h - ins.bottom } });
+      stuck += out.labels.some((l) => !l.clear) ? 1 : 0;
+      touching += out.labels.some((a, k) => out.labels.slice(k + 1).some((b) => boxesOverlap(a.box, b.box))) ? 1 : 0;
     });
-    assert.equal(bad.order, 0, `${id}: #2 over #1 or touching it at ${bad.order} snaps`);
-    assert.ok(bad.text <= (BUDGET[id]?.text ?? 0), `${id}: words on other words at ${bad.text} snaps`);
-    assert.ok(bad.stroke <= (BUDGET[id]?.stroke ?? 0), `${id}: words on a shadow or a mark at ${bad.stroke} snaps`);
+    assert.equal(touching, 0, `${id}: plates on plates at ${touching} snaps`);
+    assert.ok(stuck <= (SCREEN_BUDGET[id] ?? 0), `${id}: ${stuck} snaps with a plate on the ball or a stroke`);
   }
 });

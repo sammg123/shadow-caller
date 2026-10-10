@@ -10,6 +10,7 @@
  */
 import { deepFreeze } from "../core/domain.js";
 import { verdictOf } from "../model/verdict.js";
+import { verdictChipText } from "../model/vm-field.js";
 import { setAttr } from "../ui/dom.js";
 import { FIELD } from "./coords.js";
 import {
@@ -109,12 +110,12 @@ function playStrokes(drawing) {
   return [...strokesOf(drawing.steps), ...room];
 }
 
-/** A shadow request's strokes, the hovered play's too (their shapes never depend on the view; their words, laid out
- * in it, do). */
-function shadowStrokes(input, hover = null) {
+/** A shadow request's strokes, the hovered play's too, in the lanes the play on the field (`play`) leaves them
+ * (their shapes never depend on the view; their words, laid out in it, do). */
+function shadowStrokes(input, hover = null, play = null) {
   if (!input) return [];
   const shown = buildShadowPlays(input.source, input.situation, { leafNames: input.leafNames ?? undefined,
-    leafOrder: input.leafOrder, hover });
+    leafOrder: input.leafOrder, hover, avoid: play?.drawing ? [play.drawing] : [] });
   return strokesOf(shown.flatMap((sp) => sp.drawing.steps));
 }
 
@@ -125,15 +126,15 @@ function targetBox(s) {
   if (s.camera === "top") return WHOLE;
   if (s.review) {
     const r = s.review;
-    return unionBox(driveFrame(r.sit, shadowStrokes(r.ghosts, s.highlight)), strokesBox(playStrokes(r.entry.drawing)))
-      ?? WHOLE;
+    return unionBox(driveFrame(r.sit, shadowStrokes(r.ghosts, s.highlight, r.entry)),
+      strokesBox(playStrokes(r.entry.drawing))) ?? WHOLE;
   }
   const playing = s.players.live.active();
   if (playing) {
     const shown = s.cam.tween?.to ?? s.cam.box ?? driveFrame(s.situation, []);
     return unionBox(shown, strokesBox(playStrokes(playing.entry.drawing))) ?? WHOLE;
   }
-  return driveFrame(s.situation, shadowStrokes(s.ghosts?.input ?? null, s.highlight)) ?? WHOLE;
+  return driveFrame(s.situation, shadowStrokes(s.ghosts?.input ?? null, s.highlight, s.plays.last)) ?? WHOLE;
 }
 
 const sameBox = (a, b) => Boolean(a && b) && ["x0", "x1", "y0", "y1"].every((k) => Math.abs(a[k] - b[k]) < 1e-6);
@@ -425,7 +426,8 @@ export function refreshLabels(s, rows) {
   if (!bySeq.size) return;
   const swap = (e) => {
     const row = e ? bySeq.get(e.seq) : undefined;
-    return row ? { ...redrawn(s, e, row), verdict: e.verdict ? verdictOf(row.pred).key : null } : e;
+    return row ? { ...redrawn(s, e, row), verdict: e.verdict ? verdictOf(row.pred).key : null,
+      verdictText: e.verdict ? verdictChipText(row.pred) : null } : e;
   };
   s.plays = { last: swap(s.plays.last), residue: s.plays.residue.map(swap) };
   if (s.review && bySeq.has(s.review.entry.seq)) {
@@ -440,7 +442,8 @@ export function refreshLabels(s, rows) {
 export function markVerdict(s, v) {
   const last = s.plays.last;
   if (!last || v?.seq !== last.seq || !VERDICT_KEYS.has(v.key)) return;
-  s.plays = { ...s.plays, last: { ...last, verdict: v.key } };
+  s.plays = { ...s.plays, last: { ...last, verdict: v.key, verdictText: typeof v.text === "string" && v.text ? v.text
+    : null } };
   drawLive(s);
   painted(s);
 }

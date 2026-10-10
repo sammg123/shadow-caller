@@ -8,14 +8,21 @@
 // the canvas or the safe area changes. Hover or focus on a play in the prediction panel lights its shadow (and draws
 // one for a play outside the top 2). At a caller snap they fade (look.ghost.afterSnapOpacity) and their text goes.
 // Only the caller's offense gets them: the conductor only sends a call on his drives.
-//   createGhostLayer(stage) -> { show(set), highlight(leaf), fade(k, ms), relayout(), clear(), dispose() }
+// play-drawing.md 4b (binding): each is a thin dashed line in its rank's colour (shadow-style.js: #1 amber, #2 warm
+// white), its plate tagged "NEXT 1 · ..." with a tab in that colour; the previous play turns steel with a "LAST"
+// plate (player.js); and on a css2d field every plate is placed in screen space (presnap-words.js): beside its own
+// stroke, off the ball, the strokes and each other, a leader line when it had to move.
+//   createGhostLayer(stage) -> { show(set), highlight(leaf), fade(k, ms), relayout(), clear(), clarity(), dispose() }
 import * as THREE from "three";
 import { FIELD, toWorld } from "./coords.js";
 import {
   buildArt, fieldLabel, playEnv, removeLabel, setLabelOpacity, setLabelVisible, toggleLabelClass,
 } from "./play-art.js";
 import { labelMetrics } from "./play-label.js";
-import { chipSpot, shadowInputOf, shadowParts } from "./play-style.js";
+import { chipSpot } from "./play-style.js";
+import { clarityOf, placePresnap } from "./presnap-words.js";
+import { shadowInputOf } from "./shadow-input.js";
+import { shadowParts, shadowScale } from "./shadow-style.js";
 import { SHADOW_COUNT, buildShadowPlays } from "./shadows.js";
 import { poseGap } from "./stage-math.js";
 import { EASE } from "./timing.js";
@@ -120,6 +127,9 @@ function avoidOf(g, metrics) {
   return [drawing, chip?.label ? { text: chip.text, at: chipSpot(chip.label, metrics) } : null].filter(Boolean);
 }
 
+/** A prediction's plate: its tag ("NEXT 1") on a tab, then its words (play-drawing.md 4b). */
+const wordsOf = (s) => ({ tag: s.label.tag, body: s.label.body ?? s.label.text });
+
 function placeText(g, item, s) {
   if (!g.stage.look.ghost.labels || !s.label?.at) {
     item.label = removeLabel(g.stage, item.label);
@@ -128,12 +138,14 @@ function placeText(g, item, s) {
   const same = item.label?.element && item.text === s.label.text;
   if (same) item.label.move?.({ x: s.label.at.x, y: s.label.at.y, h: 0 });
   else if (item.label?.element) {
-    item.label.element.textContent = s.label.text;
+    item.label.setWords?.(wordsOf(s), s.label.text);
     item.label.move?.({ x: s.label.at.x, y: s.label.at.y, h: 0 });
   } else {
     removeLabel(g.stage, item.label);
     item.label = fieldLabel(g.stage, s.label.at, s.label.text, classOf(s));
+    item.label?.setWords?.(wordsOf(s), s.label.text);
   }
+  item.label?.place?.({ dx: 0, dy: 0, leader: null });
   item.text = s.label.text;
   item.label?.element?.setAttribute?.("class", `${g.stage.look.labels.className} ${classOf(s)}`);
 }
@@ -154,16 +166,21 @@ function applyOpacity(g) {
 
 const growU = (g) => (g.st.grow ? EASE.outCubic(Math.min(1, g.st.grow.t / g.st.grow.ms)) : 1);
 
-/** Build what changed: a shadow keeps its meshes while its shape and rank stay; every label is placed again. */
+/** The view's width scale for the thin strokes (shadow-style.js: about 2.5 px at 1440x900). */
+const scaleOf = (g) => Math.round(shadowScale(g.stage.rig?.size?.()?.height) * 100) / 100;
+
+/** Build what changed: a shadow keeps its meshes while its shape, lane, rank and the view's scale stay; every label
+ * is placed again. */
 function sync(g, shadows) {
   const env = g.env ?? playEnv(g.stage);
+  const scale = scaleOf(g);
   const next = new Map();
   for (const s of shadows) {
-    const key = `${s.key}|${s.stack}|${s.hovered}`;
+    const key = `${s.key}|${s.stack}|${s.lane}|${s.hovered}|${scale}`;
     let item = g.st.items.get(s.leaf);
     if (!item || item.key !== key) {
       item?.art.dispose();
-      const art = buildArt(shadowParts(s, g.stage.look, env));
+      const art = buildArt(shadowParts(s, g.stage.look, env, { scale }));
       g.root.add(art.group);
       art.revealAll(growU(g));
       item = { key, art, label: item?.label ?? null, text: item?.text ?? null };
@@ -195,8 +212,24 @@ function layout(g) {
   }
   g.st.waiting = !settled(g.stage);
   sync(g, shadows);
+  g.st.shadows = shadows;
+  if (viewKey(g.stage) !== g.st.view) g.st.keep = {};   // another view: its own spots (kept ones only hold one still)
+  g.st.layout = g.stage.labels?.kind === "css2d" ? placeWords(g, shadows) : null;
   g.st.view = viewKey(g.stage);
   g.stage.requestRender();
+}
+
+/** 4b: every pre-snap plate in screen space; the previous play's LAST plate too while it is the play on display. */
+function placeWords(g, shadows) {
+  try {
+    const review = reviewing(g);
+    const last = review ? null : layerOf(g.stage, "player")?.lastPlate?.({ fresh: true }) ?? null;
+    const avoid = review ? [layerOf(g.stage, "residue")?.reviewDrawing?.()].filter(Boolean) : [];
+    return placePresnap(g, shadows, last, { avoid });
+  } catch (err) {
+    g.stage.emit?.("warning", err);
+    return null;
+  }
 }
 
 function clearItems(g) {
@@ -221,7 +254,7 @@ function show(g, set) {
   }
   if (g.st.phase === "presnap" && input.key && g.st.input?.key === input.key) return;
   clearItems(g);
-  Object.assign(g.st, { input, phase: "presnap", k: 1, labelK: 1, fade: null });
+  Object.assign(g.st, { input, phase: "presnap", k: 1, labelK: 1, fade: null, keep: {} });
   if (!reviewing(g)) layerOf(g.stage, "player")?.dimLast?.();
   const ms = g.stage.look.motion.ghostInMs;
   g.st.grow = g.stage.reducedMotion() || !(ms > 0) ? null : { t: 0, ms };
@@ -275,7 +308,8 @@ function tick(g, dtMs) {
 
 function clear(g) {
   clearItems(g);
-  Object.assign(g.st, { input: null, phase: "none", grow: null, fade: null, k: 1, labelK: 1 });
+  Object.assign(g.st, { input: null, phase: "none", grow: null, fade: null, k: 1, labelK: 1, shadows: [],
+    layout: null, keep: {} });
   g.stage.requestRender();
 }
 
@@ -286,7 +320,8 @@ export function createGhostLayer(stage) {
   stage.roots.ghosts.add(root);
   const g = { stage, root, scratch: null, px: null, env: null,
     st: { input: null, hover: null, phase: "none", items: new Map(), grow: null, fade: null, k: 1, labelK: 1, view: "",
-      waiting: false } };
+      waiting: false, shadows: [], layout: null, keep: {} } };
+  g.goalCamera = () => goalCamera(g);
   const stopTick = stage.keepAlive((dt) => tick(g, dt));
   return {
     show: (set) => show(g, set),
@@ -305,6 +340,9 @@ export function createGhostLayer(stage) {
      * outside them aside), until the snap; then none. */
     shown: () => (g.st.phase !== "presnap" ? [] : [...g.st.items.values()].map((it) => it.shadow)
       .filter((sp) => !sp.hovered || (sp.rank !== null && sp.rank <= SHADOW_COUNT)).map((sp) => sp.leaf)),
+    /** 4b: what the e2e clarity test measures (presnap-words clarityOf), or null without a call up. */
+    clarity: () => (g.st.phase === "presnap" ? clarityOf(g, g.st.shadows, g.st.layout,
+      reviewing(g) ? null : layerOf(stage, "player")?.lastPlate?.() ?? null) : null),
     dispose() {
       clear(g);
       stopTick?.();

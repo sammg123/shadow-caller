@@ -1,10 +1,10 @@
 """Under the Lights, the stadium's look (v1.4 fixes; DESIGN.md "The stadium (3D art direction)", docs/design/
 play-drawing.md 4). Always on Sam's world, whatever SC_E2E_WORLD says: the look is the world's own.
 
-  G3-1  his top 2 read as two plays: each shadow's words carry its family (family-run, family-pa, ...) and wear its
-        stroke's tone on the dashed edge and the rank, the board's ramp (run amber, pass warm white, RPO gold); crops
-        of the first Dallas snap and of one at midfield (over the star) at 1440 and 1920, GPU renders, are written to
-        test-results/visual/uls-look/ to be looked at
+  4b    his top 2 read as two plays, colour-coded by rank: #1's plate carries "NEXT 1" on an LED amber tab, #2's
+        "NEXT 2" on LED warm white (the strokes are drawn in the same); crops of the first Dallas snap and of one at
+        midfield (over the star) at 1440 and 1920, GPU renders, are written to test-results/visual/uls-look/ to be
+        looked at
   G3-2  no flat slab under the near sideline: on the wide and tight cameras at both sizes no 41 rows of the free area
         in a row are flat and dark (the finish gate's flat.py: luminance range under 36 and mean under 40), none is one
         flat color, and every 60-row band of it has a luminance range of 6 or more (GPU renders)
@@ -27,8 +27,7 @@ LOOK_DIR = ACTUAL_DIR.parent / "uls-look"
 MIDFIELD_IDX = 4                # four plays applied: Dallas's 4th snap is next, from his 46, over the star at the 50
 PHONE_IDX = 49                  # TB's punt with a flag is the play on display: the longest words of the game
 SETTLE_MS = 6_000               # the camera's glide, the shadows' growth, the LED step-ins
-TONE = {"run": "rgb(255, 178, 30)", "pass": "rgb(255, 243, 209)", "rpo": "rgb(255, 210, 122)"}   # --sc-run|pass|rpo
-TINT = {"run": "run", "rpo": "rpo", "dropback": "pass", "pa": "pass", "screen": "pass"}
+RANK_TONE = {1: "rgb(255, 178, 30)", 2: "rgb(255, 243, 209)"}   # 4b: #1 LED amber, #2 LED warm white
 FLAT_RANGE = 1.0                # a row whose luminance spans less than this is one flat color
 DARK_FLAT = (36.0, 40.0)        # the finish gate's flat.py: a row spanning less than 36 with a mean under 40
 MAX_FLAT_RUN = 40               # rows in a row of either, at most
@@ -68,9 +67,10 @@ def family_of(leaf):
 
 SHADOWS_JS = """() => [...document.querySelectorAll('.sc-field-label > .sc-shadow-label')].map((el) => {
   const box = el.getBoundingClientRect();
+  const tag = el.querySelector('.sc-label-tag');
   return { text: el.textContent, classes: [...el.classList], edge: getComputedStyle(el).borderTopColor,
-    style: getComputedStyle(el).borderTopStyle, rank: getComputedStyle(el, '::first-letter').color,
-    box: [box.x, box.y, box.width, box.height] }; })"""
+    style: getComputedStyle(el).borderTopStyle, tag: tag ? tag.textContent : null,
+    tab: tag ? getComputedStyle(tag).backgroundColor : null, box: [box.x, box.y, box.width, box.height] }; })"""
 
 
 def gpu_page(gpu_browser, base, size):
@@ -81,10 +81,10 @@ def gpu_page(gpu_browser, base, size):
     return page
 
 
-# ---------------------------------------------------------------- G3-1: two plays, two tones
-def test_each_shadows_words_wear_its_familys_tone(ui_pages, wsrv):
-    """Before the first Dallas snap his top 2 carry their families in their words' classes, and each plate's dashed
-    edge and rank wear the tone its stroke is drawn in: run amber, pass warm white (the board's ramp)."""
+# ---------------------------------------------------------------- 4b: two plays, two colours, each tagged
+def test_each_prediction_plate_is_tagged_in_its_ranks_colour(ui_pages, wsrv):
+    """Before the first Dallas snap his top 2's plates read "NEXT 1 · ..." and "NEXT 2 · ...", each tag on a tab in
+    the colour its stroke is drawn in: #1 LED amber, #2 LED warm white (never a family's or a team's colour)."""
     base = wsrv["base"]
     watch_paused_at(base, PRESNAP_IDX)
     page = ui_pages()
@@ -96,12 +96,11 @@ def test_each_shadows_words_wear_its_familys_tone(ui_pages, wsrv):
     for rank, (play, words) in enumerate(zip(top, shadows), 1):
         family = family_of(play["key"])
         assert f"family-{family}" in words["classes"] and f"rank-{rank}" in words["classes"], words
-        assert words["rank"] == TONE[TINT[family]], (words, "the rank numeral wears the stroke's tone")
+        assert words["tag"] == f"NEXT {rank}", words
+        assert words["text"].startswith(f"NEXT {rank} · {play['name']}"), words
+        assert words["tab"] == RANK_TONE[rank], (words, "the tab wears the stroke's colour")
         assert words["style"] == "dashed", words
-        if rank == 1:
-            assert words["edge"] == TONE[TINT[family]], (words, "the dashed edge too")
-    if TINT[family_of(top[0]["key"])] != TINT[family_of(top[1]["key"])]:
-        assert shadows[0]["rank"] != shadows[1]["rank"], "two families, two tones"
+    assert shadows[0]["tab"] != shadows[1]["tab"], "two plays, two colours"
     assert page.errors == [], page.errors
 
 

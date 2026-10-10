@@ -151,9 +151,10 @@ def test_the_first_frame_is_the_stadium_before_any_script_runs(ui_pages, wsrv):
     no_errors(page)
 
 
-# ---------------------------------------------------------------- play-drawing.md 4: the shadow plays
+# ---------------------------------------------------------------- play-drawing.md 4 and 4b: the shadow plays
 def shadow_text(rank, play):
-    return f"{rank} · {play['name']} · {pct(play['p'])}"
+    """4b: each prediction's plate says what it is: "NEXT 1 · Inside run (A/B gap) · 27%"."""
+    return f"NEXT {rank} · {play['name']} · {pct(play['p'])}"
 
 
 def test_his_top_two_are_up_as_shadow_plays_before_a_dallas_snap(ui_pages, wsrv):
@@ -188,7 +189,7 @@ def test_the_opponents_snaps_get_no_shadow_plays(ui_pages, wsrv):
     wait_idle(page, TB_PRESNAP_IDX)
     expect(page.locator(FIELD)).to_have_attribute("data-poss", "TB")
     expect(page.locator(FIELD)).to_have_attribute("data-ghosts", "")
-    expect(page.locator(FIELD)).not_to_contain_text(re.compile(r"\b[12] · .+ · \d+%"))
+    expect(page.locator(FIELD)).not_to_contain_text(re.compile(r"NEXT [12] · .+ · \d+%"))
     no_errors(page)
 
 

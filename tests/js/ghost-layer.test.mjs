@@ -1,6 +1,7 @@
-// The shadow plays before a caller snap (A5 part 2; play-drawing.md 4, binding): ghost-layer.js on a WebGL-free stage.
-// The top 2 of his model, dashed and translucent in the same shape language as real plays, text underneath, the hovered
-// play lit (and drawn when it is outside the top 2), faded at the snap, laid out again when the view changes.
+// The shadow plays before a caller snap (A5 part 2; play-drawing.md 4 and 4b, binding): ghost-layer.js on a WebGL-free
+// stage. The top 2 of his model as thin dashed lines in their rank's colour, in the same shape language as real plays,
+// each plate tagged "NEXT 1 · ..." and placed in screen space, the hovered play lit (and drawn when it is outside the
+// top 2), faded at the snap, laid out again when the view changes; the previous play turns steel with its LAST plate.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { D25, actionStage, artsUnder, row, stripsUnder } from "./action-stage.mjs";
@@ -10,6 +11,7 @@ const { buildDrawing } = await import("../../static/js/field/paths.js");
 const { fitPlan, planDrawing } = await import("../../static/js/field/timing.js");
 const { ALL } = await import("../../static/js/field/play-strip.js");
 const { PLAY_LOOK } = await import("../../static/js/field/play-style.js");
+const { shadowOpacity } = await import("../../static/js/field/shadow-style.js");
 
 const INPUT = Object.freeze({
   leaves: [{ leaf: "run_inside", p: 0.273 }, { leaf: "pa_short", p: 0.158 }, { leaf: "dropback_short", p: 0.14 }],
@@ -33,44 +35,53 @@ const shadowLabels = (stage) => stage.labels.byClass("sc-shadow-label");
 const mainStrokes = (stage) => stripsUnder(shadowRoot(stage))
   .filter((m) => m.material.uniforms.uDash.value.x === PLAY_LOOK.shadowDash[0]);
 
-test("show: his top 2 as dashed, translucent shadows from the line of scrimmage, text underneath", async () => {
+test("show: his top 2 as thin dashed lines past the line of scrimmage, each plate tagged and placed by its stroke", async () => {
   const { stage, L } = await setup({ reduced: true });
   L.ghosts.show(SET);
   assert.deepEqual(L.ghosts.shown(), ["run_inside", "pa_short"]);
-  assert.deepEqual(shadowLabels(stage).map((h) => h.text()), ["1 · Inside run (A/B gap) · 27%", "2 · PA short (0–9) · 16%"]);
+  assert.deepEqual(shadowLabels(stage).map((h) => h.text()), ["NEXT 1 · Inside run (A/B gap) · 27%",
+    "NEXT 2 · PA short (0–9) · 16%"]);
+  assert.deepEqual(shadowLabels(stage).map((h) => h.words?.tag), ["NEXT 1", "NEXT 2"], "the tag on its own tab");
   const strips = mainStrokes(stage);
   assert.equal(strips.length, 2, "one stroke each");
-  assert.equal(stripsUnder(shadowRoot(stage)).length, 4, "and where each ends: a chevron, a target ring");
+  assert.equal(stripsUnder(shadowRoot(stage)).length, 4, "and where each ends: an arrowhead, a tick");
+  assert.ok(strips.every((m) => m.material.uniforms.uWidth.value <= 3), "thin: about 2.5 px");
   const opacities = strips.map((m) => m.material.uniforms.uOpacity.value).sort();
-  assert.deepEqual(opacities, [0.35, 0.5]);
-  const [first] = shadowLabels(stage);
-  assert.ok(first.element.classList.contains("rank-1"));
-  assert.ok(first.pt.y < D25.ballX, "underneath (toward the near sideline the camera sits on)");
+  near(opacities[0], shadowOpacity(0.35, { shadowBase: PLAY_LOOK.shadowBase, shadowGain: PLAY_LOOK.shadowGain }));
+  near(opacities[1], shadowOpacity(0.5, { shadowBase: PLAY_LOOK.shadowBase, shadowGain: PLAY_LOOK.shadowGain }));
+  const [first, second] = shadowLabels(stage);
+  assert.ok(first.element.classList.contains("rank-1") && second.element.classList.contains("rank-2"));
+  assert.ok(first.offset && second.offset, "placed in screen space: an offset from a point by its own stroke");
+  const layout = L.ghosts.clarity();
+  assert.ok(layout.plates.every((pl) => pl.clear), JSON.stringify(layout.plates));
 });
 
-test("G3-1: each shadow's text is tagged with its family, so the world tints its edge and rank as its stroke", async () => {
+test("each plate keeps its rank (and family) classes through a hover and a layout, once each", async () => {
   const { stage, L } = await setup({ reduced: true });
   L.ghosts.show(SET);
-  const classes = () => shadowLabels(stage).map((h) => h.element.className.split(/\s+/).filter((c) => c.startsWith("family-")));
-  assert.deepEqual(classes(), [["family-run"], ["family-pa"]]);
+  const classes = () => shadowLabels(stage).map((h) => h.element.className.split(/\s+/)
+    .filter((c) => c.startsWith("family-") || c.startsWith("rank-")));
+  assert.deepEqual(classes(), [["rank-1", "family-run"], ["rank-2", "family-pa"]]);
   L.ghosts.highlight("screen");
-  assert.ok(classes().some((c) => c[0] === "family-screen"), "the hovered screen's text too");
+  assert.ok(classes().some((c) => c.includes("family-screen")), "the hovered screen's plate too");
   L.ghosts.highlight(null);
   L.ghosts.relayout();
-  assert.deepEqual(classes(), [["family-run"], ["family-pa"]], "kept through a layout, once each");
+  assert.deepEqual(classes(), [["rank-1", "family-run"], ["rank-2", "family-pa"]], "kept through a layout, once each");
 });
 
-test("G3-1: with the family tint each shadow's stroke takes its family's color over a dark casing", async () => {
-  const look = { ghost: { tint: "family" }, world: { plays: { families: { pass: "#fff3d1", run: "#ffb21e" },
-    casing: { color: "#0d1424", opacity: 0.4, width: 1.8 } } } };
+test("4b: #1 in amber, #2 in warm white (never by family or team), each over a thin dark casing", async () => {
+  const look = { world: { plays: { ranks: ["#ffb21e", "#fff3d1"], casing: { color: "#0d1424", opacity: 0.4,
+    width: 1.8 } } } };
   const { stage, L } = await setup({ reduced: true, look });
   L.ghosts.show(SET);
   const strips = stripsUnder(shadowRoot(stage));
   const hex = (m) => `#${m.material.uniforms.uColor.value.getHexString()}`;
   const colors = new Set(strips.map(hex));
   assert.ok(colors.has("#ffb21e") && colors.has("#fff3d1") && colors.has("#0d1424"), [...colors].join(" "));
+  const runStroke = mainStrokes(stage).find((m) => hex(m) === "#ffb21e");
+  assert.ok(runStroke, "his #1 (the inside run) in amber");
   const casings = strips.filter((m) => hex(m) === "#0d1424");
-  assert.equal(casings.length, 4, "a casing under each stroke and each end cue");
+  assert.equal(casings.length, 4, "a casing under each stroke and each end mark");
   assert.ok(casings.every((m) => m.material.uniforms.uInner.value > 0.5), "rings outside the strokes");
   assert.ok(casings.every((m) => strips.some((s) => s !== m && s.geometry !== m.geometry && s.renderOrder > m.renderOrder)));
   L.ghosts.fade(0, 0);
@@ -97,6 +108,11 @@ test("the previous play dims when the call goes up (and not while a past play is
   const [art] = artsUnder(stage.roots.plays);
   const core = stripsUnder(art).find((m) => m.material.uniforms.uInner.value === 0 && m.renderOrder > 8);
   near(core.material.uniforms.uOpacity.value, core.material.userData.opacity * stage.look.lastPlay.dimOpacity);
+  assert.equal(`#${core.material.uniforms.uColor.value.getHexString()}`, PLAY_LOOK.last.core, "4b: in muted steel");
+  const words = stage.labels.byClass("sc-play-label")[0];
+  assert.deepEqual([words.words?.tag, words.words?.body], ["LAST", "Short pass middle · incomplete"]);
+  assert.ok(words.element.classList.contains("is-last"));
+  assert.ok(words.offset, "the LAST plate is placed in screen space with the predictions'");
   const fresh = await setup({ reduced: true });
   fresh.L.player.start(drawing, plan, row(2)).finish();
   fresh.L.player.review({ row: row(104), drawing: buildDrawing(row(104)) });
@@ -171,14 +187,15 @@ test("a camera change lays the text out again for the new view (V, a resize, the
   const { stage, L, tick } = await setup({ reduced: true });
   L.ghosts.show(SET);
   tick(16);
-  const before = shadowLabels(stage).map((h) => ({ ...h.pt }));
+  const spot = (h) => ({ ...h.pt, ...h.offset });
+  const before = shadowLabels(stage).map(spot);
   stage.cams.setMode("endzone", { instant: true });
   tick(16);
-  const after = shadowLabels(stage).map((h) => ({ ...h.pt }));
-  assert.notDeepEqual(after, before, "laid out in the end zone camera's own metrics");
+  const after = shadowLabels(stage).map(spot);
+  assert.notDeepEqual(after, before, "laid out in the end zone camera's own view");
   assert.equal(after.length, 2);
   L.ghosts.relayout();
-  assert.deepEqual(shadowLabels(stage).map((h) => ({ ...h.pt })), after, "the same view lays out the same");
+  assert.deepEqual(shadowLabels(stage).map(spot), after, "the same view lays out the same");
 });
 
 test("the text waits while the camera is still far from the view it settles on, then steps in", async () => {

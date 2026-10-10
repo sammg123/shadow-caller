@@ -20,9 +20,11 @@ const PURE = Object.freeze([
   ...["play-label", "shadows"].map((m) => `field/${m}.js`),
   // v1.4 (A5 part 2): how a play and a shadow play look on the 3D field (the action layer's parts)
   "field/play-style.js",
+  // play-drawing.md 4b: the predictions' lanes and look, their shadow input, the words placed in screen space
+  ...["shadow-lanes", "shadow-style", "shadow-input", "label-place", "presnap-layout"].map((m) => `field/${m}.js`),
   // v1.2 (A6): the 2D field's drawing data
-  ...["fallback-draw", "fallback-ghosts", "fallback-pixels", "fallback-plays", "fallback-steps", "fallback-bowl"]
-    .map((m) => `field/${m}.js`),
+  ...["fallback-draw", "fallback-ghosts", "fallback-pixels", "fallback-plays", "fallback-steps", "fallback-bowl",
+    "fallback-plates"].map((m) => `field/${m}.js`),
   // v1.2 (A5 part 1): the 3D stage's numbers: field layout, DPR, safe area, poses, #field hooks
   ...["field-spec", "stage-math", "engine-state"].map((m) => `field/${m}.js`),
   ...["tokens", "look-schema", "neutral-look", "team-colors"].map((m) => `theme/${m}.js`),

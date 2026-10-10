@@ -6,11 +6,15 @@
 // no-play draws dimmed and dashed under its flag. When the last step lands, the play's words go up beside its end
 // ("Deep pass left · +21"). The play on display stays until the next one draws: dimmed once the next call is up
 // (look.lastPlay), then handed to residue.js (look.residue). The facade (scene.js) owns timing and the resting ball.
+// play-drawing.md 4b: once the next call is up the play on display turns muted steel (play-style lastPlayParts) and
+// its words become the LAST plate, "LAST · Short pass left · +11" with its verdict on a second line (the separate chip
+// steps aside); the ghost layer places that plate in screen space with the predictions' (lastPlate()).
 // G7-1: the boot warm-up (one mesh per program kind) stays for the layer's life, hidden once drawn, and every play's
 // materials go to the program keeper (dispose.keepPrograms), so no play compiles or relinks a shader; the next play is
 // built before the last one is retired; every glyph mask is drawn and uploaded at boot (and shared with residue).
 //   createPlayer(stage) -> { start(drawing, plan, row) -> job, placeAll(items), review(item), relabel(rows),
-//     verdict(v), clear(), dispose(), and for the other action layers: lastDrawing(), dimLast(), isLive(), glyphs }
+//     verdict(v), clear(), dispose(), and for the other action layers: lastDrawing(), dimLast(), lastPlate(),
+//     isLive(), glyphs }
 import { keepPrograms, releasePrograms } from "./dispose.js";
 import {
   buildArt, drawingOrNull, fieldLabel, playEnv, removeLabel, setLabelOpacity, setLabelVisible, toggleLabelClass,
@@ -18,7 +22,8 @@ import {
 } from "./play-art.js";
 import { createFlight } from "./play-ball.js";
 import { createGlyphs } from "./play-glyphs.js";
-import { carriersOf, dimOpacityOf, playParts } from "./play-style.js";
+import { carriersOf, dimOpacityOf, lastPlayParts, playParts } from "./play-style.js";
+import { LAST_TAG } from "./shadows.js";
 import { EASE } from "./timing.js";
 
 const VERDICTS = new Set(["top1", "top3", "miss"]);
@@ -129,7 +134,45 @@ function placeAll(p, items) {
   p.stage.requestRender();
 }
 
-/** The next call is up (the ghost layer shows it): dim the play on display, or retire it (look.lastPlay). */
+/** 4b: the LAST plate's words: its tag, the play's own words, and the verdict's (the live chip's) when graded. */
+function lastWords(p, entry) {
+  const chip = layerOf(p.stage, "overlays")?.chip?.("live");
+  const sub = chip && chip.seq === entry.seq && typeof chip.text === "string" ? chip.text : "";
+  return { tag: LAST_TAG, body: entry.drawing.label?.text ?? "", sub };
+}
+
+const sameWords = (a, b) => Boolean(a && b) && a.tag === b.tag && a.body === b.body && a.sub === b.sub;
+
+/** The play on display while the next call is up: its words on the LAST plate (the chip steps aside). Writes only
+ * what changed. */
+function showLast(p, entry) {
+  const overlays = layerOf(p.stage, "overlays");
+  if (overlays?.chip?.("live") && !entry.chipAside) {
+    overlays.setVisible?.("live", false);
+    entry.chipAside = true;
+  }
+  if (!entry.label) return;
+  const words = lastWords(p, entry);
+  if (!sameWords(words, entry.lastWords)) {
+    entry.label.setWords?.(words, words.body);
+    entry.lastWords = words;
+  }
+  toggleLabelClass(entry.label, "is-last", true);
+}
+
+/** 4b: the play on display redrawn in muted steel, at the opacity it has now. */
+function steelArt(p, entry) {
+  const art = buildArt(lastPlayParts(entry.drawing, entry.row, p.stage.look, playEnv(p.stage)), { glyphs: p.glyphs });
+  art.group.visible = p.st.live;
+  p.stage.roots.plays.add(art.group);
+  keepPrograms(p.stage, art.group);
+  art.complete();
+  art.setOpacity(entry.art.opacity());
+  entry.art.dispose();
+  entry.art = art;
+}
+
+/** The next call is up (the ghost layer shows it): dim the play on display in steel, or retire it (look.lastPlay). */
 function dimLast(p) {
   const entry = p.st.last;
   if (!entry || entry.dimmed || p.st.job) return;
@@ -140,12 +183,23 @@ function dimLast(p) {
     return;
   }
   entry.dimmed = true;
+  steelArt(p, entry);
   dimWords(p, entry);
+  showLast(p, entry);
   const ms = look.motion.ghostInMs;
   const to = dimOpacityOf(look, entry.drawing);
   if (p.stage.reducedMotion() || !(ms > 0)) entry.art.setOpacity(to);
   else p.st.dim = { entry, from: entry.art.opacity(), to, t: 0, ms };
   p.stage.requestRender();
+}
+
+/** 4b: the previous play's plate, null unless the next call is up. `fresh` (the ghost layer's layout) first brings
+ * its words up to date (a verdict's words arrive after the call went up); without it this only reads (the hooks). */
+function lastPlate(p, fresh) {
+  const entry = p.st.last;
+  if (!entry?.dimmed || !entry.label || !p.st.live) return null;
+  if (fresh) showLast(p, entry);
+  return { handle: entry.label, drawing: entry.drawing, words: entry.lastWords };
 }
 
 /** The boot warm-up's meshes hide once a few frames have drawn (compiled) them; they stay until the layer goes. */
@@ -171,7 +225,7 @@ function setLive(p, on) {
     setLabelVisible(entry.label, on);
   }
   if (!on) p.flight.hide();
-  layerOf(p.stage, "overlays")?.setVisible?.("live", on);
+  layerOf(p.stage, "overlays")?.setVisible?.("live", on && !entry?.dimmed);
 }
 
 function relabel(p, rows) {
@@ -183,7 +237,9 @@ function relabel(p, rows) {
   entry.drawing = drawing;
   if (entry.label) {
     entry.label = removeLabel(p.stage, entry.label);
+    entry.lastWords = null;
     showLabel(p, entry);
+    if (entry.dimmed) showLast(p, entry);
   }
   const overlays = layerOf(p.stage, "overlays");
   if (overlays?.chip?.("live")?.seq === entry.seq) {
@@ -196,7 +252,8 @@ function verdict(p, v) {
   const entry = p.st.last;
   if (!entry || v?.seq !== entry.seq || !VERDICTS.has(v.key) || !entry.drawing.label) return;
   layerOf(p.stage, "overlays")?.verdict?.({ seq: v.seq, key: v.key, label: entry.drawing.label },
-    { slot: "live", visible: p.st.live });
+    { slot: "live", visible: p.st.live && !entry.dimmed });
+  entry.chipAside = entry.dimmed;
   layerOf(p.stage, "ghosts")?.relayout?.();
   p.stage.requestRender();
 }
@@ -264,6 +321,7 @@ export function createPlayer(stage) {
     },
     lastDrawing: () => p.st.last?.drawing ?? null,
     dimLast: () => dimLast(p),
+    lastPlate: ({ fresh = false } = {}) => lastPlate(p, fresh),
     isLive: () => p.st.live,
     glyphs: p.glyphs,
   };

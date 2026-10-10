@@ -62,18 +62,21 @@ test("The Light Core Rule: every drawn path has a light-cone-white core and the 
   assert.deepEqual(night.teamColor.against, [ULS.turfDark, ULS.nightSky]);
 });
 
-test("G3-1: the shadow plays are tinted by family on the board's ramp, never a team color, over a night-sky casing", () => {
-  assert.equal(night.ghost.tint, "family");
+test("4b: his predictions are thin dashed lines coloured by rank, #1 amber and #2 warm white, never a team color", () => {
   assert.equal(night.ghost.fill, "neutral", "no team color, ever (DESIGN.md)");
   const plays = resolvePlayLook(night);
-  assert.deepEqual(plays.families, { pass: ULS.ledWarm, run: ULS.ledAmber, rpo: ULS.ledGold },
-    "DESIGN.md: pass, RPO and run are three steps of one ramp, warm white, gold and amber");
-  assert.deepEqual(plays.casing, { color: ULS.nightSky, opacity: 0.4, width: 1.8 });
-  assert.equal(plays.shadowWidth, 3.2, "wide enough to read from across the room");
-  assert.ok(contrast(ULS.ledAmber, ULS.ledWarm) > 1.2, "the run and the pass tell apart");
+  assert.deepEqual([...plays.ranks], [ULS.ledAmber, ULS.ledWarm], "the board's amber for #1, warm white for #2");
+  assert.ok(contrast(ULS.ledAmber, ULS.ledWarm) > 1.2, "#1 and #2 tell apart");
+  assert.ok(plays.shadowPx >= 2 && plays.shadowPx <= 3, "about 2 to 3 px at the 1440x900 wide camera");
+  assert.ok(plays.shadowDash[0] <= 0.8 && plays.shadowDash[1] >= 0.35, "short dashes, clear gaps");
+  assert.deepEqual(plays.casing, { color: ULS.nightSky, opacity: 0.55, width: 2.2 }, "a thin dark ring: dashes hold on paint");
+  assert.deepEqual(plays.last, { core: ULS.lastSlate, edge: ULS.steelEdge }, "the previous play in muted steel");
+  for (const c of [plays.last.core, plays.last.edge]) {
+    assert.ok(!plays.ranks.includes(c), "the previous play is never amber or warm white");
+  }
 });
 
-test("the shadow plays are dashed LED warm white where a family has no tone, and fade out at the snap", () => {
+test("the shadow plays fade out at the snap; every key of world.plays is taken; a kick on display dims further", () => {
   assert.equal(night.ghost.fill, "neutral");
   assert.equal(night.ghost.stroke, ULS.ledWarm);
   // v1.4 (W6): play-drawing.md 4 (binding) "When the snap happens, the shadows fade out and the real play draws solid";
@@ -84,7 +87,7 @@ test("the shadow plays are dashed LED warm white where a family has no tone, and
   assert.deepEqual(plays.shadowDash, look.world.plays.shadowDash, "every key of world.plays is taken");
   // v1.4 (W6): the kickoff or punt before a drive's first snap stays on, dimmed further, under his shadow plays
   assert.ok(plays.kickDim > 0 && plays.kickDim < 1 && night.lastPlay.dimOpacity * plays.kickDim <= 0.15);
-  assert.equal(plays.shadowWidth, look.world.plays.shadowWidth);
+  assert.equal(plays.shadowPx, look.world.plays.shadowPx);
   assert.deepEqual(plays.tones, { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg });
 });
 

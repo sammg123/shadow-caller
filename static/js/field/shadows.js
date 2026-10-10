@@ -1,33 +1,38 @@
 /**
  * Before each snap of the modeled caller, his most likely plays drawn as shadows (docs/design/play-drawing.md
- * section 4, binding): the top 2 of his model, in the same shape language as real plays (paths.js), from the line of
- * scrimmage, dashed and translucent (50% for #1, 35% for #2), never solid, with "1 · Deep shot (20+) · 31%"
- * underneath. Pure: no DOM, no three.js. It replaces ghosts.js (category zones and bands).
+ * sections 4 and 4b, binding): the top 2 of his model, in the same shape language as real plays (paths.js), dashed,
+ * never solid, each tagged on its plate: "NEXT 1 · Deep shot (20+) · 31%". Pure: no DOM, no three.js. It replaces
+ * ghosts.js (category zones and bands).
  *
- * The model predicts the play type, not the side, so a predicted pass flies to the middle lane at its bucket's typical
- * air yards, a run is a line 4 yards long angled to its gap, and the screen is a short arc to the near flat
- * (grammar.js SHADOW_*). Text never covers other text, a stroke (as the view shows it: an arc rises up the screen)
- * or the ball: the words stack as one block in rank order, #1 on top, underneath the shadows, and the block steps down
- * a line until every line of it is clear (play-label.js label model; `metrics` describes the view, the sideline
- * cameras by default; past the line of scrimmage a perspective view's lines take more yards).
+ * The model predicts the play type, not the side, so a predicted pass flies at its bucket's typical air yards, a run
+ * is a line 4 yards long angled to its gap, and the screen is a short arc to the near flat (grammar.js SHADOW_*).
+ * 4b: every stroke starts 1.5 yd past the ball, never on it, and two that would come within 3 yd of each other fan
+ * out to their own lanes, passes arcing in the far lanes above the runs on the turf; nor do they lie on the previous
+ * play (`avoid`'s drawing) where it is in their way ahead of the ball (shadow-lanes.js).
+ * `label.at` is the field-space spot of the words, for the canvas label renderers: they stack as one block in rank
+ * order, #1 on top, underneath the shadows, a line down until every line of it is clear of other text, the strokes
+ * (as the view shows them: an arc rises up the screen) and the ball (play-label.js label model; `metrics` describes
+ * the view). The css2d and 2D fields place the words in screen space instead (presnap-layout.js), from each plate's
+ * `tag` and `body`.
  * On 4th down he usually kicks, which the model doesn't predict: the shadows are what he calls if he goes, so their
- * words start "If he goes · " and they draw quieter (grammar.js SHADOW_FOURTH_OPACITY).
+ * words read "NEXT 1 · If he goes · " and they draw quieter (grammar.js SHADOW_FOURTH_OPACITY).
  *
- * A ShadowPlay is { rank, leaf, family, p, name, key, stack, hovered, label: { text, at, approx }, drawing }, where
- * `drawing` has the Drawing shape (kind "shadow", no ball of its own) and every step carries `dashed: true` and its
- * `opacity`. `stack` counts the earlier shadows with the very same shape (play-action short and dropback short, say):
- * a stacked arc flies higher. `hovered` marks the play the prediction panel is hovering or focusing.
+ * A ShadowPlay is { rank, leaf, family, p, name, key, stack, lane, hovered, label: { text, tag, body, at, approx },
+ * drawing }, where `drawing` has the Drawing shape (kind "shadow", no ball of its own) and every step carries
+ * `dashed: true` and its `opacity`; `snapX` is the ball's x (the stroke starts past it). `lane` is the yards (field y)
+ * its stroke moved to stay clear of the others;
+ * `stack` counts earlier shadows with the very same shape (none once fanned). `hovered` marks the play the prediction
+ * panel is hovering or focusing.
  */
 import { LEAVES, deepFreeze } from "../core/domain.js";
 import { pct, pct1 } from "../model/format.js";
-import { FIELD, clampX, clampY, yFromLateral } from "./coords.js";
 import {
-  END_LINE_INSET_YD, LABEL_LINE_YD, SHADOW_AIR_YD, SHADOW_FOURTH_OPACITY, SHADOW_LABEL_GAP_YD, SHADOW_OPACITY,
-  SHADOW_RUN_LATERAL, SHADOW_RUN_YD, SHADOW_SCREEN, arcApex, bucketOfLeaf, familyOfLeaf, isFiniteNum, ownValue,
+  LABEL_LINE_YD, SHADOW_FOURTH_OPACITY, SHADOW_LABEL_GAP_YD, SHADOW_OPACITY, familyOfLeaf, isFiniteNum, ownValue,
 } from "./grammar.js";
 import {
   LABEL_SEP, labelBox, labelFootprint, labelScaleAt, placeLabelText, resolveLabelMetrics,
 } from "./play-label.js";
+import { laneStrokes } from "./shadow-lanes.js";
 
 /** How many shadows show before a snap (play-drawing.md 4: "maybe show top 2 most likely plays"). */
 export const SHADOW_COUNT = 2;
@@ -36,6 +41,10 @@ export const SHADOW_COUNT = 2;
 export const SHADOW_STACK_LIFT = 0.6;
 /** The words before each shadow's on 4th down: he usually kicks, and the model only knows what he calls if he goes. */
 export const FOURTH_DOWN_WORDS = "If he goes";
+/** Every plate before a snap says what it is (play-drawing.md 4b): "NEXT 1 · Inside run (A/B gap) · 21%" for his
+ * predictions, "LAST · Short pass left · +11" for the play before them (the renderers tag the previous play's words). */
+export const NEXT_TAG = "NEXT";
+export const LAST_TAG = "LAST";
 
 /** The engine's names for the 14 plays (granular.py LEAF_NAMES; the server sends the same in `leaf_names`). */
 export const LEAF_NAMES = deepFreeze({
@@ -46,7 +55,6 @@ export const LEAF_NAMES = deepFreeze({
   screen: "Screen", rpo_run: "RPO, handed off or kept", rpo_throw: "RPO, thrown",
 });
 
-const C = FIELD.CENTER_Y;
 /** The prediction panel's top line names this many plays with whole percentages (pct); its list uses pct1. */
 const TOP_LINE = 3;
 const NAME_MAX = 60;
@@ -112,24 +120,7 @@ export function shadowCandidates(source, { leafNames, leafOrder = LEAVES } = {})
     name: e.name ?? leafName(e.leaf, leafNames) })));
 }
 
-// ---------------------------------------------------------------- geometry (play-drawing.md 4)
-const insideX = (x) => Math.min(FIELD.X_MAX - END_LINE_INSET_YD, Math.max(FIELD.X_MIN + END_LINE_INSET_YD, x));
-
-/** The shadow's one stroke: a run is a line on the turf, everything thrown an arc. Both start at the line. */
-function strokeOf(leaf, ballX, dir) {
-  const from = { x: clampX(ballX), y: C };
-  const lateral = ownValue(SHADOW_RUN_LATERAL, leaf);
-  if (lateral !== undefined) {
-    return { t: "ground", role: "run", from,
-      to: { x: insideX(ballX + dir * SHADOW_RUN_YD), y: clampY(yFromLateral(lateral, dir)) } };
-  }
-  const air = ownValue(SHADOW_AIR_YD, bucketOfLeaf(leaf)) ?? SHADOW_AIR_YD.short;
-  const to = leaf === "screen"
-    ? { x: insideX(ballX - dir * SHADOW_SCREEN.behindYd), y: clampY(C - SHADOW_SCREEN.wideYd) }
-    : { x: insideX(ballX + dir * air), y: C };
-  return { t: "arc", role: "pass", from, to, apex: arcApex("pass", Math.hypot(to.x - from.x, to.y - from.y)), endH: 0 };
-}
-
+// ---------------------------------------------------------------- geometry (play-drawing.md 4 and 4b: shadow-lanes.js)
 function boundsOf(step) {
   const xs = [step.from.x, step.to.x];
   const ys = [step.from.y, step.to.y];
@@ -138,12 +129,16 @@ function boundsOf(step) {
 }
 
 // ---------------------------------------------------------------- labels
-/** "1 · Deep shot (20+) · 31%": rank, the engine's name, the percentage exactly as the prediction panel shows it;
- * on 4th down "If he goes · 1 · Short (0–9 air yds) · 41%". */
-function labelText(rank, name, p, fourth) {
+/**
+ * The plate's words (play-drawing.md 4b): its tag, "NEXT 1" (rank 1), and its body, the engine's name and the
+ * percentage exactly as the prediction panel shows it; `text` reads them together: "NEXT 1 · Deep shot (20+) · 31%",
+ * on 4th down "NEXT 1 · If he goes · Short (0–9 air yds) · 41%". With no rank the tag is "NEXT".
+ */
+function labelWords(rank, name, p, fourth) {
   const percent = rank !== null && rank <= TOP_LINE ? pct(p) : pct1(p);
-  return [fourth ? FOURTH_DOWN_WORDS : "", rank === null ? "" : String(rank), name, percent].filter(Boolean)
-    .join(LABEL_SEP);
+  const tag = rank === null ? NEXT_TAG : `${NEXT_TAG} ${rank}`;
+  const body = [fourth ? FOURTH_DOWN_WORDS : "", name, percent].filter(Boolean).join(LABEL_SEP);
+  return { tag, body, text: [tag, body].join(LABEL_SEP) };
 }
 
 const dot = (p, axis) => p.x * axis.x + p.y * axis.y;
@@ -272,45 +267,52 @@ function opacityOf(rank, fourth) {
   return scale[rank === null ? scale.length - 1 : Math.min(rank, scale.length) - 1];
 }
 
-function shadowOf(pick, stroke, stack, label, sit) {
+function shadowOf(pick, { stroke, stack, lane }, label, sit) {
   const opacity = opacityOf(pick.rank, sit.fourth);
   const step = { ...stroke, approx: true, ghosted: false, dashed: true, opacity };
   const drawing = {
     kind: "shadow", seq: null, id: `shadow:${pick.leaf}`, team: sit.poss, dir: sit.dir, offenseIsCaller: true,
     ghosted: false, dashed: true, opacity, steps: [step], ballStart: null, ballEnd: null, resultLabel: null,
-    label, bounds: boundsOf(step),
+    label, bounds: boundsOf(step), snapX: sit.ballX,
   };
   const key = [pick.leaf, pick.rank, sit.ballX, sit.dir, pick.p.toFixed(KEY_DIGITS), sit.fourth ? "4th" : ""].join(":");
   return { rank: pick.rank, leaf: pick.leaf, family: familyOfLeaf(pick.leaf), p: pick.p, name: pick.name, key, stack,
-    hovered: Boolean(pick.hovered), label, drawing };
+    lane, hovered: Boolean(pick.hovered), label, drawing };
 }
 
 const sameShape = (a, b) => a.t === b.t && a.to.x === b.to.x && a.to.y === b.to.y;
 
-/** Each stroke with its `stack`: how many earlier strokes have the same shape. A stacked arc flies higher. */
-function stackStrokes(strokes) {
+/** Each stroke with its `stack`: how many earlier strokes have the same shape (with lanes, none do: a stacked arc
+ * flies higher all the same), and its `lane`. */
+function stackStrokes(laned) {
+  const strokes = laned.map((l) => l.stroke);
   return strokes.map((stroke, i) => {
     const stack = strokes.slice(0, i).filter((o) => sameShape(o, stroke)).length;
     const apex = stroke.t === "arc" ? { apex: stroke.apex * (1 + SHADOW_STACK_LIFT * stack) } : {};
-    return { stroke: { ...stroke, ...apex }, stack };
+    return { stroke: { ...stroke, ...apex }, stack, lane: laned[i].lane };
   });
 }
+
+/** The real plays' strokes in `avoid` (the previous play's: never another shadow's), which the shadows' lanes keep
+ * clear of where they lie in their way (shadow-lanes.js). */
+const realSteps = (avoid) => (Array.isArray(avoid) ? avoid : []).filter((a) => a && typeof a === "object")
+  .map(drawingOf).filter((d) => d && d.kind !== "shadow").flatMap((d) => d.steps);
 
 /** Strokes first, so every label knows every stroke (and the ball); then the words as one block in rank order (#1 on
  * top, each centered on its own shadow), clear of everything in `avoid`. */
 function layOut(picks, sit, { avoid, metrics }) {
   if (!picks.length) return [];
   const m = resolveLabelMetrics(metrics);
-  const stacked = stackStrokes(picks.map((pick) => strokeOf(pick.leaf, sit.ballX, sit.dir)));
+  const stacked = stackStrokes(laneStrokes(picks, sit, { avoid: realSteps(avoid) }));
   const blockers = blockersOf(avoid, m);
   const hard = [...labelFootprint(stacked.map((s) => s.stroke), m), ...blockers.hard];
   const all = [...hard, ...blockers.dimmed];
-  const block = picks.map((pick, i) => ({ text: labelText(pick.rank, pick.name, pick.p, sit.fourth),
+  const block = picks.map((pick, i) => ({ ...labelWords(pick.rank, pick.name, pick.p, sit.fourth),
     u: baseOf(stacked[i].stroke, m).u }));
   const line = lineGrid(baseOf(stacked[0].stroke, m).v, m, MAX_STACK + picks.length);
   const spots = placeBlock(block, { boxes: blockers.boxes, hard, all, m, line });
-  return picks.map((pick, i) => shadowOf(pick, stacked[i].stroke, stacked[i].stack,
-    { text: block[i].text, at: spots[i], approx: true }, sit));
+  return picks.map((pick, i) => shadowOf(pick, stacked[i],
+    { text: block[i].text, tag: block[i].tag, body: block[i].body, at: spots[i], approx: true }, sit));
 }
 
 /**
@@ -335,7 +337,8 @@ export function buildShadowPlays(source, situation, { count = SHADOW_COUNT, leaf
   const all = shadowCandidates(source, { leafNames, leafOrder });
   const top = all.slice(0, n);
   const extra = top.some((c) => c.leaf === hover) ? [] : all.filter((c) => c.leaf === hover);
-  const picks = [...top, ...extra].map((c) => ({ ...c, hovered: c.leaf === hover }));
+  const picks = [...top, ...extra.map((c) => ({ ...c, extra: true }))]
+    .map((c) => ({ ...c, hovered: c.leaf === hover }));
   return deepFreeze(layOut(picks, sit, { avoid, metrics }));
 }
 

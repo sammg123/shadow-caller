@@ -40,32 +40,38 @@ export const PLAY_LOOK = deepFreeze({
   trackWidthPx: 1.5,
   trackDash: [0.5, 0.9],
   arrowYd: 1.6,           // a carry's arrowhead, yards long (0: none)
-  hoverOpacity: 0.9,      // the shadow the prediction panel hovers or focuses
+  hoverOpacity: 0.95,     // the shadow the prediction panel hovers or focuses
   dimOthers: 0.5,         // the other shadows meanwhile, times their own opacity
-  shadowDash: [1.2, 0.8],
-  shadowWidth: 1.25,      // a shadow's stroke, times the real core's width
-  targetYd: 1.1,          // a predicted pass's target ring (radius) and a predicted run's chevron, yards
+  // play-drawing.md 4b: a prediction is a thin dashed line, about 2.5 px at the 1440x900 wide camera (shadow-style.js
+  // scales it with the view), short dashes with clear gaps (yards), and a small end mark `targetYd` long
+  shadowPx: 2.5,
+  shadowDash: [0.55, 0.45],
+  targetYd: 0.75,
+  // a thin line needs more ink than a broad one: a shadow's opacity is shadowBase + shadowGain times its strength
+  // (shadows.js: 0.5 for #1, 0.35 for #2, quieter on 4th down), so #1 draws at 0.95 and #2 at 0.83
+  shadowBase: 0.55,
+  shadowGain: 0.8,
+  // 4b: colour-coded by rank, never by team: #1 the world's amber, #2 (and any other) warm white
+  ranks: ["#ffb21e", "#fff3d1"],
+  // 4b: the previous play while the predictions are up: a solid stroke in muted steel (never amber or warm white)
+  last: { core: "#a3adc4", edge: "#4a5571" },
   kickDim: 1,             // v1.4 (W6): a kick on display, dimmed for the next call: lastPlay.dimOpacity times this
   tones: { good: null, bad: null, warn: null },   // else the page's --sc-good|bad|warn, else TONE_FALLBACK
-  // G3-1: the shadows' family ramp when look.ghost.tint is "family": pass (dropback, play-action, screen), run, RPO;
-  // a family left null takes the ghost tint (ghost.fill, ghost.stroke)
-  families: { pass: null, run: null, rpo: null },
   // G3-1: a dark ring under each dashed shadow stroke (`width` times it, the stroke's own color never darkened), so it
   // reads on any turf and over the midfield logo; no color, no casing
   casing: { color: null, opacity: 0.4, width: 1.8 },
 });
-/** Each shadow's tint on the family ramp (look.ghost.tint "family"): the board's pass, run and RPO families. */
-export const TINT_FAMILY = deepFreeze({ dropback: "pass", pa: "pass", screen: "pass", run: "run", rpo: "rpo" });
 export const TONE_FALLBACK = deepFreeze({ good: "#3fae6a", bad: "#e5484d", warn: "#f2b33d" });
 
 /** Render order of each part (materials.js LAYERS: the turf's paint is 5 and 6, the air 8 and up). */
-const ORDER = deepFreeze({
+export const ORDER = deepFreeze({
   track: 3.2, ground: { edge: 7.1, core: 7.2 }, arrow: { edge: 7.3, core: 7.4 }, mark: { edge: 7.5, core: 7.6 },
   arc: { edge: 8.1, core: 8.2 }, billboard: { edge: 9.1, core: 9.2 }, shadowGround: 7.8, shadowArc: 10,
 });
 
 const RANGES = Object.freeze({ headGlow: [0, 10], headYd: [0.01, 10], trackOpacity: [0, 1], trackWidthPx: [0.1, 16],
-  arrowYd: [0, 6], hoverOpacity: [0, 1], dimOthers: [0, 1], shadowWidth: [0.25, 4], targetYd: [0, 5], kickDim: [0, 1] });
+  arrowYd: [0, 6], hoverOpacity: [0, 1], dimOthers: [0, 1], shadowPx: [0.5, 8], targetYd: [0, 5], kickDim: [0, 1],
+  shadowBase: [0, 1], shadowGain: [0, 2] });
 /** The kick kinds (timeline.py KICKS, DC B5): a field goal missed is as long a flight as one made. */
 const KICKS = new Set(["kickoff", "punt", "fg", "fg_miss"]);
 const DASHES = Object.freeze(["trackDash", "shadowDash"]);
@@ -80,15 +86,6 @@ const POP_FROM = 1.6;
 const DEFAULT_WIDTH = Object.freeze({ px: 3, yd: 0.6 });
 const DEFAULT_MARK_YD = 2;
 const FG_LIFT_YD = CROSSBAR_YD + 1.2;
-const RING_POINTS = 28;
-const TARGET_DASH = Object.freeze([0.45, 0.35]);
-const CHEVRON = Object.freeze({ cos: Math.cos(Math.PI / 5), sin: Math.sin(Math.PI / 5) });
-/** A shadow's end cue draws once its stroke is this far out (play-art revealAll). */
-const END_LAG = 0.7;
-/** A casing draws this much earlier than the part it rings (render order). */
-const CASING_UNDER = 0.05;
-/** A predicted run's chevron is at most this many times the core wide, so a wide shadow's stays a ">", not a blot. */
-const CHEVRON_WIDTH = 1.6;
 
 /** Marks: the glyph, its words, its tone and its size against strokes.mark.widthYd. */
 const MARKS = deepFreeze({
@@ -129,9 +126,11 @@ export function resolvePlayLook(look, tokens = {}) {
   const own = isPlainObject(given.tones) ? given.tones : {};
   const page = isPlainObject(tokens) ? tokens : {};
   const tones = Object.fromEntries(TONES.map((k) => [k, hexOf(own[k]) ?? hexOf(page[k]) ?? TONE_FALLBACK[k]]));
-  const fams = isPlainObject(given.families) ? given.families : {};
-  const families = Object.fromEntries(Object.keys(PLAY_LOOK.families).map((k) => [k, hexOf(fams[k])]));
-  return deepFreeze({ ...nums, ...dashes, tones, families, casing: resolveCasing(given.casing) });
+  const ranks = Array.isArray(given.ranks) && given.ranks.length && given.ranks.every(hexOf)
+    ? given.ranks.map(hexOf) : [...PLAY_LOOK.ranks];
+  const last = isPlainObject(given.last) ? given.last : {};
+  return deepFreeze({ ...nums, ...dashes, tones, ranks, casing: resolveCasing(given.casing),
+    last: { core: hexOf(last.core) ?? PLAY_LOOK.last.core, edge: hexOf(last.edge) ?? PLAY_LOOK.last.edge } });
 }
 
 /** look.world.plays.casing, each key checked: a #rrggbb color (else none), an opacity, a width from 1 to 4 times. */
@@ -286,75 +285,16 @@ export function playParts(drawing, row, look, env) {
   return deepFreeze(list);
 }
 
-/** The shadow's tint: with look.ghost.tint "family", its family's color on the world's ramp (plays.families); else, or
- * for a family the ramp leaves out, look.ghost.fill: "team" (the team's light core toward ghost.stroke), "neutral"
- * (ghost.stroke), a color of its own. */
-function tintOf(look, paint, family, plays) {
-  const g = look.ghost;
-  const ramp = g.tint === "family" ? hexOf(plays?.families?.[ownValue(TINT_FAMILY, family)]) : null;
-  if (ramp) return ramp;
-  const stroke = hexOf(g.stroke) ?? "#ffffff";
-  if (g.fill === "team") return mixHex(hexOf(paint?.edge) ?? GHOSTED.gray, stroke, CORE_MIX);
-  return g.fill === "neutral" ? stroke : hexOf(g.fill) ?? stroke;
-}
-
-/** The dark ring under a shadow's part (plays.casing): the same path, dashes and growth, wider, drawn just before it. */
-function casingPart(part, casing) {
-  return { ...part, layer: "casing", color: casing.color, opacity: casing.opacity, width: part.width * casing.width,
-    inner: 1 / casing.width, order: part.order - CASING_UNDER };
-}
-
-/** A closed ring of points on the turf (the target a predicted pass is aimed at). */
-function ringPath(at, radius) {
-  const points = Array.from({ length: RING_POINTS + 1 }, (_, i) => {
-    const a = (2 * Math.PI * i) / RING_POINTS;
-    return { x: at.x + radius * Math.cos(a), y: at.y + radius * Math.sin(a), h: 0 };
-  });
-  return withCum(points);
-}
-
-/** A chevron at the end of a predicted run, pointing the way it goes. */
-function chevronPath(step, size) {
-  const len = Math.hypot(step.to.x - step.from.x, step.to.y - step.from.y);
-  const d = { x: (step.to.x - step.from.x) / len, y: (step.to.y - step.from.y) / len };
-  const wing = (s) => ({ x: step.to.x - size * (d.x * CHEVRON.cos - s * d.y * CHEVRON.sin),
-    y: step.to.y - size * (d.y * CHEVRON.cos + s * d.x * CHEVRON.sin), h: 0 });
-  return withCum([wing(1), { x: step.to.x, y: step.to.y, h: 0 }, wing(-1)]);
-}
-
-function withCum(points) {
-  const cum = points.reduce((acc, p, i) => [...acc, i ? acc[i - 1] + Math.hypot(p.x - points[i - 1].x,
-    p.y - points[i - 1].y) : 0], []);
-  return { points, cum, length: cum.at(-1) };
-}
-
 /**
- * A shadow play (shadows.js): its one stroke dashed and translucent in the ghost tint (by family on the world's ramp
- * with look.ghost.tint "family"), never solid, at the shadow's own opacity (50% for #1, 35% after) or lit while
- * hovered, plays.shadowWidth times a real play's core; then, in the same shape language, where it ends: a dashed ring
- * where a pass is aimed, a chevron on a run (drawn once the stroke is out, `lag`). With plays.casing each part has a
- * dark ring under it (layer "casing"), so the dashes hold on the turf and over the midfield logo. The real play draws
- * solid; this never does.
+ * The previous play while his next call is up (play-drawing.md 4b): the same parts, every stroke, arrowhead and mark
+ * in muted steel (plays.last: a light core, a dark edge), solid as it was drawn (a no-play's or an estimate's dashes
+ * keep their meaning); only an arc's ground track keeps its own shade. It reads as the play that was, never as a
+ * prediction (amber, warm white, dashed).
  */
-export function shadowParts(shadow, look, env) {
-  const step = shadow?.drawing?.steps?.[0];
-  const path = pathOf(step);
-  if (!path || path.length < MIN_PATH_YD) return deepFreeze([]);
+export function lastPlayParts(drawing, row, look, env) {
   const plays = env?.plays ?? resolvePlayLook(look);
-  const { units, width } = widthOf(look.strokes[step.t === "arc" ? "arc" : "ground"]);
-  const own = isFiniteNum(step.opacity) ? step.opacity : shadow.drawing.opacity;
-  const color = tintOf(look, env?.paint?.(shadow.drawing.team) ?? null, shadow.family, plays);
-  const common = { step: 0, type: "stroke", layer: "core", units, inner: 0, turf: true, color,
-    opacity: shadow.hovered ? plays.hoverOpacity : own };
-  const stroke = { ...common, path, width: width * plays.shadowWidth, dash: [...plays.shadowDash], lag: 0,
-    order: step.t === "arc" ? ORDER.shadowArc : ORDER.shadowGround };
-  const end = step.t === "arc"
-    ? { ...common, path: ringPath(step.to, plays.targetYd), width, dash: [...TARGET_DASH] }
-    : { ...common, path: chevronPath(step, plays.targetYd), width: width * Math.min(plays.shadowWidth, CHEVRON_WIDTH),
-      dash: null };
-  const parts = [stroke, { ...end, lag: END_LAG, order: ORDER.shadowGround }];
-  const cased = plays.casing?.color ? parts.map((p) => casingPart(p, plays.casing)) : [];
-  return deepFreeze([...cased, ...parts]);
+  const steel = (p) => (p.type === "track" ? p : { ...p, color: p.layer === "edge" ? plays.last.edge : plays.last.core });
+  return deepFreeze(playParts(drawing, row, look, env).map(steel));
 }
 
 // ---------------------------------------------------------------- small helpers the renderers share
@@ -379,58 +319,5 @@ export function trailStyle(look, paint) {
   return { kind: t.kind, color, widthPx: t.widthPx, fadeMs: t.fadeMs };
 }
 
-/** The snap the shadows start at; on 4th down its down too (shadows.js: "If he goes", drawn quieter). */
-const snapOf = (sit) => (isPlainObject(sit) && sit.kind !== "kickoff" && isFiniteNum(sit.ballX)
-  && (sit.dir === 1 || sit.dir === -1) ? { ballX: sit.ballX, dir: sit.dir, kind: "snap", poss: sit.poss ?? null,
-    ...(sit.down === 4 ? { down: 4 } : {}) } : null);
-const pairOf = (e) => ({ leaf: e?.leaf, p: e?.p });
-const keyOf = (sit, leaves) => [sit.ballX, sit.dir, leaves.map((e) => `${e.leaf}:${Number(e.p).toFixed(4)}`).join(",")]
-  .join("|");
-
-/** A GhostSet (ghosts.js, what the conductor sends): its shapes in his order and every play's odds; the live snap
- * names the team when it is the same snap, else `poss` (the caller). */
-function fromGhostSet(set, live, poss) {
-  if (!set.shapes.length) return null;
-  const here = live && live.ballX === set.ballX && live.dir === set.dir;
-  const same = here && typeof live.poss === "string";
-  return { key: String(set.key ?? ""), source: { leaves: set.shapes.map(pairOf),
-    all: (Array.isArray(set.leafZones) ? set.leafZones : []).map(pairOf) },
-  situation: snapOf({ ballX: set.ballX, dir: set.dir, poss: same ? live.poss : poss, down: here ? live.down : null }) };
-}
-
-/** ShadowPlays built already (shadows.js): their plays, odds and names, from the snap they start at. */
-function fromShadowPlays(list) {
-  const drawing = list.find((sp) => isFiniteNum(sp?.drawing?.steps?.[0]?.from?.x))?.drawing;
-  if (!drawing) return null;
-  const leaves = list.map((sp) => ({ ...pairOf(sp), name: sp?.name }));
-  const situation = snapOf({ ballX: drawing.steps[0].from.x, dir: drawing.dir, poss: drawing.team ?? null });
-  return situation ? { key: keyOf(situation, leaves), source: { leaves }, situation } : null;
-}
-
-/** A request of its own: { source (/api/state prediction, a row's pred, a ghost input), situation?, leafNames?,
- * leafOrder?, key? }; with no situation it is for the live snap. */
-function fromRequest(req, live) {
-  const situation = snapOf(req.situation ?? live);
-  if (!situation || !isPlainObject(req.source)) return null;
-  const leaves = Array.isArray(req.source.leaves) ? req.source.leaves : Array.isArray(req.source.top)
-    ? req.source.top.map((t) => ({ leaf: t?.key, p: t?.p })) : [];
-  return { key: typeof req.key === "string" ? req.key : keyOf(situation, leaves), source: req.source, situation,
-    ...(req.leafNames ? { leafNames: req.leafNames } : {}), ...(Array.isArray(req.leafOrder)
-      ? { leafOrder: req.leafOrder } : {}) };
-}
-
-/**
- * What the ghost layer draws for a call: buildShadowPlays' source and situation (and leafNames, leafOrder) from what
- * showGhosts or showReview receives, as the 2D field takes it (fallback-ghosts shadowInput): the conductor's GhostSet,
- * ShadowPlays, or { source, situation? }. `live` is the snap on the field; `poss` names the team when nothing else
- * does (a GhostSet carries none: the caller). Null when there is nothing to draw.
- */
-export function shadowInputOf(set, { live = null, poss = null } = {}) {
-  if (!set || typeof set !== "object") return null;
-  if (Array.isArray(set)) return fromShadowPlays(set);
-  if (Array.isArray(set.shapes)) {
-    const out = fromGhostSet(set, live, poss);
-    return out?.situation ? out : null;
-  }
-  return isPlainObject(set.source) ? fromRequest(set, live) : null;
-}
+/** What the ghost layer draws for a call (moved to shadow-input.js; kept here for its importers). */
+export { shadowInputOf } from "./shadow-input.js";

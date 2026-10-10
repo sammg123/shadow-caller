@@ -22,21 +22,44 @@
   color: var(--sc-ink);
 }
 
-/* G3-1: a shadow play's words wear its stroke's tone, the board's family ramp (pass warm white, run amber, RPO gold;
-   look.js world.plays.families), on the dashed edge and the rank numeral, so "1" and "2" each point at their stroke.
-   The words stay LED ink; the family is named in them, the tone is the second cue (DESIGN.md). Hover keeps the focus
-   frame. */
-:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label {
-  --uls-shadow-tint: var(--sc-pass);
+/* play-drawing.md 4b: the plates in the stadium's lettering. His #1 wears LED amber, #2 LED warm white, on its tab and
+   its dashed edge (the strokes are drawn in the same, look.js world.plays.ranks); the previous play's LAST plate and
+   its stroke are muted slate (steel frame toward warm white: look.js ULS.lastSlate is the same mix). The tab's tag is
+   set in the display face, like the board's captions. */
+:where(:root[data-world="under-the-lights"]) .sc-field {
+  --sc-next-1: var(--uls-led-amber);
+  --sc-next-2: var(--uls-led-warm);
+  --sc-last: color-mix(in srgb, var(--uls-steel-frame) 60%, var(--uls-led-warm));
 }
-:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label.family-run { --uls-shadow-tint: var(--sc-run); }
-:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label.family-rpo { --uls-shadow-tint: var(--sc-rpo); }
+:where(:root[data-world="under-the-lights"]) .sc-field-label > span > .sc-label-tag {
+  font-family: var(--sc-font-display);
+  font-weight: var(--sc-weight-display);
+  letter-spacing: 0.04em;
+  color: var(--uls-led-panel);
+}
 :where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label:not(.is-hovered) {
-  border-color: var(--uls-shadow-tint);
+  border-color: color-mix(in srgb, var(--sc-tab) 80%, var(--sc-surface-2));
 }
 :where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label:is(:not(.rank-1), .is-muted):not(.is-hovered) {
-  border-color: color-mix(in srgb, var(--uls-shadow-tint) 70%, var(--sc-surface-2));
+  border-color: color-mix(in srgb, var(--sc-tab) 55%, var(--sc-surface-2));
 }
-:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label::first-letter {
-  color: var(--uls-shadow-tint);
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-play-label.is-last {
+  border-color: color-mix(in srgb, var(--sc-last) 45%, var(--sc-surface-2));
+}
+
+/* 4b: the style key, a small LED tag above the honesty note at the bottom left of the free area. */
+:where(:root[data-world="under-the-lights"]) .sc-field-key {
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: var(--sc-case-label);
+}
+@media (min-width: 1200px) and (min-height: 640px) {
+  #app[data-layout="uls"] #field > .sc-field-key {
+    inset: auto auto calc(var(--sc-field-safe-bottom) + var(--sc-space-2) + 2.6em) var(--sc-space-4);
+  }
 }

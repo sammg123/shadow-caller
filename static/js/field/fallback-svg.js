@@ -159,10 +159,18 @@ function textBox(text, key) {
   return estimate(text, x, y);
 }
 
+/** A text element's size ({ width, height } px): measured once per words and style, estimated where nothing lays out
+ * (fallback-words fits the tagged plates with it). */
+export function measureText(tag, text) {
+  const box = textBox(text, sizeKey(tag, text));
+  return { width: box.width, height: box.height };
+}
+
 /** Size every tag panel under `root` to its text plus the tag's padding; a tag already fitted to the same words, set
- * the same way, is left alone. */
+ * the same way, is left alone. Tagged plates (.sc-fb-plate) are fitted by fallback-words.js instead. */
 export function fitTags(root) {
-  for (const tag of root.querySelectorAll(".sc-fb-tag")) {
+  const plain = (t) => !String(t.getAttribute("class") ?? "").split(/\s+/).includes("sc-fb-plate");
+  for (const tag of [...root.querySelectorAll(".sc-fb-tag")].filter(plain)) {
     const rect = tag.querySelector("rect");
     const text = tag.querySelector("text");
     if (!rect || !text) continue;
@@ -284,13 +292,23 @@ function boxOfTag(tag) {
   return { x: n("x"), y: n("y"), width: n("width"), height: n("height") };
 }
 
+/** A plate fallback-words placed: its box on screen (its data-box), which declutter keeps clear of and never moves. */
+function placedBox(tag) {
+  const [x0, y0, x1, y1] = String(tag.getAttribute("data-box") ?? "").split(" ").map(Number);
+  return [x0, y0, x1, y1].every(Number.isFinite) ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : null;
+}
+
 /** Move a stage's tags on screen and apart (fitTags first); tags fading out don't count. `bounds` is { top, bottom,
  * left?, right? } in px. A plate's box is its rect's own attributes (a move is a transform on the tag), so each tag
- * is only written when its move changes. */
+ * is only written when its move changes. 4b: a plate placed in screen space (data-box) stays where it is, and the
+ * others keep clear of it. */
 export function declutter(stage, bounds) {
-  const tags = TAG_PRIORITY.flatMap((group) => [...stage[group].querySelectorAll(".sc-fb-tag")])
+  const all = TAG_PRIORITY.flatMap((group) => [...stage[group].querySelectorAll(".sc-fb-tag")])
     .filter((tag) => tag.style?.getPropertyValue?.("opacity") !== "0");
-  spreadBoxes(tags.map(boxOfTag), bounds).forEach(({ dx, dy, hidden }, i) => {
+  const fixed = all.map(placedBox);
+  const tags = all.filter((_, i) => !fixed[i]);
+  const pinned = fixed.filter(Boolean);
+  spreadBoxes([...pinned, ...tags.map(boxOfTag)], bounds).slice(pinned.length).forEach(({ dx, dy, hidden }, i) => {
     const moved = !hidden && (Math.round(dx) || Math.round(dy));
     setAttr(tags[i], "display", hidden ? "none" : null);
     setAttr(tags[i], "transform", moved ? `translate(${Math.round(dx)} ${Math.round(dy)})` : null);

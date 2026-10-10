@@ -2,8 +2,8 @@
 
   1. a field goal starts on the line of scrimmage like every play: no hold drawn behind it (it read as a sack), and
      no frame of the kick goes behind the line;
-  4. before each Dallas snap his top 2's words stack as one block, #1 over #2, never touching, at 390, 1440 and 1920
-     wide; on 4th down (he usually kicks) they read "If he goes · 1 · ...";
+  4. before each Dallas snap his top 2's plates never touch (4b: each beside its own stroke, placed in screen space),
+     at 390, 1440 and 1920 wide; on 4th down (he usually kicks) they read "NEXT 1 · If he goes · ...";
   3. a play's words never sit on the ball: the 2D field lays them out in its own view, so a phone's deep plates step
      clear of it.
 
@@ -109,10 +109,17 @@ def test_a_field_goal_starts_on_the_line_of_scrimmage(browser, wsrv, scene_id):
 
 
 # ---------------------------------------------------------------- 4: his top 2's words, one block
+def apart(a, b):
+    """Two plates' boxes don't overlap (PX_SLACK of touching allowed)."""
+    return (a["bottom"] <= b["top"] + PX_SLACK or b["bottom"] <= a["top"] + PX_SLACK
+            or a["right"] <= b["left"] + PX_SLACK or b["right"] <= a["left"] + PX_SLACK)
+
+
 @pytest.mark.parametrize("size", SIZES, ids=[f"{w}x{h}" for w, h in SIZES])
 @pytest.mark.parametrize("scene_id", sorted(SCENES))
-def test_his_top_twos_words_stack_number_one_over_number_two(browser, wsrv, scene_id, size):
-    """Before three Dallas snaps where #2 used to sit over #1 (or touch it): #1's plate is wholly above #2's."""
+def test_his_top_twos_plates_never_touch(browser, wsrv, scene_id, size):
+    """Before three Dallas snaps where #2 used to sit over #1 (or touch it): the two plates never meet (4b: each sits
+    beside its own stroke, placed in screen space, so their order follows the strokes' lanes)."""
     base = wsrv["base"]
     for idx in STACK_IDXS:
         watch_paused_at(base, idx)
@@ -120,9 +127,8 @@ def test_his_top_twos_words_stack_number_one_over_number_two(browser, wsrv, scen
         try:
             plates = shown_plates(page)
             one, two = plates[1], plates[2]
-            assert one["bottom"] <= two["top"] + PX_SLACK, (
-                f"idx {idx}: '{one['text']}' {one['top']:.0f}-{one['bottom']:.0f} is not above "
-                f"'{two['text']}' {two['top']:.0f}-{two['bottom']:.0f}")
+            assert apart(one, two), (f"idx {idx}: '{one['text']}' {one} meets '{two['text']}' {two}")
+            assert one["text"].startswith("NEXT 1") and two["text"].startswith("NEXT 2"), (one["text"], two["text"])
             assert page.errors == [], page.errors
         finally:
             page.context.close()
@@ -137,8 +143,8 @@ def test_on_fourth_down_the_shadows_read_if_he_goes(browser, wsrv, scene_id):
     try:
         plates = shown_plates(page)
         for rank in (1, 2):
-            assert plates[rank]["text"].startswith(f"If he goes · {rank} · "), plates[rank]["text"]
-        assert plates[1]["bottom"] <= plates[2]["top"] + PX_SLACK
+            assert plates[rank]["text"].startswith(f"NEXT {rank} · If he goes · "), plates[rank]["text"]
+        assert apart(plates[1], plates[2])
         assert page.errors == [], page.errors
     finally:
         page.context.close()

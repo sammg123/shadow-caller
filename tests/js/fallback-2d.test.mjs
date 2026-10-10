@@ -59,7 +59,9 @@ const frame = (s) => s.engine.setGameFrame(T.field, T.teams, T.team_order);
 const ghostsFor = (r) => buildGhostSet(ghostInputFromPred(r.pred), situationFromRow(r));
 /** The shadows a row's prediction draws: his top 2, in his order. */
 const top2 = (r) => ghostsFor(r).shapes.slice(0, 2).map((x) => x.leaf);
-const texts = (el) => [...el.querySelectorAll("text")].map((t) => t.textContent);
+/** The words a layer shows (a plate's hidden " · " separators aside: they are for the text, not the eye). */
+const texts = (el) => [...el.querySelectorAll("text")].filter((t) => t.getAttribute("data-role") !== "sep")
+  .map((t) => t.textContent);
 /** Up to the next caller snap: the situation, then his shadows. */
 const presnap = (s, r) => {
   s.engine.showSituation(situationFromRow(r));
@@ -206,8 +208,10 @@ test("shadows: his top 2 before the snap with their words, deferred while a play
   assert.deepEqual(s.engine.debugState().ghosts, ["run_inside", "pa_short"]);
   const shadows = layer(s, "live-ghosts").querySelectorAll(".sc-fb-shadow");
   assert.deepEqual([...shadows].map((g) => g.getAttribute("data-leaf")), ["run_inside", "pa_short"]);
-  assert.deepEqual([...shadows].map((g) => g.style.getPropertyValue("opacity")), ["0.5", "0.35"]);
-  assert.deepEqual(texts(layer(s, "live-tagGhost")), ["1 · Inside run (A/B gap) · 27%", "2 · PA short (0–9) · 16%"]);
+  assert.deepEqual([...shadows].map((g) => g.style.getPropertyValue("opacity")), ["0.95", "0.83"],
+    "4b: thin lines carry more ink; #2 slightly fainter");
+  assert.deepEqual(texts(layer(s, "live-tagGhost")), ["NEXT 1", "Inside run (A/B gap) · 27%", "NEXT 2",
+    "PA short (0–9) · 16%"], "each plate's tag on its tab, then its words");
   const playing = s.engine.playRow(first, { durationMs: 900, token: 1 });
   assert.deepEqual(s.engine.debugState().ghosts, [], "his snap: the shadows go");
   assert.ok([...layer(s, "live-ghosts").childNodes].every((g) => g.style.getPropertyValue("opacity") === "0"),
@@ -235,11 +239,33 @@ test("the previous play stays on the field, dimmed with its words, while his sha
   const last = layer(s, "live-last").querySelector(".sc-fb-play");
   assert.equal(last.getAttribute("opacity"), String(NEUTRAL_LOOK.lastPlay.dimOpacity), "dimmed, still there");
   assert.ok(Number(words().getAttribute("opacity")) < 1, "its words dim with it");
+  assert.deepEqual(texts(words()), ["LAST", "Short pass middle · incomplete"], "4b: the LAST plate");
+  assert.ok([...last.querySelectorAll("path")].filter((n) => n.getAttribute("stroke") && n.getAttribute("stroke") !== "#000000")
+    .every((n) => ["#a3adc4", "#4a5571"].includes(n.getAttribute("stroke"))), "4b: in muted steel");
+  assert.ok(words().getAttribute("data-box"), "placed in screen space with his predictions' plates");
   assert.equal(layer(s, "live-ghosts").querySelectorAll(".sc-fb-shadow").length, 2);
   await s.engine.playRow(row(3), { durationMs: 0, token: 2 });
   assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("data-seq"), "3");
   assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("opacity"), "1", "the real play: solid");
   assert.deepEqual(texts(words()), ["Short pass middle · +8"]);
+});
+
+test("4b: after a long play the LAST plate goes where the view shows its path, short of its end, else nowhere", async (t) => {
+  const s = setup(t);
+  frame(s);
+  await s.engine.playRow(row(81), { durationMs: 0, token: 1 });       // a 48-yard pass from the DAL 13
+  presnap(s, row(82));
+  const last = layer(s, "live-tagPlay").querySelector('[data-plate="last"]');
+  const clarity = s.engine.debugState().clarity;
+  assert.deepEqual(clarity.plates.filter((p) => p.kind === "next").map((p) => p.id),
+    ["next:dropback_short", "next:run_inside"]);
+  assert.ok(clarity.plates.every((p) => p.clear), JSON.stringify(clarity.plates));
+  const placed = clarity.plates.some((p) => p.id === "last");
+  assert.equal(last.getAttribute("display"), placed ? null : "none", "a plate only where its play shows");
+  assert.ok(clarity.ball.x1 > clarity.ball.x0 && clarity.shadows.every((sp) => sp.px.length > 2));
+  assert.deepEqual(clarity.shadows.map((sp) => sp.color), ["#ffb21e", "#fff3d1"]);
+  assert.equal(clarity.last.dashed, false);
+  assert.ok(!["#ffb21e", "#fff3d1"].includes(clarity.last.color), "the previous play never in a prediction's colour");
 });
 
 test("a timeout before his snap leaves his shadows up and the previous play dimmed", async (t) => {
@@ -265,7 +291,8 @@ test("hovering a play outside the top 2 draws its shadow, lit; leaving it takes 
   const shadows = () => [...layer(s, "live-ghosts").querySelectorAll(".sc-fb-shadow")];
   assert.deepEqual(shadows().map((g) => g.getAttribute("data-leaf")), ["run_inside", "pa_short", "screen"]);
   assert.equal(shadows()[2].getAttribute("data-hovered"), "true");
-  assert.ok(texts(layer(s, "live-tagGhost")).includes("10 · Screen · 2.8%"));
+  assert.ok(texts(layer(s, "live-tagGhost")).includes("Screen · 2.8%"));
+  assert.ok(texts(layer(s, "live-tagGhost")).includes("NEXT 10"));
   assert.deepEqual(s.engine.debugState().ghosts, ["run_inside", "pa_short"], "the hook keeps the top 2");
   s.engine.highlightGhost(null);
   assert.deepEqual(shadows().map((g) => g.getAttribute("data-leaf")), ["run_inside", "pa_short"]);
@@ -511,15 +538,19 @@ test("camera, resize, safe area and listeners", (t) => {
   assert.equal(typeof s.engine.on("nonsense", () => {}), "function");
 });
 
-test("a world look draws its shadows in its own tint and dash (still dashed)", (t) => {
-  const look = resolveLook({ ghost: { style: "pixel", fill: "#fff3d1" } });
+test("4b: his #1 in the world's amber, #2 in warm white, thin and dashed whatever the ghost fill", (t) => {
+  const look = resolveLook({ ghost: { style: "pixel", fill: "#123456" },
+    world: { plays: { ranks: ["#ffb21e", "#fff3d1"] } } });
   const s = setup(t, { look });
   frame(s);
   presnap(s, row(2));
-  const core = layer(s, "live-ghosts").querySelector('[data-leaf="run_inside"]').querySelector('[data-stroke="core"]');
-  assert.equal(core.getAttribute("stroke"), "#fff3d1");
-  assert.ok(core.getAttribute("stroke-dasharray"));
-  assert.equal(core.getAttribute("stroke-linecap"), "butt", "a pixel look's square dashes");
+  const coreOf = (leaf) => layer(s, "live-ghosts").querySelector(`[data-leaf="${leaf}"]`)
+    .querySelector('[data-stroke="core"]');
+  assert.equal(coreOf("run_inside").getAttribute("stroke"), "#ffb21e");
+  assert.equal(coreOf("pa_short").getAttribute("stroke"), "#fff3d1");
+  assert.ok(coreOf("run_inside").getAttribute("stroke-dasharray"));
+  assert.ok(Number(coreOf("run_inside").getAttribute("stroke-width")) <= 3.5, "thin");
+  assert.equal(coreOf("run_inside").getAttribute("stroke-linecap"), "butt", "square dashes");
 });
 
 test("setGameFrame's optional game: a day kickoff merges look.world.day over the look (as the WebGL engine does)", (t) => {

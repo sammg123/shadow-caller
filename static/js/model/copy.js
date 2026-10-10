@@ -369,6 +369,8 @@ export const SCRUB = Object.freeze({
 export const FIELD = Object.freeze({
   label: "Football field",   // v1.2 (A9): #field's name before a game is loaded
   legend: "Ball shown mid-field; ESPN gives no hash.",
+  // play-drawing.md 4b: the style key on the field's edge while his next call is up (last play / next 1 / next 2)
+  key: Object.freeze({ last: "Last play", next1: "Next 1", next2: "Next 2" }),
   ballOn: (spot) => `Ball on ${spot}.`,
   downDistance: (text) => `${text}.`,
   lineToGain: (ltg) => `Line to gain ${ltg}.`,
