@@ -3,6 +3,7 @@ import pytest
 from playwright.sync_api import expect
 from ui_helpers import (command, expect_off_field, expect_shows, finished, fresh, load, record_requests, reset_game,
                         state)
+from ui_helpers import neutral_only, show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -74,6 +75,7 @@ def test_06_fresh_scorecard_log_and_tendencies_title(upage, server):
     """#6: "Scores appear after the first logged snap.", "No snaps yet. ...", "Schottenheimer's tendencies"."""
     fresh(upage, server["base"])
     expect_shows(upage.locator("#kpiArea"), "Scores appear after the first logged snap.")
+    show(upage, "#logArea")
     expect_shows(upage.locator("#logArea"), "No snaps yet. Each logged play shows his top pick next to what he called.")
     expect(upage.locator("#profTitle")).to_have_text("Schottenheimer's tendencies")
 
@@ -84,6 +86,8 @@ def _box(page, sel):
     return b
 
 
+@neutral_only("#7 is the neutral layout's rail and family columns; Under the Lights hangs every region in its own "
+              "fixtures (DESIGN.md Layout, ui-architecture 15)")
 def test_07_rail_stacks_at_1040_and_families_two_columns_at_760(ui_pages, server):
     """#7: at 1440 the rail sits beside the main column; at 1040 px it stacks under it; at 760 px the five families
     show in 2 columns."""

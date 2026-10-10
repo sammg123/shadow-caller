@@ -62,12 +62,17 @@ test("The Light Core Rule: every drawn path has a light-cone-white core and the 
   assert.deepEqual(night.teamColor.against, [ULS.turfDark, ULS.nightSky]);
 });
 
-test("the shadow plays are dashed LED warm white, never a team color, and fade at the snap", () => {
+test("the shadow plays are dashed LED warm white, never a team color, and fade out at the snap", () => {
   assert.equal(night.ghost.fill, "neutral");
   assert.equal(night.ghost.stroke, ULS.ledWarm);
-  assert.ok(night.ghost.afterSnapOpacity > 0 && night.ghost.afterSnapOpacity <= 0.15);
+  // v1.4 (W6): play-drawing.md 4 (binding) "When the snap happens, the shadows fade out and the real play draws solid";
+  // DESIGN.md's "the top call stays at 15% after the snap" was the pixel projection's rule, which it replaced. The 2D
+  // field fades them out completely too.
+  assert.equal(night.ghost.afterSnapOpacity, 0);
   const plays = resolvePlayLook(night);
   assert.deepEqual(plays.shadowDash, look.world.plays.shadowDash, "every key of world.plays is taken");
+  // v1.4 (W6): the kickoff or punt before a drive's first snap stays on, dimmed further, under his shadow plays
+  assert.ok(plays.kickDim > 0 && plays.kickDim < 1 && night.lastPlay.dimOpacity * plays.kickDim <= 0.15);
   assert.equal(plays.shadowWidth, look.world.plays.shadowWidth);
   assert.deepEqual(plays.tones, { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg });
 });
@@ -89,7 +94,7 @@ test("the light dip and the moments' timings live in world.uls (DESIGN.md: 80% i
   assert.deepEqual(look.world.uls.dip, { level: 0.8, ms: 300 });
   assert.ok(look.world.uls.camera.driftDegPerS <= 3, "the blimp drifts at most 3 degrees a second");
   assert.equal(look.world.uls.ribbons.stepMs, 83);
-  assert.equal(night.motion.ghostInMs, 400, "the projection scans in over 400 ms");
+  assert.equal(night.motion.ghostInMs, 400, "his shadow plays come up over 400 ms (play-drawing.md 4)");
   assert.equal(night.motion.ghostOutMs, 300);
 });
 

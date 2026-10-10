@@ -324,6 +324,18 @@ test("review: Left shows the newest drawn play; Right at the edge steps a paused
   assert.deepEqual(ctx.view().review, { seq: null });
 });
 
+test("v1.4 (W6): a watch step's play is ESPN's, so its tick is a poll's: it draws at its own pace, not a typed play's 800 ms", async () => {
+  const keyed = setup({ state: { watch: { state: "paused" } } });
+  await keyed.actions.watchStep();
+  assert.deepEqual(keyed.kicks, [{ origin: "poll" }], "the Step key");
+  const right = setup({ state: { watch: { state: "paused" } } });
+  await right.actions.review(1);
+  assert.deepEqual(right.kicks, [{ origin: "poll" }], "Right at the live edge");
+  const playing = setup({ state: { watch: { state: "playing" } } });
+  await playing.actions.review(1);
+  assert.deepEqual(playing.kicks, [{ origin: "action" }, { origin: "poll" }], "the pause is his; the stepped play is ESPN's");
+});
+
 test("cycleCamera wraps through the engine's modes and persists the choice", () => {
   const modes = [{ id: "sideline", label: "Sideline" }, { id: "endzone", label: "End zone" }, { id: "overhead", label: "Overhead" }];
   const ctx = setup({ cameraModes: () => modes, defaultCamera: () => "sideline" });

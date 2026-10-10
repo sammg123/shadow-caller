@@ -1,10 +1,26 @@
 <!doctype html>
+<!--
+docs/design/direction-contract.md, verbatim:
+
+# Direction contract
+
+**THESIS.** The stadium is the interface: each call is projected on the turf pre-snap and scored on a SHADOW v LEAGUE scoreboard. Refuses the dark KPI-card dashboard.
+
+**OWN-WORLD.** Night-blue bowl, lit striped turf, opaque LED panels showing unlit pixels, warm white and amber, flat steel, a scoreboard band in the offense's color, Big Shoulders, Doto at 40 px and up.
+
+**STORY.** The call shows pre-snap, the ball flies through or past it, the score says whether the edge is real; Sam retags by key.
+
+**FIRST VIEWPORT.** Bowl full bleed; play ribbon atop; video board upper right (416x324, call 40/64 px); desk beneath with the primary action (entry or retag keys); drive ribbon; scoreboard band (140 px).
+
+**FORM.** Under the Lights, 5th on the resonance-ordered list; seed 748f193a; its own staging, adopting only the altitude idea of dealt staging spatial-navigation-tooling-by-zoom: blimp game, wide drive, tight snap.
+-->
 <html lang="en" data-world="neutral" data-motion="full" data-ambient="room" data-scene="webgl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Shadow Play-Caller</title>
 <meta name="description" content="A shadow model of one NFL play-caller: his next call before the snap, scored against the league.">
+<link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
 <script type="importmap">{"imports": {"three": "/static/vendor/three/build/three.module.min.js",
                                       "three/addons/": "/static/vendor/three/addons/"}}</script>
 <!-- Order (ui-architecture.md 1.1): base, layout, every component, then the active world (swapped by theme/apply.js).

@@ -1,4 +1,8 @@
-// field/ghosts.js: prediction -> category zones, lanes and bands (never routes), weighted by probability.
+// field/ghosts.js (deprecated): the conductor's GhostSet. v1.4 (W6): nothing draws these zones, lanes and bands any
+// more: docs/design/play-drawing.md 4 (Sam's binding direction) replaced them on the field with his top 2 as shadow
+// plays (field/shadows.js, tested in shadows.test.mjs). What the set still carries, and these tests pin: his ranked
+// plays and their odds (both engines turn them into shadow plays: play-style.shadowInputOf, fallback-ghosts
+// shadowInput) and, through `shapes`, the pre-snap camera's frame (camera-plan.frameSituation).
 import assert from "node:assert/strict";
 import test from "node:test";
 

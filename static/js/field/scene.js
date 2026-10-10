@@ -33,6 +33,8 @@ const message = (err) => (err && typeof err.message === "string" ? err.message :
 // ---------------------------------------------------------------- hooks and anim state
 /** data-ghosts: the shadow plays drawn (v1.4: his top 2, none once the ball is snapped), else the call's leaves. */
 const ghostsShown = (c) => c.layers.ghosts.shown?.() ?? ghostLeaves(c.st.ghostSet);
+/** v1.4 (W6): the ball in flight (field yards, a copy) or null, for the e2e line-of-scrimmage check. */
+const ballOf = (c) => { const b = c.st.playing?.job.ball?.(); return b ? { x: b.x, y: b.y, h: b.h } : null; };
 
 function animState(c) {
   return animStateOf({ rebuilding: c.st.rebuilding, playing: Boolean(c.st.playing), reviewing: c.st.review !== null });
@@ -116,6 +118,7 @@ function endPlay(c, completed) {
   c.stage.cams.follow(null);
   c.stage.lines.setBallVisible(true);
   c.stage.lines.placeBall(p.drawing.ballEnd?.x ?? null);
+  moment(c, "landed", p.row, { completed });          // v1.4 (W1): any animated play is down (ui-architecture 21)
   p.resolve({ seq: p.row.seq, token: p.token, completed });
   if (c.st.deferred !== undefined) {
     const set = c.st.deferred;
@@ -154,6 +157,7 @@ function animate(c, row, drawing, { durationMs, token }) {
       c.layers.ghosts.fade?.(c.stage.look.ghost.afterSnapOpacity, c.stage.look.motion.ghostOutMs);
       moment(c, "snap", row);
     }
+    moment(c, "play", row, { durationMs: plan.totalMs });   // v1.4 (W1): any animated play starts (ui-architecture 21)
     c.st.playing.stop = c.stage.keepAlive((dt) => playStep(c, dt));
     changed(c);
   });
@@ -302,7 +306,7 @@ function debugState(c) {
   return debugRecord({ ready: c.st.sceneReady, frames: s.rig.frames(), animState: animState(c),
     playingSeq: c.st.playing?.seq ?? null, ghosts: ghostsShown(c), highlight: c.st.highlight,
     camera: s.cams.mode(), situation: c.st.review === null ? c.st.live.situation : c.st.reviewSituation, info,
-    dpr: s.rig.dpr(), extra: { tier: c.tier, gpu: c.gpu, shot: s.cams.activeMode(), pose: s.cams.pose(),
+    dpr: s.rig.dpr(), extra: { tier: c.tier, gpu: c.gpu, ball: ballOf(c), shot: s.cams.activeMode(), pose: s.cams.pose(),
       lens: s.cams.lens(), reviewSeq: c.st.review, running: s.rig.running(), programs: info.programs, cpuMs: info.cpuMs } });
 }
 

@@ -7,10 +7,11 @@ import pytest
 from playwright.sync_api import expect
 from ui_helpers import (EVENT, TOTAL_ROWS, api_post, blur, ensure_finished, finished, fresh, load, quiet,
                         record_requests, reset_game, command, until, version, wait_idle, with_drive)
+from ui_helpers import CAMERAS  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
-NEUTRAL_CAMERAS = [("sideline", "Sideline"), ("endzone", "End zone"), ("overhead", "Overhead")]   # NEUTRAL_LOOK
+NEUTRAL_CAMERAS = CAMERAS      # v1.4 (W6): the world's modes in V order (NEUTRAL_LOOK's on neutral)
 DRAW_CALL_BUDGET = 150          # 6.1
 TRIANGLE_BUDGET = 300_000       # 6.1
 LEAK_SLACK = 2                  # 6.1: geometries and textures within +2 across a rebuild

@@ -12,8 +12,8 @@ import { buildShadowPlays, shadowForLeaf } from "../../static/js/field/shadows.j
 import { buildGhostSet } from "../../static/js/field/ghosts.js";
 import { CROSSBAR_YD } from "../../static/js/field/grammar.js";
 import {
-  CORE_MIX, DASH_YD, EDGE_WIDTH, GHOSTED, PLAY_LOOK, SOFT, TONE_FALLBACK, carriersOf, chipSpot, markPop, pathOf,
-  playParts, resolvePlayLook, revealAt, shadowInputOf, shadowParts, trailStyle,
+  CORE_MIX, DASH_YD, EDGE_WIDTH, GHOSTED, PLAY_LOOK, SOFT, TONE_FALLBACK, carriersOf, chipSpot, dimOpacityOf, markPop,
+  pathOf, playParts, resolvePlayLook, revealAt, shadowInputOf, shadowParts, trailStyle,
 } from "../../static/js/field/play-style.js";
 import { loadJson } from "./fixtures.mjs";
 
@@ -276,4 +276,15 @@ test("a stroke's edge may be the team's alternate or a color of its own", () => 
   const own = resolveLook({ ghost: { fill: "#abcdef" } });
   const shadow = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.3 }] }, D25)[0];
   assert.equal(shadowParts(shadow, own, envFor(own))[0].color, "#abcdef");
+});
+
+test("v1.4 (W6): a kick on display dims further once the next call is up (look.world.plays.kickDim)", () => {
+  const base = { lastPlay: { dimOpacity: 0.3 } };
+  assert.equal(PLAY_LOOK.kickDim, 1, "by default a kick dims like any play");
+  assert.equal(dimOpacityOf(base, { kind: "kickoff" }), 0.3);
+  const look = { ...base, world: { plays: { kickDim: 0.4 } } };
+  for (const kind of ["kickoff", "punt", "fg"]) near(dimOpacityOf(look, { kind }), 0.12, kind);
+  assert.equal(dimOpacityOf(look, { kind: "play" }), 0.3, "a scrimmage play keeps lastPlay.dimOpacity");
+  assert.equal(dimOpacityOf(look, null), 0.3);
+  assert.equal(resolvePlayLook({ world: { plays: { kickDim: 2 } } }).kickDim, 1, "out of range: the default");
 });

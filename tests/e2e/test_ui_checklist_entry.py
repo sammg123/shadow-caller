@@ -5,6 +5,7 @@ import pytest
 from playwright.sync_api import expect
 from ui_helpers import (COL, active_id, command, expect_off_field, expect_toast, fresh, log_table, quiet,
                         record_requests, state, until, with_drive)
+from ui_helpers import show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -182,7 +183,7 @@ def test_49_letters_in_inputs_never_fire_shortcuts(upage, server, sel):
     with_drive(upage, server["base"])
     keys(upage, "p")
     expect(chosen(upage)).to_contain_text("Short (0–9 air yds)")
-    box = upage.locator(sel)
+    box = show(upage, sel)                            # v1.4 (W6): a world may keep #feedEvent in its booth
     box.click()
     box.press("ControlOrMeta+a")
     box.press_sequentially("j")

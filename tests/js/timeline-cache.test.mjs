@@ -183,3 +183,13 @@ test("snapshots keep ESPN's own box (box_espn) beside the derived one, null when
   assert.equal(later.snapshots[later.snapshots.length - 1].boxEspn, null, "a body without box_espn stores null");
   assert.equal(cacheThrough100().snapshots[0].boxEspn, null);
 });
+
+test("v1.4 (W1): a since=0 response keeps the server's `game` (kickoff, light); a body without one adds nothing", () => {
+  const game = { kickoff: "2026-10-09T17:05:00Z", light: "day", venue: "AT&T Stadium" };
+  const { cache } = mergeTimeline(deepFreeze(emptyTimeline()), { ...reset(TL.rows(1, 3)), game });
+  assert.deepEqual(cache.game, game);
+  assert.ok(Object.isFrozen(cache.game));
+  const appended = mergeTimeline(cache, append(TL.rows(4, 4), 3)).cache;
+  assert.equal(appended.game, cache.game, "an append keeps the epoch's game");
+  assert.equal("game" in mergeTimeline(deepFreeze(emptyTimeline()), reset(TL.rows(1, 3))).cache, false);
+});

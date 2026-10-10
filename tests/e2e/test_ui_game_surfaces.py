@@ -4,7 +4,8 @@ Scoreboard, play feed, drive chart, win probability, box score, scorecard, tende
 server (saved TB at DAL game, offline). Every test sets its own state first (FI 6.1) and never relies on test order;
 the finished game is replayed only when the server isn't already showing it untouched, because a replay holds the
 engine lock for tens of seconds on a busy machine. Model-dependent numbers are checked against GET /api/state, never
-hard-coded (FI 6.1). ?scene=2d keeps these tests off the WebGL engine: they are about the HUD panels.
+hard-coded (FI 6.1). ?scene=2d keeps these tests off the WebGL engine: they are about the HUD panels. The world is
+ui_helpers.WORLD (neutral unless SC_E2E_WORLD names another, v1.4).
 """
 import json
 import math
@@ -14,10 +15,11 @@ import urllib.request
 import pytest
 from e2e_helpers import EVENT, get, post
 from playwright.sync_api import Page
+from ui_helpers import WORLD, click_at, region_box, reveal, show
 
 pytestmark = pytest.mark.e2e
 
-QUERY = "/?world=neutral&scene=2d"
+QUERY = f"/?world={WORLD}&scene=2d"     # v1.4 (W6): ui_helpers.WORLD, neutral unless SC_E2E_WORLD says
 ROW = '[data-testid="play-row"]'
 DRIVE = '[data-testid="drive"]'
 A8_REGIONS = ("scoreboard", "plays", "drives", "wp", "score", "box", "tendencies", "log")
@@ -85,18 +87,20 @@ def texts(page: Page, selector: str) -> list[str]:
 def test_fresh_scorecard_log_and_tendencies_say_so(page, server):
     """#6 for the three A8 panels."""
     fresh(page, server)
-    assert page.locator("#kpiArea .sc-card-empty").inner_text() == "Scores appear after the first logged snap."
+    # v1.4 (W6): the words as written (textContent): a world may set them in caps (DESIGN.md, the Caps Rule)
+    assert page.locator("#kpiArea .sc-card-empty").text_content().strip() == "Scores appear after the first logged snap."
     assert page.locator("#kpiArea .sc-card-group").count() == 0
-    assert page.locator("#logArea .sc-log-empty").inner_text() == (
+    assert page.locator("#logArea .sc-log-empty").text_content().strip() == (
         "No snaps yet. Each logged play shows his top pick next to what he called.")
-    assert page.locator("#profTitle").inner_text() == "Schottenheimer's tendencies"
+    assert page.locator("#profTitle").text_content().strip() == "Schottenheimer's tendencies"
 
 
 def test_groups_appear_only_with_snaps(page, server):
     """#110: a pass with no type (shorthand I) scores pass vs run only."""
     st = fresh(page, server, "new D25", "I")
     assert st["metrics"]["n"] == 1 and st["metrics"]["granular"]["leaf_n"] == 0
-    page.wait_for_selector("#kpiArea .sc-card-group")
+    page.wait_for_selector("#kpiArea .sc-card-group", state="attached")
+    show(page, "#kpiArea .sc-card-group")             # v1.4 (W6): a world may keep the groups on its stat board (G)
     assert [g.get_attribute("data-group") for g in page.locator("#kpiArea .sc-card-group").all()] == ["passrun"]
     assert texts(page, "#kpiArea .sc-card-group .sc-card-sub") == ["Pass vs run (1 snaps)"]
 
@@ -228,7 +232,7 @@ def test_a_play_row_shows_its_play_on_the_field(page, server):
     """Click a play, a drive or a logged snap: the field reviews it, the row is pressed; again returns to live."""
     finished(page, server)
     row = page.locator(f'{ROW}[data-seq="104"]')
-    row.scroll_into_view_if_needed()
+    reveal(page, f'{ROW}[data-seq="104"] button')      # v1.4 (W6): a ribbon unrolls on hover (Under the Lights)
     row.locator("button").click()
     page.wait_for_selector('#field[data-review-seq="104"]')
     assert row.locator("button").get_attribute("aria-pressed") == "true"
@@ -236,7 +240,7 @@ def test_a_play_row_shows_its_play_on_the_field(page, server):
     assert page.locator('#logArea tr[data-tl-seq="104"] button').get_attribute("aria-pressed") == "true"
     row.locator("button").click()
     page.wait_for_function("!document.querySelector('#field').hasAttribute('data-review-seq')")
-    page.locator(f'{DRIVE}[data-idx="2"] button').click()
+    click_at(page, f'{DRIVE}[data-idx="2"] button')
     page.wait_for_selector('#field[data-review-seq="14"]')
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('#field').hasAttribute('data-review-seq')")
@@ -246,8 +250,7 @@ def test_a_play_row_shows_its_play_on_the_field(page, server):
 def test_enter_on_a_focused_play_row_reviews_it(page, server):
     """G18: rows are buttons, so the keyboard reaches them and Enter activates them natively."""
     finished(page, server)
-    btn = page.locator(f'{ROW}[data-seq="2"] button')
-    btn.scroll_into_view_if_needed()
+    btn = reveal(page, f'{ROW}[data-seq="2"] button')   # v1.4 (W6): focus keeps an unrolled ribbon unrolled
     btn.focus()
     page.keyboard.press("Enter")
     page.wait_for_selector('#field[data-review-seq="2"]')
@@ -268,7 +271,10 @@ def test_game_panels_fit_a_phone(browser, server):
         assert page.evaluate("document.documentElement.scrollWidth") == 390
         for region in ("#rg-scoreboard", "#rg-plays", "#rg-drives", "#rg-wp", "#rg-score", "#rg-box", "#rg-tendencies",
                        "#rg-log"):
-            box = page.locator(region).bounding_box()
-            assert box["x"] >= 0 and box["x"] + box["width"] <= 390 + 0.5, region
+            box = region_box(page, region)      # v1.4 (W6): a world may lend a region's parts to a fixture
+            if box is None:
+                show(page, region)              # or keep it on a closed board (Under the Lights' stat board, G)
+                box = region_box(page, region)
+            assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390 + 0.5, (region, box)
     finally:
         ctx.close()

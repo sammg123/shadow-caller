@@ -45,6 +45,7 @@ export const PLAY_LOOK = deepFreeze({
   shadowDash: [1.2, 0.8],
   shadowWidth: 1.25,      // a shadow's stroke, times the real core's width
   targetYd: 1.1,          // a predicted pass's target ring (radius) and a predicted run's chevron, yards
+  kickDim: 1,             // v1.4 (W6): a kick on display, dimmed for the next call: lastPlay.dimOpacity times this
   tones: { good: null, bad: null, warn: null },   // else the page's --sc-good|bad|warn, else TONE_FALLBACK
 });
 export const TONE_FALLBACK = deepFreeze({ good: "#3fae6a", bad: "#e5484d", warn: "#f2b33d" });
@@ -56,7 +57,8 @@ const ORDER = deepFreeze({
 });
 
 const RANGES = Object.freeze({ headGlow: [0, 10], headYd: [0.01, 10], trackOpacity: [0, 1], trackWidthPx: [0.1, 16],
-  arrowYd: [0, 6], hoverOpacity: [0, 1], dimOthers: [0, 1], shadowWidth: [0.25, 4], targetYd: [0, 5] });
+  arrowYd: [0, 6], hoverOpacity: [0, 1], dimOthers: [0, 1], shadowWidth: [0.25, 4], targetYd: [0, 5], kickDim: [0, 1] });
+const KICKS = new Set(["kickoff", "punt", "fg"]);
 const DASHES = Object.freeze(["trackDash", "shadowDash"]);
 const TONES = Object.freeze(["good", "bad", "warn"]);
 const HEADED = new Set(["run", "scramble", "yac", "return", "sack", "kneel", "march"]);
@@ -94,6 +96,13 @@ const hexOf = (v) => (safeHex(v) ? v.toLowerCase() : null);
 const inRange = (v, [lo, hi]) => isFiniteNum(v) && v >= lo && v <= hi;
 const dashOf = (v) => (Array.isArray(v) && v.length === 2 && v[0] > 0 && v[0] <= 20 && inRange(v[1], [0, 20])
   ? [v[0], v[1]] : null);
+
+/** v1.4 (W6): how far the play on display dims once the next call is up: look.lastPlay.dimOpacity, and a kick's long
+ * flight further by look.world.plays.kickDim, so a kickoff's or a punt's arc doesn't compete with his shadow plays. */
+export function dimOpacityOf(look, drawing) {
+  const dim = look.lastPlay.dimOpacity;
+  return KICKS.has(drawing?.kind) ? dim * resolvePlayLook(look).kickDim : dim;
+}
 
 /**
  * PLAY_LOOK with the world's look.world.plays over it (each key checked) and the tones resolved: the world's own,

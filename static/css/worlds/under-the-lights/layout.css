@@ -89,11 +89,13 @@
   flex: 1 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
 }
 :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-note { display: none; }
-/* A ribbon holds one message: the newest play; the current drive (else the last one). Hover or focus unrolls them. */
+/* A ribbon holds one message: the newest play; the current drive (else the last one). Hover or keyboard focus
+   unrolls them (v1.4, W6: :focus-visible, so a row clicked with the mouse rolls back up once the pointer leaves,
+   instead of staying open over the other ribbon; the video board follows the same rule). */
 #app[data-layout="uls"] .uls-ribbon .sc-plays > .sc-panel-title,
-#app[data-layout="uls"] #rg-plays:not(:hover, :focus-within) :is(.sc-pf-unlinked, .sc-pf-ghead,
+#app[data-layout="uls"] #rg-plays:not(:hover, :has(:focus-visible)) :is(.sc-pf-unlinked, .sc-pf-ghead,
   .sc-pf-group:not(:first-child), .sc-pf-row:not([data-newest="true"])),
-#app[data-layout="uls"] #rg-drives:not(:hover, :focus-within) :is(.sc-dc-list:has(> [data-current="true"])
+#app[data-layout="uls"] #rg-drives:not(:hover, :has(:focus-visible)) :is(.sc-dc-list:has(> [data-current="true"])
   > :not([data-current="true"]), .sc-dc-list:not(:has(> [data-current="true"])) > :not(:last-child)) {
   display: none;
 }
@@ -234,7 +236,7 @@
   :where(#app[data-layout="uls"] .uls-ribbon) .sc-plays {
     position: absolute; inset: 0; display: flex; align-items: center; padding: 0; overflow: hidden;
   }
-  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :focus-within) .sc-plays {
+  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :has(:focus-visible)) .sc-plays {
     inset: 0 0 auto;
     display: grid; align-content: start; gap: var(--sc-space-2);
     max-height: calc(100vh - var(--uls-hud-bottom) - var(--uls-stack-gap));
@@ -289,7 +291,7 @@
     padding: 0 var(--uls-frame) var(--uls-frame);
     overflow: hidden;
   }
-  #app[data-layout="uls"] .uls-board:is(:hover, :focus-within),
+  #app[data-layout="uls"] .uls-board:is(:hover, :has(:focus-visible)),
   #app[data-layout="uls"][data-board-open="true"] .uls-board {
     z-index: 35;
     width: var(--uls-board-open-w);
@@ -298,7 +300,7 @@
   #app[data-layout="uls"] .uls-board { align-content: stretch; }
   #app[data-layout="uls"] .uls-board :is(#rg-call, #heroArea) { display: grid; grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; }
   :where(#app[data-layout="uls"] .uls-board) :is(.sc-call, .sc-offfield) { align-content: start; min-height: 0; overflow: hidden; }
-  :where(#app[data-layout="uls"] .uls-board:is(:hover, :focus-within)) .sc-call { overflow-y: auto; }
+  :where(#app[data-layout="uls"] .uls-board:is(:hover, :has(:focus-visible))) .sc-call { overflow-y: auto; }
   #app[data-layout="uls"] .uls-desk {
     position: fixed;
     inset: calc(var(--uls-board-top) + var(--uls-board-h) + var(--uls-stack-gap)) var(--sc-gutter)
@@ -328,7 +330,7 @@
   #app[data-layout="uls"] .uls-lower > #rg-wp { padding-inline-end: var(--sc-gutter); border-inline-start: 1px solid var(--uls-steel-seam); }
   :where(#app[data-layout="uls"] .uls-lower) :is(.sc-drives, .sc-winprob) { height: 100%; padding: 0 var(--sc-space-3); overflow: hidden; }
   :where(#app[data-layout="uls"] .uls-lower) .sc-drives { position: absolute; inset: 0; }
-  #app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :focus-within) .sc-drives {
+  #app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :has(:focus-visible)) .sc-drives {
     inset: auto max(0px, calc(var(--uls-col-right) - var(--uls-wp-w))) 0 0;
     height: auto;
     max-height: calc(100vh - var(--uls-hud-top) - var(--uls-band-h) - var(--uls-band-gap) - var(--uls-stack-gap));
@@ -381,7 +383,7 @@
   #app[data-layout="uls"]:not([data-scorecard-open="true"]) #rg-score { padding: 0 var(--sc-gutter) var(--sc-space-3); }
   :where(#app[data-layout="uls"] .uls-ribbon) :is(.sc-masthead-controls, .sc-masthead-keys) { flex-wrap: nowrap; }
   :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-controls { overflow-x: auto; overscroll-behavior-x: contain; }
-  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :focus-within) .sc-plays { max-height: 60vh; overflow-y: auto; }
+  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :has(:focus-visible)) .sc-plays { max-height: 60vh; overflow-y: auto; }
   /* The drawer and the stat board open in the flow, where they lend their regions, so the B and G keys that close
      them stay in reach: a full-screen sheet would cover them, and a phone has no Escape key. */
   #app[data-layout="uls"][data-booth-open="true"] .uls-drawer,

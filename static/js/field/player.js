@@ -14,7 +14,7 @@ import {
 } from "./play-art.js";
 import { createFlight } from "./play-ball.js";
 import { createGlyphs } from "./play-glyphs.js";
-import { carriersOf, playParts } from "./play-style.js";
+import { carriersOf, dimOpacityOf, playParts } from "./play-style.js";
 import { EASE } from "./timing.js";
 
 const VERDICTS = new Set(["top1", "top3", "miss"]);
@@ -137,8 +137,9 @@ function dimLast(p) {
   entry.dimmed = true;
   dimWords(p, entry);
   const ms = look.motion.ghostInMs;
-  if (p.stage.reducedMotion() || !(ms > 0)) entry.art.setOpacity(look.lastPlay.dimOpacity);
-  else p.st.dim = { entry, from: entry.art.opacity(), to: look.lastPlay.dimOpacity, t: 0, ms };
+  const to = dimOpacityOf(look, entry.drawing);
+  if (p.stage.reducedMotion() || !(ms > 0)) entry.art.setOpacity(to);
+  else p.st.dim = { entry, from: entry.art.opacity(), to, t: 0, ms };
   p.stage.requestRender();
 }
 

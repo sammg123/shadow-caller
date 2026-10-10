@@ -6,6 +6,7 @@ from playwright.sync_api import expect
 from ui_helpers import (EVENT, api_post, capitalize, command, ensure_finished, expect_off_field, expect_shows,
                         feed_on, fresh, load, pct, pct1, reset_game, signed1, state, stop_watch, why_habits,
                         with_drive)
+from ui_helpers import click_at  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -159,11 +160,11 @@ def test_36_opening_script_then_memory_terms(upage, server):
 def test_37_clicking_a_prediction_row_picks_it(upage, server):
     """#37: clicking "Outside left (edge)" picks it and focuses Yards, the same as pressing J twice."""
     with_drive(upage, server["base"])
-    upage.locator('#heroArea .leaf[data-leaf="run_edge_left"]').click()
+    click_at(upage, '#heroArea .leaf[data-leaf="run_edge_left"]')
     expect(chosen(upage)).to_contain_text("Outside left (edge)")
     expect(upage.locator("#yards")).to_be_focused()
     expect(upage.locator('.key[data-k="J"]')).to_have_attribute("aria-pressed", "true")
-    by_click = chosen(upage).inner_text()
+    by_click = " ".join(chosen(upage).text_content().split())   # v1.4 (W6): as written; a world may set it in caps
     upage.keyboard.press("Escape")
     expect(chosen(upage)).to_have_text("Pick the play")
     upage.keyboard.press("j")

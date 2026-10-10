@@ -75,7 +75,9 @@ function normalMs(c, state, seq) {
 // ---------------------------------------------------------------- rebuild and play (3.4, 3.7)
 function drawFrame(c, state, throughSeq) {
   const { timeline } = state;
-  if (timeline.field && timeline.teams) call(c, "setGameFrame", timeline.field, timeline.teams, timeline.teamOrder);
+  // v1.4 (W1): the timeline's `game` (kickoff, light) as the 4th argument when the server sent one (day games, 14.6)
+  const game = timeline.game ? [timeline.game] : [];
+  if (timeline.field && timeline.teams) call(c, "setGameFrame", timeline.field, timeline.teams, timeline.teamOrder, ...game);
   call(c, "drawRowsInstant", timeline.rows.filter((r) => r.seq <= throughSeq));
   if (state.view.camera) call(c, "setCamera", state.view.camera, { instant: true });
   c.rt.sceneKey = null;

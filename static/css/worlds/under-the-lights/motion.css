@@ -43,9 +43,9 @@
   from { clip-path: inset(100% 0 0 0); }
   to { clip-path: inset(0 0 0 0); }
 }
-@keyframes uls-rails-in {
-  from { inset-inline-start: calc(-1 * var(--uls-drawer-w)); }
-  to { inset-inline-start: 0; }
+@keyframes uls-rails-in {          /* v1.4 (W6): by translate, on the compositor, never by relaying the drawer out */
+  from { translate: calc(-1 * var(--uls-drawer-w)) 0; }
+  to { translate: 0 0; }
 }
 /* One LED frame dark, then lit: a lamp that changes meaning relights (component skins apply it). */
 @keyframes uls-blink {
@@ -68,10 +68,10 @@
 }
 
 /* The play feed unrolls down from the ribbon; the drive chart unrolls up from the lower ribbon. */
-#app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :focus-within) > * {
+#app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :has(:focus-visible)) > * {
   animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
 }
-#app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :focus-within) > * {
+#app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :has(:focus-visible)) > * {
   animation: uls-scan-up var(--uls-scan-ms) var(--uls-scan) both;
 }
 

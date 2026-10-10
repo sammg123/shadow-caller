@@ -130,7 +130,7 @@
 :where(:root[data-world="under-the-lights"]) .sc-dc-btn:disabled { color: var(--sc-ink-muted); }
 
 /* On the ribbon, the one drive fills the ribbon's height. */
-:where(#app[data-layout="uls"] .uls-lower #rg-drives:not(:hover, :focus-within)) .sc-dc-btn {
+:where(#app[data-layout="uls"] .uls-lower #rg-drives:not(:hover, :has(:focus-visible))) .sc-dc-btn {
   height: var(--uls-lower-h);
   padding-block: 0;
 }

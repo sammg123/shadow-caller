@@ -48,7 +48,7 @@ export const NEUTRAL_LOOK = deepFreeze({
     mark: stroke("decal", { widthYd: 2, ghostedOpacity: 0.4, approx: "soft" }),
   },
   ghost: {
-    fill: "neutral", stroke: WHITE, opacity: [0.5, 0.3, 0.18], style: "zone", afterSnapOpacity: 0.12, labels: true,
+    fill: "neutral", stroke: WHITE, opacity: [0.5, 0.3, 0.18], style: "zone", afterSnapOpacity: 0, labels: true,
   },
   lastPlay: { keep: "until-next-snap", dimOpacity: 0.5 },
   residue: { keep: "drive", opacity: 0.3 },

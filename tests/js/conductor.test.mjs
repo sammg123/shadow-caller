@@ -308,3 +308,12 @@ test("the default timers are the browser's, called bare", async () => {
     globalThis.clearTimeout = saved.clear;
   }
 });
+
+test("v1.4 (W1): the timeline's game reaches setGameFrame as its 4th argument, so day kickoffs light by day", () => {
+  const ctx = setup();
+  const game = { kickoff: "2026-10-09T17:05:00Z", light: "day" };
+  ctx.store.dispatch({ type: "timeline/loaded", resp: { ...timelineBody(TL.body, { rows: TL.rows(1, 3), epoch: EPOCH }), game },
+    origin: "poll", hidden: false, reducedMotion: false, now: ctx.timers.now() });
+  const frame = ctx.engine.calls.find((c) => c[0] === "setGameFrame");
+  assert.deepEqual(frame.slice(1), [TL.body.field, TL.body.teams, TL.body.team_order, game]);
+});

@@ -5,6 +5,7 @@ import re
 import pytest
 from playwright.sync_api import expect
 from ui_helpers import command, state, version, wait_idle, with_drive
+from ui_helpers import CAMERAS, point_at  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -61,15 +62,16 @@ def test_field_hooks_with_a_drive(upage, server, scene):
     expect(f.locator(CHILD[scene])).to_have_count(1)
     expect(f.locator('[data-testid="field-legend"]')).to_have_text("Ball shown mid-field; ESPN gives no hash.")
     top = [t["key"] for t in state(base)["prediction"]["top"]]
-    # v1.4 (play-drawing.md 4): the field draws his top 2 as shadow plays; the hook lists them first, in rank order
-    expect(f).to_have_attribute("data-ghosts", re.compile("^" + re.escape(" ".join(top[:2])) + r"(\s|$)"))
+    # v1.4 (play-drawing.md 4): the field draws his top 2 as shadow plays, in rank order; both engines report exactly
+    # those two (W6: A5 part 2 moved the 3D hook from the three zones to the drawn shadows, as A6's 2D field had)
+    expect(f).to_have_attribute("data-ghosts", " ".join(top[:2]))
     wait_idle(upage)
     expect(f).to_have_attribute("data-queue", "0")
     expect(f).to_have_attribute("data-epoch", version(base)["epoch"])
     camera = f.get_attribute("data-camera")
     assert camera, "#field has no data-camera"
     if scene == "webgl":
-        assert camera == "sideline", camera                  # NEUTRAL_LOOK cameras.default
+        assert camera == CAMERAS[0][0], camera               # the world's cameras.default (sideline on neutral)
     assert int(f.get_attribute("data-frames") or "0") >= 1
 
 
@@ -78,8 +80,7 @@ def test_field_ghost_highlight_follows_hover_and_focus(upage, server, scene):
     base = server["base"]
     with_drive(upage, base, SCENES[scene])
     top1 = state(base)["prediction"]["top"][0]["key"]
-    leaf = upage.locator(f'#heroArea .leaf[data-leaf="{top1}"]')
-    leaf.hover()
+    leaf = point_at(upage, f'#heroArea .leaf[data-leaf="{top1}"]')
     expect(field(upage)).to_have_attribute("data-ghost-highlight", top1)
     upage.mouse.move(2, 2)
     expect(field(upage)).to_have_attribute("data-ghost-highlight", "")

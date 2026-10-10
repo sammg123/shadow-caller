@@ -7,6 +7,7 @@ from playwright.sync_api import expect
 from ui_helpers import (COL, EVENT, LOG_ROWS, REPLAY_TOAST_MS, answer_dialogs, api_post, expect_log_rows,
                         expect_off_field, expect_shows, expect_toast, feed_on, feed_on_server, finished, fixed, fresh,
                         load, log_table, pct, quiet, record_requests, reset_game, state, until, with_drive)
+from ui_helpers import show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -157,7 +158,7 @@ def test_101_unknown_event_retries_with_the_error_style(upage, server):
     """#101: event id 999 with the feed on shows "ESPN live: retrying" with the error style and "Can't reach ESPN
     (...). Still trying every few seconds."."""
     fresh(upage, server["base"])
-    upage.locator("#feedEvent").fill("999")
+    show(upage, "#feedEvent").fill("999")
     upage.locator("#feedBtn").click()
     expect(upage.locator("#feedBtnTxt")).to_have_text("ESPN live: retrying", timeout=10_000)
     expect(upage.locator("#feedBtn")).to_have_class(re.compile(r"(^|\s)err(\s|$)"))
@@ -203,7 +204,7 @@ def test_104_event_box_is_not_overwritten_while_focused(upage, server):
     """#104: the ESPN id box is not overwritten while focused, and Enter in it only blurs it."""
     base = server["base"]
     fresh(upage, base)
-    box = upage.locator("#feedEvent")
+    box = show(upage, "#feedEvent")
     box.click()
     box.press("ControlOrMeta+a")
     box.press_sequentially("12345")
@@ -234,6 +235,7 @@ def test_105_reset_with_the_feed_on_stops_the_feed_first(upage, server):
     s = state(base)
     assert (s["log"], s["feed"]["on"]) == ([], False)
     expect(upage.locator("#feedBtnTxt")).to_have_text("ESPN live: off")
+    show(upage, "#logArea")
     expect_shows(upage.locator("#logArea"), "No snaps yet.")
 
 
@@ -242,7 +244,7 @@ def test_106_replay_confirms_then_toasts(upage, server):
     401872980: 55 DAL plays logged. Old game backed up in data/."."""
     fresh(upage, server["base"])
     asked = answer_dialogs(upage, accept=True)
-    upage.locator("#replayBtn").click()
+    show(upage, "#replayBtn").click()
     expect_toast(upage, "Replayed ESPN game 401872980: 55 DAL plays logged. Old game backed up in data/.",
                  timeout=REPLAY_TOAST_MS)
     assert asked == ["Rebuild the game log from ESPN game 401872980? The current log is backed up first."]
@@ -286,9 +288,9 @@ def test_109_replay_of_an_unknown_game_changes_nothing(upage, server):
     base = server["base"]
     with_drive(upage, base)
     before = state(base)
-    upage.locator("#feedEvent").fill("999")
+    show(upage, "#feedEvent").fill("999")
     asked = answer_dialogs(upage, accept=True)
-    upage.locator("#replayBtn").click()
+    show(upage, "#replayBtn").click()
     until(upage, lambda: len(asked) == 1, what="the replay confirm")
     assert asked == ["Rebuild the game log from ESPN game 999? The current log is backed up first."]
     expect_toast(upage, re.compile(r"\S"), error=True, timeout=REPLAY_TOAST_MS)

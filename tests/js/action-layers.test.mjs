@@ -114,6 +114,18 @@ test("dimLast: the play on display dims to look.lastPlay.dimOpacity; until-presn
   assert.equal(Lp.residue.count(), 1);
 });
 
+test("v1.4 (W6): a kick on display dims to lastPlay.dimOpacity times the world's kickDim", async () => {
+  const { stage, layers, tick } = await actionStage({ look: { world: { plays: { kickDim: 0.4 } } } });
+  const L = layers();
+  run(stage, L, 1);
+  L.player.dimLast();
+  tick(stage.look.motion.ghostInMs + 50);
+  const [art] = artsUnder(stage.roots.plays);
+  const core = stripsUnder(art).find((m) => m.material.uniforms.uInner.value === 0);
+  const want = core.material.userData.opacity * stage.look.lastPlay.dimOpacity * 0.4;
+  assert.ok(Math.abs(core.material.uniforms.uOpacity.value - want) < 1e-9);
+});
+
 test("verdict: a chip under the play's words, on the live play only; a retag relabels words and grade", async () => {
   const { stage, layers } = await actionStage();
   const L = layers();

@@ -195,6 +195,11 @@ test("motion.css: LED steps, the scanline and the drawer rails, each with a redu
   assert.match(text, /@media \(prefers-reduced-motion: reduce\)/);
   assert.match(text, /\[data-motion="reduced"\]/);
   assert.doesNotMatch(text, /animation[^;]*infinite/, "nothing pulses or loops");
+  // v1.4 (W6): the rails run on the compositor; an inset animation relaid the drawer out every frame and left its text
+  // painted a pixel off at rest in one run of three
+  const rails = text.match(/@keyframes uls-rails-in\s*{([^{}]*{[^{}]*})*[^{}]*}/)?.[0] ?? "";
+  assert.match(rails, /translate:/, "the drawer runs out by translate");
+  assert.doesNotMatch(rails, /inset|left|width/, "never by a layout property");
 });
 
 test("every Doto use sits at 40 px or more: --uls-led-font is only paired with the LED sizes", () => {

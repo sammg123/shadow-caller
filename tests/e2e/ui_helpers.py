@@ -1,12 +1,14 @@
 """Helpers for the UI regression suite (package A11; ui-architecture.md sections 5 and 7.2, feature-inventory.md 6.1).
 
-Every test sets its own server state first (FI 6.1) and then loads the page on the neutral world (`?world=neutral`).
+Every test sets its own server state first (FI 6.1) and then loads the page on `WORLD` (`?world=`): neutral by
+default; `SC_E2E_WORLD=under-the-lights` runs the same checklist on Sam's world (v1.4, W6).
 Model-dependent numbers are read from GET /api/state and formatted here exactly like model/format.js does, never
 hard-coded. Selectors come only from the contract in ui-architecture.md section 5."""
 import csv
 import io
 import json
 import math
+import os
 import re
 import subprocess
 import sys
@@ -17,11 +19,18 @@ from contextlib import contextmanager
 from decimal import ROUND_HALF_UP, Decimal
 from urllib.parse import urlsplit
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeout
 from playwright.sync_api import expect
 
 from helpers import EVENT, ROOT, _free_port  # noqa: F401  (tests/helpers.py: the saved TB at DAL game)
 
-WORLD = "neutral"
+WORLD = os.environ.get("SC_E2E_WORLD", "neutral")      # v1.4 (W6): the world every UI test loads
+# v1.4 (W6): what the checklist reads that differs by world, from each world's look (theme/neutral-look.js and
+# theme/worlds/under-the-lights/look.js): its camera modes (id, label) in V order, the first being the default.
+WORLD_CAMERAS = {"neutral": [("sideline", "Sideline"), ("endzone", "End zone"), ("overhead", "Overhead")],
+                 "under-the-lights": [("wide", "Wide"), ("tight", "Tight"), ("blimp", "Blimp")]}
+CAMERAS = WORLD_CAMERAS[WORLD]
+SHOW_WAIT_MS = 500              # show(): how long a target may take to appear before a closed container is opened
 BOOT_TIMEOUT_MS = 60_000        # three.js in SwiftShader, and a server busy with a replay: room, once per test
 ACTION_TIMEOUT_MS = 10_000      # clicks and fills on an element that never shows fail, in time for a busy machine
 EXPECT_TIMEOUT_MS = 10_000      # 1 s poll + presentation gating (at most 4 s, decision 2), with room on a busy machine
@@ -184,13 +193,111 @@ def wait_idle(page, seq=None, timeout=15_000):
     page.wait_for_selector(sel, state="attached", timeout=timeout)
 
 
+CONTAINERS = (("booth-toggle", "data-booth-open"), ("scorecard-toggle", "data-scorecard-open"))
+
+
+def _shows(loc, ms=SHOW_WAIT_MS):
+    try:
+        loc.wait_for(state="visible", timeout=ms)
+        return True
+    except PlaywrightTimeout:
+        return False
+
+
 def show(page, selector):
-    """The element on screen: opens the booth when the target sits in a closed one (ui-architecture 7.2)."""
+    """The element on screen: when it isn't, opens the closed booth (B) or stat board (G) that holds it and closes
+    again one that didn't help (ui-architecture 7.2; v1.4, W6: Under the Lights keeps the feed's controls in its
+    drawer and the scorecard, tendencies, box and log on its stat board)."""
     loc = page.locator(selector).first
-    if not loc.is_visible() and page.locator('#app[data-booth-open="false"]').count():
-        page.locator('[data-testid="booth-toggle"]').first.click()
-        page.wait_for_selector('#app[data-booth-open="true"]', state="attached")
+    if _shows(loc):
+        return loc
+    for testid, attr in CONTAINERS:
+        toggle = page.locator(f'[data-testid="{testid}"]').first
+        if not page.locator(f'#app[{attr}="false"]').count() or not toggle.count():
+            continue
+        toggle.click()
+        page.wait_for_selector(f'#app[{attr}="true"]', state="attached")
+        if _shows(loc):
+            return loc
+        toggle.click()
+        page.wait_for_selector(f'#app[{attr}="false"]', state="attached")
     return loc
+
+
+def reveal(page, selector):
+    """The target on screen where a world rolls its region up (v1.4, W6: Under the Lights' ribbons and video board
+    unroll on hover or focus): hover the innermost region that holds it first; scroll only when that wasn't enough."""
+    loc = page.locator(selector).first
+    if _shows(loc, 100):
+        return loc
+    region = page.locator(f"[data-region]:has({selector})").last
+    if region.count():
+        region.hover()
+        region.evaluate(SETTLED_JS)                     # the unroll is an LED step-in: let it land first
+    if not _shows(loc, 300):
+        loc.scroll_into_view_if_needed()
+    return loc
+
+
+SETTLED_JS = """r => Promise.race([Promise.all(r.getAnimations({ subtree: true }).map(a => a.finished.catch(() => null))),
+  new Promise(ok => setTimeout(ok, 1500))])"""
+
+
+POINT_TRIES = 4
+
+
+def _in_viewport(page, box):
+    size = page.viewport_size or {"width": 0, "height": 0}
+    cx, cy = box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+    return 0 <= cx < size["width"] and 0 <= cy < size["height"]
+
+
+def point_at(page, selector):
+    """Put the mouse on `selector` itself, after reveal(), and keep it there until the target stops moving under it:
+    in a world whose board or ribbon unrolls on hover (Under the Lights), the pointer arriving changes the layout, and
+    Playwright's own hover and click scroll the target first, which can slide it out from under the pointer."""
+    loc = reveal(page, selector)
+    at = None
+    for _ in range(POINT_TRIES):
+        box = loc.bounding_box()
+        assert box, f"{selector} isn't on screen"
+        if not _in_viewport(page, box):                 # below the fold (the neutral page scrolls): bring it up
+            loc.scroll_into_view_if_needed()
+            box = loc.bounding_box()
+        point = (round(box["x"] + box["width"] / 2), round(box["y"] + box["height"] / 2))
+        if point == at:
+            return loc
+        page.mouse.move(*point)
+        page.wait_for_timeout(120)
+        at = point
+    raise AssertionError(f"{selector} kept moving under the pointer")
+
+
+def click_at(page, selector):
+    """point_at, then a click where the mouse is."""
+    loc = point_at(page, selector)
+    page.mouse.down()
+    page.mouse.up()
+    return loc
+
+
+REGION_BOX_JS = """e => { const rects = (n) => { const r = n.getBoundingClientRect();
+    return r.width || r.height ? [r] : [...n.children].flatMap(rects); };
+  const all = rects(e); if (!all.length) return null;
+  const x = Math.min(...all.map(r => r.left)), y = Math.min(...all.map(r => r.top));
+  return { x, y, width: Math.max(...all.map(r => r.right)) - x, height: Math.max(...all.map(r => r.bottom)) - y }; }"""
+
+
+def region_box(page, selector):
+    """A region's box, or the union of its first boxed descendants' when it has none (a world may lend a region's
+    parts to a fixture with display: contents, as Under the Lights does with the masthead); None when nothing shows."""
+    return page.locator(selector).first.evaluate(REGION_BOX_JS)
+
+
+def neutral_only(reason):
+    """A test of the neutral world's own layout or surfaces (v1.4, W6): skipped on another world, with the reason."""
+    import pytest
+    return pytest.mark.skipif(WORLD != "neutral", reason=f"neutral world only: {reason}")
 
 
 def blur(page):

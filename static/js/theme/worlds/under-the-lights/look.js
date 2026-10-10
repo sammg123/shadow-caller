@@ -90,7 +90,7 @@ export const look = deepFreeze({
     mark: stroke("decal", { widthYd: 2.4, ghostedOpacity: 0.42, approx: "soft" }),
   },
   // The shadow plays: LED warm white, dashed and translucent (play-drawing.md 4), never team-colored (DESIGN.md).
-  ghost: { fill: "neutral", stroke: ULS.ledWarm, opacity: [0.5, 0.35, 0.2], style: "outline", afterSnapOpacity: 0.1,
+  ghost: { fill: "neutral", stroke: ULS.ledWarm, opacity: [0.5, 0.35, 0.2], style: "outline", afterSnapOpacity: 0,
     labels: true },
   lastPlay: { keep: "until-next-snap", dimOpacity: 0.3 },
   residue: { keep: "drive", opacity: 0.16 },
@@ -109,7 +109,7 @@ export const look = deepFreeze({
   world: {
     day: DAY,
     plays: { headGlow: 3, headYd: 1.5, trackOpacity: 0.2, trackWidthPx: 1.5, trackDash: [0.5, 0.9], arrowYd: 1.8,
-      hoverOpacity: 0.9, dimOthers: 0.45, shadowDash: [1.6, 0.7], shadowWidth: 2.3, targetYd: 1.7,
+      hoverOpacity: 0.9, dimOthers: 0.45, shadowDash: [1.6, 0.7], shadowWidth: 2.3, targetYd: 1.7, kickDim: 0.4,
       tones: { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg } },
     uls: WORLD_ULS,
   },

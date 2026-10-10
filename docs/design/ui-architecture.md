@@ -188,6 +188,28 @@ the shadows' text is laid out for (it waits until the camera is within 1.5 yd of
 already say how sure they are, play-drawing.md 5), `.sc-shadow-label` (`.rank-N`,
 `.is-hovered`, `.is-muted`), `.sc-verdict-chip` (`.is-top1|top3|miss`).
 
+**v1.4 (Under the Lights scene look as built, 2026-10-09, W1).** Details in section 21. W1's `look.js`, `props.js`,
+`moments.js`, `stadium/*.js` and `shaders/*.js` under `theme/worlds/under-the-lights/` (index.js picks them up unchanged;
+`LOOK_SOURCE` is now `"w1"`). Additive changes outside W1's folder, each one or two lines and tested: `field/scene.js`
+(A5) calls two new world moments, `play(ctx, row, { durationMs })` when any animated play starts and
+`landed(ctx, row, { completed })` when it ends (never for instant draws, never under reduced motion);
+`core/timeline-cache.js` keeps the timeline's `game` (sent with `since=0`) as `cache.game`, and `core/conductor.js`
+(A1) passes it as `setGameFrame`'s 4th argument, so day kickoffs light by day (A1's ask in 13 and 14); `main.js` (A0)
+carries W3's one-line ask: `#app` `sc:hud-insets` calls `engine.setSafeArea(null)`.
+
+**v1.4 (integration, 2026-10-09, W6).** Details in section 22. Under the Lights is the default world (`?world=neutral`
+still opens neutral); `static/index.html` opens with `docs/design/direction-contract.md`, word for word, as its first
+comment, and links an SVG favicon (no console 404). Decisions taken under `docs/design/play-drawing.md`: at the snap
+the shadow plays fade out completely on both engines (`ghost.afterSnapOpacity: 0` in both shipped looks; changed);
+`#field[data-ghosts]` is exactly his top 2 on both engines; a kick on display dims further under the next call
+(new optional `look.world.plays.kickDim`, `play-style.dimOpacityOf`); a watch step draws its play at the play's own
+pace (`actions` ticks it with origin `poll`, not the 800 ms of a typed row; changed). Under the Lights: the shorthand
+bar steps off the stadium desk during a watch, the ribbons and the video board unroll on hover or keyboard focus
+(`:has(:focus-visible)`, so a mouse click no longer leaves one open over the other), the drawer's rails run by
+`translate`. Additive: `debugState().ball`; `main.js` carries W4's `sc:booth-ambient` line. Tests: the e2e checklist
+runs on either world (`SC_E2E_WORLD`), with world-aware helpers in `ui_helpers.py`; a new
+`tests/e2e/test_ui_world_under-the-lights.py` and golden screenshots under `tests/e2e/goldens/under-the-lights/`.
+
 The visual world (palette, type, HUD composition, materials, lighting) is **not chosen**. Nothing in this architecture picks a color, a font, a size or a placement. Every visual decision enters through the theme layer (section 2.7). The app ships with a deliberately plain `neutral` world so it is usable and testable before a world exists.
 
 ---
@@ -242,6 +264,7 @@ static/
   vendor/three/                          vendored three.js r185 (read-only)
   fonts/<id>/                        W3  self-hosted world fonts (G28); none for neutral
   img/worlds/<id>/                   W2  world icon set (SVG)
+  img/favicon.svg                    W6  v1.4: the page's icon (22.1)
   css/
     base.css                         A0  reset, [hidden], focus ring, .sr-only, reduced motion; uses tokens only
     layout.css                       A0  neutral region grid + 1040/760/390 px breakpoints (no horizontal scroll, #8)
@@ -331,6 +354,7 @@ static/
       worlds/neutral/index.js                                               A10
       worlds/<id>/index.js arrange.js                                       W3
       worlds/<id>/look.js props.js moments.js shaders/                      W1
+      worlds/under-the-lights/stadium/*.js                                  W1  v1.4: the bowl's parts (21.1)
       worlds/<id>/booth.js                                                  W4
 tests/
   js/<module>.test.mjs               owner of the module under test
@@ -343,6 +367,9 @@ tests/
   fixtures/version_watch_playing.json timeline_contract_rows.json             A1
   fixtures/timeline_tb_dal.json      (produced by another agent; used when present)
   e2e/ui_helpers.py test_ui_*.py     A11 (new files); conftest.py additions are additive only
+  e2e/test_ui_world_under-the-lights.py uls_scenes.py   W6  v1.4: Sam's world end to end, its scenes (22.5)
+  e2e/goldens/under-the-lights/*.png  W6  v1.4: golden screenshots, GPU renders (22.5)
+  js/index-html.test.mjs             W6  v1.4: the page opens with the direction contract; the default world
 scripts/capture_ui_fixtures.py       A1  captures the state fixtures from a sandbox (never the live game)
 package.json                         A1
 ```
@@ -2920,3 +2947,128 @@ spies leave `shown` unanswered.
 E2E: `test_ui_checklist_field.py`, `test_ui_keys_offline.py` (idle frames, draw budget, the leak check, context loss),
 `test_ui_timeline_watch.py`, `test_ui_checklist_prediction.py`, `test_ui_game_surfaces.py`. Browser: every play kind
 mid-flight and landed, pre-snap shadows, hover, review, at 1440x900 (DPR 2), 1920x1080 and 390x844, both worlds.
+
+## 21. v1.4: the Under the Lights scene look as built (W1, 2026-10-09)
+
+Additive to 2.7, 14.6 and 20.4; DESIGN.md "The stadium (3D art direction)" and `docs/design/play-drawing.md` are the
+source. Where this section is more specific, it is how the world's scene works.
+
+### 21.1 Files (`theme/worlds/under-the-lights/`)
+
+| File | Role |
+| --- | --- |
+| `look.js` | The Look (`look`, frozen): night-sky clear and background, bowl-haze FogExp2, four tower spot lights (`TOWERS`; only the two home-side ones cast shadows), a dim sky hemisphere, DESIGN.md turf and paint, LOS and LTG 0.45 yd, strokes with a light-cone-white core and the team on the edge, the ball 2.2x with a spark trail, the shadow plays in LED warm white (`ghost.fill: "neutral"`), bloom threshold 1.05 and the `uls-lens` world pass, cameras `wide` (default), `tight` (follows the ball), `blimp`; `world.day` (sun, sky, haze for a day kickoff), `world.plays` (20.4), `world.uls` (21.3). Exports `ULS` (DESIGN.md colors), `TOWERS`, `SUN` |
+| `props.js` | `props(ctx)`: the stadium group `uls-stadium` (stands and tower steel, crowd, LED ribbons, lamp banks, light shafts; by day the rim caster instead of the shafts) and `object.userData.uls` (`dim`, `choreo`, `ribbons`, `frame`, `dip`) for the moments; `update(dt)` steps the ribbons, the dip and the camera and is busy only while one moves. `passes["uls-lens"]`. `liteGpu()`: a software rasterizer drops the shafts and the crowd and draws the stands unlit |
+| `moments.js` | `presnap` (dip unless `booth.shouldDipNow()` says no; the camera back to wide), `snap` (lights up), `play` (lights up; the camera pushes in to tight, or rises to the blimp for a kick), `landed` (settle back, or in Watch this game rise to the blimp and drift after a drive ends; the ribbons step in the play's words, TOUCHDOWN with the scorer's logo, INTERCEPTED or FLAG for a moment), `verdict` (TOP PICK, IN HIS TOP 3 or MISS joins the caller play's words), `possession` (the upper ribbon back to the game) |
+| `stadium/bowl.js` | The bowl's geometry: a lower bowl all round (10 rows on the home side, 28 elsewhere) behind a field wall, a horseshoe upper deck over the far side and both ends; `RINGS`, `LEVELS`, `seating()` |
+| `stadium/builder.js` | Flat-shaded, vertex-colored quads merged into one geometry (`createBuilder`, `ringPoint`) |
+| `stadium/stands.js` | The stands and tower steel as one lit mesh with a faint self-light (dimmed by the dip) and the bowl's haze |
+| `stadium/crowd.js` | 56,000 seeded seats (about 86% filled) as one `Points`: home colors, the visitors in one end, street colors, faces |
+| `stadium/towers.js` | Tower frames from the look's spot lights, masts and heads into the builder, 144 lamps as one instanced mesh (x9 HDR: they bloom; dark glass by day) |
+| `stadium/ribbons.js`, `stadium/messages.js` | The two LED fascia ribbons (field wall all round; upper deck front) on one canvas, stepping at 12 fps; messages from `field/play-label.js` (the field's own words), LED tones only, team logos (dark variant) as the one team color |
+| `stadium/air.js` | The towers' light shafts (one additive mesh, at most 6%) and the day's rim caster (the stands' rim slid down the sun's rays into the shadow box, shadow only) |
+| `stadium/haze.js` | The stadium's fog depth measured from the field's middle (`bowlHaze(material)`), so the blimp keeps the bowl |
+| `stadium/dim.js` | The light dip: tower spots, lamps, shafts, stands and crowd to a level, eased; `restore()` |
+| `stadium/choreo-plan.js` (pure), `stadium/choreo.js`, `stadium/drift.js` | The camera choreography (21.2) |
+| `shaders/led.js`, `shaders/shaft.js`, `shaders/grade.js` | The LED dot-pitch board material (dots up close, the picture far away), the shaft material, the lens falloff pass centered on the free area |
+
+### 21.2 Camera choreography (surface brief #3)
+
+Only on the `wide` camera the viewer chose (V to `tight` or `blimp` leaves it alone). A shot is taken in the rig at once
+(`rig.shot(id, { instant: true })`, so the shadows' text is laid out for where the camera lands) and the visible camera
+blends there on the world's clock: the snap pushes in to `tight` (650 ms) and the rig follows the ball; a kick rises to
+`blimp` (1.7 s); after the play it settles to `wide` (900 ms). In Watch this game a play that ends the drive (TD,
+turnover, safety, downs, punt, field goal) rises to the blimp and drifts: it eases out to the whole bowl (1.65x, 42
+degrees down, aimed 25 yd past the field) and sweeps at most 2.4 degrees a second to 20, then holds (no frames). The
+next caller presnap or play comes back down. Reduced motion drops every shot at once. The rig's view offset (the HUD's
+safe area) is never touched, so every shot keeps the free area's optical center.
+
+### 21.3 `look.world.uls`
+
+`dip { level 0.8, ms 300 }` (DESIGN.md), `camera { pushMs, settleMs, riseMs, descendMs, driftDegPerS, driftMaxDeg,
+driftZoom, driftPitchDeg, driftLiftYd }`, `ribbons { stepMs 83, steps 5, holdTdMs 3200 }`.
+
+### 21.4 Budget as measured (`?debug=1`, GPU Chromium on the Apple M4 Max, Watch this game)
+
+| Run | Frame p50 / p95 / p99 / max | Over 20 ms | Engine CPU p50 / p95 / max | Draw calls max | Triangles max |
+| --- | --- | --- | --- | --- | --- |
+| 1440x900 DPR 2, 4x, plays 95 to 103 | 16.7 / 16.7 / 16.8 / 16.8 ms | 0 of 719 | 1.0 / 2.6 / 12.0 ms | 66 | 38.4k |
+| 1920x1080 DPR 1, 4x, plays 95 to 103 | 16.7 / 16.7 / 16.8 / 16.8 ms | 0 of 719 | 1.1 / 2.6 / 11.5 ms | 66 | 38.4k |
+| 1440x900 DPR 2, 2x, plays 10 to 15 (TD, blimp drift, kickoff) | 16.7 / 16.7 / 16.8 / 16.8 ms | 0 of 840 | 1.1 / 2.4 / 18.8 ms | 77 | 38.6k |
+
+The stadium is 5 draw calls (4 by day, 3 on a software rasterizer) and about 38k triangles with the field.
+
+### 21.5 Tests
+
+Node: `uls-look.test.mjs` (9), `uls-stadium.test.mjs` (6), `uls-messages.test.mjs` (5), `uls-moments.test.mjs` (7),
+`uls-choreo-plan.test.mjs` (6), `uls-ribbons.test.mjs` (3); `scene-engine.test.mjs`, `conductor.test.mjs` and `timeline-cache.test.mjs` gain one
+test each for 21's engine and core lines.
+
+## 22. v1.4: integration as built (W6, 2026-10-09)
+
+The packages joined into one page on Sam's world, checked end to end on both worlds. `docs/design/play-drawing.md` is
+binding throughout; where it left a choice open, the choice and its reason are below.
+
+### 22.1 The page
+
+- **Default world.** `theme/worlds/index.js` keeps `DEFAULT_WORLD = "under-the-lights"` and `FALLBACK_WORLD = "neutral"`;
+  `/` opens Under the Lights, `?world=neutral` opens neutral, an unknown id is ignored with a notice
+  (`tests/js/index-html.test.mjs`, and the e2e boot test with no `?world=`).
+- **`static/index.html`** opens, right after `<!doctype html>` (so the page stays in standards mode), with
+  `docs/design/direction-contract.md` word for word as its first comment, under the line
+  "docs/design/direction-contract.md, verbatim:" (pinned by `index-html.test.mjs`; nothing in the contract can close
+  a comment). It links `static/img/favicon.svg` (night sky, the line of scrimmage, an arc, the ball), so a load raises
+  no `/favicon.ico` 404 in the console.
+- **`main.js`** carries W4's line: `#app` `sc:booth-ambient` calls `actions.setAmbient`, so the store's
+  `prefs.ambient` (and `sc:ambient`) follow the booth's Room lights switch.
+
+### 22.2 Decisions under play-drawing.md
+
+| Question (from the build reports) | Decision | Where |
+| --- | --- | --- |
+| After the snap: 2D faded the shadows out, 3D kept the top one at 0.1 | Out, both engines: "When the snap happens, the shadows fade out" (4). DESIGN.md's "the top call stays at 15%" was the superseded projection's rule | `ghost.afterSnapOpacity: 0` in `NEUTRAL_LOOK` and the Under the Lights look; `uls-look` and `look-schema` tests |
+| `data-ghosts`: 2D reported the top 2, 3D three zones | Exactly his top 2 in rank order (a hovered play outside them aside), both engines | A5 part 2 already; `test_ui_checklist_field.py` checks it exactly again |
+| A dimmed kickoff or punt arc competed with the shadows at every drive's first snap | Kept on, dimmed further: new optional `look.world.plays.kickDim` (default 1; Under the Lights 0.4, so 0.3 x 0.4 = 0.12); `play-style.dimOpacityOf(look, drawing)` | `player.dimLast`; `play-style`, `action-layers`, `uls-look` tests |
+| A watch step (Right or Step on a paused watch) drew its play in 800 ms (a 72-yard run in 0.8 s) | A step applies ESPN's next play, not one he typed: `actions` kicks its tick with origin `poll`, so the play draws at `normalMs` (anim-queue's 800 ms cap stays for his own rows) | `core/actions.js` `STEP`; `actions.test.mjs` |
+| `ghosts.js` (zones, lanes, bands) after A5 part 2 and A6 | Kept as the conductor's GhostSet: its ranked plays and odds feed both engines' shadow input, its shapes only the pre-snap camera frame (`camera-plan.frameSituation`); nothing draws them | `ghosts.test.mjs` header |
+| The field goal's hold line (8 yd behind the line of scrimmage; rework L1) | Left as is: play-drawing.md 2 keeps kicks "as before (true length)", and a field goal's length starts at the hold. Sam's call | open |
+
+### 22.3 Under the Lights, found in integration
+
+- **The watch desk.** DESIGN.md's watch desk is the transport over the last play and its retag keys: during a watch the
+  shorthand bar steps off the stadium desk (it peeked half cut under the transport before the first Dallas play) and
+  the hint stays for screen readers only (`components/shorthand.css`). Manual entry, the feed and the phone keep both.
+- **Unrolling.** The play ribbon, the drive ribbon and the video board unroll on `:hover` or `:has(:focus-visible)`
+  (was `:focus-within`): a row clicked with the mouse kept the replay board open over the drive list after the pointer
+  left; the keyboard still opens them by Tab (`layout.css`, `motion.css`, `components/play-feed.css`,
+  `drive-chart.css`, `prediction.css`).
+- **The drawer's rails** run by `translate` on the compositor (was `inset-inline-start`, a relayout every frame that
+  left the drawer's text a pixel off at rest in one run of three; `uls-world.test.mjs` pins it).
+
+### 22.4 Engine
+
+`debugState().ball` (`field/scene.js`): the ball in flight as `{ x, y, h }` field yards, a copy, while a play draws;
+`null` at rest. The e2e line-of-scrimmage check reads it frame by frame.
+
+### 22.5 Tests
+
+- **Either world.** `tests/e2e/ui_helpers.py` `WORLD` comes from `SC_E2E_WORLD` (default `neutral`; the A8 file's
+  `QUERY` follows it). World-aware helpers: `show(page, sel)` opens the closed booth (B) or stat board (G) that holds a
+  target and closes again one that didn't help; `reveal`, `point_at`, `click_at` reach a target in a region that unrolls
+  on hover (they wait for its LED step-in and keep the pointer on the target until it stops moving); `region_box` measures
+  a region lent to a fixture (`display: contents`); `CAMERAS` per world; `neutral_only(reason)` skips the neutral
+  layout's own checks elsewhere (#7's rail and family columns, the idle transport's speed keys, which Under the Lights
+  shows only while a game plays). Older tests now read words as written (`textContent`; a world may set them in caps)
+  and the world's default camera.
+- **`tests/e2e/test_ui_world_under-the-lights.py`** (with `uls_scenes.py`): the default world and its fonts; his top 2
+  as shadow plays before a Dallas snap with their text, a hovered third play, none for Tampa Bay; each of
+  play-drawing.md 3's own examples on the field, reviewed from the ribbon, on both engines; every frame of Dallas's first
+  drive from the line of scrimmage on (Playwright's page clock); the scoreboard band against `/api/state` and the
+  timeline's status, mid-game and final; zero console errors and failed requests through Replay and a whole watched
+  game at 10x from the drawer; the golden screenshots.
+- **Golden screenshots** (7.3): `tests/e2e/goldens/under-the-lights/{final,presnap,midflight,incomplete,drawer}-
+  {1440x900,1920x1080}.png`. GPU renders (Chromium's new headless mode, `channel="chromium"`; the e2e `browser`
+  renders with SwiftShader, the engine's low tier), the page clock installed and frozen on its 16 ms frame grid, so a
+  ball in flight is caught on the same frame every run (counted by the engine from its first frame). Compared within 1%
+  of pixels (a channel off by more than 24); `SC_UPDATE_GOLDENS=1` rewrites them; a failure leaves the capture in
+  `test-results/visual/under-the-lights/`; without a GPU (tier low) the comparison is skipped with the reason.

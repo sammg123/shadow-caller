@@ -1,6 +1,7 @@
 // Intents to requests (ui-architecture.md 2.8 and 3.3; FI 2.2; G6, G9, G13, G21; owner A2).
 // The only caller of api.post. POSTs go one at a time (FIFO); each response that carries a state is applied with
-// origin "action", then a tick is kicked so the rows it made animate (at most 800 ms). Failed requests become red
+// origin "action", then a tick is kicked so the rows it made animate (at most 800 ms; a watch step's play is ESPN's,
+// so its tick is a poll's and the play draws at its own pace, v1.4). Failed requests become red
 // toasts and never throw; only a request that got no answer says "Nothing was saved" (#121), so a bug after a
 // successful POST surfaces as itself instead. The clock and the timers are called bare (browsers throw "Illegal
 // invocation" otherwise). Every action below takes the context `c` that createActions builds.
@@ -17,6 +18,9 @@ const WATCH_SPEEDS = Object.freeze([1, 2, 4, 10]);
 const WATCH_SESSION = Object.freeze(["playing", "paused"]);
 const AMBIENTS = Object.freeze(["room", "dark"]);
 const QUIET = Object.freeze({ toastOn: "errors" });
+/** v1.4 (W6): a watch step applies ESPN's next play, not one he typed: its tick is a poll's, so the play draws at its own
+ * pace (anim-queue's 800 ms cap is for his own rows). */
+const STEP = Object.freeze({ toastOn: "errors", origin: "poll" });
 
 /** Toast and confirm text: model/copy.js (A3) is the source; the two lines it does not carry yet are local. */
 export const ACTION_COPY = Object.freeze({
@@ -90,7 +94,7 @@ async function postOnce(c, path, body) {
   }
 }
 
-async function perform(c, path, body, toastOn) {
+async function perform(c, path, body, toastOn, origin) {
   c.q.reqSeq = Math.max(c.q.reqSeq, c.st().req.seq) + 1;
   const reqSeq = c.q.reqSeq;
   c.dispatch({ type: "req/action-start", reqSeq });
@@ -99,14 +103,14 @@ async function perform(c, path, body, toastOn) {
     return reply ? respond(c, reply, reqSeq, toastOn) : NOT_SENT;
   } finally {
     c.dispatch({ type: "req/action-end", reqSeq });
-    c.sync?.kick({ origin: "action" });
+    c.sync?.kick({ origin });
   }
 }
 
 /** Queue one POST behind the others. toastOn: "message" (default), or "errors" to keep successes quiet. */
-function send(c, path, body, { toastOn = "message", entry = false } = {}) {
+function send(c, path, body, { toastOn = "message", entry = false, origin = "action" } = {}) {
   if (entry) c.q.entryBusy += 1;
-  const run = c.q.tail.then(() => perform(c, path, body, toastOn));
+  const run = c.q.tail.then(() => perform(c, path, body, toastOn, origin));
   c.q.tail = run.catch(() => {});
   return run.finally(() => { if (entry) c.q.entryBusy -= 1; });
 }
@@ -266,7 +270,7 @@ async function review(c, delta, { repeat = false } = {}) {
   if (reviewSeq !== s.view.review.seq) c.dispatch({ type: "review/set", seq: reviewSeq });
   if (repeat || !effect) return;
   if (effect === "pause-then-step" && !(await send(c, ROUTES.watchPause, {}, QUIET)).ok) return;
-  await send(c, ROUTES.watchStep, {}, QUIET);
+  await send(c, ROUTES.watchStep, {}, STEP);
 }
 
 /** v1.2 (A8): jump the review cursor to one drawn play (play feed, drive chart); null returns to the live edge.
@@ -340,7 +344,7 @@ function watchAndViewActions(c) {
   return {
     watchStart: (eventId) => watchStart(c, eventId),
     watchToggle: () => watchToggle(c),
-    async watchStep() { await send(c, ROUTES.watchStep, {}, QUIET); },
+    async watchStep() { await send(c, ROUTES.watchStep, {}, STEP); },
     watchSpeed: (speed) => watchSpeed(c, speed),
     watchStop: () => watchStop(c),
     cycleCamera: () => cycleCamera(c),

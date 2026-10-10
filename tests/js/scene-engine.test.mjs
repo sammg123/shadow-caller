@@ -338,3 +338,42 @@ test("dispose finishes a running play, stops the stage and frees every layer", a
   engine.setGameFrame(TL.field, TL.teams, TL.team_order);
   assert.deepEqual(await engine.playRow(row(2), { durationMs: 0, token: 4 }), { seq: 2, token: 4, completed: false });
 });
+
+test("v1.4 (W1): every animated play calls the world's play moment at its start and landed when it is down", async () => {
+  const calls = [];
+  const world = { moments: {
+    play: (ctx, r, info) => calls.push(["play", r.seq, info.durationMs > 0, typeof ctx.rig.shot]),
+    landed: (ctx, r, info) => calls.push(["landed", r.seq, info.completed]),
+    snap: (ctx, r) => calls.push(["snap", r.seq]),
+  } };
+  const { engine, clock } = await setup({ world });
+  engine.showSituation(DAL25);
+  const tb = TL.rows.find((r) => !r.offense_is_caller && r.kind === "play");
+  const p1 = engine.playRow(tb, { durationMs: 200, token: 1 });
+  await clock.tick(250);
+  await p1;
+  assert.deepEqual(calls, [["play", tb.seq, true, "function"], ["landed", tb.seq, true]], "the opponent's play too, no snap");
+  calls.length = 0;
+  const p2 = engine.playRow(row(81), { durationMs: 2000, token: 2 });
+  engine.finishNow();
+  await p2;
+  assert.deepEqual(calls, [["snap", 81], ["play", 81, true, "function"], ["landed", 81, true]], "a hurried play lands too");
+  calls.length = 0;
+  await engine.playRow(row(81), { durationMs: 0, token: 3 });
+  assert.deepEqual(calls, [], "instant draws are not plays the world animates");
+});
+
+test("v1.4 (W6): debugState().ball is the ball in flight while a play draws, null at rest (the e2e LOS check)", async () => {
+  const { engine, clock } = await setup();
+  engine.showSituation(DAL25);
+  assert.equal(engine.debugState().ball, null, "no play, no ball in flight");
+  const p = engine.playRow(row(81), { durationMs: 3000, token: 1 });
+  await clock.tick(1000);
+  const b = engine.debugState().ball;
+  assert.ok(b && Number.isFinite(b.x), "the player's ball while the play draws");
+  assert.deepEqual({ y: b.y, h: b.h }, { y: 26.667, h: 1 });
+  assert.notEqual(engine.debugState().ball, b, "a copy each time, never the player's own object");
+  await clock.tick(2100);
+  await p;
+  assert.equal(engine.debugState().ball, null, "the play is down");
+});

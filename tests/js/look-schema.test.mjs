@@ -26,6 +26,10 @@ test("NEUTRAL_LOOK validates and is deep-frozen", () => {
   assert.equal(NEUTRAL_LOOK.post.bloom, null);
 });
 
+test("v1.4 (W6): the neutral look's shadow plays fade out at the snap, as the 2D field's do (play-drawing.md 4)", () => {
+  assert.equal(NEUTRAL_LOOK.ghost.afterSnapOpacity, 0);
+});
+
 test("the look's motion carries every timing.js field plus the ghost and verdict times", () => {
   for (const key of Object.keys(DEFAULT_MOTION)) assert.equal(NEUTRAL_LOOK.motion[key], DEFAULT_MOTION[key], key);
   for (const key of ["ghostInMs", "ghostOutMs", "verdictMs"]) assert.ok(Number.isFinite(NEUTRAL_LOOK.motion[key]), key);

@@ -7,6 +7,7 @@ from playwright.sync_api import expect
 from ui_helpers import (COL, answer_dialogs, clear_history, command, csv_rows, ensure_finished, expect_off_field,
                         expect_shows, expect_toast, fresh, load, log_table, quiet, record_requests, reset_game, state,
                         until, with_drive)
+from ui_helpers import show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -231,6 +232,7 @@ def test_89_reset_confirms_and_dismissing_changes_nothing(upage, server):
     assert asked == ["Clear every snap logged for this game?"] * 2
     s = state(base)
     assert (s["log"], s["drive_active"], s["sit"]["yardline_100"]) == ([], False, 75)
+    show(upage, "#logArea")
     expect_shows(upage.locator("#logArea"), "No snaps yet.")
 
 
@@ -262,6 +264,7 @@ def test_91_undo_in_one_tab_shows_in_another_within_2_5_s(ui_pages, server):
     second = ui_pages()
     load(first, base)
     load(second, base)
+    show(second, "#logArea")                          # before the clock starts: a world may keep the log on a board
     expect(second.locator("#iDown")).to_have_value("2")
     first.keyboard.press("u")
     expect_toast(first, "Undid the last action.")

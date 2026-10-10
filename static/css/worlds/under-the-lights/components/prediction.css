@@ -347,7 +347,7 @@
 @media (min-width: 1200px) and (min-height: 640px) {
   /* Collapsed: the plays, the league words and the why lines wait, visually hidden but in the page (the notch shows
      the league; the split bar's own label speaks all three shares). */
-  #app[data-layout="uls"] .uls-board:not(:hover, :focus-within)
+  #app[data-layout="uls"] .uls-board:not(:hover, :has(:focus-visible))
     :is(.sc-leaves, .sc-call-more, .sc-split-labels [data-side="league"]) {
     position: absolute;
     width: 1px;
@@ -366,18 +366,18 @@
     white-space: normal;
   }
   /* Open: the families stand in two columns, each over its plays, and the rest scans in, top to bottom. */
-  #app[data-layout="uls"] :is(.uls-board:is(:hover, :focus-within), [data-board-open="true"] .uls-board) .sc-fams {
+  #app[data-layout="uls"] :is(.uls-board:is(:hover, :has(:focus-visible)), [data-board-open="true"] .uls-board) .sc-fams {
     display: block;
     columns: 2;
     column-gap: var(--sc-space-5);
   }
-  #app[data-layout="uls"] :is(.uls-board:is(:hover, :focus-within), [data-board-open="true"] .uls-board) .fam {
+  #app[data-layout="uls"] :is(.uls-board:is(:hover, :has(:focus-visible)), [data-board-open="true"] .uls-board) .fam {
     margin-bottom: var(--sc-space-1);
     padding: 3px 4px;
     outline-offset: -2px;
     break-inside: avoid;
   }
-  #app[data-layout="uls"] :is(.uls-board:is(:hover, :focus-within), [data-board-open="true"] .uls-board)
+  #app[data-layout="uls"] :is(.uls-board:is(:hover, :has(:focus-visible)), [data-board-open="true"] .uls-board)
     :is(.sc-leaves, .sc-call-more) { animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both; }
 }
 

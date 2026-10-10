@@ -47,6 +47,8 @@ function replace(resp) {
     teamOrder: deepFreeze(resp.team_order ?? []),
     meta: deepFreeze(resp.meta ?? null), wpStart: Number.isFinite(resp.wp_start) ? resp.wp_start : null,
     rows, needsFull: false, snapshots: [snapshotOf(resp)],
+    // v1.4 (W1): the game's kickoff and light (timeline `game`, Appendix B), only when the server sends it (DC C1)
+    ...(isPlainObject(resp.game) ? { game: deepFreeze({ ...resp.game }) } : {}),
   };
   return { cache, added: rows, reset: true, needsFull: false };
 }

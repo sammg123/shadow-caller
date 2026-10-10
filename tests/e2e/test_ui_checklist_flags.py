@@ -5,6 +5,7 @@ import pytest
 from playwright.sync_api import expect
 from ui_helpers import (COL, expect_shows, expect_toast, fresh, log_table, quiet, record_requests, state, until,
                         with_drive)
+from ui_helpers import show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -153,6 +154,7 @@ def test_69_pre_snap_false_start_ignores_the_pick(upage, server):
     keys(upage, "f")
     expect_toast(upage, "False start: back 5 yards. 1st & 15 at DAL 20.")
     assert state(base)["log"] == []
+    show(upage, "#logArea")
     expect_shows(upage.locator("#logArea"), "No snaps yet.")
 
 

@@ -9,6 +9,7 @@ import pytest
 from playwright.sync_api import expect
 from ui_helpers import (EVENT, api_post, blur, command, feed_on, fresh, js_errors, load, record_requests, reset_game,
                         state, stop_watch, until, with_drive)
+from ui_helpers import neutral_only, point_at  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -38,13 +39,13 @@ def test_hover_and_focus_light_a_play_and_clear_when_they_leave(upage, server):
     """G18: pointer and focus on a play reach the store (actions.hoverLeaf) and come back as data-highlighted; the
     pointer wins while it is there and focus comes back when it leaves."""
     with_drive(upage, server["base"])
-    upage.locator(LEAF.format("screen")).hover()
+    point_at(upage, LEAF.format("screen"))
     until(upage, lambda: highlighted(upage) == ["screen"], what="the hovered play to light")
     upage.mouse.move(2, 2)
     until(upage, lambda: highlighted(upage) == [], what="the light to clear when the pointer leaves the call")
     upage.locator(LEAF.format("pa_mid")).focus()
     until(upage, lambda: highlighted(upage) == ["pa_mid"], what="the focused play to light")
-    upage.locator(LEAF.format("run_inside")).hover()
+    point_at(upage, LEAF.format("run_inside"))
     until(upage, lambda: highlighted(upage) == ["run_inside"], what="the pointer to win over focus")
     upage.mouse.move(2, 2)
     until(upage, lambda: highlighted(upage) == ["pa_mid"], what="focus to come back")
@@ -144,6 +145,8 @@ def test_two_shorthand_lines_typed_back_to_back_both_run(upage, server):
     assert (s["drive_active"], len(s["log"]), s["sit"]["togo"]) == (True, 1, 7)
 
 
+@neutral_only("#7's two family columns at 760 px are the neutral layout's; Under the Lights is one column below "
+              "1200 x 640 (ui-architecture 15.3)")
 def test_families_show_in_two_columns_at_760(ui_pages, server):
     """#7: at 760 px wide the five families sit in two columns."""
     page = ui_pages(760, 900)

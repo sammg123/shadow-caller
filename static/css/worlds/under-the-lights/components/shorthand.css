@@ -49,3 +49,18 @@
   background: var(--uls-steel-edge);
 }
 :where(#app[data-layout="uls"]) .sc-short-run[aria-busy="true"] { color: var(--sc-ink-muted); cursor: progress; }
+
+/* v1.4 (W6): Watch this game. DESIGN.md's watch desk is the transport over the last play and its retag keys; a watched
+   game is a playback, so the shorthand bar steps off the stadium desk (it peeked half cut under the transport) and the
+   hint stays for screen readers only. Manual entry and the feed keep both; the phone column keeps both. */
+@media (min-width: 1200px) and (min-height: 640px) {
+  #app[data-layout="uls"][data-mode="watch"] .uls-desk [data-mount="shorthand"] { display: none; }
+  #app[data-layout="uls"][data-mode="watch"] .uls-desk #entryHint {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}

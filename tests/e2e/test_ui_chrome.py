@@ -9,6 +9,7 @@ from playwright.sync_api import expect
 from ui_helpers import (EVENT, TOTAL_ROWS, answer_dialogs, blur, command, expect_log_rows, expect_toast,
                         feed_on, finished, fresh, full_timeline, load, quiet, record_requests, reset_game, state,
                         until, version, wait_idle, wait_ready, wait_server)
+from ui_helpers import neutral_only, region_box, show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
 
@@ -164,7 +165,7 @@ def test_101_a_feed_that_cannot_reach_espn_keeps_retrying(upage, server):
     """#101: event id 999 with the feed on: "ESPN live: retrying" in the error style, and the reason it gives."""
     base = server["base"]
     fresh(upage, base)
-    box = upage.locator("#feedEvent")
+    box = show(upage, "#feedEvent")
     box.fill("999")
     upage.locator("#feedBtn").click()
     expect(upage.locator("#feedBtnTxt")).to_have_text("ESPN live: retrying", timeout=15_000)
@@ -207,7 +208,7 @@ def test_104_the_id_box_keeps_what_is_typed_and_enter_only_blurs(upage, server):
     """#104: a render never overwrites the focused id box, and Enter in it blurs without sending anything."""
     base = server["base"]
     fresh(upage, base)
-    box = upage.locator("#feedEvent")
+    box = show(upage, "#feedEvent")
     box.click()
     box.fill("40187")
     before = version(base)["version"]
@@ -276,7 +277,7 @@ def test_106_replay_asks_then_rebuilds_the_game(upage, server):
     base = server["base"]
     fresh(upage, base)
     dialogs = answer_dialogs(upage)
-    upage.locator("#replayBtn").click()
+    show(upage, "#replayBtn").click()
     expect(upage.locator("#toast")).to_have_text(
         f"Replayed ESPN game {EVENT}: 55 DAL plays logged. Old game backed up in data/.", timeout=LONG_MS)
     assert dialogs == [CONFIRM_REPLAY]
@@ -302,8 +303,8 @@ def test_109_replay_of_an_unknown_game_changes_nothing(upage, server):
     finished(upage, base)
     before = version(base)
     answer_dialogs(upage)
-    upage.locator("#feedEvent").fill("999")
-    upage.locator("#replayBtn").click()
+    show(upage, "#feedEvent").fill("999")
+    show(upage, "#replayBtn").click()
     expect(upage.locator("#toast")).to_have_class(re.compile(r"(^|\s)err(\s|$)"), timeout=LONG_MS)
     expect(upage.locator("#toast")).to_have_attribute("data-tone", "error")
     after = version(base)
@@ -312,6 +313,8 @@ def test_109_replay_of_an_unknown_game_changes_nothing(upage, server):
 
 
 # ---------------------------------------------------------------- Watch this game (3.8, DC E1 to E5)
+@neutral_only("the transport is picked before a watch starts on the neutral desk; Under the Lights shows it only "
+              "while a game plays (DESIGN.md Control desk; ui-architecture 19.3); test_ui_timeline_watch.py covers it there")
 def test_watch_start_pause_step_speeds_and_stop(upage, watch_server):
     """Start at the speed picked beforehand; Space pauses; Right steps exactly one play; 1 to 4 post 1, 2, 4 and 10;
     nothing on screen runs ahead of the field (DC E5); Stop puts the pre-watch game back."""
@@ -323,7 +326,9 @@ def test_watch_start_pause_step_speeds_and_stop(upage, watch_server):
     dialogs = answer_dialogs(upage)
     posts = record_requests(upage, "/api/watch/")
     box = transport(upage)
-    expect(box).to_have_attribute("data-watch-state", "idle")
+    # v1.4 (W6): reset_game stops an earlier test's session, which leaves the shared watch sandbox "stopped", not
+    # "idle" (DC E2.6); either is a transport with nothing playing. Order-dependent before: it passed only alone.
+    expect(box).to_have_attribute("data-watch-state", re.compile(r"^(idle|stopped)$"))
     box.locator('[data-speed="1"]').click()
     expect(box.locator('[data-speed="1"]')).to_have_attribute("aria-pressed", "true")
     feed_bar(upage).locator('[data-watch="start"]').click()
@@ -354,6 +359,8 @@ def test_watch_start_pause_step_speeds_and_stop(upage, watch_server):
     assert [row["name"] for row in state(base)["log"]] == before
 
 
+@neutral_only("the transport is picked before a watch starts on the neutral desk; Under the Lights shows it only "
+              "while a game plays (DESIGN.md Control desk; ui-architecture 19.3); test_ui_timeline_watch.py covers it there")
 def test_watch_transport_keys_then_done_back_and_again(upage, watch_server):
     """The transport's own keys: start (10x), pause, step, play. At the end, Back to my game and Watch again show,
     and Watch again stops with restore before it starts (DC E2.5)."""
@@ -559,5 +566,7 @@ def test_chrome_fits_a_phone(ui_pages, server):
     expect(page.locator("#gameLabel")).not_to_have_text("")
     assert page.evaluate("() => document.documentElement.scrollWidth") <= 390
     for sel in ("#rg-masthead", "#rg-feed", '[data-testid="watch"]', "#field"):
-        box = page.locator(sel).first.bounding_box()
+        box = region_box(page, sel)                     # v1.4 (W6): a region a world lends to a fixture has no own box
+        if box is None and sel == '[data-testid="watch"]' and page.locator('#app[data-mode="watch"]').count() == 0:
+            continue                                    # a world may show the transport only while a game plays
         assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390 + 0.5, (sel, box)

@@ -153,7 +153,7 @@ test("clicking a leaf picks it; Enter and Space reach it natively as a button (#
   assert.deepEqual(named("pickLeaf"), [["run_edge_left"]]);
 });
 
-test("hover and focus light the play's projection; leaving clears it; focus outlasts the pointer (G18)", async () => {
+test("hover and focus light the play's shadow play; leaving clears it; focus outlasts the pointer (G18)", async () => {
   const { doc, root, component, named } = await setup();
   inDoc(doc, () => component.update(vmOf(state.drive())));
   const call = root.querySelector(".sc-call");

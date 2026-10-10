@@ -289,6 +289,13 @@ async function boot() {
   await bootEngine({ doc, look, world, boot: prefs, loader, notices, rt });
   rt.refreshExtras();
   startConductor({ doc, look, core, loader, notices, rt });
+  // v1.4 (W3's ask, wired by W1): the HUD insets changed without a resize (mode, drawer): the camera re-reads them
+  doc.getElementById("app")?.addEventListener("sc:hud-insets", () => rt.engine?.setSafeArea?.(null));
+  // v1.4 (W4's ask, wired by W6): the booth's Room lights switch goes through the store, so prefs.ambient follows
+  doc.getElementById("app")?.addEventListener("sc:booth-ambient", (e) => {
+    e.preventDefault();
+    actions.setAmbient(e.detail?.value);
+  });
   initialCamera(core.store, prefs, look, rt);
   attachKeyboard(doc, { store: core.store, actions, onError: core.onError });
   const matchMedia = typeof globalThis.matchMedia === "function" ? (query) => globalThis.matchMedia(query) : undefined;
