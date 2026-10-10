@@ -1,8 +1,9 @@
 // Under the Lights: the bowl (DESIGN.md "The bowl"; three-recipe 4.8; owner W1). Tiered stands as dark low-poly
 // rounded-rectangle rings: a lower bowl all the way round, behind a padded field wall, and a horseshoe upper deck over
 // the far side and both ends (the home side stays one tier, so the broadcast cameras behind it always see over it, as
-// a press-box side does). Every opaque part (rows, walls, fascia bodies, parapets with their steel-edge light-catch)
-// goes into one builder, so the stands are one draw call. RINGS also places the LED fascia ribbons and the crowd.
+// a press-box side does). Every opaque part (rows, walls, fascia bodies, parapets with their steel-edge light-catch,
+// the home stand's facade: G3-2) goes into one builder, so the stands are one draw call. RINGS also places the LED
+// fascia ribbons and the crowd.
 import { createBuilder, linearRgb, params, ringPoint } from "./builder.js";
 
 const TAU = Math.PI * 2;
@@ -21,15 +22,30 @@ export const RINGS = Object.freeze({
   ribbonB: Object.freeze({ y0: 22.05, y1: 23.45, inset: 0.04 }),
 });
 
-/** DESIGN.md steel and concrete under the night (vertex colors; the tower spill and the haze do the rest). */
+/** DESIGN.md steel and concrete under the night (vertex colors; the tower spill and the haze do the rest). `rib` and
+ * `concourse` are the home stand's facade (G3-2): its steel columns and the lit concourse band behind the seats. */
 const TONES = Object.freeze({
   treadA: "#2c3447", treadB: "#30394d", riser: "#1d2331", wall: "#1c2333", fascia: "#20283a",
   parapet: "#3a4560", edge: "#6b7591", back: "#1a2131", cap: "#4a5571", end: "#2a3245",
+  rib: "#5b6683", concourse: "#6a6870", gate: "#0e131c",
 });
 /** By day the same stadium in sunlight: concrete and painted steel, lit by the sun and the sky. */
 const DAY_TONES = Object.freeze({
   treadA: "#6f7787", treadB: "#788091", riser: "#4b5262", wall: "#3a4256", fascia: "#4a5266",
   parapet: "#5d6679", edge: "#9aa3b5", back: "#525a6b", cap: "#7d8597", end: "#5a6274",
+  rib: "#6a7385", concourse: "#626a7b", gate: "#2e3442",
+});
+
+/**
+ * G3-2: the home stand's back, where the home-side cameras look over the stand onto it: steel columns proud of the
+ * wall every `rib.spacingYd` yards, a lit concourse band across it, dark gates under the band between the columns.
+ * Heights and widths in yards.
+ */
+export const FACADE = Object.freeze({
+  rib: Object.freeze({ spacingYd: 7, widthYd: 1.1, proud: 0.32 }),
+  band: Object.freeze([3.6, 4.7]),
+  bandProud: 0.08,
+  gate: Object.freeze({ top: 2.7, widthYd: 3.2, proud: 0.04 }),
 });
 
 const lower = RINGS.lower;
@@ -102,6 +118,81 @@ function backOf(b, ts, ring, [top, parapet], tones) {
   band(b, ts, ring, [top, top + parapet], tones.parapet);
   flat(b, ts, ring, cap, top + parapet, tones.edge);
   band(b, ts, cap, [0, top + parapet], tones.back, outward);
+  return cap;
+}
+
+/** The home stand's back (its outer wall, facing away from the field, toward the home-side cameras): [a, b], yards. */
+export function homeBackRing() {
+  const out = 0.3 + lower.homeRows * lower.depth + 0.5;
+  return [lower.a + out, lower.b + out];
+}
+
+const EPS_T = 1e-4;
+/** Yards along the ring per unit of its parameter at t. */
+function speedAt(t, [a, bb]) {
+  const p = ringPoint(t, a, bb);
+  const q = ringPoint(t + EPS_T, a, bb);
+  return Math.hypot(q[0] - p[0], q[1] - p[1]) / EPS_T;
+}
+
+/** A panel on an outward wall: [t0, t1] along `ring`, `proud` yards out, from y0 to y1, with its two sides. */
+function panel(b, [t0, t1], ring, proud, [y0, y1], rgb, sides = true) {
+  const face = [ring[0] + proud, ring[1] + proud];
+  const ts = params(t0, t1, 1);
+  band(b, ts, face, [y0, y1], rgb, outward);
+  if (!sides) return;
+  const p0 = ringPoint(t0, face[0], face[1]);
+  const p1 = ringPoint(t1, face[0], face[1]);
+  const along = [p1[0] - p0[0], 0, p1[1] - p0[1]];
+  for (const [t, sign] of [[t0, -1], [t1, 1]]) {
+    const w = ringPoint(t, ring[0], ring[1]);
+    const f = ringPoint(t, face[0], face[1]);
+    b.quad(P(w, y0), P(f, y0), P(f, y1), P(w, y1), rgb, { dir: along.map((v) => v * sign) });
+  }
+}
+
+const FINE = 720;
+
+/**
+ * Parameters `spacing` yards apart along the ring from t0 to t1 (the ring's parameter is far from even in length: a
+ * segment in the middle of a long side is many times one at a corner). The ring is walked in FINE steps.
+ */
+export function evenlyAlong([t0, t1], [a, bb], spacing) {
+  const ts = params(t0, t1, FINE);
+  const out = [];
+  let walked = spacing / 2;
+  let prev = ringPoint(ts[0], a, bb);
+  for (const t of ts.slice(1)) {
+    const p = ringPoint(t, a, bb);
+    walked += Math.hypot(p[0] - prev[0], p[1] - prev[1]);
+    prev = p;
+    if (walked >= spacing) {
+      out.push(t);
+      walked = 0;
+    }
+  }
+  return out;
+}
+
+/**
+ * G3-2: the home stand's facade on its back wall (`ts` along `ring`, the wall `top` yards high): steel columns proud
+ * of it every FACADE.rib.spacingYd yards, the lit concourse band across it, dark gates under the band between them.
+ */
+function addFacade(b, ts, ring, top, tones) {
+  const { rib, band: [y0, y1], bandProud, gate } = FACADE;
+  for (let i = 0; i + 1 < ts.length; i += 1) {
+    panel(b, [ts[i], ts[i + 1]], ring, bandProud, [y0, y1], tones.concourse, false);
+  }
+  const cols = evenlyAlong([ts[0], ts.at(-1)], ring, rib.spacingYd);
+  for (const t of cols) {
+    const half = rib.widthYd / 2 / speedAt(t, ring);
+    panel(b, [t - half, t + half], ring, rib.proud, [0, top + 0.2], tones.rib);
+  }
+  for (let i = 0; i + 1 < cols.length; i += 1) {
+    const mid = (cols[i] + cols[i + 1]) / 2;
+    const half = gate.widthYd / 2 / speedAt(mid, ring);
+    panel(b, [mid - half, mid + half], ring, gate.proud, [0, gate.top], tones.gate, false);
+  }
 }
 
 /**
@@ -120,7 +211,8 @@ function addLower(b, tones) {
   rows(b, all, { ...lower, rows: lower.homeRows }, [start[0], start[1], lower.wall], tones);
   const mid = at(lower.homeRows);
   rows(b, far, { ...lower, rows: lower.rows - lower.homeRows }, [mid[0], mid[1], LEVELS.homeTop], tones);
-  backOf(b, home, mid, [LEVELS.homeTop, lower.homeParapet], tones);
+  const homeBack = backOf(b, home, mid, [LEVELS.homeTop, lower.homeParapet], tones);
+  addFacade(b, home, homeBack, LEVELS.homeTop + lower.homeParapet, tones);
   backOf(b, far, at(lower.rows), [LEVELS.lowerTop, lower.parapet], tones);
   const outer = [at(lower.rows)[0] + 0.5, at(lower.rows)[1] + 0.5];
   endCap(b, t0, mid, outer, [LEVELS.homeTop, LEVELS.lowerTop + lower.parapet], tones.end, -1);

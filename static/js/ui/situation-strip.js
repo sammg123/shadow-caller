@@ -22,7 +22,8 @@ const FIELD_SPECS = Object.freeze({
   iYard: { size: 4, caps: true },
 });
 const END_KINDS = Object.freeze([["punt", "endPunt"], ["fg", "endFg"], ["fg_miss", "endFgMiss"], ["half", "endHalf"]]);
-const EMPTY_VM = Object.freeze({ values: null, endRowHidden: true, rejected: Object.freeze({}) });
+const EMPTY_VM = Object.freeze({ values: null, endRowHidden: true, rejected: Object.freeze({}), error: null });
+const ERROR_ID = "stripError";
 
 // ---------------------------------------------------------------- building
 function fieldInput(id, spec) {
@@ -71,12 +72,19 @@ function buildChip(copy, onClick) {
     data: { side: "own" }, on: { click: onClick } }, [text, glyph]), text };
 }
 
-function buildDrive(copy, onEnd) {
+/** G5-13: the refused value's words, kept beside the strip until it is fixed (its field's aria-describedby). */
+function buildError() {
+  const tag = el("span", { cls: "sc-strip-error-tag" });
+  const text = el("span", { cls: "sc-strip-error-text" });
+  return { node: el("p", { id: ERROR_ID, cls: "sc-strip-error", attrs: { hidden: true } }, [tag, " ", text]), tag, text };
+}
+
+function buildDrive(copy, onEnd, error) {
   const info = el("p", { id: "driveInfo", cls: "sc-drive-info" });
   const ends = END_KINDS.map(([kind, key]) => el("button", { cls: "sc-end", attrs: { type: "button" },
     data: { end: kind }, text: copy[key], on: { click: () => onEnd(kind) } }));
   const row = el("div", { id: "endRow", cls: "sc-end-row", attrs: { hidden: true } }, ends);
-  return { node: el("div", { cls: "sc-strip-drive" }, [info, row]), info, row };
+  return { node: el("div", { cls: "sc-strip-drive" }, [error.node, info, row]), info, row };
 }
 
 // ---------------------------------------------------------------- editing (4.5)
@@ -156,10 +164,15 @@ function wireInput(c, id) {
   input.addEventListener("blur", () => { if (c.leaving !== id) settleField(c, id); });
 }
 
+/** The chip flips the side with the typed number. Off the field the box is blank (G5-3) and the flip sends the
+ * placeholder's number, so that number fills the box before it takes focus: a render skips the focused field (#25). */
 function onChip(c) {
   const yard = c.inputs.iYard;
-  act(() => c.ctx.actions.flipSide(String(yard.value ?? ""))).then((res) => {
+  const typed = String(yard.value ?? "");
+  const shown = typed.trim() || String(yard.getAttribute("placeholder") ?? "");
+  act(() => c.ctx.actions.flipSide(typed)).then((res) => {
     if (!res?.ok) return;
+    if (!String(yard.value ?? "").trim() && shown) yard.value = shown;
     yard.focus();
     selectAll(yard);
   });
@@ -170,6 +183,7 @@ function renderField(c, id, vm) {
   const f = c.fields[id];
   const input = c.inputs[id];
   f.server = vm.values ? String(vm.values[id] ?? "") : "";
+  setAttr(input, "placeholder", vm.values?.placeholders?.[id] || null);   // G5-3: Ball on off the field
   if (isFocused(input)) return;                            // never overwrite the field being typed in (#25)
   const kept = vm.rejected && Object.hasOwn(vm.rejected, id) ? String(vm.rejected[id]) : null;
   f.edited = false;
@@ -188,8 +202,18 @@ function renderSide(c, side) {
   setAttr(c.chip.node, "aria-label", side?.title ?? c.copy.sideTitle);
 }
 
+/** G5-16: during Watch this game the strip shows ESPN's situation read-only: no typing, no Tab stop, no side chip. */
+function renderReadOnly(c, readOnly) {
+  for (const id of STRIP_FIELDS) {
+    setAttr(c.inputs[id], "readonly", readOnly);
+    setAttr(c.inputs[id], "tabindex", readOnly ? "-1" : null);
+  }
+  setAttr(c.chip.node, "disabled", readOnly);
+}
+
 function render(c, vm) {
   c.lastVm = vm;
+  renderReadOnly(c, Boolean(vm.readOnly));
   for (const id of STRIP_FIELDS) renderField(c, id, vm);
   c.driveActive = Boolean(vm.values) && !vm.endRowHidden;
   renderSide(c, vm.values?.side ?? null);
@@ -202,6 +226,14 @@ function render(c, vm) {
   setData(c.drive.info, "cue", Boolean(vm.driveInfo?.cue));
   setHidden(c.drive.row, vm.endRowHidden !== false);
   setText(c.note, vm.note ?? "");
+  renderError(c, vm.error ?? null);
+}
+
+function renderError(c, error) {
+  setText(c.error.tag, error?.tag ?? "");
+  setText(c.error.text, error?.text ?? "");
+  setHidden(c.error.node, !error);
+  for (const id of STRIP_FIELDS) setAttr(c.inputs[id], "aria-describedby", error?.field === id ? ERROR_ID : null);
 }
 
 function buildStrip(c) {
@@ -227,7 +259,8 @@ export function mount(root, ctx) {
     note: el("p", { cls: "sc-strip-note" }),
   };
   c.chip = buildChip(copy, () => onChip(c));
-  c.drive = buildDrive(copy, (kind) => act(() => ctx.actions.endDrive(kind)));
+  c.error = buildError();
+  c.drive = buildDrive(copy, (kind) => act(() => ctx.actions.endDrive(kind)), c.error);
   for (const id of STRIP_FIELDS) wireInput(c, id);
   const strip = buildStrip(c);
   root.appendChild(strip);

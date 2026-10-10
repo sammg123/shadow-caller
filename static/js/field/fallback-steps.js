@@ -15,11 +15,13 @@
  * A style (fallback-plays strokeStyle, fallback-ghosts for shadows) gives the colors, widths and dash; `dashEdge`
  * dashes the edge with the core, so a shadow's gaps are see-through.
  */
+import { FIELD } from "./coords.js";
 import { OBLIQUE, r2, node, toneColor } from "./fallback-draw.js";
 import { CELL_LIT, GLYPH_SIZE, glyphCols, glyphPath } from "./fallback-pixels.js";
 import { CROSSBAR_YD, ownValue } from "./grammar.js";
+import { LABEL_METRICS, labelMetrics } from "./play-label.js";
 
-/** Ground strokes that end in an arrowhead: where the ball carrier went. The holder's set has none. */
+/** Ground strokes that end in an arrowhead: where the ball carrier went (every ground role there is). */
 const HEADED = new Set(["run", "scramble", "yac", "return", "sack", "kneel", "march"]);
 /** Glyph and tone of each plate mark; catch and incomplete are drawn as strokes (MARK_BUILDERS). */
 const MARKS = Object.freeze({
@@ -48,6 +50,20 @@ export function liftOf(step) {
 
 /** A height on a step as ctx.pt takes it (in OBLIQUE units), so the ball rides the arc as drawn. */
 export const shownHeight = (step, h) => (h * liftOf(step)) / OBLIQUE;
+
+/**
+ * The 2D field as label metrics (play-label.labelMetrics), for every word laid out on it (a play's, the shadows'):
+ * seen from straight above, the near sideline down the screen, a height drawn as a lift (OBLIQUE yards for a kick,
+ * PASS_LIFT for a pass: the range a label must clear); `labelPx` the tags' measured { charPx, linePx, padPx }.
+ */
+export function viewMetrics(ctx, ballX = FIELD.MIDFIELD_X, labelPx = null) {
+  const project = (p) => {
+    const q = ctx.pt(p.x, p.y, p.h ?? 0);
+    return { x: q.px, y: q.py };
+  };
+  const m = labelMetrics(project, { x: ballX, y: FIELD.CENTER_Y }, labelPx ?? {});
+  return m === LABEL_METRICS ? m : Object.freeze({ ...m, lifts: [OBLIQUE, PASS_LIFT] });
+}
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const part = (role, tag, attrs, anim, children = []) => (children.length

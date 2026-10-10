@@ -118,11 +118,13 @@ function snapResult(row) {
   return signedYards(row.result?.yards);
 }
 
-/** "Pass intercepted · short middle"; a screen or an RPO throw that was picked reads "Screen · INT". */
+/** "Pass intercepted · short middle"; a screen or an RPO throw that was picked reads "Screen · INT"; a typed row
+ * with no play type is a pass all the same ("Pass intercepted"). */
 function interceptionLabel(row) {
   const { family, leaf } = playType(row);
   const returned = isTouchdown(row) ? "returned for TD" : "";
-  if (family !== "dropback" && family !== "pa") return join(whatOf(row), "INT", returned);
+  const named = family !== null && family !== "dropback" && family !== "pa";
+  if (named) return join(whatOf(row), "INT", returned);
   const where = [depthWord(row, leaf), sideWord(row)].filter(Boolean).join(" ");
   return join(family === "pa" ? "Play-action pass intercepted" : "Pass intercepted", where, returned);
 }
@@ -246,11 +248,14 @@ export function playLabel(row) {
  * out clear of the others and of the strokes as the viewer sees them: `charYd` one character along the text,
  * `lineYd` one line across it, `padYd` the plate's padding along it, `down` the field axis pointing down the screen,
  * `lifts` how many yards of `down` one yard of height reads as (an arc rises up the screen; a range when several).
+ * A perspective view shows farther ground smaller, so text of a fixed pixel size takes more yards there: `atV` is
+ * where the view was measured (its `down` coordinate, the line of scrimmage) and `grow` how much more a label takes
+ * per yard past it, up the screen (labelBox). Nearer the camera a label is taken as measured, never smaller.
  * The default models the cameras that show plays by default (from the near sideline, y = 0, so down is toward it;
  * grammar.js ARC_SCREEN_LIFTS) at the app's desktop sizes; labelMetrics measures a real view.
  */
 export const LABEL_METRICS = deepFreeze({ charYd: LABEL_CHAR_YD, lineYd: LABEL_LINE_YD, padYd: 0,
-  down: { x: 0, y: -1 }, lifts: [...ARC_SCREEN_LIFTS] });
+  down: { x: 0, y: -1 }, lifts: [...ARC_SCREEN_LIFTS], grow: 0, atV: 0 });
 /** labelMetrics' defaults, in px: a 22 px plate of 14 px text with 6 px of padding a side, 4 px between plates. */
 export const LABEL_PX = deepFreeze({ char: 7.2, line: 26, pad: 12 });
 
@@ -261,6 +266,8 @@ const MARK_HALF_CHARS = 1.5;       // a mark's glyph is about three characters w
 const MAX_METRIC_YD = 30;          // a label metric past this is a degenerate view (seen edge-on)
 const MIN_PX = 1e-3;
 const DEFAULT_LABEL_CHARS = 30;    // a label given without its text counts as this long
+const GROW_PROBE_YD = 12;          // labelMetrics compares a yard's depth this far up the screen with the measured one
+const MAX_GROW_LINES = 0.5;        // `grow` stays under half a line's depth per line: a line never doubles in a line
 
 const isPt = (p) => isFiniteNum(p?.x) && isFiniteNum(p?.y);
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -271,16 +278,44 @@ const isAxis = (d) => isPt(d) && (d.x === 0 || d.y === 0) && Math.abs(d.x) + Mat
 const yards = (v, fallback, min) => (isFiniteNum(v) && v >= min && v <= MAX_METRIC_YD ? v : fallback);
 const px = (v, fallback) => (isFiniteNum(v) && v > 0 ? v : fallback);
 
+/** How much a line `lineYd` deep may deepen per yard (labelBox; shadows.js stacks lines with it). */
+const growCap = (lineYd) => MAX_GROW_LINES / lineYd;
+
 /** Metrics with every field checked; a missing or bad field takes LABEL_METRICS'. */
 export function resolveLabelMetrics(metrics) {
   const m = metrics && typeof metrics === "object" ? metrics : {};
   const lifts = Array.isArray(m.lifts) ? m.lifts.filter((l) => yards(l, null, 0) !== null) : [];
+  const lineYd = yards(m.lineYd, LABEL_METRICS.lineYd, EPS);
   return {
-    charYd: yards(m.charYd, LABEL_METRICS.charYd, EPS), lineYd: yards(m.lineYd, LABEL_METRICS.lineYd, EPS),
-    padYd: yards(m.padYd, LABEL_METRICS.padYd, 0),
+    charYd: yards(m.charYd, LABEL_METRICS.charYd, EPS), lineYd, padYd: yards(m.padYd, LABEL_METRICS.padYd, 0),
     down: isAxis(m.down) ? { x: m.down.x + 0, y: m.down.y + 0 } : LABEL_METRICS.down,
     lifts: lifts.length ? lifts : LABEL_METRICS.lifts,
+    grow: isFiniteNum(m.grow) && m.grow > 0 ? Math.min(m.grow, growCap(lineYd)) : 0,
+    atV: isFiniteNum(m.atV) ? m.atV : 0,
   };
+}
+
+/**
+ * How many times its measured size a label takes at `v` (yards down the screen, labelBox's v): 1 at the measured
+ * point and nearer the camera, more past it (`grow` a yard). Metrics as resolveLabelMetrics gives them.
+ */
+export function labelScaleAt(m, v) {
+  return 1 + m.grow * Math.max(0, m.atV - v);
+}
+
+/** Pixels down the screen per yard along `down` at field point `p` (on the turf), or NaN for a degenerate view. */
+function depthPx(project, p, down) {
+  const a = project({ x: p.x, y: p.y, h: 0 });
+  const b = project({ x: p.x + down.x, y: p.y + down.y, h: 0 });
+  return Math.abs(b?.y - a?.y);
+}
+
+/** How much more depth a yard of text takes per yard up the screen from `at` (0 when the view shows none). */
+function growOf(project, at, down, lineYd) {
+  const here = depthPx(project, at, down);
+  const there = depthPx(project, { x: at.x - down.x * GROW_PROBE_YD, y: at.y - down.y * GROW_PROBE_YD }, down);
+  if (!isFiniteNum(here) || !isFiniteNum(there) || there < MIN_PX) return 0;
+  return Math.min(growCap(lineYd), Math.max(0, (here / there - 1) / GROW_PROBE_YD));
 }
 
 /**
@@ -299,17 +334,22 @@ export function labelMetrics(project, at, { charPx, linePx, padPx } = {}) {
   const [run, across] = alongX ? [ex, ey] : [ey, ex];
   if (![ex, ey, eh].every(isPt) || Math.abs(run.x) < MIN_PX || Math.abs(across.y) < MIN_PX) return LABEL_METRICS;
   const sign = across.y > 0 ? 1 : -1;
+  const down = alongX ? { x: 0, y: sign } : { x: sign, y: 0 };
+  const lineYd = px(linePx, LABEL_PX.line) / Math.abs(across.y);
   const m = {
-    charYd: px(charPx, LABEL_PX.char) / Math.abs(run.x), lineYd: px(linePx, LABEL_PX.line) / Math.abs(across.y),
-    padYd: px(padPx, LABEL_PX.pad) / Math.abs(run.x), down: alongX ? { x: 0, y: sign } : { x: sign, y: 0 },
-    lifts: [Math.max(0, -eh.y / Math.abs(across.y))],
+    charYd: px(charPx, LABEL_PX.char) / Math.abs(run.x), lineYd, padYd: px(padPx, LABEL_PX.pad) / Math.abs(run.x),
+    down, lifts: [Math.max(0, -eh.y / Math.abs(across.y))], grow: growOf(project, at, down, lineYd),
+    atV: dot(at, down),
   };
   const sane = [m.charYd, m.lineYd, m.padYd, m.lifts[0]].every((v) => v <= MAX_METRIC_YD);
   return sane ? deepFreeze(m) : LABEL_METRICS;
 }
 
-const boxAt = (at, chars, m) => ({ u: dot(at, textAxis(m)), v: dot(at, m.down), hw: (chars * m.charYd + m.padYd) / 2,
-  hh: m.lineYd / 2 });
+function boxAt(at, chars, m) {
+  const v = dot(at, m.down);
+  const k = labelScaleAt(m, v);
+  return { u: dot(at, textAxis(m)), v, hw: (k * (chars * m.charYd + m.padYd)) / 2, hh: (k * m.lineYd) / 2 };
+}
 const charsOf = (text) => (typeof text === "string" ? text.length : DEFAULT_LABEL_CHARS);
 const meets = (a, b) => Math.abs(a.u - b.u) < a.hw + b.hw - EPS && Math.abs(a.v - b.v) < a.hh + b.hh - EPS;
 const holds = (box, q) => Math.abs(q.u - box.u) < box.hw && Math.abs(q.v - box.v) < box.hh;

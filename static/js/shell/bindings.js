@@ -106,9 +106,10 @@ export const COMPONENTS = Object.freeze([
   entry({ name: "scrub", region: "transport", root: "#rg-transport", label: "Replay scrub",
     load: () => import("../ui/scrub.js"), select: scrubVm,
     deps: (s) => [s.timeline, s.anim.drawnThrough, s.view.review, ...watchTotalDeps(s)] }),
+  // v1.5 (G4-1): the board's recap and FINAL faces read the drawn rows (the last play's words, the final status)
   entry({ name: "prediction", region: "call", root: "#heroArea", label: "Next call",
     load: () => import("../ui/prediction.js"), select: predictionVm,
-    deps: (s) => [s.presented, s.view.pick, s.view.hoverLeaf, ...inputModeDeps(s)] }),
+    deps: (s) => [s.presented, s.view.pick, s.view.hoverLeaf, ...inputModeDeps(s), s.timeline, s.anim.drawnThrough] }),
   // v1.2 (A7): view.flag is a dep, so #flagBtn lights while the flag panel is open (entryVm.flagOpen).
   entry({ name: "entry-pad", region: "entry", root: "#entry", label: "Play entry pad",
     load: () => import("../ui/entry-pad.js"), select: entryVm,

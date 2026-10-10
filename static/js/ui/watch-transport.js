@@ -13,6 +13,10 @@ const SHOWN = Object.freeze({
   done: ["back", "again"], error: ["start", "stop"],
 });
 const SPEED_KEYS = Object.freeze([[1, "1"], [2, "2"], [4, "3"], [10, "4"]]);   // speed, the digit that sets it (4.3)
+const browserTimers = Object.freeze({
+  setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
+  clearTimeout: (id) => globalThis.clearTimeout(id),
+});
 /** Where focus goes when the focused key is hidden by the new state (Space or Enter on Pause lands on Play). */
 const COUNTERPART = Object.freeze({ play: "pause", pause: "play", stop: "start", back: "start", again: "pause" });
 
@@ -69,16 +73,63 @@ function build(ctx) {
   return { node, keys, speedKeys, progress, error, errorText };
 }
 
+const usableKey = (k) => Boolean(k) && !k.key.node.hidden && !k.key.node.hasAttribute("disabled");
+const keyNamed = (parts, name) => parts.keys.find((k) => k.name === name);
+
 /** Keyboard users keep their place: a focused key that just hid passes focus to its counterpart or a usable key. */
 function keepFocus(parts, was) {
   if (!was || !was.key.node.hidden) return;
-  const usable = (k) => k && !k.key.node.hidden && !k.key.node.hasAttribute("disabled");
-  const byName = (name) => parts.keys.find((k) => k.name === name);
-  const next = [byName(COUNTERPART[was.name]), ...parts.keys].find(usable);
+  const next = [keyNamed(parts, COUNTERPART[was.name]), ...parts.keys].find(usableKey);
   next?.key.node.focus({ preventScroll: true });
 }
 
-function render(parts, vm) {
+/** G5-7: a watch was started (actions.watchStart): Pause takes focus as soon as it is shown and laid out (a world may
+ * hide the transport's region until the page is in watch mode, a frame later), wherever focus went meanwhile (the
+ * control that started it hides, a closing booth hands focus back to its key), except into a box being typed in; a
+ * render with no session, or START_FOCUS_TRIES tries, cancels it. */
+const SESSION = Object.freeze(["playing", "paused"]);
+const START_FOCUS_TRIES = 40;
+const START_FOCUS_RETRY_MS = 50;
+const laidOut = (node) => typeof node.getClientRects !== "function" || node.getClientRects().length > 0;
+
+function settleStartFocus(parts, pending, state) {
+  if (!pending.on) return;
+  pending.state = state;
+  const pause = keyNamed(parts, "pause");
+  if (!SESSION.includes(state)) {
+    pending.on = false;
+    return;
+  }
+  if (!usableKey(pause) || parts.node.hidden || !laidOut(pause.key.node)) {
+    retryStartFocus(parts, pending);
+    return;
+  }
+  pending.on = false;
+  if (!typing(parts.node.ownerDocument?.activeElement)) pause.key.node.focus({ preventScroll: true });
+}
+
+/** A text box someone may be typing in: focus is never pulled out of one. */
+function typing(node) {
+  if (!node || typeof node.localName !== "string") return false;
+  const type = String(node.getAttribute?.("type") ?? "text").toLowerCase();
+  if (node.localName === "input") return !["button", "checkbox", "radio", "submit", "reset"].includes(type);
+  return node.localName === "textarea" || node.isContentEditable === true;
+}
+
+function retryStartFocus(parts, pending) {
+  if (pending.timer !== null) return;
+  if (pending.tries <= 0) {
+    pending.on = false;
+    return;
+  }
+  pending.tries -= 1;
+  pending.timer = pending.timers.setTimeout(() => {
+    pending.timer = null;
+    settleStartFocus(parts, pending, pending.state);
+  }, START_FOCUS_RETRY_MS);
+}
+
+function render(parts, vm, pending = null) {
   const state = typeof vm.state === "string" ? vm.state : "idle";
   const active = parts.node.ownerDocument?.activeElement;
   const was = parts.keys.find((k) => k.key.node === active) ?? null;
@@ -91,6 +142,7 @@ function render(parts, vm) {
     setAttr(k.key.node, "disabled", !vm[k.can]);
   }
   keepFocus(parts, was);
+  if (pending) settleStartFocus(parts, pending, state);
   const pressed = new Set((vm.speeds ?? []).filter((s) => s.pressed).map((s) => s.value));
   for (const s of parts.speedKeys) setAttr(s.key.node, "aria-pressed", String(pressed.has(s.value)));
   setText(parts.progress, vm.progress);
@@ -101,18 +153,29 @@ function render(parts, vm) {
 
 /**
  * @param {HTMLElement} root  #rg-transport
- * @param {{ actions: object, copy: object }} ctx
- * @returns {{ update(vm: ReturnType<import("../model/vm-transport.js").transportVm>): void, destroy(): void }}
+ * @param {{ actions: object, copy: object, timers?: object }} ctx  timers: injected by tests
+ * @returns {{ update(vm: ReturnType<import("../model/vm-transport.js").transportVm>): void, destroy(): void,
+ *   form: { focusTransport(): void } }}
  */
 export function mount(root, ctx) {
   const parts = build(ctx);
-  render(parts, { available: false, state: "idle", speeds: [], progress: "", error: "" });
+  const pending = { on: false, state: "idle", tries: 0, timer: null, timers: ctx.timers ?? browserTimers };
+  render(parts, { available: false, state: "idle", speeds: [], progress: "", error: "" }, pending);
   root.appendChild(parts.node);
   return {
+    form: {
+      focusTransport() {
+        pending.on = true;
+        pending.tries = START_FOCUS_TRIES;
+        settleStartFocus(parts, pending, "playing");
+      },
+    },
     update(vm) {
-      if (vm) render(parts, vm);
+      if (vm) render(parts, vm, pending);
     },
     destroy() {
+      if (pending.timer !== null) pending.timers.clearTimeout(pending.timer);
+      pending.on = false;
       parts.node.remove();
     },
   };

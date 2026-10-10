@@ -4,8 +4,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { loadTimeline } from "./fixtures.mjs";
 import {
-  SEP, TONES, gameMessage, idleMessage, logoOf, plainMessage, playMessage, scorerOf, sidesOf, textOf, withVerdict,
+  SEP, TONES, callMessage, gameMessage, idleMessage, logoOf, plainMessage, playMessage, scorerOf, sidesOf, textOf,
+  withVerdict,
 } from "../../static/js/theme/worlds/under-the-lights/stadium/messages.js";
+import { buildGhostSet } from "../../static/js/field/ghosts.js";
+import { buildShadowPlays } from "../../static/js/field/shadows.js";
 
 const tl = loadTimeline();
 const row = (seq) => tl.row(seq);
@@ -69,4 +72,35 @@ test("the resting messages: the product's name, and the game with both logos (on
   assert.equal(textOf(gameMessage(null)), "SHADOW PLAY-CALLER");
   assert.equal(logoOf({ X: { logo: "https://evil.example/x.png" } }, "X"), null);
   assert.equal(logoOf(teams, "NOPE"), null);
+});
+
+// ---------------------------------------------------------------- G3-6: the next call on the bowl's fascia
+const D46 = Object.freeze({ ballX: 46, ltgX: 56, dir: 1, poss: "DAL", kind: "snap", goalToGo: false, down: 1, togo: 10 });
+const CALL = Object.freeze({ leaves: [{ leaf: "run_inside", p: 0.2384 }, { leaf: "pa_short", p: 0.158 },
+  { leaf: "dropback_short", p: 0.12 }], all: [{ leaf: "run_inside", p: 0.2384 }, { leaf: "pa_short", p: 0.158 }] });
+
+test("G3-6: the next call, as the shadows show it: his top play and then the second, names warm, odds amber", () => {
+  const msg = callMessage(buildGhostSet(CALL, D46));
+  assert.equal(textOf(msg), `NEXT CALL${SEP}INSIDE RUN (A/B GAP) 24%${SEP}THEN PA SHORT (0–9) 16%`);
+  assert.equal(msg.kind, "call");
+  assert.equal(msg.holdMs, 0);
+  assert.deepEqual(msg.logos, []);
+  const tones = Object.fromEntries(msg.parts.map((p) => [p.text.trim(), p.tone]));
+  assert.equal(tones["INSIDE RUN (A/B GAP)"], "warm");
+  assert.equal(tones["24%"], "amber");
+  assert.equal(tones["PA SHORT (0–9)"], "warm");
+  assert.equal(tones["16%"], "amber");
+  assert.ok(msg.parts.every((p) => Object.hasOwn(TONES, p.tone)), "LED tones only, never a team color");
+});
+
+test("G3-6: the shadow plays themselves, a single play, or nothing to call", () => {
+  const plays = buildShadowPlays(CALL, D46);
+  assert.equal(textOf(callMessage(plays)), textOf(callMessage(buildGhostSet(CALL, D46))), "ShadowPlays say the same");
+  const one = callMessage(buildGhostSet({ leaves: [{ leaf: "screen", p: 0.31 }] }, D46));
+  assert.equal(textOf(one), `NEXT CALL${SEP}SCREEN 31%`, "one play: no then");
+  assert.equal(callMessage(null), null);
+  assert.equal(callMessage(buildGhostSet({ leaves: [] }, D46)), null);
+  assert.equal(callMessage({ shapes: [], ballX: 46, dir: 1 }), null);
+  const named = callMessage({ source: { leaves: CALL.leaves }, situation: D46, leafNames: { run_inside: "Dive" } });
+  assert.match(textOf(named), /^NEXT CALL · DIVE 24%/, "the server's names when it sends its own");
 });

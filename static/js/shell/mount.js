@@ -8,6 +8,7 @@ import { setClass, setData, setHidden, setText } from "../ui/dom.js";
 const FORM_DEFAULTS = Object.freeze({
   readYards: "", readTD: false, readTO: false, readAutoFirst: false,
   writeYards: undefined, writeTD: undefined, writeTO: undefined, writeAutoFirst: undefined, focusYards: undefined,
+  focusTransport: undefined,   // G5-7: the watch transport takes focus once a started watch shows its Pause key
 });
 
 /** ctx.form: each Form method goes to the first registered component that has it (directly or under .form). */

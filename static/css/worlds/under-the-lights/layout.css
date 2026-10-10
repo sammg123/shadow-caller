@@ -90,14 +90,16 @@
 }
 :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-note { display: none; }
 /* A ribbon holds one message: the newest play; the current drive (else the last one). Hover or keyboard focus
-   unrolls them (v1.4, W6: :focus-visible, so a row clicked with the mouse rolls back up once the pointer leaves,
-   instead of staying open over the other ribbon; the video board follows the same rule). */
+   unrolls them (v1.4, W6: a row clicked with the mouse rolls back up once the pointer leaves, instead of staying open
+   over the other ribbon). G5-9: keyboard focus is the feed's and the chart's own [data-open] (ui/dom.js), which holds
+   while Tab walks their rows; the rows a ribbon doesn't show stay in the tab order and the accessibility tree,
+   visually hidden (never display: none), so Tab reaches them and unrolls the board. */
 #app[data-layout="uls"] .uls-ribbon .sc-plays > .sc-panel-title,
-#app[data-layout="uls"] #rg-plays:not(:hover, :has(:focus-visible)) :is(.sc-pf-unlinked, .sc-pf-ghead,
+#app[data-layout="uls"] #rg-plays:not(:hover, [data-open="true"]) :is(.sc-pf-unlinked, .sc-pf-ghead,
   .sc-pf-group:not(:first-child), .sc-pf-row:not([data-newest="true"])),
-#app[data-layout="uls"] #rg-drives:not(:hover, :has(:focus-visible)) :is(.sc-dc-list:has(> [data-current="true"])
+#app[data-layout="uls"] #rg-drives:not(:hover, [data-open="true"]) :is(.sc-dc-list:has(> [data-current="true"])
   > :not([data-current="true"]), .sc-dc-list:not(:has(> [data-current="true"])) > :not(:last-child)) {
-  display: none;
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
 }
 
 /* The open drawer: a steel rack that scrolls inside itself, FEED, SITUATION, FLAGS (while the flag panel is
@@ -111,6 +113,10 @@
 #app[data-layout="uls"][data-booth-open="true"] .uls-rack { display: grid; gap: var(--sc-space-2); min-width: 0; }
 :where(#app[data-layout="uls"] .uls-drawer) .sc-flag-cols { grid-template-columns: minmax(0, 1fr); }
 #app[data-layout="uls"][data-booth-open="true"] .uls-rack:has(.uls-rack-body:empty, #flagPanel[hidden]) { display: none; }
+/* G5-16: in Watch this game the strip is read-only (ESPN's situation, no drive ends; it is no Tab stop then), so the
+   rack the viewer works, SETTINGS (Room lights for a projector), comes up right under FEED. */
+#app[data-layout="uls"][data-booth-open="true"][data-mode="watch"] .uls-drawer > [data-rack="settings"] { order: 1; }
+#app[data-layout="uls"][data-booth-open="true"][data-mode="watch"] .uls-drawer > [data-rack="situation"] { order: 2; }
 /* In manual entry the strip stays under the ribbon, so the drawer shows no SITUATION rack. */
 #app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"]) [data-rack="situation"] {
   display: contents;
@@ -236,7 +242,7 @@
   :where(#app[data-layout="uls"] .uls-ribbon) .sc-plays {
     position: absolute; inset: 0; display: flex; align-items: center; padding: 0; overflow: hidden;
   }
-  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :has(:focus-visible)) .sc-plays {
+  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, [data-open="true"]) .sc-plays {
     inset: 0 0 auto;
     display: grid; align-content: start; gap: var(--sc-space-2);
     max-height: calc(100vh - var(--uls-hud-bottom) - var(--uls-stack-gap));
@@ -272,6 +278,14 @@
     min-height: calc(var(--uls-strip-h) - 14px);
   }
   :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-input { font-size: var(--uls-size-key); }
+  /* G5-6: Punt, FG good, FG missed and Half over stay on the strip's one row, whole: the drive line gives way first
+     (one line, cut at its end); with no keys on the row (off the field, the final) its words may take two lines. */
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-drive { min-width: 0; }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-end-row { flex: none; flex-wrap: nowrap; }
+  :where(#app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"])) .sc-strip-drive:has(> .sc-end-row:not([hidden]))
+    > .sc-drive-info {
+    flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
 
   /* The drawer runs out from the left between the HUD's top and the band. */
   #app[data-layout="uls"][data-booth-open="true"] .uls-drawer {
@@ -314,6 +328,22 @@
   }
   /* The entry line stays pinned while the keypad scrolls under it (ui-architecture 4.4). */
   :where(#app[data-layout="uls"] .uls-desk) .sc-entry-line { position: sticky; top: 0; z-index: 1; background: var(--uls-steel); }
+  /* G5-2: the desk in manual entry. The whole HUD scales with the window's height (--uls-hud-scale), so the entry
+     line, Log play and both keypad rows fit wherever the 1440x900 desk does; the desk never gets shorter than its
+     plate, the entry line and one key row (--uls-desk-min); a key Tab reaches scrolls clear of the pinned entry line
+     (scroll-padding); the rows snap under it; and a row the desk's foot would cut shows whole or not at all (booth.js
+     marks it [data-cut]; it is still a Tab stop, and taking focus scrolls it in whole). */
+  #app[data-layout="uls"]:is([data-mode="normal"], [data-mode="flag"]) .uls-desk {
+    --uls-entry-line-h: calc(2 * var(--uls-key-h) + 22 * var(--uls-px));
+    --uls-pad-row-h: calc(var(--uls-size-key) + var(--sc-size-s) + 16 * var(--uls-px));
+    --uls-desk-min: calc(var(--uls-plate-h) + var(--sc-space-2) + var(--uls-entry-line-h) + var(--uls-pad-row-h)
+      + var(--uls-frame));
+    min-height: var(--uls-desk-min);
+    scroll-padding-block-start: var(--uls-entry-line-h);
+    scroll-snap-type: y proximity;
+  }
+  :where(#app[data-layout="uls"] .uls-desk) :is(.sc-pad-title, .sc-keyrow) { scroll-snap-align: start; }
+  :where(#app[data-layout="uls"] .uls-desk) .sc-keyrow[data-cut="true"] { opacity: 0; }
 
   /* The lower ribbon: the current drive on its 100-yard scale (left), the caller's win probability (right). The
      drive chart unrolls upward into the game's drive list on hover or focus, clear of the board column. */
@@ -330,7 +360,7 @@
   #app[data-layout="uls"] .uls-lower > #rg-wp { padding-inline-end: var(--sc-gutter); border-inline-start: 1px solid var(--uls-steel-seam); }
   :where(#app[data-layout="uls"] .uls-lower) :is(.sc-drives, .sc-winprob) { height: 100%; padding: 0 var(--sc-space-3); overflow: hidden; }
   :where(#app[data-layout="uls"] .uls-lower) .sc-drives { position: absolute; inset: 0; }
-  #app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :has(:focus-visible)) .sc-drives {
+  #app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, [data-open="true"]) .sc-drives {
     inset: auto max(0px, calc(var(--uls-col-right) - var(--uls-wp-w))) 0 0;
     height: auto;
     max-height: calc(100vh - var(--uls-hud-top) - var(--uls-band-h) - var(--uls-band-gap) - var(--uls-stack-gap));
@@ -383,7 +413,7 @@
   #app[data-layout="uls"]:not([data-scorecard-open="true"]) #rg-score { padding: 0 var(--sc-gutter) var(--sc-space-3); }
   :where(#app[data-layout="uls"] .uls-ribbon) :is(.sc-masthead-controls, .sc-masthead-keys) { flex-wrap: nowrap; }
   :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-controls { overflow-x: auto; overscroll-behavior-x: contain; }
-  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :has(:focus-visible)) .sc-plays { max-height: 60vh; overflow-y: auto; }
+  #app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, [data-open="true"]) .sc-plays { max-height: 60vh; overflow-y: auto; }
   /* The drawer and the stat board open in the flow, where they lend their regions, so the B and G keys that close
      them stay in reach: a full-screen sheet would cover them, and a phone has no Escape key. */
   #app[data-layout="uls"][data-booth-open="true"] .uls-drawer,
@@ -392,4 +422,24 @@
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "score" "tendencies" "box" "log";
   }
+  /* G5-15: an XGA projector (1024x768) never scrolls sideways: the band's facts wrap to a second line (as the phone's
+     band does, DESIGN.md) instead of pushing BALL ON past the edge, and long readouts give way inside their cells. */
+  #app[data-layout="uls"] .sc-sb-facts { flex-wrap: wrap; row-gap: var(--sc-space-2); min-width: 0; }
+  #app[data-layout="uls"] :is(.sc-sb-value, .sc-card-basis) { min-width: 0; }
+}
+/* G5-15: on a phone the masthead's keys wrap under the nameplate instead of scrolling sideways, so B and G (the only
+   touch path to the booth and the stat board) and V are always on screen; a finger gets 44 px keys. */
+@media (max-width: 599px) {
+  :where(#app[data-layout="uls"] .uls-ribbon) :is(.sc-masthead-controls, .sc-masthead-keys) {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-controls { row-gap: var(--sc-space-1); }
+  #app[data-layout="uls"] .uls-ribbon .sc-masthead-view-keys { padding-inline-start: 0; border-inline-start: 0; }
+}
+@media (max-width: 1199px) and (pointer: coarse), (max-height: 639px) and (pointer: coarse) {
+  #app[data-layout="uls"] .sc-key { min-height: 44px; }   /* over the skins' --uls-key-h: a finger's target */
+}
+@media (max-width: 420px) {
+  #app[data-layout="uls"] .sc-card-pair { column-gap: 4px; }
 }

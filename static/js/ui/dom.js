@@ -202,3 +202,66 @@ export function reconcile(parent, items, { key, create, update }) {
     active.focus({ preventScroll: true });
   }
 }
+
+// ---------------------------------------------------------------- G5-9: a region that unrolls for the keyboard
+/** :focus-visible on the node (keyboard focus); a node that can't say counts as the keyboard's. */
+function keyboardFocus(node) {
+  try {
+    return typeof node?.matches === "function" ? node.matches(":focus-visible") : true;
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * root[data-open="true"] while keyboard focus (:focus-visible) is inside root, so a world can unroll a region that
+ * shows one message (the play feed, the drive chart) and Tab can walk all of it; a pointer click opens nothing (hover
+ * does that in CSS). It clears when focus leaves root (when the next focus is unknown, checked again on the next
+ * task), and on Escape, which hands focus to escapeTo() (the one item the rolled-up region still shows).
+ * @param {HTMLElement} root
+ * @param {{ timers: { setTimeout: Function, clearTimeout: Function }, onOpen?: () => void,
+ *   escapeTo?: () => HTMLElement | null }} opts
+ * @returns {() => void} detach
+ */
+export function openWhileKeyboardInside(root, { timers, onOpen = () => {}, escapeTo = () => null }) {
+  const doc = root.ownerDocument;
+  let recheck = null;
+  let quiet = false;   // Escape's own refocus must not open the region again
+  const inside = (node) => Boolean(node) && root.contains(node);
+  const set = (on) => {
+    setData(root, "open", on ? true : null);
+    if (on) onOpen();
+  };
+  const handlers = {
+    focusin: (e) => { if (!quiet && keyboardFocus(e.target)) set(true); },
+    focusout: (e) => {
+      if (inside(e.relatedTarget)) return;
+      if (e.relatedTarget) {
+        set(false);
+        return;
+      }
+      if (recheck !== null) timers.clearTimeout(recheck);
+      recheck = timers.setTimeout(() => {
+        recheck = null;
+        if (!inside(doc?.activeElement)) set(false);
+      }, 0);
+    },
+    keydown: (e) => {
+      if (e.key !== "Escape" || root.getAttribute("data-open") !== "true") return;
+      set(false);
+      const shown = escapeTo();
+      if (!shown || !inside(doc?.activeElement) || doc.activeElement === shown) return;
+      quiet = true;
+      try {
+        shown.focus?.({ preventScroll: true });
+      } finally {
+        quiet = false;
+      }
+    },
+  };
+  for (const [type, fn] of Object.entries(handlers)) root.addEventListener(type, fn);
+  return () => {
+    for (const [type, fn] of Object.entries(handlers)) root.removeEventListener(type, fn);
+    if (recheck !== null) timers.clearTimeout(recheck);
+  };
+}

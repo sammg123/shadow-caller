@@ -66,7 +66,7 @@ const presnap = (s, r) => {
   s.engine.showGhosts(ghostsFor(r));
 };
 
-test("the engine implements every Engine method, draws one SVG in the host, and has one camera, Top", (t) => {
+test("the engine implements every Engine method, draws one SVG in the host, and has two cameras, Drive and Top", (t) => {
   const s = setup(t);
   for (const m of ENGINE_METHODS) assert.equal(typeof s.engine[m], "function", m);
   assert.equal(s.engine.kind, "2d");
@@ -78,11 +78,11 @@ test("the engine implements every Engine method, draws one SVG in the host, and 
   assert.equal(base.getAttribute("aria-hidden"), "true");
   assert.equal(base.nextSibling, s.svg(), "the static field sits under the moving layer");
   assert.match(base.getAttribute("style"), /will-change: transform/);
-  assert.deepEqual(s.engine.cameraModes(), [{ id: "top", label: "Top" }]);
-  assert.deepEqual(CAMERA_MODES, [{ id: "top", label: "Top" }]);
+  assert.deepEqual(s.engine.cameraModes(), [{ id: "drive", label: "Drive" }, { id: "top", label: "Top" }]);
+  assert.deepEqual(CAMERA_MODES, [{ id: "drive", label: "Drive" }, { id: "top", label: "Top" }]);
   const d = s.engine.debugState();
   assert.equal(d.kind, "2d");
-  assert.equal(d.camera, "top");
+  assert.equal(d.camera, "drive", "the Drive view is the default");
   assert.equal(d.animState, "idle");
   assert.deepEqual([d.ready, d.drawCalls, d.triangles, d.geometries, d.textures], [false, 0, 0, 0, 0]);
   assert.ok(layer(s, "field").childNodes.length > 0, "a bare field before the first frame: never blank");
@@ -356,6 +356,138 @@ test("playRow never rejects: a broken row resolves completed false and reports t
   assert.deepEqual(res, { seq: null, token: 4, completed: false });
   assert.equal(s.errors.length, 1);
   assert.equal(s.events.filter(([e]) => e === "error").length, 1);
+});
+
+test("redraws that change nothing insert nothing; a play's frames move its ball in place (no forced re-layout)", (t) => {
+  const s = setup(t);
+  frame(s);
+  s.engine.drawRowsInstant(rows(1, 1));
+  presnap(s, row(2));
+  const moves = s.doc.moves;
+  s.engine.showSituation(situationFromRow(row(2)));       // the same snap again (a poll re-sends it)
+  s.engine.showGhosts(ghostsFor(row(2)));
+  s.engine.highlightGhost(null);
+  s.engine.markVerdict({ seq: 99, key: "top1" });          // not the play on the field: nothing to mark
+  assert.equal(s.doc.moves, moves, "nothing new on the field: no node inserted");
+  s.engine.playRow(row(2), { durationMs: 2000 });
+  s.c.step(16);
+  s.c.step(16);
+  const during = s.doc.moves;
+  for (let i = 0; i < 40; i += 1) s.c.step(16);
+  assert.ok(s.doc.moves - during <= 12, `the ball and its trail move in place: ${s.doc.moves - during} insertions in 40 frames`);
+});
+
+test("debugState().ball: the ball in flight in field yards while a play draws (as the WebGL engine reports), null at rest", (t) => {
+  const s = setup(t);
+  frame(s);
+  s.engine.drawRowsInstant(rows(1, 86));
+  assert.equal(s.engine.debugState().ball, null, "at rest");
+  s.engine.playRow(row(87), { durationMs: 2000 });
+  const seen = [];
+  for (let i = 0; i < 140 && s.engine.debugState().animState === "playing"; i += 1) {
+    s.c.step(16);
+    const b = s.engine.debugState().ball;
+    if (b) seen.push(b);
+  }
+  assert.ok(seen.length > 20, `${seen.length} frames`);
+  assert.ok(Math.abs(seen[0].x - 77) <= 1, `the field goal leaves from its line of scrimmage: ${seen[0].x}`);
+  assert.ok(seen.every((b) => b.x >= 77 - 1e-6), "and never goes behind it (no hold)");
+  assert.ok(Math.max(...seen.map((b) => b.h)) > 5, "true heights, not the 2D tilt");
+  assert.deepEqual(Object.keys(seen[0]).sort(), ["h", "x", "y"]);
+});
+
+/** Each shadow's width on screen: the x span of its core stroke's path. */
+const shadowWidthsPx = (s) => [...s.host.querySelectorAll(".sc-fb-shadow")].map((g) => {
+  const nums = g.querySelector('[data-stroke="core"]').getAttribute("d").match(/-?\d+(\.\d+)?/g).map(Number);
+  return Math.abs(nums.at(-2) - nums[0]);
+});
+
+test("the Drive view frames the snap and his shadows large enough to read; Top shows the whole field", (t) => {
+  const s = setup(t, { reducedMotion: true });
+  s.engine.resize(1440, 900);
+  frame(s);
+  presnap(s, row(2));
+  const base = s.host.querySelector("[data-sc-fb-static]");
+  assert.equal(s.svg().getAttribute("viewBox"), "0 0 1440 900", "the moving layer stays one unit a pixel");
+  assert.notEqual(base.getAttribute("viewBox"), "0 0 1440 900", "the static field zooms to the drive");
+  const drive = shadowWidthsPx(s);
+  assert.equal(drive.length, 2);
+  assert.ok(drive.every((w) => w >= 120), `both shadows read: ${drive.map(Math.round)} px wide`);
+  s.engine.setCamera("top");
+  assert.equal(s.engine.debugState().camera, "top");
+  assert.equal(base.getAttribute("viewBox"), "0 0 1440 900", "Top: the whole field");
+  const top = shadowWidthsPx(s);
+  assert.ok(top.every((w, i) => w < drive[i] / 3), `the whole field draws them small: ${top.map(Math.round)}`);
+  s.engine.setCamera("drive");
+  assert.deepEqual(shadowWidthsPx(s), drive, "back to the drive");
+  assert.deepEqual(s.events.filter(([e]) => e === "camera").map(([, p]) => p), [{ id: "top" }, { id: "drive" }]);
+});
+
+test("the Drive view takes in a hovered deep shot whole; a page that comes back from hidden lands where it was going", (t) => {
+  const s = setup(t, { reducedMotion: true });
+  s.engine.resize(1440, 900);
+  frame(s);
+  presnap(s, row(2));
+  s.engine.highlightGhost("dropback_deep");
+  const zone = [...s.host.querySelectorAll(".sc-fb-shadow")].find((g) => g.getAttribute("data-leaf") === "dropback_deep");
+  const deep = [...zone.querySelectorAll("path")].find((n) => n.getAttribute("data-stroke") === "core");
+  const xs = deep.getAttribute("d").match(/-?\d+(\.\d+)?/g).map(Number).filter((_, i) => i % 2 === 0);
+  assert.ok(Math.min(...xs) >= 0 && Math.max(...xs) <= 1440, `the hovered deep shot is on screen: ${xs}`);
+  const m = setup(t);
+  m.engine.resize(1440, 900);
+  frame(m);
+  presnap(m, row(2));
+  const base = m.host.querySelector("[data-sc-fb-static]");
+  m.engine.showSituation(situationFromRow(row(95)));         // a new snap far away: the camera starts to move
+  m.engine.setVisible(false);
+  m.engine.setVisible(true);
+  const landed = base.getAttribute("viewBox");
+  for (let i = 0; i < 80; i += 1) m.c.step(16);
+  assert.equal(base.getAttribute("viewBox"), landed, "it landed when the page came back, nothing left to ease");
+});
+
+test("the Drive view keeps a reviewed play's words on screen with the play (TB's scramble, the punt, the field goal)", (t) => {
+  const s = setup(t, { reducedMotion: true });
+  s.engine.resize(1440, 900);
+  frame(s);
+  s.engine.drawRowsInstant(rows(1, 183));
+  for (const seq of [17, 43, 87, 95, 1]) {
+    s.engine.showReview(row(seq), null);
+    const words = [...layer(s, "review-tagPlay").querySelectorAll(".sc-fb-tag")];
+    assert.equal(words.length, 1, `#${seq}`);
+    assert.equal(words[0].getAttribute("display"), null, `#${seq}: "${texts(words[0])}" is shown`);
+    const rect = words[0].querySelector("rect");
+    const [x, y] = ["x", "y"].map((a) => Number(rect.getAttribute(a)));
+    const [dx, dy] = (words[0].getAttribute("transform") ?? "translate(0 0)").match(/-?\d+/g).map(Number);
+    assert.ok(x + dx >= 0 && x + dx + Number(rect.getAttribute("width")) <= 1440 && y + dy >= 0
+      && y + dy + Number(rect.getAttribute("height")) <= 900, `#${seq}: on screen (${x + dx}, ${y + dy})`);
+  }
+});
+
+test("the Drive view takes in the whole play while it draws, eases between frames, and cuts with reduced motion", (t) => {
+  const s = setup(t);
+  s.engine.resize(1440, 900);
+  frame(s);
+  s.engine.drawRowsInstant(rows(1, 94));
+  presnap(s, row(95));
+  const base = s.host.querySelector("[data-sc-fb-static]");
+  for (let i = 0; i < 60; i += 1) s.c.step(16);
+  const settled = base.getAttribute("viewBox");
+  s.engine.playRow(row(95), { durationMs: 3000 });       // TB's 72-yard run from the 86 to the 14
+  const seen = [];
+  for (let i = 0; i < 80; i += 1) {
+    s.c.step(16);
+    seen.push(base.getAttribute("viewBox"));
+  }
+  assert.ok(new Set(seen).size > 10, "the camera eases out frame by frame");
+  const [, , w0] = settled.split(" ").map(Number);
+  const [x1, , w1] = seen.at(-1).split(" ").map(Number);
+  assert.ok(w1 > w0 * 1.8, `zoomed out for the long run (${w0} -> ${w1})`);
+  const L = s.engine.debugState();
+  assert.equal(L.camera, "drive");
+  const ballLayer = layer(s, "live-ball");
+  assert.ok(ballLayer, "the live layers draw on");
+  assert.ok(x1 < 1440, "the field's left side is in view");
 });
 
 test("camera, resize, safe area and listeners", (t) => {

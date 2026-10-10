@@ -23,14 +23,35 @@ const GHOSTS = buildGhostSet({ leaves: [{ leaf: "run_inside", p: 0.27 }, { leaf:
   { leaf: "dropback_short", p: 0.14 }] }, DAL25);
 const OTHER = buildGhostSet({ leaves: [{ leaf: "dropback_deep", p: 0.4 }] }, DAL25);
 
-function fakeDoc({ webgl = true } = {}) {
-  const win = { addEventListener() {}, removeEventListener() {}, setTimeout: () => 0,
+/** A canvas whose DOM events tests can fire (canvas.fire("webglcontextrestored")). */
+function fakeCanvas(webgl) {
+  const listeners = new Map();
+  return {
+    getContext: (k) => (k === "webgl2" && webgl ? { getExtension: () => null } : null),
+    setAttribute() {}, style: {}, remove() { this.removed = true; },
+    addEventListener(type, fn, opts) { listeners.set(fn, { type, once: Boolean(opts?.once) }); },
+    removeEventListener(type, fn) { listeners.delete(fn); },
+    fire(type) {
+      for (const [fn, l] of [...listeners]) {
+        if (l.type !== type) continue;
+        if (l.once) listeners.delete(fn);
+        fn({ type });
+      }
+    },
+  };
+}
+
+function fakeDoc({ webgl = true, timeouts = [] } = {}) {
+  const win = { addEventListener() {}, removeEventListener() {}, setTimeout: (fn, ms) => { timeouts.push(ms); return 0; },
     getComputedStyle: () => ({ position: "relative" }) };
   const doc = {
     defaultView: win, visibilityState: "visible", documentElement: { getAttribute: () => "dark" },
-    addEventListener() {}, removeEventListener() {},
-    createElement: () => ({ getContext: (k) => (k === "webgl2" && webgl ? { getExtension: () => null } : null),
-      setAttribute() {}, style: {}, remove() { this.removed = true; } }),
+    addEventListener() {}, removeEventListener() {}, canvases: [],
+    createElement: () => {
+      const canvas = fakeCanvas(webgl);
+      doc.canvases.push(canvas);
+      return canvas;
+    },
   };
   win.document = doc;
   return doc;
@@ -42,8 +63,9 @@ function fakeHost(doc) {
 }
 
 /** stage.js without WebGL: same parts and API, frames advanced by clock.tick(ms). */
-function makeFakeStage(clock) {
+function makeFakeStage(clock, { warmUp = async () => {} } = {}) {
   return ({ host, look, world, emit }) => {
+    clock.emit = emit;
     const updaters = new Set();
     const kit = createKit(look);
     const cams = createCameraRig(look);
@@ -55,12 +77,13 @@ function makeFakeStage(clock) {
       labels: createLabels(look.labels, host, { doc: null }),
       get look() { return look; }, get frame() { return st.frame; },
       rig: { frames: () => st.frames, dpr: () => 1, running: () => updaters.size > 2, visible: () => st.visible,
-        setVisible: (v) => { st.visible = v; }, warmUp: async () => {},
+        setVisible: (v) => { st.visible = v; }, warmUp,
         info: () => ({ render: { calls: 21, triangles: 3000 }, memory: { geometries: 9, textures: 4 }, programs: 7, cpuMs: null }) },
       requestRender() {}, keepAlive: (fn) => { updaters.add(fn); return () => updaters.delete(fn); },
       reducedMotion: () => st.reduced, visible: () => st.visible, lights: () => ({ key: { intensity: 1 } }),
       setFrame(frame) { st.frame = frame; kit.setTeams(frame?.teams ?? {}); return Promise.resolve(); },
-      resize: () => true, setSafeArea: () => true, setAmbient() {}, view: (ctx, o) => cams.view(ctx, o),
+      resize: () => true, setSafeArea: () => true, setAmbient() {},
+      view: (ctx, o) => { clock.views = [...(clock.views ?? []), ctx]; cams.view(ctx, o); },
       setReducedMotion(on) { st.reduced = on; cams.setReducedMotion(on); }, draw() {}, dispose() { clock.disposed = true; },
     };
     updaters.add((dt) => cams.step(dt));
@@ -257,6 +280,40 @@ test("review shows a past row with its own ghosts and returns to the live call (
   assert.equal(engine.debugState().animState, "idle");
 });
 
+test("review frames the reviewed play whole; back at the live edge the camera frames the live call alone (G2-2)", async () => {
+  const { engine, clock } = await setup();
+  engine.showSituation(DAL25);
+  engine.showGhosts(GHOSTS);
+  assert.equal(clock.views.at(-1).reviewDrawing ?? null, null, "live: no reviewed play");
+  engine.showReview(row(95), null);
+  const reviewing = clock.views.at(-1);
+  assert.equal(reviewing.situation.ballX, 86, "the reviewed row's own line of scrimmage");
+  assert.deepEqual(reviewing.reviewDrawing, buildDrawing(row(95)), "and its whole play");
+  engine.showGhosts(OTHER);
+  assert.deepEqual(clock.views.at(-1).reviewDrawing, buildDrawing(row(95)), "a live call meanwhile keeps the review's frame");
+  engine.showReview(row(81), OTHER);
+  assert.deepEqual(clock.views.at(-1).reviewDrawing, buildDrawing(row(81)), "Right: the next reviewed play");
+  engine.showReview(null, null);
+  const live = clock.views.at(-1);
+  assert.equal(live.reviewDrawing ?? null, null, "cleared when the review ends");
+  assert.equal(live.situation.ballX, 25);
+  engine.showReview(row(95), null);
+  engine.setGameFrame(TL.field, TL.teams, TL.team_order, null);
+  assert.equal(clock.views.at(-1).reviewDrawing ?? null, null, "a new game frame ends the review's frame too");
+});
+
+test("G2-7: the verdict's words reach the live chip, after the player put it up under the play's words", async () => {
+  const { engine, log } = await setup();
+  engine.markVerdict({ seq: 159, key: "top3", text: "In his top 3 · #2 Intermediate · 39%" });
+  const at = (layer, method) => log.findIndex(([l, m]) => l === layer && m === method);
+  assert.ok(at("player", "verdict") >= 0 && at("overlays", "retext") > at("player", "verdict"));
+  assert.deepEqual(log[at("overlays", "retext")], ["overlays", "retext", "live", 159, "In his top 3 · #2 Intermediate · 39%"]);
+  assert.ok(at("ghosts", "relayout") > at("overlays", "retext"), "the shadows' words make room for the longer chip");
+  const before = log.length;
+  engine.markVerdict({ seq: 160, key: "miss" });
+  assert.equal(log.slice(before).filter(([l, m]) => l === "overlays" && m === "retext").length, 0, "no words, no rewording");
+});
+
 test("highlight, relabel, verdict and camera calls reach the layers and the rig", async () => {
   const { engine, log, events } = await setup();
   engine.highlightGhost("pa_short");
@@ -361,6 +418,105 @@ test("v1.4 (W1): every animated play calls the world's play moment at its start 
   calls.length = 0;
   await engine.playRow(row(81), { durationMs: 0, token: 3 });
   assert.deepEqual(calls, [], "instant draws are not plays the world animates");
+});
+
+// ---------------------------------------------------------------- G2-4, G2-9: failures that must not vanish or latch
+test("G2-4: a lost context is watched on the canvas, so a disposed engine still says when the browser restores it", async () => {
+  const clock = {};
+  const doc = fakeDoc();
+  const engine = await createEngine(fakeHost(doc), await lookWith(), { createStage: makeFakeStage(clock),
+    layerFactories: spyLayers([]) });
+  const restored = [];
+  engine.on("contextrestored", () => restored.push("restored"));
+  const canvas = doc.canvases.at(-1);
+  canvas.fire("webglcontextrestored");
+  assert.deepEqual(restored, [], "no loss, nothing to say (renderer.js reports a live engine's own restore)");
+  clock.emit("contextlost");
+  canvas.fire("webglcontextrestored");
+  assert.deepEqual(restored, [], "still alive: renderer.js says it, not the watch");
+  clock.emit("contextlost");
+  engine.dispose();
+  canvas.fire("webglcontextrestored");
+  assert.deepEqual(restored, ["restored"], "disposed by the swap to 2D, yet the restore still reaches the conductor");
+  canvas.fire("webglcontextrestored");
+  assert.deepEqual(restored, ["restored"], "once");
+});
+
+test("G2-9: a play whose layer throws mid-flight resolves completed: false with exactly one error, then idles", async () => {
+  const clock = {};
+  const log = [];
+  const throwing = () => ({
+    start(drawing, plan, r) {
+      log.push(["player", "start", r.seq]);
+      return { update: (tMs) => { if (tMs > 100) throw new Error("tick broke"); return true; },
+        ball: () => ({ x: 30, y: 26.667, h: 1 }), finish() {}, dispose() {} };
+    },
+    placeAll() {}, clear() {}, dispose() {},
+  });
+  const engine = await createEngine(fakeHost(fakeDoc()), await lookWith(), { createStage: makeFakeStage(clock),
+    layerFactories: { ...spyLayers(log), player: throwing } });
+  const errors = [];
+  engine.on("error", (e) => errors.push(e.message));
+  engine.setGameFrame(TL.field, TL.teams, TL.team_order);
+  await clock.tick(16);
+  const p = engine.playRow(row(81), { durationMs: 1000, token: 9 });
+  await clock.tick(400);
+  assert.deepEqual(await p, { seq: 81, token: 9, completed: false });
+  assert.deepEqual(errors, ["tick broke"]);
+  assert.equal(engine.debugState().animState, "idle");
+  assert.equal(engine.debugState().ball, null);
+  await clock.tick(400);
+  assert.deepEqual(errors, ["tick broke"], "exactly one: the play is over");
+});
+
+test("G2-9: a warm-up that fails warns instead of vanishing, and the engine still starts (10 s cap)", async () => {
+  const clock = {};
+  const timeouts = [];
+  const warmUp = () => Promise.reject(new Error("shader compile failed"));
+  const engine = await createEngine(fakeHost(fakeDoc({ timeouts })), await lookWith(), {
+    createStage: makeFakeStage(clock, { warmUp }), layerFactories: spyLayers([]) });
+  assert.equal(engine.kind, "webgl");
+  assert.deepEqual(engine.debugState().warnings, ["shader compile failed"]);
+  assert.ok(timeouts.includes(10_000), `the warm-up waits up to 10 s: ${timeouts}`);
+  const quiet = await createEngine(fakeHost(fakeDoc()), await lookWith(), { createStage: makeFakeStage({}),
+    layerFactories: spyLayers([]) });
+  assert.deepEqual(quiet.debugState().warnings, []);
+});
+
+test("G2-9: a row that can't be drawn is a warning, never an engine failure", async () => {
+  const { engine, events } = await setup();
+  const broken = { seq: 77, get kind() { throw new Error("unreadable row"); } };
+  assert.deepEqual(await engine.playRow(broken, { durationMs: 500, token: 3 }), { seq: 77, token: 3, completed: false });
+  assert.ok(events.some(([e, err]) => e === "warning" && err.message === "unreadable row"));
+  assert.ok(!events.some(([e]) => e === "error"));
+  assert.ok(engine.debugState().warnings.includes("unreadable row"));
+});
+
+test("G2-9: a play that can't finish when hurried only warns; the play still ends and resolves", async () => {
+  const clock = {};
+  const stuck = () => ({
+    start: () => ({ update: () => true, ball: () => null, finish() { throw new Error("finish broke"); }, dispose() {} }),
+    placeAll() {}, clear() {}, dispose() {},
+  });
+  const engine = await createEngine(fakeHost(fakeDoc()), await lookWith(), { createStage: makeFakeStage(clock),
+    layerFactories: { ...spyLayers([]), player: stuck } });
+  const seen = [];
+  for (const ev of ["warning", "error"]) engine.on(ev, (err) => seen.push([ev, err.message]));
+  engine.setGameFrame(TL.field, TL.teams, TL.team_order);
+  await clock.tick(16);
+  const p = engine.playRow(row(81), { durationMs: 2000, token: 4 });
+  await clock.tick(32);
+  engine.finishNow();
+  assert.deepEqual(await p, { seq: 81, token: 4, completed: true });
+  assert.deepEqual(seen, [["warning", "finish broke"]]);
+  assert.equal(engine.debugState().animState, "idle");
+});
+
+test("a stage that can't be built rejects with EngineInitError and leaves no canvas", async () => {
+  const doc = fakeDoc();
+  const failing = () => { throw new Error("no renderer"); };
+  await assert.rejects(createEngine(fakeHost(doc), await lookWith(), { createStage: failing }), EngineInitError);
+  assert.equal(doc.canvases.at(-1).removed, true);
 });
 
 test("v1.4 (W6): debugState().ball is the ball in flight while a play draws, null at rest (the e2e LOS check)", async () => {

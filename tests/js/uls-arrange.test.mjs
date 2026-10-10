@@ -5,7 +5,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  INSET_EVENT, LAYOUT_ID, PLAN, SAFE_PROPS, arrange, hudInsets, readHudInsets, regionOrder, watchInsets,
+  HUD_SCALE_PROP, INSET_EVENT, LAYOUT_ID, PLAN, SAFE_PROPS, applyHudScale, arrange, hudInsets, hudScale, readHudInsets,
+  regionOrder, watchInsets,
 } from "../../static/js/theme/worlds/under-the-lights/arrange.js";
 import { REGION_NAMES } from "../../static/js/theme/registry.js";
 import { createDocument } from "./fake-dom.mjs";
@@ -201,4 +202,55 @@ test("watchInsets can be stopped, and a style that throws reads as zeros", () =>
   assert.equal(win.observers[0].off, true);
   assert.equal(win.listeners.has("resize"), false);
   assert.equal(watchInsets(createDocument().body), null, "no window, no watcher");
+});
+
+test("G5-2: hudScale fits the stadium's height: exact at 1440x900 and 1920x1080, smaller in a shorter window", () => {
+  assert.equal(HUD_SCALE_PROP, "--uls-hud-scale");
+  assert.equal(hudScale(1440, 900), 1, "Sam's laptop, the reference");
+  assert.equal(hudScale(1920, 1080), 1, "the TV, the reference");
+  assert.equal(hudScale(2560, 1440), 1, "never grows past the reference");
+  const near = (w, h, want, why = "") => assert.ok(Math.abs(hudScale(w, h) - want) < 0.001, `${w}x${h}: ${hudScale(w, h)} ${why}`);
+  near(1440, 790, 790 / 900);          // a 1440x900 MacBook with the browser's chrome
+  near(1470, 840, 840 / (0.375 * 1470 + 360));
+  near(1920, 950, 950 / 1080);
+  near(1366, 768, 768 / 900, "below 1440 the tokens keep the laptop's sizes, so the laptop's reference holds");
+  near(1280, 720, 720 / 900);
+  near(2560, 1200, 1200 / 1080 > 1 ? 1 : 1200 / 1080);
+  assert.equal(hudScale(1920, 640), 0.6, "a floor, so nothing shrinks past reading");
+  assert.equal(hudScale(1199, 900), 1, "the one-column layout scrolls: no scale");
+  assert.equal(hudScale(1440, 639), 1);
+  assert.equal(hudScale(undefined, 900), 1);
+});
+
+test("G5-2: arrange sets the scale on <html> and the watcher updates it on every resize, before the insets", () => {
+  const { doc, app, regions } = shell();
+  const order = [];
+  const style = {};
+  const win = fakeWindow(() => { order.push("insets"); return style; });
+  win.innerWidth = 1440;
+  win.innerHeight = 790;
+  doc.defaultView = win;
+  arrange(app, regions);
+  const scale = () => Number(doc.documentElement.style.getPropertyValue(HUD_SCALE_PROP));
+  assert.ok(Math.abs(scale() - 790 / 900) < 0.001, String(scale()));
+  win.innerHeight = 900;
+  order.length = 0;
+  const setProperty = doc.documentElement.style.setProperty.bind(doc.documentElement.style);
+  doc.documentElement.style.setProperty = (name, value) => { order.push("scale"); setProperty(name, value); };
+  win.listeners.get("resize")();
+  assert.equal(scale(), 1);
+  assert.deepEqual(order.slice(0, 2), ["scale", "insets"], "the insets are read at the new scale");
+  assert.equal(applyHudScale(createDocument()), 1, "no window: the reference scale, nothing set");
+});
+
+test("G5-9: the page has a main landmark (#app) and the board and the band are named regions; nothing moves", () => {
+  const { app, regions } = shell();
+  const before = regionOrder();
+  arrange(app, regions);
+  assert.equal(app.getAttribute("role"), "main");
+  assert.equal(regions.masthead.getAttribute("role"), "none", "no banner inside main");
+  const named = (cls) => { const n = app.querySelector(`.${cls}`); return [n.getAttribute("role"), n.getAttribute("aria-label")]; };
+  assert.deepEqual(named("uls-board"), ["region", "Next call"]);
+  assert.deepEqual(named("uls-band"), ["region", "Scoreboard"]);
+  assert.deepEqual(regionsInOrder(app), before, "the tab order is the plan's");
 });

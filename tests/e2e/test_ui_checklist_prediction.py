@@ -11,6 +11,14 @@ from ui_helpers import click_at  # v1.4 (W6): world-aware helpers
 pytestmark = pytest.mark.e2e
 
 HOT_STATE = "new D25 | Q1 10:00 | DAL 0 TB 0 | PP 12"      # after the whole game: ▲ and ▼ both show (probed)
+PLATE = "Schottenheimer's next call"                       # v1.5 (G4-2): the plate names the caller it shadows
+# v1.5 (G4-6): the tilt tag's words for the server's flag (his pass rate here against the league's)
+TAG_TEXT = {"no edge": "Like the league", "lean pass": "Leans pass", "lean run": "Leans run", "tilt pass": "Tilts pass",
+            "tilt run": "Tilts run"}
+
+
+def tag_text(flag):
+    return TAG_TEXT.get(flag.lower(), capitalize(flag))
 
 
 def hero(page):
@@ -22,14 +30,15 @@ def chosen(page):
 
 
 def test_29_most_likely_call_and_runners_up(upage, server):
-    """#29: "Most likely call" with top[0] and pct, then top[1] and top[2] with their percentages."""
+    """#29: the plate (v1.5, G4-2: "Schottenheimer's next call") with top[0] and pct, then top[1] and top[2] with their
+    percentages."""
     base = server["base"]
     with_drive(upage, base)
     top = state(base)["prediction"]["top"]
     h = hero(upage)
-    expect(h).to_contain_text("Most likely call")
+    expect(h).to_contain_text(PLATE)
     expect(h).to_contain_text(re.compile(
-        re.escape("Most likely call") + r".*?" + re.escape(top[0]["name"]) + r"\s*" + re.escape(pct(top[0]["p"])), re.S))
+        re.escape(PLATE) + r".*?" + re.escape(top[0]["name"]) + r"\s*" + re.escape(pct(top[0]["p"])), re.S))
     expect(h).to_contain_text(re.compile(
         r"Then.*?" + re.escape(top[1]["name"]) + r"\s*" + re.escape(pct(top[1]["p"])) + r".*?"
         + re.escape(top[2]["name"]) + r"\s*" + re.escape(pct(top[2]["p"])), re.S))
@@ -42,7 +51,8 @@ def _pill_style(page):
 
 
 def test_30_pill_text_and_distinct_styles(upage, server):
-    """#30: the pill is prediction.flag with a capital first letter; TILT, lean and "No edge" look different."""
+    """#30: the tag says what prediction.flag measures (v1.5, G4-6: "Like the league", "Leans run", "Tilts pass");
+    TILT, lean and no edge look different."""
     base = server["base"]
     styles = {}
     for line in ("new D25", "new D25 | 3&2 D25", "new D25 | Q1 15:00 | DAL 0 TB 14 | 3&2 T20"):
@@ -50,7 +60,7 @@ def test_30_pill_text_and_distinct_styles(upage, server):
         flag = command(base, line)["prediction"]["flag"]
         load(upage, base)
         pill = upage.locator("#heroArea .pill")
-        expect(pill).to_have_text(capitalize(flag))
+        expect(pill).to_have_text(tag_text(flag))
         cls = flag.replace(" ", "").lower()
         expect(pill).to_have_class(re.compile(rf"(^|\s){cls}(\s|$)"))
         expect(pill).to_have_attribute("data-flag", re.compile(r"\S"))
@@ -188,7 +198,8 @@ def test_122_prediction_rows_are_buttons_enter_and_space_pick(upage, server):
 
 
 def test_g24_off_field_copy_follows_the_input_mode(upage, server, watch_server):
-    """ui-architecture 4.6 G24: the off-field panel's copy by mode: manual, feed, watch."""
+    """ui-architecture 4.6 G24: the off-field panel's copy by mode: manual, then watch before his first snap. The
+    offline feed applies the whole game at once, so with the feed on the board is at FINAL (v1.5, G4-1)."""
     base = server["base"]
     fresh(upage, base)
     expect_off_field(upage)
@@ -196,8 +207,8 @@ def test_g24_off_field_copy_follows_the_input_mode(upage, server, watch_server):
         "When DAL gets the ball, click Ball on above and type the spot, like D 25. The drive starts and predictions "
         "come back. Update the score and clock the same way.")
     feed_on(upage, base)
-    expect_shows(hero(upage),
-        "When DAL gets the ball, the ESPN feed starts the drive and the next call appears here.")
+    expect(hero(upage)).to_have_attribute("data-kind", "final")
+    expect(hero(upage).locator(".sc-offfield")).to_be_hidden()
     wbase = watch_server["base"]
     reset_game(wbase)
     api_post(wbase, "/api/watch/start", {"event_id": EVENT, "speed": 0.5})

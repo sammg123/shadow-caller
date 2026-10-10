@@ -15,7 +15,7 @@ import urllib.request
 import pytest
 from e2e_helpers import EVENT, get, post
 from playwright.sync_api import Page
-from ui_helpers import WORLD, click_at, region_box, reveal, show
+from ui_helpers import WORLD, region_box, reveal, show
 
 pytestmark = pytest.mark.e2e
 
@@ -120,7 +120,9 @@ def test_scorecard_matches_the_api_and_tones_log_loss(page, server):
              for v in page.locator("#kpiArea .sc-kpi-value[data-tone]").all()]
     expect = [(g["leaf_logloss"], g["leaf_logloss_league"], 2), (g["fam_logloss"], g["fam_logloss_league"], 2),
               (m["logloss_model"], m["logloss_league"], 3)]
-    assert [(t[0], t[1]) for t in toned] == [(f"{a:.{dp}f}", "better" if a < b else "worse") for a, b, dp in expect]
+    # v1.5 (G4-3): a tie on screen (1.62 v 1.62) is neither better nor worse, so it carries no tone
+    assert [(t[0], t[1]) for t in toned] == [(f"{a:.{dp}f}", "better" if a < b else "worse") for a, b, dp in expect
+                                             if f"{a:.{dp}f}" != f"{b:.{dp}f}"]
     assert all(tone in cls.split() for _, tone, cls in toned)
     assert page.locator("#kpiArea .sc-card-note").inner_text() == (
         "Lower log loss is better. One game is a pipeline test, not proof.")
@@ -232,7 +234,10 @@ def test_a_play_row_shows_its_play_on_the_field(page, server):
     """Click a play, a drive or a logged snap: the field reviews it, the row is pressed; again returns to live."""
     finished(page, server)
     row = page.locator(f'{ROW}[data-seq="104"]')
-    reveal(page, f'{ROW}[data-seq="104"] button')      # v1.4 (W6): a ribbon unrolls on hover (Under the Lights)
+    # v1.4 (W6): a ribbon unrolls on hover (Under the Lights); G5-9: the rows a rolled-up ribbon doesn't show stay in
+    # the page (visually hidden, still Tab stops), so the pointer unrolls the ribbon first, as a person's would
+    page.locator("#rg-plays").hover()
+    reveal(page, f'{ROW}[data-seq="104"] button')
     row.locator("button").click()
     page.wait_for_selector('#field[data-review-seq="104"]')
     assert row.locator("button").get_attribute("aria-pressed") == "true"
@@ -240,7 +245,8 @@ def test_a_play_row_shows_its_play_on_the_field(page, server):
     assert page.locator('#logArea tr[data-tl-seq="104"] button').get_attribute("aria-pressed") == "true"
     row.locator("button").click()
     page.wait_for_function("!document.querySelector('#field').hasAttribute('data-review-seq')")
-    click_at(page, f'{DRIVE}[data-idx="2"] button')
+    page.locator("#rg-drives").hover()                  # the chart unrolls under the pointer, as the feed did
+    page.locator(f'{DRIVE}[data-idx="2"] button').click()
     page.wait_for_selector('#field[data-review-seq="14"]')
     page.keyboard.press("Escape")
     page.wait_for_function("!document.querySelector('#field').hasAttribute('data-review-seq')")
@@ -278,3 +284,19 @@ def test_game_panels_fit_a_phone(browser, server):
             assert box and box["x"] >= 0 and box["x"] + box["width"] <= 390 + 0.5, (region, box)
     finally:
         ctx.close()
+
+
+@pytest.mark.parametrize("end, result", [("punt", "PUNT"), ("fg", "FG")])
+def test_g5_5_a_drive_ended_by_hand_shows_its_result_within_one_poll(page, server, end, result):
+    """G5-5: manual entry, two snaps, then the strip's Punt (or FG good): the drive chart shows the drive's result
+    within one poll. Ending a drive changes neither the epoch nor timeline_n, so the timeline is refetched because
+    the version moved; before, the lower ribbon kept "DAL NOW" while Dallas was off the field."""
+    fresh(page, server, "new D25", "K 3", "P 6")
+    last = page.locator(f"#rg-drives {DRIVE}").last
+    page.wait_for_function(f"document.querySelectorAll('#rg-drives {DRIVE}').length >= 1", timeout=WAIT_MS)
+    assert last.get_attribute("data-complete") == "false"
+    show(page, f'.sc-end[data-end="{end}"]').click()
+    page.wait_for_function(f"""() => {{ const d = [...document.querySelectorAll('#rg-drives {DRIVE}')].at(-1);
+      return d && d.dataset.complete === "true" && d.dataset.result === "{result}"; }}""", timeout=3000)
+    assert last.locator(".sc-dc-result").text_content().strip().upper() == result
+    assert get(server["base"] + "/api/state")["drive_active"] is False

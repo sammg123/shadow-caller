@@ -46,6 +46,11 @@
 
 :root[data-world="under-the-lights"] {
   color-scheme: dark;
+  /* G5-2: the HUD's sizes below are multiplied by this (arrange.js sets it on <html> from the window's height: 1 at
+     1440x900, 1920x1080 and taller, less in a shorter window, so every fixture fits as it does at the reference);
+     LED numbers in Doto never go under 40 px (The 40 Pixel Rule). */
+  --uls-hud-scale: 1;
+  --uls-px: calc(1px * var(--uls-hud-scale));   /* a pixel of hardware at the HUD's scale */
 
   /* ---- the palette by name (DESIGN.md colors) */
   --uls-night-sky: #0D1424;
@@ -59,7 +64,7 @@
   --uls-pylon: #FF6A13;
   --uls-goalpost: #FFC425;
   --uls-led-panel: #0F1114;
-  --uls-unlit: #2A2622;
+  --uls-unlit: #342E28;
   --uls-led-warm: #FFF3D1;
   --uls-led-gold: #FFD27A;
   --uls-led-amber: #FFB21E;
@@ -75,6 +80,9 @@
   --uls-steel-raised: #283149;
   --uls-steel-seam: #2E374D;
   --uls-steel-edge: #4A5571;
+  /* G5-14: the frame of an LED input and a lamp's socket, at 3:1 or more where they sit (WCAG 1.4.11): 3.77:1 on
+     fascia steel, 3.10:1 on raised steel (a switch's cap). */
+  --uls-steel-frame: #6F7C9D;
 
   /* ---- ground and ink (DESIGN.md token map) */
   --sc-bg: #0D1424;
@@ -104,12 +112,12 @@
   --sc-font-display: "Big Shoulders Display", "Arial Narrow", sans-serif;
   --sc-font-text: "Big Shoulders Text", "Arial Narrow", sans-serif;
   --sc-font-num: "Big Shoulders Text", "Arial Narrow", sans-serif;
-  --sc-size-call: clamp(64px, calc(5vw - 8px), 88px);
-  --sc-size-xl: clamp(44px, calc(2.5vw + 8px), 56px);
-  --sc-size-l: clamp(40px, calc(2.9167vw - 2px), 54px);
-  --sc-size-m: clamp(18px, 1.25vw, 24px);
-  --sc-size-s: clamp(16px, calc(1.25vw - 2px), 22px);
-  --sc-size-xs: clamp(15px, 1.0417vw, 20px);
+  --sc-size-call: max(40px, calc(clamp(64px, calc(5vw - 8px), 88px) * var(--uls-hud-scale)));
+  --sc-size-xl: max(40px, calc(clamp(44px, calc(2.5vw + 8px), 56px) * var(--uls-hud-scale)));
+  --sc-size-l: calc(clamp(40px, calc(2.9167vw - 2px), 54px) * var(--uls-hud-scale));
+  --sc-size-m: calc(clamp(18px, 1.25vw, 24px) * var(--uls-hud-scale));
+  --sc-size-s: calc(clamp(16px, calc(1.25vw - 2px), 22px) * var(--uls-hud-scale));
+  --sc-size-xs: calc(clamp(15px, 1.0417vw, 20px) * var(--uls-hud-scale));
   --sc-weight-regular: 500;
   --sc-weight-strong: 700;
   --sc-weight-display: 800;
@@ -121,30 +129,30 @@
   /* World type roles (DESIGN.md typography). Doto rides --uls-led-font, never below 40 px (The 40 Pixel Rule). */
   --uls-led-font: "ULS LED Punct", Doto, ui-monospace, monospace;
   --uls-led-variation: "ROND" 60;
-  --uls-size-led-readout: clamp(40px, calc(1.6667vw + 16px), 48px);
-  --uls-size-caption: clamp(19px, calc(1.0417vw + 4px), 24px);
-  --uls-size-plate: clamp(16px, calc(1.25vw - 2px), 22px);
-  --uls-size-key: clamp(22px, calc(1.25vw + 4px), 28px);
-  --uls-size-ribbon: clamp(22px, calc(1.25vw + 4px), 28px);
-  --uls-size-body: clamp(16px, calc(0.8333vw + 4px), 20px);
+  --uls-size-led-readout: max(40px, calc(clamp(40px, calc(1.6667vw + 16px), 48px) * var(--uls-hud-scale)));
+  --uls-size-caption: calc(clamp(19px, calc(1.0417vw + 4px), 24px) * var(--uls-hud-scale));
+  --uls-size-plate: calc(clamp(16px, calc(1.25vw - 2px), 22px) * var(--uls-hud-scale));
+  --uls-size-key: calc(clamp(22px, calc(1.25vw + 4px), 28px) * var(--uls-hud-scale));
+  --uls-size-ribbon: calc(clamp(22px, calc(1.25vw + 4px), 28px) * var(--uls-hud-scale));
+  --uls-size-body: calc(clamp(16px, calc(0.8333vw + 4px), 20px) * var(--uls-hud-scale));
   --uls-tracking-caption: 0.06em;
   --uls-tracking-plate: 0.08em;
   --uls-tracking-ribbon: 0.03em;
   --uls-leading-figure: 0.85;
 
   /* ---- space and shape: LED square, steel 2 px, lamps round */
-  --sc-space-1: 4px;
-  --sc-space-2: 8px;
-  --sc-space-3: clamp(12px, 0.8333vw, 16px);
-  --sc-space-4: clamp(16px, calc(0.8333vw + 4px), 20px);
-  --sc-space-5: clamp(24px, 1.6667vw, 32px);
-  --sc-space-6: clamp(32px, calc(1.6667vw + 8px), 40px);
+  --sc-space-1: calc(4px * var(--uls-hud-scale));
+  --sc-space-2: calc(8px * var(--uls-hud-scale));
+  --sc-space-3: calc(clamp(12px, 0.8333vw, 16px) * var(--uls-hud-scale));
+  --sc-space-4: calc(clamp(16px, calc(0.8333vw + 4px), 20px) * var(--uls-hud-scale));
+  --sc-space-5: calc(clamp(24px, 1.6667vw, 32px) * var(--uls-hud-scale));
+  --sc-space-6: calc(clamp(32px, calc(1.6667vw + 8px), 40px) * var(--uls-hud-scale));
   --sc-radius-s: 0px;
   --sc-radius-m: 2px;
   --sc-radius-l: 2px;
   --sc-border-w: 2px;
   --sc-focus-w: 3px;
-  --sc-gutter: clamp(24px, calc(5vw - 48px), 48px);
+  --sc-gutter: calc(clamp(24px, calc(5vw - 48px), 48px) * var(--uls-hud-scale));
   /* Nominal: the stadium's field host fills the viewport (layout.css), the phone's is a 390 x 300 band. */
   --sc-field-aspect: 16 / 9;
 
@@ -157,32 +165,35 @@
 
   /* ---- the stadium's geometry (DESIGN.md Layout; exact at 1440x900 and 1920x1080) */
   --uls-pitch: 4px;
-  --uls-ribbon-h: clamp(44px, calc(2.5vw + 8px), 56px);
-  --uls-lower-h: clamp(40px, calc(3.3333vw - 8px), 56px);
-  --uls-band-h: clamp(140px, calc(8.3333vw + 20px), 180px);
+  --uls-ribbon-h: calc(clamp(44px, calc(2.5vw + 8px), 56px) * var(--uls-hud-scale));
+  --uls-lower-h: calc(clamp(40px, calc(3.3333vw - 8px), 56px) * var(--uls-hud-scale));
+  --uls-band-h: calc(clamp(140px, calc(8.3333vw + 20px), 180px) * var(--uls-hud-scale));
   --uls-band-gap: 4px;
-  --uls-strip-h: clamp(52px, calc(2.5vw + 16px), 64px);
-  --uls-board-w: clamp(416px, calc(30vw - 16px), 560px);
-  --uls-board-h: clamp(324px, calc(22.0833vw + 6px), 430px);
-  --uls-board-gap: clamp(20px, calc(0.8333vw + 8px), 24px);
-  --uls-board-open-w: clamp(600px, 41.6667vw, 800px);
-  --uls-board-open-h: clamp(560px, calc(38.75vw + 2px), 746px);
-  --uls-stack-gap: 16px;
-  --uls-plate-h: clamp(24px, 1.6667vw, 32px);
-  --uls-frame: 8px;
-  --uls-face-pad: clamp(14px, calc(1.25vw - 4px), 20px);
-  --uls-drawer-w: clamp(400px, calc(25vw + 40px), 520px);
-  --uls-feed-w: clamp(220px, 18.3333vw, 352px);
-  --uls-wp-w: clamp(264px, 18.3333vw, 352px);
-  --uls-key-h: clamp(40px, calc(1.6667vw + 16px), 48px);
-  --uls-lamp: clamp(10px, calc(0.4167vw + 4px), 12px);
+  --uls-strip-h: calc(clamp(52px, calc(2.5vw + 16px), 64px) * var(--uls-hud-scale));
+  --uls-board-w: calc(clamp(416px, calc(30vw - 16px), 560px) * var(--uls-hud-scale));
+  --uls-board-h: calc(clamp(324px, calc(22.0833vw + 6px), 430px) * var(--uls-hud-scale));
+  --uls-board-gap: calc(clamp(20px, calc(0.8333vw + 8px), 24px) * var(--uls-hud-scale));
+  --uls-board-open-w: calc(clamp(600px, 41.6667vw, 800px) * var(--uls-hud-scale));
+  --uls-board-open-h: calc(clamp(560px, calc(38.75vw + 2px), 746px) * var(--uls-hud-scale));
+  --uls-stack-gap: calc(16px * var(--uls-hud-scale));
+  --uls-plate-h: calc(clamp(24px, 1.6667vw, 32px) * var(--uls-hud-scale));
+  --uls-frame: calc(8px * var(--uls-hud-scale));
+  --uls-face-pad: calc(clamp(14px, calc(1.25vw - 4px), 20px) * var(--uls-hud-scale));
+  --uls-drawer-w: calc(clamp(400px, calc(25vw + 40px), 520px) * var(--uls-hud-scale));
+  --uls-feed-w: calc(clamp(220px, 18.3333vw, 352px) * var(--uls-hud-scale));
+  --uls-wp-w: calc(clamp(264px, 18.3333vw, 352px) * var(--uls-hud-scale));
+  --uls-key-h: calc(clamp(40px, calc(1.6667vw + 16px), 48px) * var(--uls-hud-scale));
+  --uls-lamp: calc(clamp(10px, calc(0.4167vw + 4px), 12px) * var(--uls-hud-scale));
   --uls-light-catch: 2px;
 
   /* Logos sit in LED windows, so they are ESPN's dark-background variant in both room settings (scoreboard.css). */
   --sc-logo-variant: dark;
 
-  /* The LED face: the panel with its unlit pixels on a 4 px pitch (The Unlit Pixel Rule). Texture, not glow. */
-  --uls-led-face: radial-gradient(circle at 2px 2px, var(--uls-unlit) 0 0.9px, transparent 1.3px) 0 0 /
+  /* The LED face: the panel with its unlit pixels on a 4 px pitch (The Unlit Pixel Rule). Texture, not glow.
+     G5-17: the grid survives a TV's or a screen recording's downscale: each unlit pixel sits inside one 2 x 2 block of
+     screen pixels (the tile is offset 1 px, and faces hang on the even pitch), so halving the picture keeps it (a pixel
+     centred on a block corner averaged away to flat black), and it is a step brighter (1.41:1 on the panel). */
+  --uls-led-face: radial-gradient(circle at 2px 2px, var(--uls-unlit) 0 0.9px, transparent 1.3px) 1px 1px /
     var(--uls-pitch) var(--uls-pitch) var(--uls-led-panel);
 }
 

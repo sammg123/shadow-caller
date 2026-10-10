@@ -45,7 +45,7 @@
 :where(:root[data-world="under-the-lights"]) .sc-feed-event-input {
   min-height: var(--uls-key-h);
   padding: 2px var(--sc-space-2) 0;
-  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border: var(--sc-border-w) solid var(--uls-steel-frame);
   border-radius: var(--sc-radius-m);
   background: var(--uls-led-face);
   color: var(--sc-ink);

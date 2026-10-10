@@ -84,3 +84,14 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* v1.4 (G3-8): on a narrow view a plate wraps rather than run off the screen ("Punt · 41 yds · downed · flag:
+   offensive holding on DAL" is wider than a phone), one size down, its lines balanced. */
+@media (max-width: 720px) {
+  .sc-field-label > span {
+    max-width: calc(100vw - 24px);
+    white-space: normal;
+    font-size: var(--sc-size-xs);
+    text-wrap: balance;
+  }
+}

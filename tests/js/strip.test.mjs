@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { STRIP_FIELDS, commit, sideSwitch, stripValues } from "../../static/js/core/strip.js";
+import { NEW_DRIVE_YARD, STRIP_FIELDS, commit, sideSwitch, stripValues } from "../../static/js/core/strip.js";
 import { deepFreeze } from "./fixtures.mjs";
 
 const GAME = deepFreeze({ offense: "DAL", opponent: "TB" });
@@ -15,8 +15,36 @@ test("STRIP_FIELDS lists the seven inline fields", () => {
 test("stripValues shows the fresh game as FI 2.3 says (#4)", () => {
   assert.deepEqual(stripValues(sit(), GAME, null), {
     iQtr: "1", iClock: "15:00", iOff: "0", iOpp: "0", iDown: "1", iTogo: "10", iYard: "25",
-    side: { team: "DAL", own: true, title: "Ball on DAL's own side. Click to switch." },
+    side: { team: "DAL", own: true, title: "Ball on DAL's own side. Click to switch." }, placeholders: {},
   });
+});
+
+test("G5-3: with no drive, Ball on is the offense's next start: blank, placeholder 25, chip on its own side", () => {
+  // Drive 6 ended with a field goal from TB 5: the served spot is still the last snap's
+  const afterFg = sit({ yardline_100: 5, togo: 5 });
+  const off = stripValues(afterFg, GAME, null, { driveActive: false });
+  assert.equal(off.iYard, "", "the last snap's spot is not where the next drive starts");
+  assert.deepEqual(off.placeholders, { iYard: String(NEW_DRIVE_YARD) });
+  assert.equal(NEW_DRIVE_YARD, 25);
+  assert.deepEqual(off.side, { team: "DAL", own: true, title: "Ball on DAL's own side. Click to switch." });
+  assert.equal(stripValues(afterFg, GAME, "TB", { driveActive: false }).side.team, "DAL", "the 50's memory is a drive's");
+  const spot = (raw) => commit("iYard", raw, { edited: true, chipTeam: off.side.team }).body.spot;
+  assert.equal(spot("25"), "DAL 25", "a bare number starts on Dallas's side");
+  assert.equal(spot("t25"), "T 25", "a typed side still picks Tampa Bay");
+  assert.equal(spot("T 30"), "T 30");
+  // during a drive nothing changes: the spot and its side as served
+  const on = stripValues(afterFg, GAME, null, { driveActive: true });
+  assert.deepEqual([on.iYard, on.side.team, on.placeholders], ["5", "TB", {}]);
+});
+
+test("G5-3: the chip off the field switches the placeholder's 25 to the other side; a typed number wins", () => {
+  const afterFg = sit({ yardline_100: 5, togo: 5 });
+  assert.deepEqual(sideSwitch({ chipTeam: "DAL", yardText: "", sit: afterFg, game: GAME, driveActive: false }),
+    { body: { spot: "TB 25" }, sideAtFifty: null });
+  assert.deepEqual(sideSwitch({ chipTeam: "DAL", yardText: "30", sit: afterFg, game: GAME, driveActive: false }),
+    { body: { spot: "TB 30" }, sideAtFifty: null });
+  assert.deepEqual(sideSwitch({ chipTeam: "TB", yardText: "", sit: afterFg, game: GAME, driveActive: true }),
+    { body: { spot: "DAL 5" }, sideAtFifty: null }, "in a drive an empty box still falls back to the served spot");
 });
 
 test("stripValues: To go shows G at goal to go; the opponent's side uses its own number (#17)", () => {

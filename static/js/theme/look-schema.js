@@ -78,11 +78,15 @@ const SCHEMA = obj({
     trail: obj({ kind: oneOf("none", "ribbon", "comet", "spark"), color: hexOr("team"), widthPx: num(0, 64),
       fadeMs: num(0, 1e4) }),
   }),
-  strokes: obj({ arc: STROKE, ground: STROKE, corridor: STROKE, area: STROKE, band: STROKE, mark: STROKE }),
+  // v1.4 (G3-9): the plays draw with these three (play-style.js, the 2D field); the zone era's corridor, area and band
+  // strokes and ghost.opacity (the shadows' opacities are play-drawing.md's) are gone.
+  strokes: obj({ arc: STROKE, ground: STROKE, mark: STROKE }),
+  // tint (optional, G3-1): "fill" (the default) tints every shadow by `fill`; "family" by the world's family ramp
+  // (look.world.plays.families: pass, run, rpo), with `fill` for any family it leaves out. `style` is the 2D field's dash.
   ghost: obj({
-    fill: hexOr("team", "neutral"), stroke: hex, opacity: arr(unit, { len: 3 }),
-    style: oneOf("zone", "outline", "hatch", "pixel", "marker"), afterSnapOpacity: unit, labels: bool,
-  }),
+    fill: hexOr("team", "neutral"), stroke: hex, style: oneOf("zone", "outline", "hatch", "pixel", "marker"),
+    afterSnapOpacity: unit, labels: bool, tint: oneOf("fill", "family"),
+  }, ["tint"]),
   lastPlay: obj({ keep: oneOf("until-next-snap", "until-presnap"), dimOpacity: unit }),
   residue: obj({ keep: oneOf("none", "drive", "game"), opacity: unit }),
   labels: obj({ renderer: oneOf("css2d", "sprite", "decal", "none"), className: str(CLASS_RE, "CSS class names"),

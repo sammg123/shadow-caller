@@ -3,7 +3,7 @@
 // <html data-world> flips and the old links go. applyRootAttrs writes the other <html> hooks (data-motion,
 // data-ambient, data-scene). applyTeams and applyPossession set the runtime --sc-team-* tokens from the game's teams
 // through teamPaint (DC C2), so worlds paint with team colors that stay legible. Timers are called bare.
-import { teamPaint } from "./team-colors.js";
+import { NEUTRAL_TEAM, teamPaint } from "./team-colors.js";
 import { REQUIRED_TOKENS, missingTokens } from "./tokens.js";
 
 const ROOT_VALUES = Object.freeze({ motion: ["full", "reduced"], ambient: ["room", "dark"], scene: ["webgl", "2d"] });
@@ -151,12 +151,21 @@ export function applyTeams(teams, doc, look) {
   return Object.freeze({ caller, opp });
 }
 
-/** --sc-team-off(-ink) and --sc-team-def follow the ball; with no possession the caller is the offense. */
+/** The game is over (G2-5): nobody has the ball, so the offense's paint goes to the neutral team (a world maps that
+ * gray to its own steel). Never a team: abbreviations are upper case (DC C2). */
+export const POSSESSION_FINAL = "final";
+
+/**
+ * --sc-team-off(-ink) and --sc-team-def follow the ball; with no possession the caller is the offense, and after the
+ * final whistle (POSSESSION_FINAL) both are the neutral team.
+ */
 export function applyPossession(poss, doc) {
   const state = TEAM_STATE.get(doc) ?? { caller: teamPaint(null), opp: teamPaint(null), oppAbbr: null };
-  const oppHasBall = typeof poss === "string" && poss !== "" && poss === state.oppAbbr;
-  const off = oppHasBall ? state.opp : state.caller;
-  const def = oppHasBall ? state.caller : state.opp;
+  const final = poss === POSSESSION_FINAL;
+  const oppHasBall = !final && typeof poss === "string" && poss !== "" && poss === state.oppAbbr;
+  const neutral = final ? teamPaint(NEUTRAL_TEAM) : null;
+  const off = neutral ?? (oppHasBall ? state.opp : state.caller);
+  const def = neutral ?? (oppHasBall ? state.caller : state.opp);
   TEAM_STATE.set(doc, { ...state, poss: typeof poss === "string" && poss !== "" ? poss : null });
   setTokens(doc, { "--sc-team-off": off.fill, "--sc-team-off-ink": off.ink, "--sc-team-def": def.fill });
 }

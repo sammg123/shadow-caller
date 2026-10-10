@@ -56,9 +56,13 @@ const DAY = {
 /** look.world.uls: what props.js and moments.js read (plain data; the schema keeps `world` JSON-only). */
 const WORLD_ULS = {
   dip: { level: 0.8, ms: 300 },                        // DESIGN.md: the stadium lights fall to 80% in 300 ms
-  camera: { pushMs: 650, settleMs: 900, riseMs: 1700, descendMs: 1100, driftDegPerS: 2.4, driftMaxDeg: 20,
-    driftZoom: 1.65, driftPitchDeg: 42, driftLiftYd: 25 },
-  ribbons: { stepMs: 83, steps: 5, holdTdMs: 3200 },   // LED steps at 12 fps, 5 frames (DESIGN.md motion grammar)
+  // holdScoreMs: in Watch this game the camera stays on a touchdown or a turnover this long before it rises (G3-4)
+  camera: { pushMs: 650, settleMs: 900, riseMs: 1700, descendMs: 1100, holdScoreMs: 2000, driftDegPerS: 2.4,
+    driftMaxDeg: 20, driftZoom: 1.65, driftPitchDeg: 42, driftLiftYd: 25 },
+  // LED steps at 12 fps, 5 frames (DESIGN.md motion grammar); G3-6: the next call steps in over a play's words once
+  // they have been up dwellMs
+  ribbons: { stepMs: 83, steps: 5, holdTdMs: 3200, dwellMs: 1500 },
+  flare: { peak: 1.15, ms: 300 },                       // G3-7: the lamp banks when he is right or on a touchdown
 };
 
 export const look = deepFreeze({
@@ -84,14 +88,11 @@ export const look = deepFreeze({
   strokes: {
     arc: stroke("line2", { widthPx: 4.5 }),
     ground: stroke("ribbon", { widthYd: 0.62 }),
-    corridor: stroke("ribbon", { widthYd: 3, opacity: 0.5, ghostedOpacity: 0.22, approx: "soft" }),
-    area: stroke("decal", { widthYd: 5, opacity: 0.5, ghostedOpacity: 0.22, approx: "soft" }),
-    band: stroke("decal", { opacity: 0.3, ghostedOpacity: 0.18, approx: "hatch" }),
     mark: stroke("decal", { widthYd: 2.4, ghostedOpacity: 0.42, approx: "soft" }),
   },
-  // The shadow plays: LED warm white, dashed and translucent (play-drawing.md 4), never team-colored (DESIGN.md).
-  ghost: { fill: "neutral", stroke: ULS.ledWarm, opacity: [0.5, 0.35, 0.2], style: "outline", afterSnapOpacity: 0,
-    labels: true },
+  // The shadow plays: dashed and translucent (play-drawing.md 4), never team-colored (DESIGN.md), tinted by family on
+  // the board's ramp (G3-1: world.plays.families), LED warm white where a family has no tone of its own.
+  ghost: { fill: "neutral", stroke: ULS.ledWarm, style: "outline", afterSnapOpacity: 0, labels: true, tint: "family" },
   lastPlay: { keep: "until-next-snap", dimOpacity: 0.3 },
   residue: { keep: "drive", opacity: 0.16 },
   labels: { renderer: "css2d", className: "sc-label", result: true },
@@ -108,9 +109,12 @@ export const look = deepFreeze({
   teamColor: { minContrast: 3, against: [ULS.turfDark, ULS.nightSky] },
   world: {
     day: DAY,
+    // G3-1: the shadows on the board's ramp (pass warm white, run amber, RPO gold), wide, each over a night-sky ring
     plays: { headGlow: 3, headYd: 1.5, trackOpacity: 0.2, trackWidthPx: 1.5, trackDash: [0.5, 0.9], arrowYd: 1.8,
-      hoverOpacity: 0.9, dimOthers: 0.45, shadowDash: [1.6, 0.7], shadowWidth: 2.3, targetYd: 1.7, kickDim: 0.4,
-      tones: { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg } },
+      hoverOpacity: 0.9, dimOthers: 0.45, shadowDash: [1.6, 0.7], shadowWidth: 3.2, targetYd: 1.7, kickDim: 0.4,
+      tones: { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg },
+      families: { pass: ULS.ledWarm, run: ULS.ledAmber, rpo: ULS.ledGold },
+      casing: { color: ULS.nightSky, opacity: 0.4, width: 1.8 } },
     uls: WORLD_ULS,
   },
 });

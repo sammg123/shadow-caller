@@ -202,6 +202,28 @@ test("motion.css: LED steps, the scanline and the drawer rails, each with a redu
   assert.doesNotMatch(rails, /inset|left|width/, "never by a layout property");
 });
 
+test("G5-1: the rails leave no translate behind, and in manual entry the strip's rack never moves", () => {
+  // A drawer with a translate is the containing block of the position: fixed strip it holds in manual entry: the
+  // strip left the ribbon for the drawer (0,44 1440x52 -> 0,140 398x52) and covered the FEED rack's keys.
+  const text = stripComments(css("motion.css"));
+  const uses = [...text.matchAll(/([^{}]+){([^{}]*animation:[^;{}]*uls-rails-in[^;{}]*;[^{}]*)}/g)]
+    .map((m) => ({ selector: m[1].trim(), decl: /animation:([^;]*uls-rails-in[^;]*);/.exec(m[2])[1] }));
+  assert.ok(uses.length >= 2, uses.map((u) => u.selector).join(" | "));
+  for (const { selector, decl } of uses) {
+    assert.match(decl, /\bbackwards\b/, `${selector}: no translate survives the run`);
+    assert.doesNotMatch(decl, /\b(both|forwards)\b/, `${selector}: ${decl}`);
+  }
+  const manual = /\[data-mode="normal"\],\s*\[data-mode="flag"\]/;
+  const cabinet = [...text.matchAll(/([^{}]+){([^{}]*)}/g)]
+    .filter((m) => manual.test(m[1]) && /\.uls-drawer\s*$/.test(m[1].trim()));
+  assert.ok(cabinet.some((m) => /animation:\s*none/.test(m[2])), "manual entry and flag mode: the cabinet stays put");
+  const racks = uses.filter((u) => manual.test(u.selector));
+  assert.ok(racks.length && racks.every((u) => /:not\(\[data-rack="situation"\]\)/.test(u.selector)),
+    "its racks run out instead, all but the strip's");
+  const reduced = text.slice(text.indexOf("@media (prefers-reduced-motion: reduce)"));
+  assert.match(reduced, /\.uls-drawer > \*/, "reduced motion stops the racks too");
+});
+
 test("every Doto use sits at 40 px or more: --uls-led-font is only paired with the LED sizes", () => {
   const text = stripComments(["tokens.css", "layout.css", "motion.css"].map(css).join("\n"));
   const rules = [...text.matchAll(/{([^{}]*font-family:\s*var\(--uls-led-font\)[^{}]*)}/g)].map((m) => m[1]);
@@ -210,4 +232,56 @@ test("every Doto use sits at 40 px or more: --uls-led-font is only paired with t
   }
   assert.ok(existsSync(join(ROOT, "static", "fonts", ID, "SOURCES.txt")));
   assert.equal(sep.length, 1);
+});
+
+test("G5-8: no Under the Lights rule makes #app (or the page) the subject of a :has(): one would restyle the whole app on every DOM change", () => {
+  const sheets = filesUnder(CSS_DIR).filter((f) => f.endsWith(".css"));
+  const rooted = /(?:#app|:root|\bhtml|\bbody)(?:\[[^\]]*\]|:not\([^()]*\)|:is\([^()]*\))*:has\(/;
+  for (const file of sheets) {
+    const text = stripComments(readFileSync(file, "utf8"));
+    const selectors = [...text.matchAll(/([^{}]+){/g)].map((m) => m[1].trim()).filter((sel) => !sel.startsWith("@"));
+    const bad = selectors.filter((sel) => rooted.test(sel));
+    assert.deepEqual(bad, [], relative(ROOT, file));
+  }
+});
+
+test("G5-14: LED input frames and lamp sockets read at 3:1 on the steel they sit on; the dimmed pad stays at 0.85", () => {
+  const text = stripComments(css("tokens.css"));
+  const hex = (name) => new RegExp(`${name}:\\s*(#[0-9A-Fa-f]{6})`).exec(text)?.[1]?.toLowerCase();
+  const frame = hex("--uls-steel-frame");
+  assert.ok(frame, "--uls-steel-frame is a token (skins hold no raw hex)");
+  for (const ground of ["--uls-steel", "--uls-steel-raised", "--uls-led-panel"]) {
+    assert.ok(contrast(frame, hex(ground)) >= 3, `${ground}: ${contrast(frame, hex(ground)).toFixed(2)}`);
+  }
+  const skins = ["components/situation-strip.css", "components/entry-pad.css", "components/shorthand.css",
+    "components/feed-bar.css", "booth.css"].map((n) => stripComments(css(n))).join("\n");
+  for (const input of [".sc-strip-input", ".sc-yards-input", ".sc-short-input", ".sc-feed-event-input"]) {
+    const body = new RegExp(`\\${input}\\s*{([^}]*)}`).exec(skins)?.[1] ?? "";
+    assert.match(body, /border:[^;]*var\(--uls-steel-frame\)/, input);
+  }
+  assert.match(stripComments(css("components/entry-pad.css")), /--sc-entry-dim:\s*0\.85/);
+});
+
+test("G5-17: the unlit pixel grid survives a downscale: a step brighter, and each dot inside one 2 x 2 block", () => {
+  const text = stripComments(css("tokens.css"));
+  const unlit = /--uls-unlit:\s*(#[0-9A-Fa-f]{6})/.exec(text)[1].toLowerCase();
+  const panel = /--uls-led-panel:\s*(#[0-9A-Fa-f]{6})/.exec(text)[1].toLowerCase();
+  const ratio = contrast(unlit, panel);
+  assert.ok(ratio >= 1.38 && ratio <= 1.6, `about 1.5:1, still unlit: ${ratio.toFixed(2)}`);
+  const face = /--uls-led-face:\s*([^;]+);/.exec(text)[1].replace(/\s+/g, " ");
+  assert.match(face, /^radial-gradient\(circle at 2px 2px, var\(--uls-unlit\) 0 0\.9px, transparent 1\.3px\) 1px 1px \//,
+    "the tile is offset 1 px: the dot's centre (3, 3) is inside the 2 x 2 block (2..3, 2..3), not on a block corner");
+});
+
+test("G5-11: the retag windows light after a caller play only where Sam retags: never during Watch this game", () => {
+  const text = stripComments(css("components/last-play.css"));
+  const lit = [...text.matchAll(/([^{}]+){([^{}]*)}/g)]
+    .filter((m) => /#lastPlay\[data-fresh="true"\]\s*\.sc-retag/.test(m[1]));
+  assert.ok(lit.length >= 1, "the fresh light exists");
+  for (const [, selector] of lit) {
+    assert.match(selector, /:not\(\[data-mode="watch"\]\)/, `${selector.trim()}: not in a watched game`);
+  }
+  const stepIn = [...text.matchAll(/([^{}]+){([^{}]*uls-step-in[^{}]*)}/g)].map((m) => m[1]);
+  assert.ok(stepIn.some((sel) => /#lastPlay\[data-fresh="true"\]/.test(sel) && !/data-mode/.test(sel)),
+    "the play's words still step in, in every mode");
 });

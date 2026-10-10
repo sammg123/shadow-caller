@@ -339,3 +339,44 @@ def test_teams_from_a_broken_header_fall_back_to_the_game():
                    {"competitions": "x"}, None):
         teams, order = tt.teams_of({"header": header}, TEST_GAME)
         assert order == ["TB", "DAL"] and teams["DAL"]["caller"] and teams["TB"]["color"] is None, header
+
+
+# ---------------------------------------------------------------- G1-12: text out of the app is capped and quoted
+def test_the_csv_export_quotes_cells_and_defuses_formulas(make_feed, summary):
+    """The export only replaced commas, so a newline in a name split the row; a cell that starts like a formula now
+    starts with an apostrophe, and numbers stay numbers."""
+    import csv
+    import io
+    e, feed = make_feed()
+    feed.apply(summary)
+    e.state["log"][0]["name"] = "=HYPERLINK(\"http://x\"),\nsecond line"
+    e.state["log"][1]["name"] = "@SUM(A1), and +1"
+    rows = list(csv.reader(io.StringIO(e.export_csv())))
+    assert len(rows) == 1 + 59 and all(len(r) == len(rows[0]) for r in rows)
+    col = {name: i for i, name in enumerate(rows[0])}
+    assert rows[1][col["name"]] == "'=HYPERLINK(\"http://x\"),\nsecond line"
+    assert rows[2][col["name"]] == "'@SUM(A1), and +1"
+    assert any(r[col["yards"]].startswith("-") for r in rows[1:])            # a loss is a number, not text
+    assert [int(r[col["seq"]]) for r in rows[1:]] == list(range(1, 60))
+
+
+def test_espn_text_is_capped_on_the_way_out(make_feed, summary):
+    """A hostile summary overflowed the band with its team names, and a 200,000-character play made /api/timeline
+    5.4 MB. Team names are capped at 40 characters, play text at 400, a foul's words at 60 and 80."""
+    e, feed = make_feed()
+    s = copy.deepcopy(summary)
+    team = s["header"]["competitions"][0]["competitors"][0]["team"]
+    team.update(name="N" * 500, location="L" * 500, displayName="D" * 500)
+    play = s["drives"]["previous"][0]["plays"][1]
+    play["text"] = "J.Williams up the middle to DAL 30 for 5 yards. PENALTY on TB-X.Y, " + "Holding" * 30_000 + \
+        ", 5 yards, enforced at DAL 25 - No Play."
+    feed.apply(s)
+    out = build(feed, e)
+    t = out["teams"][team["abbreviation"]]
+    assert (len(t["name"]), len(t["location"]), len(t["display_name"])) == (40, 40, 40)
+    row = next(r for r in out["rows"] if r["id"] == str(play["id"]))
+    pen = row["result"]["penalty"]
+    assert len(row["text"]) == 400 and len(pen["foul"]) <= 60 and len(pen["note"]) <= 80
+    assert len(json.dumps(out)) < 1_000_000
+    logged = next(r for r in e.state["log"] if r.get("espn_id") == str(play["id"]))
+    assert len(logged["name"]) <= 160 and len(logged.get("feed_text") or "") <= 400

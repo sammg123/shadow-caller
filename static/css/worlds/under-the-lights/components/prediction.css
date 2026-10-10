@@ -3,7 +3,9 @@
    caps (never cut), the percentage in Doto over its unlit 88%, the tilt tag, the then-line, the pass/run split and the
    five families as LED bars with league notches. Hover or focus opens the board (layout.css) and scans in the 14 plays,
    the why lines and the legend, which wait visually hidden so Tab and screen readers still reach them. No team color
-   lights the board. Shared LED primitives (--uls-led-num, --uls-lit, --uls-track, --uls-cell) live in masthead.css. */
+   lights the board. Shared LED primitives (--uls-led-num, --uls-lit, --uls-track, --uls-cell) live in masthead.css.
+   The board's other faces (off the field, his night so far, FINAL) are in board.css. v1.5 (G4-5): the then-line holds
+   to one line and the open board's names never break; (G4-4) a 4th-down plate lights its caveat yellow. */
 
 /* ---------------------------------------------------------------- the face and its plate */
 :where(:root[data-world="under-the-lights"]) .sc-call {
@@ -14,9 +16,9 @@
   color: var(--sc-ink);
 }
 :where(:root[data-world="under-the-lights"]) .sc-call > :not(.sc-call-head) { margin-inline: var(--uls-face-pad); }
-/* The caption plate: painted steel above the LED face ("MOST LIKELY CALL · SNAP 23"); it stays put while the open
-   board scrolls. */
-:where(:root[data-world="under-the-lights"]) .sc-call-head {
+/* The caption plate: painted steel above the LED face ("SCHOTTENHEIMER'S NEXT CALL · SNAP 23"); it stays put while
+   the open board scrolls. Every face of the board wears one (.sc-face-head, board.css). */
+:where(:root[data-world="under-the-lights"]) :is(.sc-call-head, .sc-face-head) {
   position: sticky;
   top: 0;
   z-index: 2;
@@ -27,12 +29,14 @@
   border-bottom: 1px solid var(--uls-steel-seam);
   background: var(--uls-steel-raised);
 }
-:where(:root[data-world="under-the-lights"]) .sc-call-kicker {
+:where(:root[data-world="under-the-lights"]) :is(.sc-call-kicker, .sc-face-kicker) {
   color: var(--uls-caption-white);
   font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
   letter-spacing: var(--uls-tracking-plate);
   text-transform: uppercase;
 }
+/* 4th down: the call is the play if he goes for it (the model has no kick class); its caveat lights yellow. */
+:where(:root[data-world="under-the-lights"]) .sc-call[data-fourth="true"] .sc-call-label { color: var(--uls-line-to-gain); }
 
 /* ---------------------------------------------------------------- the call: name, figure, tilt tag */
 :where(:root[data-world="under-the-lights"]) .sc-call-top { display: grid; gap: 2px; margin-top: var(--uls-face-pad); }
@@ -98,18 +102,36 @@
 }
 
 /* ---------------------------------------------------------------- the then-line */
+/* One line, always (the face's height has no slack): the plays sit in a wrapping row one line tall, so a second play
+   that doesn't fit steps down a row, far below and clipped, instead of pushing the families off the face. A play never
+   breaks inside its name; the open board lists every play. The clip margin keeps the hover frame. */
 :where(:root[data-world="under-the-lights"]) .sc-then {
+  display: flex;
+  align-items: baseline;
+  gap: 0 0.3em;
   margin-top: var(--sc-space-2);
   color: var(--sc-ink);
   font: var(--sc-weight-strong) var(--sc-size-m) / 1.15 var(--sc-font-text);
   letter-spacing: 0.01em;
-  text-wrap: balance;
 }
 :where(:root[data-world="under-the-lights"]) .sc-then-lead {
+  flex: none;
   color: var(--sc-ink-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+:where(:root[data-world="under-the-lights"]) .sc-then-items {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10em 0.3em;
+  min-width: 0;
+  height: 1lh;
+  overflow: clip;
+  overflow-clip-margin: 4px;
+}
+:where(:root[data-world="under-the-lights"]) .sc-then-item { white-space: nowrap; }
 :where(:root[data-world="under-the-lights"]) :is(.sc-call-sep, .sc-then-sep) { color: var(--sc-ink-muted); }
 :where(:root[data-world="under-the-lights"]) .sc-then-pct { color: var(--uls-led-amber); }
 
@@ -246,12 +268,14 @@
 
 /* ---------------------------------------------------------------- the 14 plays (shown when the board is open) */
 :where(:root[data-world="under-the-lights"]) .sc-leaves { gap: 0; padding: 2px 0 var(--sc-space-1); }
+/* A play's name never breaks ("PA intermediate (10–19)" whole); its bar takes what is left, 40 px at least. Rows are
+   24 px tall at least (a pointer's target), 44 px on a touch screen. */
 :where(:root[data-world="under-the-lights"]) .leaf {
-  grid-template-columns: minmax(0, 1fr) 2.6em 2.6em var(--uls-glyph);
+  grid-template-columns: max-content minmax(40px, 1fr) 2.6em var(--uls-glyph);
   grid-template-areas: "name bar pct hot";
   align-items: center;
   gap: 0 var(--sc-space-2);
-  min-height: 0;
+  min-height: 24px;
   padding: 3px var(--sc-space-1);
   border: 0;
   border-radius: 0;
@@ -261,7 +285,11 @@
   letter-spacing: 0.01em;
   transition: none;
 }
+:where(:root[data-world="under-the-lights"]) .leaf .sc-leaf-name { white-space: nowrap; }
 :where(:root[data-world="under-the-lights"]) .leaf .sc-leaf-bar { grid-area: bar; --uls-bar-rows: 1; }
+@media (pointer: coarse) {
+  :where(:root[data-world="under-the-lights"]) .leaf { min-height: 44px; }
+}
 :where(:root[data-world="under-the-lights"]) .leaf .sc-leaf-pct {
   grid-area: pct;
   justify-self: end;
@@ -312,35 +340,6 @@
   max-width: 70ch;
   color: var(--sc-ink-muted);
   font: var(--sc-weight-strong) var(--sc-size-xs) / 1.25 var(--sc-font-text);
-}
-
-/* ---------------------------------------------------------------- off the field */
-:where(:root[data-world="under-the-lights"]) .sc-offfield { gap: var(--sc-space-3); padding: var(--uls-face-pad); }
-:where(:root[data-world="under-the-lights"]) .sc-offfield-heading {
-  color: var(--sc-ink);
-  font: var(--sc-weight-display) var(--sc-size-l) / var(--sc-leading-tight) var(--sc-font-display);
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-:where(:root[data-world="under-the-lights"]) .sc-offfield-body {
-  color: var(--sc-ink-muted);
-  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
-}
-:where(:root[data-world="under-the-lights"]) .sc-offfield-body strong {
-  color: var(--sc-ink);
-  font-weight: var(--sc-weight-strong);
-}
-/* With no call to show, the figure's cell stays on the face, every pixel unlit (DESIGN.md: an empty cell shows only its
-   unlit 8s). Decoration, hidden from assistive tech. */
-:where(:root[data-world="under-the-lights"]) .sc-offfield::after {
-  content: "88%" / "";
-  margin-top: var(--sc-space-2);
-  color: var(--uls-unlit);
-  font-family: var(--uls-led-num);
-  font-size: var(--sc-size-call);
-  font-weight: var(--sc-weight-display);
-  font-variation-settings: var(--uls-led-variation);
-  line-height: 0.75;
 }
 
 /* ================================================================ the stadium board: collapsed, then open */

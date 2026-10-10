@@ -17,7 +17,7 @@ FEED_ON_TOAST = "ESPN live feed on. Plays log themselves; retag play-action, scr
 FEED_OFF_STATUS = "Off: enter plays by hand, or turn it on and plays log themselves."
 CONFIRM_REPLAY = f"Rebuild the game log from ESPN game {EVENT}? The current log is backed up first."
 CONFIRM_RESET_FEED_ON = ("Clear every snap logged for this game? The ESPN feed turns off first, so it doesn't log the "
-                         "game again.")
+                         "game again. A copy is kept in data/.")
 CONFIRM_WATCH = f"Watch ESPN game {EVENT} from the start? Your game is backed up first and comes back when you stop."
 CONFIRM_STOP = "Stop watching and put your game back?"
 HINT_FEED = ("ESPN logs each play, down, distance, spot, clock and score. It can't see play-action, screens or RPOs: "
@@ -266,7 +266,7 @@ def test_reset_needs_a_yes(upage, server):
     upage.locator("#resetBtn").click()
     until(upage, lambda: dialogs, what="the Reset confirm")
     quiet(upage)
-    assert dialogs == ["Clear every snap logged for this game?"]
+    assert dialogs == ["Clear every snap logged for this game? A copy is kept in data/."]
     assert posts == []
     assert len(state(base)["log"]) == 1
 
@@ -278,19 +278,22 @@ def test_106_replay_asks_then_rebuilds_the_game(upage, server):
     fresh(upage, base)
     dialogs = answer_dialogs(upage)
     show(upage, "#replayBtn").click()
-    expect(upage.locator("#toast")).to_have_text(
-        f"Replayed ESPN game {EVENT}: 55 DAL plays logged. Old game backed up in data/.", timeout=LONG_MS)
+    expect(upage.locator("#toast")).to_have_text(re.compile(       # G1-11: the toast names the backup it kept
+        rf"^Replayed ESPN game {EVENT}: 55 DAL plays logged\. Your old game is backed up as "
+        r"live_state\.backup-\d{8}-\d{6}(-\d+)?\.json\.$"), timeout=LONG_MS)
     assert dialogs == [CONFIRM_REPLAY]
     expect_toast(upage, re.compile(r"^Replayed ESPN game"))
 
 
 def test_107_108_a_replayed_game_on_screen(upage, server):
-    """#107: 59 log rows, 16 to 24, Q4 0:00, the offense off the field. #108: exactly 4 rows with Yds "flag"."""
+    """#107: 59 log rows, 16 to 24, Q4 0:00, the board at FINAL (v1.5, G4-1: never the Ball-on instruction once the
+    game is over). #108: exactly 4 rows with Yds "flag"."""
     finished(upage, server["base"])
     expect_log_rows(upage, 59, timeout=LONG_MS)
     expect(upage.locator('[data-testid="team-score"][data-team="DAL"]')).to_contain_text("16")
     expect(upage.locator('[data-testid="team-score"][data-team="TB"]')).to_contain_text("24")
-    expect(upage.locator("#heroArea")).to_contain_text("DAL is off the field")
+    expect(upage.locator("#heroArea")).to_have_attribute("data-kind", "final")
+    expect(upage.locator("#heroArea .sc-final .sc-face-kicker")).to_have_text("Final")
     expect(upage.locator("#iQtr")).to_have_value("4")
     expect(upage.locator("#iClock")).to_have_value("0:00")
     flags = upage.locator("#logArea tbody tr").filter(has_text="(no play:")
@@ -454,7 +457,8 @@ def test_119_an_old_server_gets_the_restart_screen(upage, server):
 
 def test_117_118_121_toasts(upage, server):
     """#118: one polite toast; a new one replaces it. #121: a POST that gets no answer is a red toast. #117: a 400 shows
-    its error in red for about 2.6 s and the page keeps the state it returned."""
+    its error in red (for 8 s since G5-13: an error stays until it has been read) and the page keeps the state it
+    returned."""
     base = server["base"]
     fresh(upage, base)
     toast = upage.locator("#toast")
@@ -470,7 +474,7 @@ def test_117_118_121_toasts(upage, server):
     upage.route("**/api/undo", lambda route: route.fulfill(status=400, json=refused))
     upage.locator("#undoBtn").click()
     expect_toast(upage, "Refused for the test.", error=True)
-    expect(toast).not_to_have_class(re.compile(r"(^|\s)show(\s|$)"), timeout=4_000)
+    expect(toast).not_to_have_class(re.compile(r"(^|\s)show(\s|$)"), timeout=12_000)
     expect(toast).to_have_text("Refused for the test.")       # the words stay in the DOM once it hides (FI 4.5)
 
 
@@ -481,7 +485,7 @@ def test_masthead_labels_and_keys(upage, server):
     fresh(upage, base)
     expect(upage.locator("h1")).to_have_text("Shadow Play-Caller")
     expect(upage.locator("#gameLabel")).to_have_text(state(base)["game"]["label"])
-    expect(upage.locator("#whoLabel")).to_have_text("Modelling Brian Schottenheimer (DAL offense)")
+    expect(upage.locator("#whoLabel")).to_have_text("Shadowing Schottenheimer · DAL")             # v1.5 (G4-2)
     expect(upage.locator('a[href="/api/export.csv"]')).to_have_text("Export CSV")
     cam = upage.locator('[data-testid="camera-mode"]')
     expect(cam).to_have_attribute("data-camera", ANY)

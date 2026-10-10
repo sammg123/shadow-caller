@@ -70,6 +70,7 @@ function applyBoot(c, [body, timeline, version]) {
   const reqSeq = c.store.getState().req.seq;
   c.dispatch({ type: "version/loaded", body: version, now: c.now() });
   if (timeline) applyTimeline(c, timeline, "poll");
+  c.rt.timelineVersion = version?.version ?? null;   // G5-5: the boot's timeline, as of the boot's version
   c.dispatch({ type: "state/loaded", body, origin: "poll", reqSeq, now: c.now() });
   c.dispatch({ type: "conn/ok", now: c.now() });
 }
@@ -108,15 +109,16 @@ async function bootLoop(c) {
 }
 
 // ---------------------------------------------------------------- one tick (3.2)
-function localOf(s) {
+function localOf(c, s) {
   return { epoch: s.timeline.epoch, n: s.timeline.n, version: s.server?.version, feedOn: s.server?.feed?.on,
-    feedState: s.server?.feed?.state, needsFull: s.timeline.needsFull };
+    feedState: s.server?.feed?.state, needsFull: s.timeline.needsFull, timelineVersion: c.rt.timelineVersion };
 }
 
-async function healGap(c, origin) {
+async function healGap(c, origin, version) {
   if (!c.store.getState().timeline.needsFull) return null;
   try {
     applyTimeline(c, await fetchTimeline(c, 0, null), origin);
+    c.rt.timelineVersion = version;
     return null;
   } catch (err) {
     return err;
@@ -134,13 +136,16 @@ async function tick(c, origin) {
   c.dispatch({ type: "version/loaded", body: version, now: c.now() });
   c.dispatch({ type: "conn/ok", now: c.now() });
   const s = c.store.getState();
-  const plan = planTick(localOf(s), version);
+  const plan = planTick(localOf(c, s), version);
   const reqSeq = s.req.seq;   // a state body older than an action applied meanwhile is dropped by the reducer
   const wantState = plan.state && s.req.inflightActions === 0;
   const [tl, st] = await Promise.allSettled([
     plan.timeline ? fetchTimeline(c, plan.timeline.since, plan.timeline.epoch) : null, wantState ? fetchState(c) : null]);
-  if (tl.status === "fulfilled" && tl.value) applyTimeline(c, tl.value, origin);
-  const failure = (await healGap(c, origin)) ?? (tl.status === "rejected" ? tl.reason : null);
+  if (tl.status === "fulfilled" && tl.value) {
+    applyTimeline(c, tl.value, origin);
+    c.rt.timelineVersion = version?.version ?? null;   // G5-5: what the cache now holds is at least this new
+  }
+  const failure = (await healGap(c, origin, version?.version ?? null)) ?? (tl.status === "rejected" ? tl.reason : null);
   if (st.status === "fulfilled" && st.value) {
     c.dispatch({ type: "state/loaded", body: st.value, origin: "poll", reqSeq, now: c.now() });
   }
@@ -219,7 +224,7 @@ export function createSync({ api, store, now, timers = globalThis, doc = null, o
     api, store, doc, onError: reporterOf(onError), dispatch: (event) => store.dispatch(event),
     now: () => now(), setTimer: (fn, ms) => setT(fn, ms), clearTimer: (id) => clearT(id),
     rt: { timer: null, started: null, resolveStarted: () => {}, booted: false, booting: false, running: false, again: false,
-      stopped: false, pendingOrigin: "poll" },
+      stopped: false, pendingOrigin: "poll", timelineVersion: null },
   };
   const onVisibility = () => { if (!isHidden(c)) kick(c); };
   return {

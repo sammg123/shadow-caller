@@ -17,7 +17,8 @@ import { verdictText } from "../model/verdict.js";
 import { liftToLuminance, mixHex } from "../theme/team-colors.js";
 import { FIELD } from "./coords.js";
 import { r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
-import { shownHeight, stepParts, subPath } from "./fallback-steps.js";
+import { shownHeight, stepParts, subPath, viewMetrics } from "./fallback-steps.js";
+import { placePlayLabel } from "./paths.js";
 import { ballAt } from "./timing.js";
 
 const CORE_MIX = 0.65;
@@ -122,19 +123,17 @@ export function toneOfLabel(text) {
 }
 
 /**
- * Which way the words sit from the end of the play on screen (paths.js chose the spot beside its anchor, the
- * resultLabel's): 1 below it, -1 above. Without an anchor, by the center line the next ball rests on.
+ * Which way the words sit from the end of the play on screen (paths.js chose the spot beside its anchor): 1 below it,
+ * -1 above. Without an anchor, by the center line the next ball rests on.
  */
-function wordsSide(drawing) {
-  const label = drawing.label;
-  const anchor = drawing.resultLabel?.at;
+function wordsSide(label, drawing) {
+  const anchor = label?.anchor ?? drawing.resultLabel?.at;
   if (!label) return 1;
   if (anchor && label.at.y !== anchor.y) return label.at.y < anchor.y ? 1 : -1;
   return label.at.y < FIELD.CENTER_Y ? 1 : -1;
 }
 
-function labelSpec(drawing, ctx, side) {
-  const label = drawing.label;
+function labelSpec(label, ctx, side) {
   if (!label?.text || !showsWords(ctx)) return null;
   const at = ctx.pt(label.at.x, label.at.y);
   const tag = tagNode({ at, text: label.text, tone: toneOfLabel(label.text), size: tagSize(ctx, "s"),
@@ -163,19 +162,23 @@ function stepSpec(step, index, team, ctx, badge) {
 
 /**
  * The 2D drawing of a row: { seq, drive, team, steps: [{ index, t, role, ghosted, approx, team, opacity, parts }],
- * label: { text, at, side, node } | null (drawing.label at its spot; `side` 1 when it sits below the end of the play
- * on screen, -1 above), verdictNode (on the far side of the words from the play). A part is { role, tag, attrs (its
- * finished state), anim }. Never mutates the row or the drawing.
+ * label: { text, at, side, node } | null (drawing.label laid out in this view, paths.placePlayLabel: on a phone's
+ * small field its words are deep, so they step further off the ball; `side` 1 when it sits below the end of the play
+ * on screen, -1 above), verdictNode (on the far side of the words from the play), words (that label in field yards,
+ * what the shadows' words keep clear of). A part is { role, tag, attrs (its finished state), anim }. `labelPx` is the
+ * tags' measured size (the label model's when null). Never mutates the row or the drawing.
  */
-export function playSpec(drawing, row, ctx, { verdict = null } = {}) {
+export function playSpec(drawing, row, ctx, { verdict = null, labelPx = null } = {}) {
   const carriers = carriersOf(row, drawing);
-  const side = wordsSide(drawing);
-  const label = labelSpec(drawing, ctx, side);
+  const words = placePlayLabel(drawing, viewMetrics(ctx, drawing.ballStart?.x, labelPx));
+  const side = wordsSide(words, drawing);
+  const label = labelSpec(words, ctx, side);
   return {
     seq: drawing.seq, drive: row.drive ?? null, team: drawing.team,
     steps: drawing.steps.map((step, i) => stepSpec(step, i, carriers[i], ctx, -side)),
     label,
     verdictNode: verdictSpec(label, ctx, verdict),
+    words,
   };
 }
 

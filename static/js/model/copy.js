@@ -13,11 +13,16 @@ export const MASTHEAD = Object.freeze({
   reset: "Reset game",
   camera: "Camera",
   cameraTitle: "Change the camera (V)",
-  booth: "Booth",
+  // v1.5 (G4-2): the B and G keys print only their letter on a world's ribbon, so their names carry it too (a voice
+  // user says what they see)
+  booth: "Booth (B)",
   boothTitle: "Open the booth (B)",
-  scorecard: "Scorecard",
+  scorecard: "Scorecard (G)",
   scorecardTitle: "Full scorecard (G)",
-  whoLabel: (caller, team) => `Modelling ${caller} (${team} offense)`,
+  // v1.5 (G4-2): the nameplate's short line names the caller this app shadows (his last name, model/vm-masthead.js);
+  // the full words ride on the plate's tooltip
+  whoLabel: (last, team) => `Shadowing ${last} · ${team}`,
+  whoTitle: (caller, team) => `Modelling ${caller} (${team} offense)`,
   // v1.2 (A9): names of the masthead's two key groups, for assistive tech
   gameGroup: "Game",
   viewGroup: "View",
@@ -60,15 +65,33 @@ export const STRIP = Object.freeze({
   endFgMiss: "FG missed",
   endHalf: "Half over",
   note: "Click any number and type; Enter or Tab saves. Click the team to switch sides of the field. Clock takes 8:41 or 841; G in To go means goal.",
-  driveInfo: (drive, snap) => `Drive ${drive}, snap ${snap} of the game`,
+  driveInfo: (drive, snap) => `Drive ${drive} · snap ${snap}`,      // v1.5 (G4-12): fits the strip's one row
   offField: (off) => `${off} off the field. Type where they get the ball in Ball on.`,
+  final: "Final. Replay or watch another game from the booth (B).",   // v1.5 (G4-1): the game is over
 });
 
 export const PREDICTION = Object.freeze({
-  mostLikely: "Most likely call",
+  // v1.5 (G4-2): the board's plate names the caller it shadows (his last name); a long name falls back to the plain one
+  nextCall: (last) => `${last}'s next call`,
+  nextCallPlain: "Next call",
   then: "Then",
   snap: (n) => `Snap ${n}`,
+  // v1.5 (G4-4): the model has no kick class, so on 4th down the call is the play he'd run if he goes for it
+  fourthDown: "4th down · if he goes for it",
+  fourthDownTitle: "On 4th down this is the play he'd call if he goes for it. The model has no punt or field-goal "
+    + "class, so it can't say whether he kicks.",
   pillTitle: "Pass vs run against the league",
+  // v1.5 (G4-6): the tilt tag's words. The server's flag compares his pass rate here with the league's: "no edge"
+  // means he calls it like the league does, never that the model has no edge
+  flagText: Object.freeze({
+    none: "Like the league",
+    lean: (side) => (side ? `Leans ${side}` : "Leans"),
+    tilt: (side) => (side ? `Tilts ${side}` : "Tilts"),
+  }),
+  // v1.5 (G4-2): what the board's live region says when a new call lands
+  spokenCall: (snap, name, pct) => `Next call${Number.isInteger(snap) ? `, snap ${snap}` : ""}: ${name}, ${pct} percent.`,
+  spokenThen: (name, pct) => `Then ${name}, ${pct} percent.`,
+  spokenFourth: "Fourth down, if he goes for it.",
   splitAria: "Pass versus run",
   splitPass: (p) => `Ball thrown or dropback ${p}`,
   splitLeague: (p) => `League ${p} (dashed)`,
@@ -92,6 +115,19 @@ export const PREDICTION = Object.freeze({
   ],
   offFieldFeed: (off) => `When ${off} gets the ball, the ESPN feed starts the drive and the next call appears here.`,
   offFieldWatch: (off) => `When ${off} gets the ball in this game, the next call appears here.`,
+  // v1.5 (G4-1): off the field in a fed or watched game the board recaps his last call and the night so far
+  soFar: (last) => `${last} so far`,
+  soFarPlain: "So far",
+  lead: Object.freeze({ td: "Touchdown", int: "Intercepted", fumble: "Fumble lost", turnover: "Turnover" }),
+  predicted: "Predicted",
+  tallyTop1: "Top pick",
+  tallyTop3: "In his top 3",
+  recentLabel: "Last 6",
+  spokenPredicted: (call, pct) => `Predicted ${call}, ${pct} percent`,
+  // v1.5 (G4-1): at the final whistle: the score and SHADOW v LEAGUE's three lines, with the stat board's key
+  finalPlate: "Final",
+  finalKey: "Tonight's scorecard",
+  finalKeyTitle: "Full scorecard (G)",
 });
 
 export const ENTRY = Object.freeze({
@@ -167,18 +203,22 @@ export const SCORECARD = Object.freeze({
   familyTop: "Most likely type was right",
   familyLogloss: (league) => `Log loss (league ${league})`,
   passRunLogloss: (league) => `His model, log loss (league ${league})`,
-  calledRight: (league) => `Called right (league ${league})`,
+  calledRight: (league) => `Run or pass called right (league ${league})`,   // v1.5 (G4-3): what it measures
   tilts: "Tilts that came true",
   passRate: "Pass rate tonight",
   note: "Lower log loss is better. One game is a pipeline test, not proof.",
   shadow: "Shadow",
   leagueSide: "League",
-  pairCalledRight: "Called right",
-  pairTop3: "Actual play in his top 3",
+  // v1.5 (G4-3): "called right" is pass or run only (live.py acc), so the pair says so; the top-3 caption is short
+  pairCalledRight: "Run/pass right",
+  pairTop3: "Play in top 3",
   pairPassRun: "Pass vs run log loss",
   pairFamily: "Play type log loss",
   pairLeaf: "Specific play log loss",
-  basis: (n) => `${n} snaps`,
+  basis: (n) => (n === 1 ? "1 snap" : `${n} snaps`),
+  // v1.5 (G4-3): the basis said once, under SHADOW v LEAGUE, when every pair counts the same snaps
+  basisLine: (basis) => `his model v league baseline · ${basis}`,
+  basisLinePlain: "his model v league baseline",
   // v1.2 (A8): the SHADOW v LEAGUE block of the scorecard
   pairsHeading: "Shadow v League",
   pairsLegend: "Shadow is his model. League is the caller-blind league baseline.",
@@ -362,8 +402,10 @@ export const TOASTS = Object.freeze({
 });
 
 export const CONFIRMS = Object.freeze({
-  reset: "Clear every snap logged for this game?",
-  resetFeedOn: "Clear every snap logged for this game? The ESPN feed turns off first, so it doesn't log the game again.",
+  // v1.5 (G4-12): /api/reset backs the game up before it clears it (watch.backup_game), so the confirm says so
+  reset: "Clear every snap logged for this game? A copy is kept in data/.",
+  resetFeedOn: "Clear every snap logged for this game? The ESPN feed turns off first, so it doesn't log the game again. "
+    + "A copy is kept in data/.",
   replay: (id) => `Rebuild the game log from ESPN game ${id}? The current log is backed up first.`,
   todaysGame: "(today's)",
   watchStart: (id) => `Watch ESPN game ${id} from the start? Your game is backed up first and comes back when you stop.`,

@@ -29,7 +29,8 @@ const GONE = 1e-3;
 const SETTLE = 1.5;
 
 const layerOf = (stage, name) => stage.layers?.[name] ?? null;
-const classOf = (s) => `sc-shadow-label rank-${s.rank ?? "x"}`;
+/** A shadow's text: its rank, and its family (G3-1: a world tints the dashed edge and the rank as the stroke). */
+const classOf = (s) => `sc-shadow-label rank-${s.rank ?? "x"}${s.family ? ` family-${s.family}` : ""}`;
 
 // ---------------------------------------------------------------- the view (label metrics)
 function viewKey(stage) {

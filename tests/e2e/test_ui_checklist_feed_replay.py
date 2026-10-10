@@ -5,11 +5,15 @@ import time
 import pytest
 from playwright.sync_api import expect
 from ui_helpers import (COL, EVENT, LOG_ROWS, REPLAY_TOAST_MS, answer_dialogs, api_post, expect_log_rows,
-                        expect_off_field, expect_shows, expect_toast, feed_on, feed_on_server, finished, fixed, fresh,
+                        expect_shows, expect_toast, feed_on, feed_on_server, finished, fixed, fresh,
                         load, log_table, pct, quiet, record_requests, reset_game, state, until, with_drive)
 from ui_helpers import show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
+
+# The replay's toast names the backup it kept (G1-11: never "backed up" when nothing was).
+REPLAYED_RE = re.compile(r"^Replayed ESPN game 401872980: 55 DAL plays logged\. Your old game is backed up as "
+                         r"live_state\.backup-\d{8}-\d{6}(-\d+)?\.json\.$")
 
 FEED_HINT = ("ESPN logs each play, down, distance, spot, clock and score. It can't see play-action, screens or RPOs: "
              "press A, N or O to fix the last play. P undoes that, J/K/L change the run gap, U undoes.")
@@ -229,7 +233,7 @@ def test_105_reset_with_the_feed_on_stops_the_feed_first(upage, server):
     upage.locator("#resetBtn").click()
     expect_toast(upage, "Set the start of Dallas's first drive.", error=False)
     assert asked == ["Clear every snap logged for this game? The ESPN feed turns off first, so it doesn't log the game "
-                     "again."]
+                     "again. A copy is kept in data/."]
     assert [r["path"] for r in sent] == ["/api/feed", "/api/reset"] and sent[0]["body"]["on"] is False
     upage.wait_for_timeout(6000)                    # longer than one feed poll (4 s)
     s = state(base)
@@ -241,17 +245,17 @@ def test_105_reset_with_the_feed_on_stops_the_feed_first(upage, server):
 
 def test_106_replay_confirms_then_toasts(upage, server):
     """#106: Replay asks "Rebuild the game log from ESPN game 401872980? ..." and toasts "Replayed ESPN game
-    401872980: 55 DAL plays logged. Old game backed up in data/."."""
+    401872980: 55 DAL plays logged." and where the old game went (G1-11 names the backup file)."""
     fresh(upage, server["base"])
     asked = answer_dialogs(upage, accept=True)
     show(upage, "#replayBtn").click()
-    expect_toast(upage, "Replayed ESPN game 401872980: 55 DAL plays logged. Old game backed up in data/.",
-                 timeout=REPLAY_TOAST_MS)
+    expect_toast(upage, REPLAYED_RE, timeout=REPLAY_TOAST_MS)
     assert asked == ["Rebuild the game log from ESPN game 401872980? The current log is backed up first."]
 
 
 def test_107_after_a_replay_the_page_matches_the_state(upage, server):
-    """#107: 59 log rows, 16 to 24, Q4 0:00, off the field, every scorecard value from /api/state.metrics."""
+    """#107: 59 log rows, 16 to 24, Q4 0:00, the board at FINAL (v1.5, G4-1: the game is over, so the strip and the
+    board never ask for the next spot), every scorecard value from /api/state.metrics."""
     base = server["base"]
     finished(upage, base)
     m = state(base)["metrics"]
@@ -259,7 +263,8 @@ def test_107_after_a_replay_the_page_matches_the_state(upage, server):
     expect_log_rows(upage, LOG_ROWS)
     for sel, value in (("#iOff", "16"), ("#iOpp", "24"), ("#iQtr", "4"), ("#iClock", "0:00")):
         expect(upage.locator(sel)).to_have_value(value)
-    expect_off_field(upage)
+    expect(upage.locator("#heroArea")).to_have_attribute("data-kind", "final")
+    expect(upage.locator("#driveInfo")).to_have_text("Final. Replay or watch another game from the booth (B).")
     expected = [f"Specific play ({g['leaf_n']} snaps)", f"{g['leaf_top1']} of {g['leaf_n']}",
                 f"{g['leaf_top3']} of {g['leaf_n']}", f"Actual play in his top 3 (league {g['leaf_top3_league']})",
                 fixed(g["leaf_logloss"], 2), fixed(g["leaf_logloss_league"], 2),
@@ -267,7 +272,7 @@ def test_107_after_a_replay_the_page_matches_the_state(upage, server):
                 f"Log loss (league {fixed(g['fam_logloss_league'], 2)})",
                 f"Pass vs run ({m['n']} snaps)", fixed(m["logloss_model"], 3),
                 f"His model, log loss (league {fixed(m['logloss_league'], 3)})", pct(m["acc_model"]),
-                f"Called right (league {pct(m['acc_league'])})",
+                f"Run or pass called right (league {pct(m['acc_league'])})",
                 f"{m['tilt_hits']} of {m['tilt_n']}" if m["tilt_n"] else "0", "Tilts that came true",
                 pct(m["dropback_rate"]), "Pass rate tonight"]
     for text in expected:

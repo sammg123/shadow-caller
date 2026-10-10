@@ -80,3 +80,21 @@ test("updates keep the drive nodes; before any drive an empty line; destroy remo
   chart.destroy();
   assert.equal(root.childNodes.length, 0);
 }));
+
+test("G5-9: keyboard focus in the chart opens it (data-open) until focus leaves; Escape goes back to the current drive", () => inDoc((doc) => {
+  const timers = { pending: [], setTimeout(fn) { this.pending.push(fn); return this.pending.length; }, clearTimeout() {} };
+  const root = regionRoot(doc, { id: "rg-drives" });
+  const { ctx } = fakeCtx();
+  const chart = mount(root, { ...ctx, timers });
+  chart.update(drivesVm(makePv({ presented: state.final(), tl: tlOf(timeline.final(), 40) })));
+  const items = [...root.querySelectorAll('[data-testid="drive"]')];
+  const current = items.find((li) => li.getAttribute("data-current") === "true") ?? items.at(-1);
+  const first = items[0].firstChild;
+  first.focus();
+  root.dispatchEvent({ type: "focusin", target: first });
+  assert.equal(root.getAttribute("data-open"), "true");
+  root.dispatchEvent({ type: "keydown", key: "Escape", target: first });
+  assert.equal(root.getAttribute("data-open"), null);
+  assert.equal(doc.activeElement, current.firstChild, "focus stays on the drive the rolled-up ribbon shows");
+  chart.destroy();
+}));

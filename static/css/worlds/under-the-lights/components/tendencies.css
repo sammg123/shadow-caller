@@ -20,14 +20,20 @@
 }
 
 /* ---------------------------------------------------------------- one term: its label and its LED strip */
+/* v1.5 (G4-8): each term's label sits over its strip, so the strips span the stat board's right column (beside a
+   47% label column they had about 170 px, too short to read an interval from across a room). */
+:where(:root[data-world="under-the-lights"]) :is(.sc-tend-row, .sc-tend-axis) { grid-template-columns: minmax(0, 1fr); }
 :where(:root[data-world="under-the-lights"]) .sc-tend-row {
   --sc-tend-tone: var(--sc-pass);
+  row-gap: 2px;
   min-height: calc(5 * var(--uls-cell) + 4px);
+  padding-block-end: var(--sc-space-1);
 }
+:where(:root[data-world="under-the-lights"]) .sc-tend-axis > span { grid-column: 1; }
 :where(:root[data-world="under-the-lights"]) .sc-tend-row[data-sign="run"] { --sc-tend-tone: var(--sc-run); }
 :where(:root[data-world="under-the-lights"]) .sc-tend-row::before {
   content: "";
-  grid-area: 1 / 2;
+  grid-area: 2 / 1;
   align-self: center;
   height: calc(5 * var(--uls-cell));
   background: var(--uls-led-panel);
@@ -42,7 +48,7 @@
   color: var(--sc-ink-muted);
 }
 :where(:root[data-world="under-the-lights"]) .sc-tend-svg {
-  grid-area: 1 / 2;
+  grid-area: 2 / 1;
   height: calc(5 * var(--uls-cell));
   -webkit-mask: var(--uls-lit);
   mask: var(--uls-lit);

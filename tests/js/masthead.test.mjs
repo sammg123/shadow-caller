@@ -36,7 +36,22 @@ test("#1: the game label and who is modelled come from the presented state", () 
   const { component, find } = setup();
   component.update(vmOf());
   assert.equal(find("#gameLabel").textContent, state.final().game.label);
-  assert.equal(find("#whoLabel").textContent, `Modelling ${state.final().profile.caller} (DAL offense)`);
+  assert.equal(find("#whoLabel").textContent, "Shadowing Schottenheimer · DAL");
+});
+
+test("G4-2: the nameplate's tooltip keeps every word the short line leaves out", () => {
+  const { component, find } = setup();
+  component.update(vmOf());
+  assert.equal(find(".sc-masthead-plate").getAttribute("title"),
+    `${state.final().game.label} · Modelling ${state.final().profile.caller} (DAL offense)`);
+  component.update(mastheadVm(makePv()));
+  assert.equal(find(".sc-masthead-plate").hasAttribute("title"), false, "nothing to say, no tooltip");
+});
+
+test("G4-2: the booth and scorecard keys name the letter they print", () => {
+  const { find } = setup();
+  assert.equal(find("[data-testid=\"booth-toggle\"]").querySelector(".sc-key-name").textContent, "Booth (B)");
+  assert.equal(find("[data-testid=\"scorecard-toggle\"]").querySelector(".sc-key-name").textContent, "Scorecard (G)");
 });
 
 test("the keys say what they do and which key does it", () => {

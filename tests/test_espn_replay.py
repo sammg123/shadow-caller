@@ -1,10 +1,14 @@
 """Full replay of TB at DAL (Oct 8 2026) through the ESPN feed and the live engine, checked against ESPN's own
 drive summaries. Runs in a sandbox: data/live_state.json and data/shadow.duckdb are never touched."""
 import copy
+import json
+import threading
+import time
 
 import pytest
-from helpers import nfl_id, scrimmage
+from helpers import ESPN_EVENT, TEST_GAME, nfl_id, scrimmage
 
+import espn_feed
 from espn_feed import iter_plays
 
 
@@ -213,3 +217,170 @@ def test_turnover_never_scores_for_the_offense(make_feed):
     e.record_play(None, 76, turnover=True, leaf="dropback_short")
     assert e.state["sit"]["score_off"] == before["score_off"]
     assert e.state["log"][-1]["td"] is False and e.state["drive_active"] is False
+
+
+# ---------------------------------------------------------------- live feed safety (G1-2, G1-6, G1-10, G1-11)
+FOREIGN = "401872111"
+
+
+def wait_for(cond, timeout=10.0):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if cond():
+            return True
+        time.sleep(0.01)
+    return cond()
+
+
+def foreign(summary, away="NYG", home="PHI"):
+    """The saved game with another matchup's teams in its header: what a stale or pasted event id brings."""
+    s = copy.deepcopy(summary)
+    for c in s["header"]["competitions"][0]["competitors"]:
+        c["team"]["abbreviation"] = home if c["homeAway"] == "home" else away
+    return s
+
+
+def typed(e):
+    e.command("new D25 | K 4 | Q2 11:11 | DAL 14 TB 10")
+    return copy.deepcopy(e.state)
+
+
+def test_a_foreign_game_is_never_applied_to_the_live_game(make_feed, summary, monkeypatch):
+    """G1-2: the live feed checks the teams before it takes a summary. Another matchup stops the feed with the
+    reason in its status; the typed game, the applied ids and the summary on screen stay as they were."""
+    e, feed = make_feed()
+    before, shown = typed(e), feed.summary
+    with pytest.raises(espn_feed.WrongGame, match=r"^ESPN event 401872111 is NYG at PHI, not DAL v TB\.$"):
+        espn_feed.check_matchup(foreign(summary), FOREIGN)
+    espn_feed.check_matchup(summary, ESPN_EVENT)                       # TB at DAL is this game
+    monkeypatch.setattr(espn_feed, "fetch_summary", lambda eid: foreign(summary))
+    feed.start(FOREIGN)
+    assert wait_for(lambda: not feed.on)
+    assert feed.status["state"] == "error" and "is NYG at PHI, not DAL v TB" in feed.status["detail"]
+    assert e.state["log"] == before["log"] and e.state["sit"] == before["sit"]
+    assert feed.applied == [] and feed.summary is shown
+
+
+def test_a_bad_or_thin_poll_keeps_the_previous_summary(make_feed, summary, monkeypatch):
+    """G1-6: a poll that isn't a game summary ({code: 500}, no teams, a list) is a failed poll; once plays are
+    applied, a poll with no drives is a thin answer. Either way the summary on screen (colors, logos, venue) stays."""
+    e, feed = make_feed()
+    answers = iter([summary, {"code": 500}, [], {"header": {}}, {**summary, "drives": "x"},
+                    {k: v for k, v in summary.items() if k != "drives"}])
+    monkeypatch.setattr(espn_feed, "fetch_summary", lambda eid: next(answers))
+    feed.event_id = ESPN_EVENT
+    assert feed.poll_once() == 55 and feed.summary is summary
+    for _ in range(5):
+        with pytest.raises(espn_feed.BadSummary):
+            feed.poll_once()
+        assert feed.summary is summary and len(feed.applied) == 183
+    pregame = {k: v for k, v in summary.items() if k != "drives"}
+    e2, fresh = make_feed()
+    monkeypatch.setattr(espn_feed, "fetch_summary", lambda eid: pregame)
+    fresh.event_id = ESPN_EVENT
+    assert fresh.poll_once() == 0 and fresh.summary is pregame      # before kickoff ESPN sends no drives yet
+
+
+def test_a_poll_applies_first_then_saves_its_file_only_when_plays_arrive(make_feed, summary, monkeypatch, sandbox):
+    """G1-10: the raw summary is written after the plays are applied, whole (temp file, then a rename), and only
+    when new plays arrived; a disk that refuses it never stops the plays."""
+    e, feed = make_feed()
+    monkeypatch.setattr(espn_feed, "fetch_summary", lambda eid: summary)
+    feed.event_id = ESPN_EVENT
+    raw_dir = espn_feed.RAW_DIR
+    raw = raw_dir / f"summary_{ESPN_EVENT}.json"
+    raw.unlink(missing_ok=True)
+    blocked = sandbox / "not-a-folder"
+    blocked.write_text("a file where the folder should be")
+    monkeypatch.setattr(espn_feed, "RAW_DIR", blocked / "espn")
+    try:
+        assert feed.poll_once() == 55 and len(feed.applied) == 183          # the plays landed anyway
+        assert "Couldn't save" in feed.status["detail"] and feed.status["state"] != "error"
+        monkeypatch.setattr(espn_feed, "RAW_DIR", raw_dir)
+        replaced = []
+        real_replace = espn_feed.os.replace
+        monkeypatch.setattr(espn_feed.os, "replace", lambda a, b: replaced.append(b) or real_replace(a, b))
+        assert feed.poll_once() == 0 and not raw.exists() and raw not in replaced    # nothing new: nothing written
+        e.reset()
+        feed.forget()
+        assert feed.poll_once() == 55 and json.loads(raw.read_text())["header"]["id"] == ESPN_EVENT
+        assert raw in replaced and not list(raw_dir.glob("*.tmp"))          # written whole, then swapped in
+    finally:
+        raw.unlink(missing_ok=True)
+        blocked.unlink()
+
+
+def test_the_live_loop_backs_off_and_resets_on_success(make_feed, monkeypatch):
+    """G1-10: 4 s between polls; after errors in a row 4, 8, 16, then 30 s; back to 4 after a good poll."""
+    e, feed = make_feed()
+    assert [espn_feed.backoff_s(n) for n in range(7)] == [4, 4, 8, 16, 30, 30, 30]
+    results = iter([OSError("down")] * 4 + [0] + [OSError("down")])
+    waits = []
+
+    def poll():
+        r = next(results)
+        if isinstance(r, Exception):
+            raise r
+        return r
+
+    def wait(timeout=None):
+        waits.append(timeout)
+        if len(waits) == 6:
+            feed.on = False
+        return False
+    monkeypatch.setattr(feed, "poll_once", poll)
+    monkeypatch.setattr(feed._wake, "wait", wait)
+    feed.on = True
+    feed._loop()
+    assert waits == [4, 8, 16, 30, 4, 4]
+
+
+def test_fetches_refuse_redirects_and_oversized_answers(monkeypatch):
+    """G1-10: a 3xx is a failed fetch (never a request to wherever it points), and an answer over 8 MB is refused
+    without reading it all."""
+    import http.server
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/moved":
+                self.send_response(302)
+                self.send_header("Location", "http://127.0.0.1:9/elsewhere")
+                self.end_headers()
+                return
+            body = b"{}" if self.path == "/small" else b" " * (espn_feed.MAX_SUMMARY_BYTES + 10)
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *a):
+            pass
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    try:
+        assert espn_feed.fetch_json(base + "/small") == {}
+        with pytest.raises(OSError):
+            espn_feed.fetch_json(base + "/moved")
+        with pytest.raises(espn_feed.BadSummary, match="8 MB"):
+            espn_feed.fetch_json(base + "/big")
+    finally:
+        srv.shutdown()
+
+
+def test_the_seen_file_remembers_the_event_its_plays_came_from(make_feed, summary):
+    """G1-2: applied ids are kept with their ESPN event, so a restart follows the event they came from (and its
+    summary) instead of falling back to the one in config.py; forget() starts the count of logged plays over."""
+    e, feed = make_feed()
+    feed.event_id = FOREIGN
+    feed.summary = summary
+    for team, p in iter_plays(summary)[:5]:
+        feed.apply_one(team, p)
+    stored = json.loads(espn_feed.SEEN_PATH.read_text())
+    assert stored["_events"][TEST_GAME["game_id"]] == FOREIGN
+    again = espn_feed.Feed(e, threading.RLock())
+    assert again.event_id == FOREIGN and len(again.applied) == 5
+    assert feed.status["plays_logged"] == sum(1 for r in e.state["log"] if not r["nullified"]) > 0
+    feed.forget()
+    assert feed.status["plays_logged"] == 0
+    assert espn_feed.Feed(e, threading.RLock()).event_id == TEST_GAME["espn_event"]   # nothing applied: config's

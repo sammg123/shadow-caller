@@ -50,18 +50,31 @@ const deferToNextTask = (fn) => globalThis.setTimeout(fn, 0);
  * Select the whole value when the input gets focus (FI 1.8), and once more on the next task: a mouse click places
  * its caret after the focus event, which would undo the first select. The second select is skipped once anything was
  * typed since the focus (a fast typist's first digit is never selected away), when `pristine` says so, or when focus
- * has moved on.
+ * has moved on. G5-4: the release of the mouse press that focused the input would collapse the selection to the
+ * caret where the press landed (Blink and WebKit do, however long after the focus it comes), so that one mouseup is
+ * prevented and the value selected again; later clicks in a focused input place the caret as usual.
  * @param {HTMLInputElement} input
  * @param {{ pristine?: () => boolean, later?: (fn: () => void) => unknown }} [opts]
  */
 export function selectOnFocus(input, { pristine = () => true, later = deferToNextTask } = {}) {
   let typed = false;
+  let pressFocus = false;   // the mouse press now down is the one focusing the input
+  const fresh = () => isFocused(input) && !typed && pristine();
   input.addEventListener("input", () => { typed = true; });
+  input.addEventListener("mousedown", () => { pressFocus = !isFocused(input); });
+  input.addEventListener("mouseup", (e) => {
+    if (!pressFocus) return;
+    pressFocus = false;
+    if (!isFocused(input)) return;
+    e.preventDefault();
+    if (fresh()) selectAll(input);
+  });
+  input.addEventListener("blur", () => { pressFocus = false; });
   input.addEventListener("focus", () => {
     typed = false;
     selectAll(input);
     later(() => {
-      if (isFocused(input) && !typed && pristine()) selectAll(input);
+      if (fresh()) selectAll(input);
     });
   });
 }

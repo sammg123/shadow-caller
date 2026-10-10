@@ -6,11 +6,12 @@
 // of the canvas and fitted frames never hide under a panel. step(dtMs) returns true while the camera still moves,
 // which keeps the render-on-demand loop alive and then lets it stop.
 //
-//   rig.view({ situation, ghosts, drawing })   what the scene shows now; a follow mode also uses rig.follow(ball)
+//   rig.view({ situation, ghosts, drawing, reviewDrawing })   what the scene shows now (reviewDrawing: the play Left
+//                                              or Right is replaying); a follow mode also uses rig.follow(ball)
 //   rig.setMode(id, { instant })               the viewer's mode (V); rig.shot(id | null) overrides it for a while
 // The functions below share one rig context `r` = { cfg, camera, st }.
 import * as THREE from "three";
-import { frameBall, frameDrawing, framePresetFor, frameSituation, poseFor } from "./camera-plan.js";
+import { frameBall, frameDrawing, framePresetFor, frameSituation, poseFor, unionFrame } from "./camera-plan.js";
 import { toWorld, vecToWorld } from "./coords.js";
 import { dampPose, lerpPose, safeView } from "./stage-math.js";
 import { EASE } from "./timing.js";
@@ -19,7 +20,7 @@ const NEAR = 0.5;
 const FAR = 1500;
 const DAMP_FRAME = 4;       // per second: a new situation settles in about 2 s
 const DAMP_FOLLOW = 9;      // following the ball stays close behind it (about 3 yd behind a 30 yd/s pass)
-const EMPTY_VIEW = Object.freeze({ situation: null, ghosts: null, drawing: null });
+const EMPTY_VIEW = Object.freeze({ situation: null, ghosts: null, drawing: null, reviewDrawing: null });
 
 function worldPose(p) {
   const position = toWorld(p.position.x, p.position.y, p.position.h);
@@ -38,12 +39,17 @@ const copyPose = (p) => ({ position: { ...p.position }, target: { ...p.target },
 const modeById = (r, id) => r.cfg.modes.find((m) => m.id === id) ?? null;
 const active = (r) => modeById(r, r.st.shot ?? r.st.selected) ?? r.cfg.modes[0];
 
-/** A ball-following mode holds the ball, never the ghosts (full-width pass bands would pull it back out). */
+/**
+ * A ball-following mode holds the ball, never the ghosts (full-width pass bands would pull it back out). A review
+ * (Left / Right) frames the reviewed row's situation and its whole play, so a long run, a deep shot or a kick ends on
+ * screen, clear of the HUD; the live view is the situation's frame alone.
+ */
 function frameFor(r, mode) {
-  const { situation, ghosts, drawing } = r.st.ctx;
+  const { situation, ghosts, drawing, reviewDrawing } = r.st.ctx;
   if (mode.follow === "ball") return r.st.ball ? frameBall(r.st.ball, situation) : frameSituation(situation, { preset: "tight" });
   if (mode.follow === "drive" && drawing && mode.rig !== "blimp") return frameDrawing(drawing);
-  return frameSituation(situation, { preset: framePresetFor(mode), ghosts });
+  const frame = frameSituation(situation, { preset: framePresetFor(mode), ghosts });
+  return reviewDrawing?.bounds ? unionFrame(frame, frameDrawing(reviewDrawing)) : frame;
 }
 
 function desired(r) {

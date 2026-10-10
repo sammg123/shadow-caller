@@ -11,7 +11,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { verdictOf } from "../model/verdict.js";
 import { toWorld } from "./coords.js";
-import { disposeTree } from "./dispose.js";
+import { disposeTree, keepPrograms } from "./dispose.js";
 import { LAYERS } from "./materials.js";
 import { arrowGeometry, buildArt, drawingOrNull, fieldLabel, playEnv, removeLabel } from "./play-art.js";
 import { createFlight } from "./play-ball.js";
@@ -93,6 +93,9 @@ function marks(parts, k, glyphs) {
 }
 
 // The functions below share one residue context `r` = { stage, glyphs, group, st: { plays, review } }.
+/** The player's glyph masks when it is up (one texture per glyph for the engine, uploaded at boot), else our own. */
+const glyphsOf = (r) => r.stage.layers?.player?.glyphs ?? r.glyphs;
+
 function rebuild(r) {
   for (const child of [...r.group.children]) {
     if (child.isInstancedMesh) child.dispose();       // its instance buffers; disposeTree frees the rest
@@ -101,7 +104,8 @@ function rebuild(r) {
   const parts = r.st.plays.flatMap((play) => play.parts);
   const k = r.stage.look.residue.opacity;
   if (!parts.length || !(k > 0)) return;
-  for (const mesh of [...strips(parts, k), ...arrows(parts, k), ...marks(parts, k, r.glyphs)]) r.group.add(mesh);
+  for (const mesh of [...strips(parts, k), ...arrows(parts, k), ...marks(parts, k, glyphsOf(r))]) r.group.add(mesh);
+  keepPrograms(r.stage, r.group);       // G7-1: the merged meshes' kinds stay compiled between rebuilds
   r.stage.requestRender();
 }
 
@@ -155,8 +159,9 @@ function review(r, item) {
   if (!on) return;
   const env = playEnv(r.stage);
   const { drawing, row } = item;
-  const art = buildArt(playParts(drawing, row, r.stage.look, env), { glyphs: r.glyphs });
+  const art = buildArt(playParts(drawing, row, r.stage.look, env), { glyphs: glyphsOf(r) });
   r.stage.roots.plays.add(art.group);
+  keepPrograms(r.stage, art.group);
   const plan = planDrawing(drawing, r.stage.look.motion);
   const v = { item, art, plan, t: 0, label: null, flight: null, done: false };
   r.st.review = v;

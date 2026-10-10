@@ -3,7 +3,9 @@
 // where it ended (a mark at the end), its team, ESPN's result and its summary. Each drive is a button that shows its
 // first drawn play on the field (actions.reviewAt); the drive holding the reviewed play is pressed, and pressing it
 // again goes back to live. Bars are SVG geometry with non-scaling strokes, so they stretch with the row.
-import { el, reconcile, setAttr, setData, setHidden, setText, svgEl } from "./dom.js";
+// G5-9: #rg-drives[data-open="true"] while keyboard focus is inside the chart (a world that shows one drive unrolls
+// it then, so Tab walks every drive); Escape rolls it up and keeps focus on the drive it still shows.
+import { el, openWhileKeyboardInside, reconcile, setAttr, setData, setHidden, setText, svgEl } from "./dom.js";
 
 const SCALE = 100;                 // field x 0 to 100, goal line to goal line (DC A1)
 const TRACK_H = 12;
@@ -13,6 +15,11 @@ const MIN_BAR = 0.8;               // a 0-yard drive still shows as a sliver
 const YARD_STEP = 10;
 const MIDFIELD = 50;
 const PARTS = new WeakMap();
+
+const browserTimers = Object.freeze({
+  setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
+  clearTimeout: (id) => globalThis.clearTimeout(id),
+});
 
 const round2 = (v) => Math.round(v * 100) / 100;
 const finite = (v) => typeof v === "number" && Number.isFinite(v);
@@ -86,7 +93,7 @@ function updateDrive(li, item, copy) {
 
 /**
  * @param {HTMLElement} root  #rg-drives
- * @param {{ actions: object, copy: object }} ctx
+ * @param {{ actions: object, copy: object, timers?: object }} ctx  timers: injected by tests
  * @returns {{ update(vm: object): void, destroy(): void }}
  */
 export function mount(root, ctx) {
@@ -95,6 +102,13 @@ export function mount(root, ctx) {
   const empty = el("p", { cls: "sc-dc-empty", text: copy.empty });
   const list = el("ol", { cls: "sc-dc-list", attrs: { "aria-label": copy.heading }, data: { testid: "drive-chart" } });
   const box = el("div", { cls: "sc-drives" }, [title, empty, list]);
+  /** The drive a rolled-up chart shows: the current one, else the last (the world's rule, layout.css). */
+  const shown = () => {
+    const items = [...list.children];
+    const at = items.find((li) => li.getAttribute("data-current") === "true") ?? items.at(-1);
+    return at?.firstChild ?? null;
+  };
+  const stopOpen = openWhileKeyboardInside(root, { timers: ctx.timers ?? browserTimers, escapeTo: shown });
   root.appendChild(box);
   return {
     update(vm) {
@@ -104,6 +118,7 @@ export function mount(root, ctx) {
         update: (node, d) => updateDrive(node, d, copy) });
     },
     destroy() {
+      stopOpen();
       box.remove();
     },
   };

@@ -14,7 +14,8 @@ const DEFAULT_PREFS = Object.freeze({ motion: "full", world: "neutral", ambient:
 export function initialView() {
   return {
     pick: EMPTY_PICK, flag: { open: false, gen: 0 }, booth: BOOTH_CLOSED, scorecardOpen: false, camera: null,
-    review: LIVE_EDGE, sideAtFifty: null, stripRejected: {}, hoverLeaf: null, toast: null, bgMessage: null,
+    review: LIVE_EDGE, sideAtFifty: null, stripRejected: {}, stripErrors: {}, hoverLeaf: null, toast: null,
+    bgMessage: null,
     bgPending: null,   // G12: a background message waiting for its state to be presented (reduce-server.js)
   };
 }
@@ -56,15 +57,21 @@ export function closeFlagWithoutDrive(state) {
   return { ...state, view: closeFlag(state.view) };
 }
 
-function stripRejected(state, { field, text }) {
+/** A refused strip value: the text kept for its invalid style (FI 4.4) and the server's words for it (G5-13). */
+function stripRejected(state, { field, text, error }) {
   if (!STRIP_FIELDS.includes(field)) return state;
-  return withView(state, { stripRejected: { ...state.view.stripRejected, [field]: String(text ?? "") } });
+  const errors = state.view.stripErrors ?? {};
+  return withView(state, { stripRejected: { ...state.view.stripRejected, [field]: String(text ?? "") },
+    stripErrors: { ...errors, [field]: typeof error === "string" ? error : "" } });
 }
 
+const without = (map, key) => Object.fromEntries(Object.entries(map ?? {}).filter(([k]) => k !== key));
+
 function stripClear(state, { field }) {
-  if (!Object.hasOwn(state.view.stripRejected, field)) return state;
-  const { [field]: _gone, ...rest } = state.view.stripRejected;
-  return withView(state, { stripRejected: rest });
+  const errors = state.view.stripErrors ?? {};
+  if (!Object.hasOwn(state.view.stripRejected, field) && !Object.hasOwn(errors, field)) return state;
+  return withView(state, { stripRejected: without(state.view.stripRejected, field),
+    stripErrors: without(errors, field) });
 }
 
 function toastShow(state, { id, text, err }) {
@@ -96,6 +103,7 @@ const HANDLERS = Object.freeze({
     return view === s.view ? s : { ...s, view };
   },
   "booth/toggle": (s) => withView(s, { booth: { open: !s.view.booth.open, auto: false } }),
+  "booth/close": (s) => (s.view.booth.open || s.view.booth.auto ? withView(s, { booth: BOOTH_CLOSED }) : s),
   "scorecard/toggle": (s) => withView(s, { scorecardOpen: !s.view.scorecardOpen }),
   "scorecard/close": (s) => setIfChanged(s, "scorecardOpen", false),
   "camera/set": (s, e) => (typeof e.id === "string" ? setIfChanged(s, "camera", e.id) : s),

@@ -1,6 +1,8 @@
 // Masthead (ui-architecture.md 2.6, 5.1, 5.4; FI 3.1, #1; owner A9). DOM side, text only (G27).
 // The nameplate (title, the game, who is modelled) and two groups of keys: the game keys (Undo, Export CSV, Reset)
 // and the view keys (camera V, booth B, scorecard G). Built once in mount; update only sets text and attributes.
+// v1.5 (G4-2): the plate's tooltip (title) holds the whole game label and who is modelled, so a world may show only
+// the short line ("Shadowing Schottenheimer · DAL") and hide the game label where its band names both teams.
 // Every key calls ctx.actions; the confirm for Reset lives in actions (dialogs.confirmAction).
 import { el, setAttr, setData, setText } from "./dom.js";
 import { keycap, setKeyValue } from "./keycap.js";
@@ -47,13 +49,14 @@ function build(ctx) {
     [keys.camera.node, keys.booth.node, keys.scorecard.node]);
   const controls = el("div", { cls: "sc-masthead-controls" }, [gameGroup, viewGroup]);
   const node = el("div", { cls: "sc-masthead" }, [plate, controls]);
-  return { node, title, game, who, keys };
+  return { node, plate, title, game, who, keys };
 }
 
 function render(parts, vm) {
   setText(parts.title, vm.title);
   setText(parts.game, vm.gameLabel);
   setText(parts.who, vm.whoLabel);
+  setAttr(parts.plate, "title", vm.plateTitle || null);
   setData(parts.node, "hasGame", Boolean(vm.gameLabel));
   setKeyValue(parts.keys.camera, vm.cameraLabel);
   setData(parts.keys.camera.node, "camera", vm.cameraMode || null);

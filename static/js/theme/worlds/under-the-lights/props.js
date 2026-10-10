@@ -118,7 +118,7 @@ export function props(ctx) {
 /** World passes named in look.post.extra (ui-architecture 14.6): the lens falloff on the free area. */
 export const passes = Object.freeze({
   "uls-lens": ({ THREE, camera }) => {
-    const pass = lensPass(THREE, { camera, strength: 0.32, inner: 0.32, outer: 1.0 });
+    const pass = lensPass(THREE, { camera });
     pass.enabled = !liteGpu();
     return pass;
   },

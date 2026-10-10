@@ -174,3 +174,32 @@ test("the play feed pages its newest row only, and restarts only when a newer pl
   feed.destroy();
   assert.equal(timers.size, 0);
 }));
+
+test("G5-10: under reduced motion the newest play never pages (one page, cut at the face's edge)", () => inDoc((doc) => {
+  doc.documentElement.setAttribute("data-motion", "reduced");
+  const root = regionRoot(doc, { id: "rg-plays" });
+  const { ctx } = fakeCtx();
+  const timers = fakeTimers();
+  const feed = mount(root, { ...ctx, timers, measureRibbon: () => ({ width: 100, spans: words([0, 60], [70, 150]) }) });
+  feed.update(playsVm(makePv({ presented: state.final(), tl: tlOf(timeline.final(), 100) })));
+  assert.equal(one(root, '[data-seq="100"]').getAttribute("data-pages"), null);
+  assert.equal(timers.size, 0, "no page timer");
+  feed.destroy();
+}));
+
+test("G5-10: paging holds while the feed is unrolled (pointer or keyboard) and starts over once it rolls back up", () => inDoc((doc) => {
+  const root = regionRoot(doc, { id: "rg-plays" });
+  const { ctx } = fakeCtx();
+  const timers = fakeTimers();
+  const feed = mount(root, { ...ctx, timers, measureRibbon: () => ({ width: 100, spans: words([0, 60], [70, 150]) }) });
+  feed.update(playsVm(makePv({ presented: state.final(), tl: tlOf(timeline.final(), 100) })));
+  const newest = one(root, '[data-seq="100"]');
+  assert.equal(newest.getAttribute("data-pages"), "2");
+  root.dispatchEvent({ type: "pointerenter" });
+  assert.equal(timers.size, 0, "unrolled: no page turns under the pointer");
+  root.dispatchEvent({ type: "pointerleave" });
+  timers.run();
+  assert.deepEqual([newest.getAttribute("data-page"), newest.getAttribute("data-pages")], ["0", "2"]);
+  feed.destroy();
+  assert.equal(timers.size, 0);
+}));

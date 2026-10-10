@@ -10,7 +10,11 @@
 //   switch always shows what <html data-ambient> says, whoever set it;
 // - tells W1's moments whether to dip: dipInLiveGames(), dipFor(mode, on), shouldDipNow(doc);
 // - opens the drawer to the FLAGS rack: when the flag panel appears (X), the rack scrolls into view, so the fouls are
-//   at the top of the drawer (and, on a phone, on screen).
+//   at the top of the drawer (and, on a phone, on screen);
+// - G5-8: marks #app[data-desk-focus="true"] while an input on the desk has focus (Yards, the shorthand bar), so the
+//   open video board keeps its height off the entry line without an #app-wide :has() that would restyle the whole
+//   app on every DOM change;
+// - G5-2: marks a keypad row the desk's foot cuts [data-cut="true"], so the desk shows whole rows only.
 // Text only (G27); storage reads and writes never throw (a private window keeps the choice for the visit).
 import { applyRootAttrs } from "../../apply.js";
 import { setAttr } from "../../../ui/dom.js";
@@ -171,6 +175,148 @@ function watchFlags(view, doc) {
   });
 }
 
+const isInput = (node) => typeof node?.localName === "string" && node.localName === "input";
+
+// ---------------------------------------------------------------- G5-9: focus follows the drawer and the stat board
+/** What can take focus, one simple selector each (the fake DOM's querySelectorAll takes one), buttons first. */
+const FOCUSABLE = Object.freeze(["button", "input", "[tabindex=\"0\"]"]);
+const STATBOARD = Object.freeze({ role: "region", "aria-label": "Scorecard", tabindex: "-1" });
+
+const usable = (n) => !n.hasAttribute("disabled") && !n.hidden && !n.closest?.("[hidden]");
+
+/** The first control a person can reach in `box` (the FEED rack's ESPN live key in the open drawer). */
+function firstControl(box) {
+  for (const sel of FOCUSABLE) {
+    const hit = [...box.querySelectorAll(sel)].find(usable);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * B and G move keyboard focus into what they open (the drawer's first control; the stat board itself, a named region
+ * that scrolls by keys) and give it back to where it was on close. X opens the drawer to FLAGS in flag mode, where
+ * Yards keeps focus for the penalty yards. The racks are groups only while the drawer is open (closed, the SITUATION
+ * and FLAGS groups would be named but empty). Returns stop().
+ */
+function watchPanels(app) {
+  const view = app.ownerDocument?.defaultView;
+  if (typeof view?.MutationObserver !== "function") return () => {};
+  const doc = app.ownerDocument;
+  const drawer = app.querySelector(".uls-drawer");
+  const board = app.querySelector(".uls-statboard");
+  const openers = { booth: null, board: null };
+  const isOpen = (attr) => app.getAttribute(attr) === "true";
+  const was = { booth: isOpen("data-booth-open"), board: isOpen("data-scorecard-open") };
+  const racks = () => app.querySelectorAll(".uls-rack");
+  const giveBack = (key, box) => {
+    const opener = openers[key];
+    openers[key] = null;
+    const active = doc.activeElement;
+    if (opener?.isConnected && (!active || active === doc.body || box?.contains(active))) {
+      opener.focus({ preventScroll: true });
+    }
+  };
+  const groups = (open) => {
+    for (const rack of racks()) {
+      setAttr(rack, "role", open ? "group" : null);
+      setAttr(rack, "aria-labelledby", open ? rack.querySelector(".uls-plate")?.getAttribute("id") ?? null : null);
+    }
+  };
+  const syncBooth = (open) => {
+    groups(open);
+    if (open === was.booth || !drawer) return;
+    was.booth = open;
+    if (!open) {
+      giveBack("booth", drawer);
+      return;
+    }
+    if (app.getAttribute("data-mode") === "flag") return;
+    openers.booth = doc.activeElement;
+    firstControl(drawer)?.focus({ preventScroll: true });
+  };
+  const syncBoard = (open) => {
+    if (!board) return;
+    for (const [name, value] of Object.entries(STATBOARD)) setAttr(board, name, open ? value : null);
+    if (open === was.board) return;
+    was.board = open;
+    if (!open) {
+      giveBack("board", board);
+      return;
+    }
+    openers.board = doc.activeElement;
+    board.focus({ preventScroll: true });
+  };
+  const sync = () => {
+    syncBooth(isOpen("data-booth-open"));
+    syncBoard(isOpen("data-scorecard-open"));
+  };
+  groups(was.booth);
+  if (was.board && board) for (const [name, value] of Object.entries(STATBOARD)) setAttr(board, name, value);
+  const observer = new view.MutationObserver(sync);
+  observer.observe(app, { attributes: true, attributeFilter: ["data-booth-open", "data-scorecard-open"] });
+  return () => observer.disconnect();
+}
+/** G5-2: a key row the desk shows less of than this is cut: it shows nothing rather than a sliver. */
+export const ROW_CUT_RATIO = 0.9;
+const KEY_ROWS = ".sc-keyrow";
+
+/**
+ * Whole key rows on the desk: each keypad row the desk's scrollport cuts (some of it shows, under ROW_CUT_RATIO) is
+ * marked [data-cut="true"] (layout.css shows nothing of it), so no sliver of a row peeks out at the desk's foot. The
+ * rows arrive when the entry pad mounts (after the booth), so a MutationObserver waits for them once.
+ */
+function watchDeskRows(app) {
+  const desk = app.querySelector(".uls-desk");
+  const view = app.ownerDocument?.defaultView;
+  if (!desk || typeof view?.IntersectionObserver !== "function") return () => {};
+  const mark = (entries) => {
+    for (const e of entries) {
+      const cut = e.isIntersecting && e.intersectionRatio < ROW_CUT_RATIO;
+      setAttr(e.target, "data-cut", cut ? "true" : null);
+    }
+  };
+  const io = new view.IntersectionObserver(mark, { root: desk, threshold: [0, ROW_CUT_RATIO, 1] });
+  const seen = new WeakSet();
+  const take = () => {
+    for (const row of desk.querySelectorAll(KEY_ROWS)) {
+      if (!seen.has(row)) {
+        seen.add(row);
+        io.observe(row);
+      }
+    }
+    return desk.querySelectorAll(KEY_ROWS).length > 0;
+  };
+  let mo = null;
+  if (!take() && typeof view.MutationObserver === "function") {
+    mo = new view.MutationObserver(() => {
+      if (!take()) return;
+      mo.disconnect();
+      mo = null;
+    });
+    mo.observe(desk, { childList: true, subtree: true });
+  }
+  return () => {
+    io.disconnect();
+    mo?.disconnect();
+  };
+}
+
+/** #app[data-desk-focus]: an input on the desk has focus (focusin and focusout bubble to the desk). */
+function watchDeskFocus(app) {
+  const desk = app.querySelector(".uls-desk");
+  if (!desk || typeof desk.addEventListener !== "function") return () => {};
+  const set = (on) => setAttr(app, "data-desk-focus", on ? "true" : null);
+  const onIn = (e) => { if (isInput(e.target)) set(true); };
+  const onOut = (e) => { if (!(isInput(e.relatedTarget) && desk.contains(e.relatedTarget))) set(false); };
+  desk.addEventListener("focusin", onIn);
+  desk.addEventListener("focusout", onOut);
+  return () => {
+    desk.removeEventListener("focusin", onIn);
+    desk.removeEventListener("focusout", onOut);
+  };
+}
+
 function wire(app, parts, storage) {
   const doc = app.ownerDocument;
   const view = doc?.defaultView ?? null;
@@ -184,12 +330,14 @@ function wire(app, parts, storage) {
     storage));
   const observers = [observe(view, doc?.documentElement, ["data-ambient"], showAmbient), watchFlags(view, doc)]
     .filter(Boolean);
+  const unwatch = [watchDeskFocus(app), watchDeskRows(app), watchPanels(app)];
   return Object.freeze({
     node: parts.node,
     dip: parts.dip,
     room: parts.room,
     stop() {
       for (const observer of observers) observer.disconnect();
+      for (const stop of unwatch) stop();
     },
   });
 }

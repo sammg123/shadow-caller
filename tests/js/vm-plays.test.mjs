@@ -22,7 +22,20 @@ test("the first DAL snap reads like the contract row (DC B2)", () => {
     situation: "1st & 10 at DAL 30", text: "D.Prescott pass incomplete short middle to B.Spann-Ford (C.Rozeboom).",
     result: "INC", call: "Short (0–9 air yds), incomplete", verdict: "top3", verdictText: "In his top 3",
     nullified: false, retagged: false, scoring: false, retag: null, reviewable: true, reviewing: false,
+    face: "Short pass middle · B.Spann-Ford",
   });
+});
+
+test("G5-10: the ribbon's face is the field's words for the play and who had the ball, never ESPN's whole text", () => {
+  const vm = playsVm(finalPv());
+  const face = (seq) => bySeq(vm, seq).face;
+  assert.equal(face(3), "Short pass middle · J.Williams", "a pass names its target, not the passer");
+  assert.equal(face(5), "Inside run (up the middle) · J.Williams", "a run names its runner");
+  assert.equal(face(7), "Deep pass middle · G.Pickens");
+  assert.equal(face(1), "Kickoff · return to DAL 30", "a kick keeps the field's whole label");
+  assert.equal(face(8), "No play · defensive offside on TB", "so does a play a flag wiped out");
+  assert.ok(vm.rows.every((r) => typeof r.face === "string"), "every row has one ('' when the field draws nothing)");
+  assert.ok(vm.rows.filter((r) => r.face).every((r) => r.face.length <= 64), "one ribbon page, about 60 characters");
 });
 
 test("opponent snaps, kickoffs and admin rows carry no call or verdict", () => {

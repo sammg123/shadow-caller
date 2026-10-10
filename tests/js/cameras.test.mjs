@@ -121,6 +121,80 @@ test("a ball-following mode tracks rig.follow(ball); shot() overrides the mode w
   assert.equal(rig.shot("nope"), false);
 });
 
+// G2-2: a reviewed play is framed whole, its line of scrimmage and its end, in the free part of the canvas
+const { buildDrawing, situationFromRow } = await import("../../static/js/field/paths.js");
+const { loadJson } = await import("./fixtures.mjs");
+const TL_ROWS = loadJson("timeline_tb_dal.json").rows;
+const rowOf = (seq) => TL_ROWS.find((r) => r.seq === seq);
+const HUD = Object.freeze({ right: 456, top: 96, bottom: 184 });     // Under the Lights at 1440x900: the board, the band
+
+/** Is the field point inside the free area (the canvas minus the HUD insets) for the rig's camera? */
+function inFreeArea(rig, pt, { width = 1440, height = 900, insets = HUD } = {}) {
+  const s = screenOf(rig, pt, width, height);
+  return s.px >= (insets.left ?? 0) && s.px <= width - (insets.right ?? 0) && s.py >= (insets.top ?? 0)
+    && s.py <= height - (insets.bottom ?? 0) && s.z < 1;
+}
+
+const { default: ULS_LOOK } = await import("../../static/js/theme/worlds/under-the-lights/look.js");
+const VIEWS = Object.freeze([
+  { width: 1440, height: 900, insets: HUD },
+  { width: 1920, height: 1080, insets: { right: 624, top: 120, bottom: 240 } },   // the same HUD on the TV
+]);
+
+for (const seq of [81, 95, 108, 43, 87]) {
+  test(`reviewing seq ${seq}: the line of scrimmage and the whole play stay in the free area (G2-2)`, async () => {
+    const row = rowOf(seq);
+    const drawing = buildDrawing(row);
+    const sit = situationFromRow(row);
+    const b = drawing.bounds;
+    const pts = [{ x: sit.ballX, y: 26.667 }, { x: b.x0, y: b.y0 }, { x: b.x1, y: b.y1 }, drawing.label.at];
+    for (const [name, look] of [["neutral", await lookWith()], ["under-the-lights", await lookWith(ULS_LOOK)]]) {
+      for (const view of VIEWS) {
+        const rig = createCameraRig(look);
+        rig.setView(view);
+        rig.view({ situation: sit, reviewDrawing: drawing }, { instant: true });
+        for (const pt of pts) {
+          assert.ok(inFreeArea(rig, pt, view), `${name} ${view.width}: seq ${seq} (${pt.x}, ${pt.y}) is off the free area`);
+        }
+      }
+    }
+  });
+}
+
+test("the live view ignores nothing it had: with no reviewed play the pose is the situation's alone (G2-2)", async () => {
+  const look = await lookWith();
+  const plain = createCameraRig(look);
+  const withNull = createCameraRig(look);
+  for (const rig of [plain, withNull]) rig.setView({ width: 1440, height: 900, insets: HUD });
+  plain.view({ situation: DAL25 }, { instant: true });
+  withNull.view({ situation: DAL25, reviewDrawing: null }, { instant: true });
+  assert.deepEqual(withNull.pose(), plain.pose());
+});
+
+test("a reviewed row that draws nothing (no spot) leaves the situation's frame alone (G2-2)", async () => {
+  const look = await lookWith();
+  const a = createCameraRig(look);
+  const b = createCameraRig(look);
+  for (const rig of [a, b]) rig.setView({ width: 1440, height: 900, insets: HUD });
+  a.view({ situation: DAL25 }, { instant: true });
+  b.view({ situation: DAL25, reviewDrawing: buildDrawing({ seq: 9, kind: "admin" }) }, { instant: true });
+  assert.deepEqual(b.pose(), a.pose(), "not the whole field");
+});
+
+test("a ball-following mode keeps its tight frame while reviewing (the viewer's own camera, G2-2)", async () => {
+  const look = await lookWith({ cameras: { modes: [
+    { id: "tight", label: "Tight", rig: "sideline", fov: 16, height: 12, back: 34, follow: "ball", cut: false },
+  ], default: "tight" } });
+  const row = rowOf(95);
+  const sit = situationFromRow(row);
+  const a = createCameraRig(look);
+  const b = createCameraRig(look);
+  for (const rig of [a, b]) rig.setView({ width: 1440, height: 900 });
+  a.view({ situation: sit }, { instant: true });
+  b.view({ situation: sit, reviewDrawing: buildDrawing(row) }, { instant: true });
+  assert.deepEqual(b.pose(), a.pose());
+});
+
 test("no situation frames the whole field; the pose is plain data", async () => {
   const rig = createCameraRig(await lookWith());
   rig.setView({ width: 1920, height: 1080 });

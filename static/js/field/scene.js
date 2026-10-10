@@ -27,7 +27,10 @@ export class EngineInitError extends Error {
   }
 }
 
-const WARM_UP_MS = 3000;
+/** G2-9: the first frame's shader compile gets up to 10 s (G7-2 warms every program); past that the field starts. */
+const WARM_UP_MS = 10_000;
+/** The last few warnings, for debugState (nothing in the page listens before createEngine returns). */
+const WARNINGS_KEPT = 5;
 const message = (err) => (err && typeof err.message === "string" ? err.message : String(err));
 
 // ---------------------------------------------------------------- hooks and anim state
@@ -70,11 +73,16 @@ function moment(c, name, ...args) {
 }
 
 // ---------------------------------------------------------------- situation and ghosts
+/** What the camera frames: the call on the field, plus, while Left or Right replays a row, that whole play (G2-2). */
+function viewOf(c, sit) {
+  return { situation: sit, ghosts: c.st.ghostSet, reviewDrawing: c.st.review === null ? null : c.st.reviewDrawing };
+}
+
 function paintSituation(c, sit) {
   const instant = c.st.reduced || !c.stage.visible();
   c.stage.lines.set(sit, { instant });
   c.layers.overlays.situation?.(sit);
-  c.stage.view({ situation: sit, ghosts: c.st.ghostSet }, { instant: c.st.reduced });
+  c.stage.view(viewOf(c, sit), { instant: c.st.reduced });
   c.st.hooks = sit || c.stage.frame ? hookValues(sit, c.stage.frame?.field) : { ...NO_HOOKS, ariaLabel: null };
   const poss = sit?.poss ?? null;
   if (poss && c.st.poss && poss !== c.st.poss) moment(c, "possession", poss);
@@ -88,7 +96,7 @@ function paintGhosts(c, set) {
   else c.layers.ghosts.clear();
   if (c.st.highlight) c.layers.ghosts.highlight?.(c.st.highlight);
   const sit = c.st.review === null ? c.st.live.situation : c.st.reviewSituation;
-  c.stage.view({ situation: sit, ghosts: c.st.ghostSet }, { instant: c.st.reduced });
+  c.stage.view(viewOf(c, sit), { instant: c.st.reduced });
   c.stage.requestRender();
 }
 
@@ -202,7 +210,8 @@ function setGameFrame(c, field, teams, teamOrder, game = null) {
   const frame = ok ? { field, teams, teamOrder: Array.isArray(teamOrder) ? teamOrder : [], game } : null;
   const token = c.st.frameToken + 1;
   Object.assign(c.st, { frameToken: token, rebuilding: true, sceneReady: false, gate: null, review: null,
-    ghostSet: null, highlight: null, deferred: undefined, poss: null, live: { situation: null, ghosts: null } });
+    reviewDrawing: null, ghostSet: null, highlight: null, deferred: undefined, poss: null,
+    live: { situation: null, ghosts: null } });
   for (const layer of Object.values(c.layers)) layer.clear?.();
   c.stage.setFrame(frame).then(() => {
     if (token !== c.st.frameToken || c.st.disposed) return;
@@ -228,16 +237,22 @@ function afterFrame(c) {
   changed(c);
 }
 
-/** Before the first game frame: a bare field (neutral end zones), so the canvas is never empty. Not "ready". */
+/**
+ * Before the first game frame: a bare field (neutral end zones), so the canvas is never empty. Not "ready". Resolves
+ * once the bare field is built and on (createEngine waits for it, so a game frame set right away, as when a restored
+ * field takes over mid-game (G2-4), never replaces a field still being prepared).
+ */
 function bareField(c) {
-  c.stage.setFrame(null).then(() => c.stage.requestRender(), (err) => c.bus.emit("error", err));
+  const on = c.stage.setFrame(null).then(() => c.stage.requestRender(), (err) => c.bus.emit("error", err));
   paintSituation(c, null);
+  return on;
 }
 
 function showReview(c, row, ghosts) {
   if (!row) {
     if (c.st.review === null) return;
     c.st.review = null;
+    c.st.reviewDrawing = null;
     c.layers.player.review?.(null);
     paintGhosts(c, c.st.live.ghosts);
     paintSituation(c, c.st.live.situation);
@@ -248,6 +263,7 @@ function showReview(c, row, ghosts) {
   const drawing = drawingOf(c, row);
   c.st.review = row.seq;
   c.st.reviewSituation = situationFromRow(row);
+  c.st.reviewDrawing = drawing;
   c.layers.player.review?.(drawing ? { row, drawing } : null);
   paintGhosts(c, ghosts ?? null);
   paintSituation(c, c.st.reviewSituation);
@@ -281,6 +297,19 @@ function drawRowsInstant(c, rows) {
   c.stage.requestRender();
 }
 
+/**
+ * The caller's play is graded: the player puts the chip under the play's words, then (G2-7) the chip takes the
+ * conductor's words for what was graded ("In his top 3 · #2 Intermediate · 39%"), and the shadows' words make room.
+ */
+function markVerdict(c, v) {
+  c.layers.player.verdict?.(v);
+  if (typeof v?.text === "string" && v.text) {
+    c.layers.overlays.retext?.("live", v.seq, v.text);
+    c.layers.ghosts.relayout?.();
+  }
+  moment(c, "verdict", v);
+}
+
 function refreshLabels(c, rows) {
   c.layers.player.relabel?.(rows);
   c.layers.residue.relabel?.(rows);
@@ -307,7 +336,27 @@ function debugState(c) {
     playingSeq: c.st.playing?.seq ?? null, ghosts: ghostsShown(c), highlight: c.st.highlight,
     camera: s.cams.mode(), situation: c.st.review === null ? c.st.live.situation : c.st.reviewSituation, info,
     dpr: s.rig.dpr(), extra: { tier: c.tier, gpu: c.gpu, ball: ballOf(c), shot: s.cams.activeMode(), pose: s.cams.pose(),
-      lens: s.cams.lens(), reviewSeq: c.st.review, running: s.rig.running(), programs: info.programs, cpuMs: info.cpuMs } });
+      lens: s.cams.lens(), reviewSeq: c.st.review, running: s.rig.running(), programs: info.programs, cpuMs: info.cpuMs,
+      warnings: [...c.st.warnings] } });
+}
+
+/** G2-9: a warning is kept (debugState().warnings) as well as emitted, so one raised before anyone listens is seen. */
+function keepWarning(c, err) {
+  c.st.warnings = [...c.st.warnings, message(err)].slice(-WARNINGS_KEPT);
+}
+
+/**
+ * G2-4: a lost context is a pause, not a failure. The conductor swaps in the 2D field and disposes this engine, but
+ * the canvas keeps one listener for the browser's restore, so "contextrestored" still goes out and a fresh WebGL field
+ * takes over. While the engine lives, renderer.js reports the restore itself; the watch then stays quiet.
+ */
+function watchRestore(c) {
+  if (c.st.restoreWatched) return;
+  c.st.restoreWatched = true;
+  c.canvas.addEventListener("webglcontextrestored", () => {
+    c.st.restoreWatched = false;
+    if (c.st.disposed) c.bus.emit("contextrestored");
+  }, { once: true });
 }
 
 function makeEngine(c) {
@@ -326,10 +375,7 @@ function makeEngine(c) {
     finishNow: () => finishNow(c),
     showReview: (row, ghosts) => showReview(c, row, ghosts),
     refreshLabels: (rows) => refreshLabels(c, rows),
-    markVerdict(v) {
-      c.layers.player.verdict?.(v);
-      moment(c, "verdict", v);
-    },
+    markVerdict: (v) => markVerdict(c, v),
     setCamera: (modeId, { instant = false } = {}) => setCamera(c, modeId, instant),
     cameraModes: () => s.cams.modes(),
     resize(width, height) { if (s.resize(width, height)) changed(c); },
@@ -382,18 +428,22 @@ export async function createEngine(host, look, opts = {}) {
   let resolveReady;
   const ready = new Promise((resolve) => { resolveReady = resolve; });
   const st = { ready: false, sceneReady: false, rebuilding: false, frameToken: 0, gate: null, review: null,
-    reviewSituation: null, live: { situation: null, ghosts: null }, ghostSet: null, highlight: null,
-    deferred: undefined, playing: null, poss: null, hooks: { ...NO_HOOKS, ariaLabel: null }, written: {},
-    lastAnim: { state: null, seq: null }, reduced: Boolean(opts.reducedMotion), disposed: false };
+    reviewSituation: null, reviewDrawing: null, live: { situation: null, ghosts: null }, ghostSet: null,
+    highlight: null, deferred: undefined, playing: null, poss: null, hooks: { ...NO_HOOKS, ariaLabel: null },
+    written: {}, lastAnim: { state: null, seq: null }, reduced: Boolean(opts.reducedMotion), disposed: false,
+    warnings: [], restoreWatched: false };
   const c = { doc, host, canvas, stage, bus, st, tier, gpu, ready, resolveReady, unbind: [], layers: null,
     hooks: opts.hooks === true };
   c.layers = createLayers(stage, opts.layerFactories ?? LAYER_FACTORIES);
   stage.layers = c.layers;
   bus.on("frame", () => afterFrame(c));
+  bus.on("warning", (err) => keepWarning(c, err));
+  bus.on("contextlost", () => watchRestore(c));
   const engine = makeEngine(c);
   c.unbind = bindPage(c, engine);
-  bareField(c);
-  await Promise.race([stage.rig.warmUp(stage.scene, stage.cams.camera).catch(() => undefined),
+  const bare = bareField(c);
+  const warmUp = Promise.resolve().then(() => stage.rig.warmUp(stage.scene, stage.cams.camera));
+  await Promise.race([Promise.all([warmUp.catch((err) => bus.emit("warning", err)), bare]),
     new Promise((resolve) => { doc.defaultView.setTimeout(resolve, WARM_UP_MS); })]);
   return engine;
 }

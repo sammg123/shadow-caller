@@ -279,3 +279,51 @@ def test_g25_flag_note_follows_a_mouse_pick(upage, server):
     upage.locator('.key[data-k="P"]').click()
     expect(upage.locator("#flagNote")).to_have_text(
         "Your pick (Short (0–9 air yds)) is wiped out but still scored as his call. Pre-snap fouls ignore it.")
+
+
+# ---------------------------------------------------------------- v1.4 (G1-4): flags typed by hand are drawn
+def field_words(page):
+    return page.evaluate("() => document.getElementById('field').textContent")
+
+
+def flag_row(base, seq):
+    from ui_helpers import api_get
+    rows = api_get(base, "/api/timeline?since=0")["rows"]
+    return next(r for r in rows if r["seq"] == seq)
+
+
+def test_g1_4_a_flag_with_no_play_is_drawn_with_its_words(upage, server):
+    """G1-4: X F (false start) logged nothing, so the field drew nothing and the next snap's line made the ball jump.
+    Now it is a penalty row: the flag at the line, the walk back 5, and "Flag · false start on DAL · −5". The play log
+    still lists snaps only."""
+    base = server["base"]
+    with_drive(upage, base)
+    keys(upage, "x")
+    expect(panel(upage)).to_be_visible()
+    keys(upage, "f")
+    expect_toast(upage, "False start: back 5 yards. 1st & 15 at DAL 20.")
+    upage.wait_for_selector('#field[data-drawn-seq="1"]', state="attached")
+    until(upage, lambda: "Flag · false start on DAL · −5" in field_words(upage), what="the flag's words on the field")
+    row = flag_row(base, 1)
+    assert (row["kind"], row["geo"]["x0"], row["geo"]["x_next"]) == ("penalty", 25, 20)
+    assert state(base)["log"] == []
+
+
+def test_g1_4_a_no_play_marches_to_its_own_spot_and_names_the_foul(upage, server):
+    """G1-4: a flag on a picked play used to take its march from the next snap (15 yards for an offsetting no-play
+    when a personal foul followed). It marches to its own enforced spot, and its words name the foul and the team."""
+    base = server["base"]
+    with_drive(upage, base)
+    keys(upage, "j")
+    open_panel(upage)
+    keys(upage, "w")                                           # offsetting: replay the down, nothing moves
+    expect_toast(upage, re.compile(r"^Offsetting penalties, replay the down\."))
+    keys(upage, "x")
+    expect(panel(upage)).to_be_visible()
+    keys(upage, "u")                                           # then a personal foul with no play: +15
+    expect_toast(upage, re.compile(r"^Unnecessary roughness on defense: 15 yards"))
+    upage.wait_for_selector('#field[data-drawn-seq="2"]', state="attached")
+    offset, urd = flag_row(base, 1), flag_row(base, 2)
+    assert (offset["result"]["nullified"], offset["geo"]["x0"], offset["geo"]["x_next"]) == (True, 25, 25)
+    assert (urd["kind"], urd["geo"]["x0"], urd["geo"]["x_next"]) == ("penalty", 25, 40)
+    until(upage, lambda: "Flag · unnecessary roughness on TB · +15" in field_words(upage), what="the flag's words")

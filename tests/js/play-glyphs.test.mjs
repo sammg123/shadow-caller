@@ -3,10 +3,13 @@
 // cached, shared (disposeTree leaves them alone) and freed by the cache.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { THREE } from "./action-stage.mjs";
+import { THREE, TL, actionStage } from "./action-stage.mjs";
 
-const { createGlyphs } = await import("../../static/js/field/play-glyphs.js");
+const { MARK_WORDS, createGlyphs } = await import("../../static/js/field/play-glyphs.js");
 const { isShared } = await import("../../static/js/field/dispose.js");
+const { playParts } = await import("../../static/js/field/play-style.js");
+const { playEnv } = await import("../../static/js/field/play-art.js");
+const { buildDrawing } = await import("../../static/js/field/paths.js");
 
 function fakeDoc() {
   const calls = [];
@@ -72,6 +75,59 @@ test("letters: a plate with the words cut out (edge), the words alone (core), in
   const texts = calls.filter((c) => c[0] === "fillText").map((c) => c[1]);
   assert.deepEqual(texts, ["INT", "INT"]);
   assert.ok(glyphs.mask("text", "core", "TD") !== glyphs.mask("text", "core", "INT"), "one mask per word");
+});
+
+test("G7-1: prewarm makes every shape's masks up front, once; the words wait for the display font", async () => {
+  const { doc, calls } = fakeDoc();
+  const loads = [];
+  doc.fonts = { load: async (spec) => { loads.push(spec); return [{}]; } };
+  const glyphs = createGlyphs({ doc });
+  const shapes = glyphs.prewarm();
+  assert.equal(shapes.length, 2 * 10, "every shape, core and edge");
+  assert.ok(shapes.every((tex) => tex instanceof THREE.CanvasTexture));
+  assert.equal(calls.filter((c) => c[0] === "fillText").length, 0, "no letters drawn before the font is in");
+  const words = await glyphs.prewarmWords();
+  assert.equal(words.length, 2 * MARK_WORDS.length);
+  assert.match(loads[0], /Big Shoulders Display/);
+  assert.equal(glyphs.count(), shapes.length + words.length);
+  assert.equal(glyphs.mask("x", "edge"), shapes.find((t) => t === glyphs.mask("x", "edge")), "cached, not made again");
+  assert.equal(glyphs.mask("text", "core", "TD"), words.find((t) => t === glyphs.mask("text", "core", "TD")));
+  assert.equal(glyphs.prewarm().length, shapes.length);
+  assert.equal(glyphs.count(), shapes.length + words.length, "a second prewarm makes nothing");
+  assert.deepEqual(createGlyphs().prewarm(), [], "no document: nothing to make");
+  assert.deepEqual(await createGlyphs().prewarmWords(), []);
+});
+
+test("words whose font never loads, or a cache freed meanwhile, stay unmade (drawn when a play needs them)", async () => {
+  const { doc } = fakeDoc();
+  const unloaded = createGlyphs({ doc });
+  assert.deepEqual(await unloaded.prewarmWords(), [], "no FontFaceSet answer: not in the fallback font");
+  assert.equal(unloaded.count(), 0);
+  const slow = fakeDoc().doc;
+  let release;
+  slow.fonts = { load: () => new Promise((resolve) => { release = () => resolve([{}]); }) };
+  const gone = createGlyphs({ doc: slow });
+  const pending = gone.prewarmWords();
+  gone.dispose();
+  release();
+  assert.deepEqual(await pending, []);
+  assert.equal(gone.count(), 0);
+});
+
+test("every mark a game draws is one prewarm made (its glyph, and its words for INT and TD)", async () => {
+  const { stage } = await actionStage();
+  const { doc } = fakeDoc();
+  doc.fonts = { load: async () => [{}] };
+  const glyphs = createGlyphs({ doc });
+  glyphs.prewarm();
+  await glyphs.prewarmWords();
+  const before = glyphs.count();
+  for (const r of TL.rows) {
+    for (const p of playParts(buildDrawing(r), r, stage.look, playEnv(stage))) {
+      if (p.type === "mark") assert.ok(glyphs.mask(p.glyph, p.layer, p.text), `${p.glyph} ${p.text ?? ""}`);
+    }
+  }
+  assert.equal(glyphs.count(), before, "nothing new for a whole game");
 });
 
 test("no document (node), no masks; dispose frees the cache", () => {

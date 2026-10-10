@@ -11,7 +11,8 @@ const ver = (over = {}) => ({ version: 412, epoch: "k3v9-2", timeline_n: 104,
 
 test("the DC E4 cadence and the backoff constants", () => {
   assert.deepEqual({ ...POLL_MS }, { playing: 250, normal: 1000, hidden: 5000 });
-  assert.deepEqual({ ...BACKOFF }, { baseMs: 1000, factor: 2, maxMs: 15000, offlineAfter: 3 });
+  assert.deepEqual({ ...BACKOFF }, { baseMs: 1000, factor: 2, maxMs: 3000, offlineAfter: 3 },
+    "G5-18: the app server is on this machine: after a restart the page is back within about 3 s");
 });
 
 test("the version fixture is the DC E4 body", () => {
@@ -28,6 +29,19 @@ test("planTick: a new epoch or a shrinking n refetches from 0; a bigger n append
   assert.equal(planTick(local(), ver()).timeline, null);
   assert.deepEqual(planTick(local({ epoch: null, n: 0 }), ver()).timeline, { since: 0, epoch: null }, "first fetch");
   assert.deepEqual(planTick(local({ needsFull: true }), ver()).timeline, { since: 0, epoch: null }, "a gap refetches");
+});
+
+test("G5-5: the same rows at a new version refetch the drives, status and box (a Punt, FG, Half over, a new drive)", () => {
+  const tracked = (over = {}) => local({ timelineVersion: 412, ...over });
+  assert.deepEqual(planTick(tracked(), ver({ version: 413 })).timeline, { since: 104, epoch: "k3v9-2" },
+    "ending a drive changes neither epoch nor timeline_n");
+  assert.deepEqual(planTick(tracked(), ver({ version: 411 })).timeline, { since: 104, epoch: "k3v9-2" }, "undo (G8)");
+  assert.equal(planTick(tracked(), ver()).timeline, null, "nothing new");
+  assert.deepEqual(planTick(tracked({ timelineVersion: null }), ver()).timeline, { since: 104, epoch: "k3v9-2" },
+    "the timeline was never fetched at a known version: once");
+  assert.deepEqual(planTick(tracked(), ver({ version: 413, timeline_n: 107 })).timeline, { since: 104, epoch: "k3v9-2" });
+  assert.deepEqual(planTick(tracked(), ver({ version: 413, epoch: "x" })).timeline, { since: 0, epoch: null });
+  assert.equal(planTick(local(), ver({ version: 413 })).timeline, null, "a caller that doesn't track it: as before");
 });
 
 test("planTick: an old server without epoch never asks for the timeline", () => {
@@ -61,17 +75,18 @@ test("planTick follows a realistic sequence of version bodies", () => {
   }
 });
 
-test("nextDelay: backoff 1, 2, 4, 8, 15 s; hidden 5 s; playing 250 ms; else 1 s", () => {
+test("nextDelay: backoff 1, 2, then every 3 s (G5-18); hidden 5 s; playing 250 ms; else 1 s", () => {
   const d = (failures, extra = {}) => nextDelay({ watchState: "idle", hidden: false, failures, ...extra });
-  assert.deepEqual([1, 2, 3, 4, 5, 9].map((f) => d(f)), [1000, 2000, 4000, 8000, 15000, 15000]);
+  assert.deepEqual([1, 2, 3, 4, 5, 9, 40].map((f) => d(f)), [1000, 2000, 3000, 3000, 3000, 3000, 3000]);
   assert.equal(d(0), 1000);
   assert.equal(d(0, { hidden: true }), 5000);
   assert.equal(d(0, { watchState: "playing" }), 250);
   assert.equal(d(0, { watchState: "playing", hidden: true }), 5000, "a hidden tab never polls fast");
   assert.equal(d(1, { hidden: true }), 5000, "a hidden tab never retries faster than 5 s");
-  assert.equal(d(5, { hidden: true }), 15000);
+  assert.equal(d(5, { hidden: true }), 5000, "hidden: never faster than 5 s, never slower either");
   assert.equal(retryDelay(0), 0);
-  assert.equal(retryDelay(3), 4000);
+  assert.equal(retryDelay(3), 3000);
+  assert.ok([...Array(50).keys()].every((f) => retryDelay(f) <= 3000), "a restarted server is found within 3 s");
 });
 
 test("connState: online, then retrying, then offline after 3 failures (G11)", () => {

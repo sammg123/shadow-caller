@@ -3,7 +3,9 @@
 // down and distance, and ball on. Text only (G27). Numbers that tick in place sit in digit windows whose unlit
 // ghost (data-ghost) a world may light behind them (DESIGN.md, the Ticking Number Rule); the neutral world doesn't.
 // Logos: the app's own proxy only (the VM validates it); a world asks for ESPN's dark-background variant by setting
-// --sc-logo-variant: dark; a logo that fails to load gives way to the team's monogram.
+// --sc-logo-variant: dark; a logo that fails to load gives way to the team's monogram. v1.5 (G4-11): the variant is
+// read (a forced style recalc) once per <html> data-world and data-ambient, the two things that set it, not on every
+// update, which landed in the play-start frame.
 import { el, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
 
 const TIMEOUTS_PER_HALF = 3;
@@ -20,8 +22,11 @@ function digits(cls, ghost, data = {}) {
   return { node: el("span", { cls: ["sc-digits", "sc-num", cls], data: { ghost, ...data } }, [value]), value };
 }
 
+/** The variant last read per <html> element, with the world and room-lights setting it was read under. */
+const VARIANT_MEMO = new WeakMap();
+
 /** "dark" when the world asks for ESPN's dark-background logos (a CSS custom property on the region). */
-function logoVariant(node) {
+function readVariant(node) {
   try {
     const view = node.ownerDocument?.defaultView;
     const value = view?.getComputedStyle?.(node)?.getPropertyValue(VARIANT_PROP);
@@ -29,6 +34,18 @@ function logoVariant(node) {
   } catch {
     return "default";
   }
+}
+
+/** readVariant, memoized on what decides it: the world (<html data-world>) and the room lights (data-ambient). */
+function logoVariant(node) {
+  const html = node.ownerDocument?.documentElement;
+  if (!html) return readVariant(node);
+  const key = `${html.getAttribute("data-world") ?? ""}|${html.getAttribute("data-ambient") ?? ""}`;
+  const memo = VARIANT_MEMO.get(html);
+  if (memo && memo.key === key) return memo.variant;
+  const variant = readVariant(node);
+  VARIANT_MEMO.set(html, { key, variant });
+  return variant;
 }
 
 function markLogoFailed(li) {

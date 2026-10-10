@@ -4,7 +4,7 @@
    (--sc-team-off-ink); everything that lights is an LED window: the logos (ESPN's dark-background variant), the
    scores, the quarter, the clock, down and distance, ball on. Digits are Doto in amber segments over their unlit 8s,
    and they snap (motion.css). Lamps: possession and timeouts in amber, unlit but visible when off. Team colors never
-   light anything: the paint is the only team color here. */
+   light anything: the paint is the only team color here. v1.5 (G4-10): the world's forced-colors block is here too. */
 
 /* ---------------------------------------------------------------- digit windows (shared) */
 /* The Ticking Number Rule: an unlit pattern (data-ghost: "88", "88:88", "8.888") sits behind the value, right-aligned,
@@ -190,4 +190,47 @@
     gap: var(--sc-space-3) var(--sc-space-4);
   }
   :root[data-world="under-the-lights"] { --uls-logo: 40px; }
+}
+
+/* ---------------------------------------------------------------- forced colors (G4-10) */
+/* The system paints every word in one color, so the unlit 8s would read as digits ("80 80" for 0-0, "87" for 7,
+   "812/183"), and every state that is only a fill (a lit key window, a lamp) would vanish. Here the ghosts go; keys
+   that are on carry a Highlight frame; lamps keep their own system colors (a CanvasText ring, Highlight when lit);
+   LED windows and inputs get a 1 px CanvasText frame. System colors only, for the whole world's HUD. */
+@media (forced-colors: active) {
+  :where(:root[data-world="under-the-lights"]) :is(.sc-digits[data-ghost], .sc-call-pct, .sc-recap-pct,
+    .sc-transport-progress)::before,
+  :where(:root[data-world="under-the-lights"]) .sc-offfield::after {
+    content: none;
+  }
+  :where(:root[data-world="under-the-lights"]) .sc-key { border: 1px solid ButtonText; }
+  :where(:root[data-world="under-the-lights"])
+    .sc-key:is([aria-pressed="true"], [aria-expanded="true"], .on, [aria-current]:not([aria-current="false"])) {
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+  }
+  /* Lamps outrank the components' own fills here (no :where), so every lit lamp is the system's Highlight. */
+  :root[data-world="under-the-lights"] :is(.sc-lamp, .sc-sb-poss, .sc-sb-to, .sc-card-lamp,
+    .sc-check input[type="checkbox"]) {
+    forced-color-adjust: none;
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+  :root[data-world="under-the-lights"] :is(.sc-sb-poss[data-on="true"], .sc-sb-to[data-on="true"],
+    .sc-card-side[data-lead="true"] .sc-card-lamp, .sc-lamp[data-on="true"], .sc-check input[type="checkbox"]:checked,
+    .sc-feed-btn:is([data-feed-state="live"], [data-feed-state="retrying"]) .sc-lamp, .sc-conn .sc-lamp,
+    .sc-toast .sc-lamp, .sc-review .sc-lamp, .sc-transport-error .sc-lamp,
+    .sc-boot:is([data-phase="loading"], [data-phase="failed"], [data-phase="restart"]) .sc-lamp) {
+    background: Highlight;
+  }
+  :where(:root[data-world="under-the-lights"]) :is(.sc-digits, .sc-sb-fact > .sc-sb-value, .sc-sb-logo,
+    .sc-transport-progress, .sc-recap-pct, .sc-call-pct, input:not([type="checkbox"])) {
+    border: 1px solid CanvasText;
+  }
+  /* The board's pixel glyphs are masks over their own fill: keep the fill, in the text's system color. */
+  :root[data-world="under-the-lights"] :is(.sc-recap-glyph, .sc-recap-dot, .sc-hot),
+  :root[data-world="under-the-lights"] .sc-recap-verdict::before {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
 }

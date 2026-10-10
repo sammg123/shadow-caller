@@ -1,3 +1,6 @@
+# What the app needs. start.sh installs the exact, hash-checked versions from requirements.lock instead (the
+# models in models/ were built with its scikit-learn: a different one stops the app until  python build.py  runs).
+# After changing this file:  pip-compile --generate-hashes --allow-unsafe --strip-extras --output-file=requirements.lock requirements.txt
 nflreadpy>=0.1.5
 polars
 pyarrow

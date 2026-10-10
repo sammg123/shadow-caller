@@ -6,23 +6,33 @@ Predicts an opponent play-caller's next call (dropback vs. run) live, from the l
 
 ```bash
 cd shadow-caller
-python3 -m pip install -r requirements.txt
-python3 app.py          # opens http://localhost:5050
+bash start.sh           # first run: a .venv with the exact versions in requirements.lock; opens http://localhost:5050
 ```
 
-The models are already built (`models/`). To rebuild from fresh nflverse data (about 20 seconds):
+`start.sh` needs Python 3.12 or newer and installs `requirements.lock`: every package at the version the models were built with, each checked against its hash. The models are already built (`models/`). To rebuild them from fresh nflverse data (about 30 seconds, online):
 
 ```bash
-python3 build.py
+.venv/bin/python build.py
 ```
+
+The app rebuilds missing models by itself on a fresh setup, but never while `data/live_state.json` holds a game in progress: then it stops and says to run `build.py` (a rebuild mid-game would change his predictions, and fails offline).
+
+## Before a game or a demo
+
+- **Run the browser full-screen** (Ctrl+Cmd+F on a Mac) at the laptop's own resolution, or on the TV at 1920x1080. The page is laid out for 1440x900 and 1920x1080.
+- **Open the page once before the demo starts.** The first load compiles the stadium's shaders and fetches the fonts and logos; a second visit is instant.
+- **Quit screen recorders and turn off Low Power Mode.** Both throttle the GPU, and the 3D field then drops frames.
+- **New matchup?** Follow the checklist in `docs/design/data-contract.md` (section I): `game_id` and `espn_event` in `config.py` change together, and the old game file is copied aside first.
+- In Watch this game the next call stays on the field before every Dallas snap: about 2.6 s at 4x (the default) and 1.8 s at 10x. A watched game runs about 14 minutes at 1x, 9.6 at 2x, 6.6 at 4x and 4.3 at 10x.
 
 ## ESPN live feed
 
 Press **ESPN live** at the top. Every play logs itself a few seconds after ESPN posts it: down, distance, spot, clock, score, run gap and side, pass depth, sacks, scrambles, incompletions, touchdowns, turnovers, punts, field goals and penalties (a flag that wipes out a play still scores his call). ESPN can't see play-action, screens or RPOs, so after a play press **A** (play-action), **N** (screen) or **O** (RPO); **P** puts it back to a plain dropback, **J/K/L** change a run's gap, **U** undoes.
 
 - The game id comes from `config.py` (`espn_event`), or leave it blank and the app finds today's game for the offense.
-- **Replay this game** rebuilds a finished game from ESPN (the current log is backed up in `data/`): an instant full-game scorecard.
-- ESPN's feed is unofficial and free; it can lag or change. Turn the feed off to enter plays by hand.
+- The feed checks the teams before it logs anything: an event id for another matchup is refused with the reason ("ESPN event X is NYG at PHI, not DAL v TB"), and the game on screen is untouched. Before the feed adds ESPN's plays to a game you typed by hand, or follows a different event, the game is backed up in `data/`.
+- **Replay this game** rebuilds a finished game from ESPN: an instant full-game scorecard. The message names the backup of the old game (`data/live_state.backup-<time>.json`), or says there was none. Only the newest 20 backups are kept.
+- ESPN's feed is unofficial and free; it can lag or change. A poll that fails is retried at 4, 8, 16, then every 30 seconds; a poll that comes back thin or broken never wipes the game on screen. Turn the feed off to enter plays by hand.
 - A play the feed can't apply is skipped (the status line says "Skipped, enter it by hand") instead of stopping the feed.
 - Each play is read once. If ESPN later rewrites a play (replay review, corrected yards), the log keeps the first version; fix it by hand.
 
@@ -74,7 +84,10 @@ Specific plays come from public charting: run gap and side, pass depth (air yard
 
 ```bash
 .venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pytest tests
+node --test 'tests/js/**/*.test.mjs'                                        # the page's logic
+.venv/bin/python -m pytest tests -m "not e2e"                               # server, parser, timeline
+.venv/bin/python -m pytest tests -m e2e                                     # the page in Chromium (Playwright)
+SC_E2E_WORLD=under-the-lights .venv/bin/python -m pytest tests -m e2e       # the same on Under the Lights
 ```
 
 The ESPN parser is checked play by play against nflverse on a real game (TB at DAL, Oct 8 2026: `data/espn/summary_401872980_final.json`, truth in `tests/fixtures/`), plus a full replay checked against ESPN's own drive summaries. Tests run in a temp folder and never touch `data/live_state.json`.
@@ -99,4 +112,7 @@ The ESPN parser is checked play by play against nflverse on a real game (TB at D
 - `live.py`: game state, memory updates, predictions, scoring.
 - `espn_feed.py`: ESPN live play-by-play: parses each play and feeds the engine.
 - `app.py`: the local server. `static/index.html`: the UI.
-- `data/live_state.json`: tonight's game, saved after every action (restart-safe).
+- `watch.py`: Watch this game (pacing, backups, the session file).
+- `timeline.py`, `timeline_text.py`: every play of both teams as drawable rows (`/api/timeline`).
+- `requirements.txt`: what the app needs; `requirements.lock`: the exact, hashed versions `start.sh` installs.
+- `data/live_state.json`: tonight's game, saved after every action (restart-safe). A file for another game is copied aside (`live_state.other-<game_id>-<time>.json`) before the new game's first save.

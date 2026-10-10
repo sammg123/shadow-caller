@@ -46,13 +46,16 @@ export function createBuilder() {
     return n;
   }
 
+  /** One color for every corner ([r, g, b]), or one per corner ([[r, g, b], ...]: a gradient across the face). */
   function push(points, rgb, n) {
     const base = pos.length / 3;
-    for (const p of points) {
+    const perCorner = Array.isArray(rgb[0]);
+    points.forEach((p, i) => {
+      const c = perCorner ? rgb[i] : rgb;
       pos.push(p[0], p[1], p[2]);
       nrm.push(n[0], n[1], n[2]);
-      col.push(rgb[0], rgb[1], rgb[2]);
-    }
+      col.push(c[0], c[1], c[2]);
+    });
     return base;
   }
 

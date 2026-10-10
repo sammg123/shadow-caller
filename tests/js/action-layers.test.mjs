@@ -7,6 +7,19 @@ import { D25, TL, actionStage, artsUnder, row, stripsUnder } from "./action-stag
 const { buildDrawing } = await import("../../static/js/field/paths.js");
 const { fitPlan, planDrawing } = await import("../../static/js/field/timing.js");
 const { ALL } = await import("../../static/js/field/play-strip.js");
+const { isShared, keptKinds } = await import("../../static/js/field/dispose.js");
+
+/** What three's renderer does after it draws each visible object: its onAfterRender. */
+function drawn(root) {
+  root.traverseVisible((o) => o.onAfterRender?.({}, {}, {}, o.geometry, o.material, null));
+}
+const warmGroup = (stage) => stage.roots.plays.children.find((c) => c.name === "play-warm-up");
+/** A page whose canvases draw nothing: the glyph masks exist, as in the browser (marks carry an alphaMap). */
+const canvasDoc = () => ({
+  createElement: () => ({ width: 0, height: 0, getContext: () => new Proxy({}, { get: (t, k) => (k in t ? t[k]
+    : k === "measureText" ? () => ({ width: 40 }) : () => {}), set: (t, k, v) => { t[k] = v; return true; } }) }),
+  documentElement: {}, defaultView: null,
+});
 
 const planFor = (stage, drawing, ms = 3000) => fitPlan(planDrawing(drawing, stage.look.motion), ms);
 const item = (seq) => ({ row: row(seq), drawing: buildDrawing(row(seq)) });
@@ -231,6 +244,84 @@ test("a new game frame during a review (an epoch change) leaves the field live a
   run(stage, L, 3);
   assert.equal(artsUnder(stage.roots.plays).filter((a) => a.visible).length, 1, "the next play draws in view");
   assert.equal(stage.labels.live.find((h) => h.text() === "Short pass middle · +8").object.visible, true);
+});
+
+test("G7-1: the warm-up stays for the layer's life, hidden after its first frames; disposing the layer frees it", async () => {
+  const { stage, tick, layers } = await actionStage();
+  const L = layers();
+  const warm = warmGroup(stage);
+  assert.ok(warm?.visible, "drawn in the first frames");
+  const freed = [];
+  warm.traverse((o) => o.geometry?.addEventListener("dispose", () => freed.push(o)));
+  drawn(stage.roots.plays);
+  const kinds = keptKinds(stage);
+  assert.ok(kinds >= 10, `the warm-up's ${kinds} kinds are kept once drawn`);
+  tick(16 * 6);
+  assert.equal(warm.visible, false, "hidden once drawn");
+  assert.equal(warm.parent, stage.roots.plays, "never disposed while the layer lives (its programs would go)");
+  assert.equal(freed.length, 0);
+  L.player.dispose();
+  assert.equal(warm.parent, null);
+  assert.ok(freed.length > 0);
+  assert.equal(keptKinds(stage), 0, "the engine's end frees the kept programs");
+});
+
+test("G7-1: a whole game of plays, residue, reviews and the ball draws no program kind the warm-up didn't", async () => {
+  const { stage, layers } = await actionStage({ look: { residue: { keep: "game", opacity: 0.2 } } });
+  stage.doc = canvasDoc();
+  const L = layers();
+  drawn(stage.roots.plays);
+  const warmKinds = keptKinds(stage);
+  assert.ok(warmKinds >= 10);
+  for (const r of TL.rows) {
+    const drawing = buildDrawing(r);
+    if (!drawing.steps.length) continue;
+    const plan = planFor(stage, drawing, 1500);
+    const job = L.player.start(drawing, plan, r);
+    job.update(plan.totalMs / 2);
+    drawn(stage.roots.plays);
+    job.finish();
+    drawn(stage.roots.residue);
+  }
+  L.player.review(item(104));
+  drawn(stage.roots.plays);
+  assert.equal(keptKinds(stage), warmKinds, "nothing new to compile mid-game");
+  const kept = [];
+  warmGroup(stage).traverse((o) => { if (o.material && isShared(o.material)) kept.push(o.material); });
+  assert.ok(kept.length >= warmKinds, "the warm-up's own materials are the ones kept");
+});
+
+test("G7-1: the next play is built before the last one is retired (residue takes it over with the new one up)", async () => {
+  const { stage, layers } = await actionStage();
+  const L = layers();
+  run(stage, L, 2);
+  const seenAtHandOver = [];
+  const addMany = L.residue.addMany;
+  L.residue.addMany = (items, opts) => {
+    seenAtHandOver.push(artsUnder(stage.roots.plays).length);
+    return addMany(items, opts);
+  };
+  run(stage, L, 3);
+  assert.deepEqual(seenAtHandOver, [2], "the new play's art is already in when the last one is handed over");
+  assert.equal(artsUnder(stage.roots.plays).length, 1, "and only the new one stays");
+});
+
+test("G7-1: residue marks use the player's glyph masks (one texture per glyph for the whole engine)", async () => {
+  const { stage, layers } = await actionStage({ look: { residue: { keep: "game", opacity: 0.2 } } });
+  const masks = new Set();
+  stage.doc = { ...canvasDoc(), fonts: { load: async () => [{}] } };
+  const uploaded = [];
+  stage.renderer = { initTexture: (tex) => uploaded.push(tex), capabilities: { getMaxAnisotropy: () => 8 } };
+  const L = layers();
+  assert.equal(uploaded.length, 20, "every shape's masks uploaded with the layer");
+  await new Promise((resolve) => { setImmediate(resolve); });
+  assert.equal(uploaded.length, 24, "and INT and TD once the display font is in");
+  const before = L.player.glyphs.count();
+  L.player.placeAll(TL.rows.map((r) => ({ row: r, drawing: buildDrawing(r) })));
+  stage.roots.residue.traverse((o) => { if (o.material?.alphaMap) masks.add(o.material.alphaMap); });
+  assert.ok(masks.size > 0, "residue has marks");
+  assert.ok([...masks].every((m) => uploaded.includes(m)), "the same textures, uploaded once");
+  assert.equal(L.player.glyphs.count(), before, "no mask made mid-game");
 });
 
 test("canvas labels (sprite) dim by their own opacity; no labels at all (renderer none) draws plays without words", async () => {

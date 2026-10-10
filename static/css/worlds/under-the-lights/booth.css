@@ -35,7 +35,7 @@
   width: var(--uls-lamp);
   height: var(--uls-lamp);
   margin: 0;
-  border: 1px solid var(--uls-steel-edge);
+  border: 1px solid var(--uls-steel-frame);
   border-radius: 50%;
   background: var(--uls-led-panel);
   cursor: pointer;
@@ -57,18 +57,18 @@
 /* ---------------------------------------------------------------- pushbuttons (the keypad, the retag keys) */
 /* A console pushbutton: its keyboard key in a lit-window LED face across the top, its name painted on the steel
    under it. The window prints the letter in the key's tone (--sc-tone, set by each component) and lights in it. */
-:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) { --uls-pad-window: calc(var(--uls-size-key) + 4px); }
+:where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) { --uls-pad-window: calc(var(--uls-size-key) + 4 * var(--uls-px)); }
 :where(#app[data-layout="uls"]) :is(.sc-keypad, .sc-retag) .sc-key {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: "cap" "name";
   align-content: center;
   justify-items: stretch;
-  gap: 3px;
+  gap: calc(3 * var(--uls-px));
   flex: 1 1 auto;
   min-width: calc(var(--uls-pad-window) + 6px);
   min-height: 0;
-  padding: 3px 3px 5px;
+  padding: calc(3 * var(--uls-px)) 3px calc(5 * var(--uls-px));
   border: 0;
   border-top: 1px solid var(--uls-steel-edge);
   border-radius: var(--sc-radius-m);
@@ -150,6 +150,7 @@
 
   /* The entry line stays visible whenever manual entry is possible (ui-architecture 4.4): while Yards or the
      shorthand bar has focus (a play key or a play clicked on the board puts focus in Yards), the open video board
-     still grows left but keeps its height and scrolls inside, so a resting pointer never covers the desk. */
-  #app[data-layout="uls"]:has(.uls-desk input:focus) .uls-board { height: var(--uls-board-h); }
+     still grows left but keeps its height and scrolls inside, so a resting pointer never covers the desk. G5-8:
+     booth.js marks the focus on #app (data-desk-focus), never an #app-wide :has(). */
+  #app[data-layout="uls"][data-desk-focus="true"] .uls-board { height: var(--uls-board-h); }
 }

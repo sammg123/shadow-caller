@@ -29,3 +29,20 @@
 
 .sc-toast .sc-lamp { background: currentColor; }
 .sc-toast-text { min-width: 0; overflow-wrap: anywhere; }
+
+/* G5-13: an error stays until it has been read: it takes the pointer (hovering or focusing it holds it) and carries a
+   Dismiss key whose cap is drawn here, so the toast's words are only the message (the key's name is its aria-label). */
+.toast.err.show { pointer-events: auto; }
+.sc-toast-dismiss {
+  flex: none;
+  min-width: 2.75rem;
+  min-height: 2rem;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-w) solid currentColor;
+  border-radius: var(--sc-radius-s);
+  background: transparent;
+  color: inherit;
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  cursor: pointer;
+}
+.sc-toast-dismiss::before { content: "Esc"; }

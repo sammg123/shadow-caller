@@ -112,6 +112,8 @@ button.sc-pf-btn:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus
 }
 .sc-pf-row[data-scoring="true"] .sc-pf-result { color: var(--sc-good); }
 
+/* G5-10: a one-line world's face for the row (the field's words); where rows wrap, ESPN's text says it all. */
+.sc-pf-face { display: none; }
 .sc-pf-text {
   grid-area: text;
   min-width: 0;

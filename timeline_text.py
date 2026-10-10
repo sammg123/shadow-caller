@@ -8,14 +8,11 @@ import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from espn_feed import play_text
+from espn_feed import FOUL_MAX, TEAM_ALIASES, play_text
 from live import fmt_clock, parse_clock
 
 COLOR_RE = re.compile(r"[0-9a-fA-F]{6}")
 ABBR_RE = re.compile(r"[A-Z]{2,4}")
-# Gamebook abbreviations in play text -> ESPN abbreviations. A spot that doesn't resolve is never guessed.
-TEAM_ALIASES = {"WAS": "WSH", "BLT": "BAL", "HST": "HOU", "ARZ": "ARI", "CLV": "CLE", "LA": "LAR", "JAC": "JAX",
-                "SD": "LAC", "OAK": "LV", "STL": "LAR"}
 SPOT = r"(?:([A-Z]{2,3}) (\d{1,2})|(50))"
 SACK_SPOT_RE = re.compile(rf"\bsacked at {SPOT}")
 INT_SPOT_RE = re.compile(rf"\bINTERCEPTED by .*?\bat {SPOT}")
@@ -25,6 +22,7 @@ KICKOFF_DIST_RE = re.compile(r"\bkicks (?:onside )?(\d+) yards?", re.I)
 PUNT_DIST_RE = re.compile(r"\bpunts (\d+) yards?", re.I)
 FG_RE = re.compile(r"\b(\d+) yard field goal is (GOOD|No Good|BLOCKED)", re.I)
 PEN_HEAD_RE = re.compile(r"PENALTY on ([A-Z]{2,3})(?:-[^,]*)?, ([^,]+),\s*")
+NOTE_MAX = 80                              # 'defensive pass interference on TB', capped (G1-12)
 PEN_YARDS_RE = re.compile(r"(\d+) yards?, enforced\b\s*")
 PEN_SPOT_RE = re.compile(rf"at {SPOT}( - No Play)?")
 TIMEOUT_BY_RE = re.compile(r"\bby ([A-Z]{2,3})\b")
@@ -134,8 +132,8 @@ def score_pair(text, caller, opp):
 
 
 def split_body(text):
-    """The action before any penalty enforcement, and the whole corrected text."""
-    full = play_text(text or "")
+    """The action before any penalty enforcement, and the whole corrected text ('' for anything but a string)."""
+    full = play_text(text if isinstance(text, str) else "")
     return re.split(r"\bPENALTY on\b", full, maxsplit=1, flags=re.I)[0], full
 
 
@@ -144,10 +142,10 @@ def penalty_of(text, ctx):
     m = PEN_HEAD_RE.search(text)
     if not m:
         return None
-    on, foul = resolve_team(m.group(1), ctx["teams"]), m.group(2).strip()
+    on, foul = resolve_team(m.group(1), ctx["teams"]), m.group(2).strip()[:FOUL_MAX]
     rest = text[m.end():]
     out = {"on": on, "foul": foul, "yards": None, "at_x": None, "no_play": False, "status": "enforced",
-           "note": f"{foul.lower()} on {m.group(1)}"}
+           "note": f"{foul.lower()} on {m.group(1)}"[:NOTE_MAX]}
     enforced = PEN_YARDS_RE.match(rest)
     if enforced:
         out["yards"] = int(enforced.group(1))
@@ -204,6 +202,24 @@ def _dict(value):
     return value if isinstance(value, dict) else {}
 
 
+# ---------------------------------------------------------------- v1.4 (G1-6): reading a poll that may be malformed
+def short(value, cap):
+    """A string cut to cap characters, else None."""
+    return value[:cap] if isinstance(value, str) else None
+
+
+def dicts(value):
+    """The dicts in a list (a null or malformed entry in a poll is skipped); [] for anything but a list."""
+    return [v for v in value if isinstance(v, dict)] if isinstance(value, list) else []
+
+
+def all_drives(summary):
+    """Every drive record: drives.previous, then drives.current (even before its first play)."""
+    drives = _dict(_dict(summary).get("drives"))
+    cur = drives.get("current")
+    return dicts(drives.get("previous")) + ([cur] if isinstance(cur, dict) else [])
+
+
 def first_competition(summary):
     comps = _dict(_dict(summary).get("header")).get("competitions")
     return _dict(comps[0]) if isinstance(comps, list) and comps else {}
@@ -213,19 +229,25 @@ def hex_color(value):
     return "#" + value.lower() if isinstance(value, str) and COLOR_RE.fullmatch(value) else None
 
 
+TEAM_TEXT_MAX, ID_MAX = 40, 20       # v1.4 (G1-12): a hostile summary overflowed the band with its team names
+
+
 def teams_of(summary, game):
     """(teams, team_order) from the summary header: names, colors, logo URLs (C2). Never score, winner, record or
-    linescores, which are final in a saved game. Without a summary: GAME, no colors, no logos."""
+    linescores, which are final in a saved game. Without a summary: GAME, no colors, no logos. Names are text of at
+    most TEAM_TEXT_MAX characters."""
     caller, out, order = game["offense"], {}, []
     comps = first_competition(summary).get("competitors")
     comps = [c for c in comps if isinstance(c, dict)] if isinstance(comps, list) else []
     for c in sorted(comps, key=lambda c: c.get("homeAway") != "away"):
         t = _dict(c.get("team"))
-        abbr = str(t.get("abbreviation") or "")
-        if not ABBR_RE.fullmatch(abbr):
+        abbr = t.get("abbreviation")
+        if not (isinstance(abbr, str) and ABBR_RE.fullmatch(abbr)):
             continue
-        out[abbr] = {"abbr": abbr, "espn_id": str(t["id"]) if t.get("id") is not None else None, "name": t.get("name"),
-                     "location": t.get("location"), "display_name": t.get("displayName"),
+        tid = t.get("id")
+        out[abbr] = {"abbr": abbr, "espn_id": _text(str(tid), ID_MAX) if isinstance(tid, (str, int)) else None,
+                     "name": _text(t.get("name"), TEAM_TEXT_MAX), "location": _text(t.get("location"), TEAM_TEXT_MAX),
+                     "display_name": _text(t.get("displayName"), TEAM_TEXT_MAX),
                      "home": c.get("homeAway") == "home", "caller": abbr == caller,
                      "side": "left" if abbr == caller else "right", "color": hex_color(t.get("color")),
                      "alt_color": hex_color(t.get("alternateColor")), "logo": f"/api/logo/{abbr}",
@@ -257,9 +279,9 @@ COUNTRY_ZONE = {"England": "Europe/London", "United Kingdom": "Europe/London", "
 US_NAMES = (None, "USA", "United States")
 
 
-def _text(value):
-    """ESPN text, trimmed and capped at TEXT_MAX characters; None for anything that isn't a non-empty string."""
-    return (value.strip()[:TEXT_MAX] or None) if isinstance(value, str) else None
+def _text(value, cap=TEXT_MAX):
+    """ESPN text, trimmed and capped at `cap` characters; None for anything that isn't a non-empty string."""
+    return (value.strip()[:cap] or None) if isinstance(value, str) else None
 
 
 def _flag(key, *sources):

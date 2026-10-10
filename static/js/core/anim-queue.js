@@ -2,6 +2,9 @@
 // Rows are drawn in seq order. Animation length is min(normal, 0.8 * (watch.next_at - now)) shared across the animated
 // queue; with more than 3 animated rows queued the older ones draw instantly; a hidden tab or reduced motion draws
 // everything instantly; the operator's own rows animate at most 800 ms.
+// v1.4 (G1-1): when the row the watch waits on is the caller's snap (watch.next_kind "caller_snap"), the queue also
+// leaves the next call and its shadow plays their reserve (callReserveMs), at most CALL_RESERVE_SHARE of the wait, so
+// they are on the field long enough to read before the snap (play-drawing.md 4). watch.py's floors make room for it.
 
 /** @typedef {{ seq: number, origin: "poll" | "action", instant: boolean }} QueueItem */
 /** @typedef {{ token: number, queue: QueueItem[], playing: null | { seq: number, startedAt: number, durationMs: number,
@@ -13,6 +16,24 @@ export const MIN_ANIM_MS = 120;
 export const OWN_ACTION_MAX_MS = 800;
 /** next_at further than this from now is ignored (clock-skew guard; server and browser share a clock on localhost). */
 export const NEXT_AT_WINDOW_MS = 60000;
+/**
+ * Before the caller's snap, the time kept for the next call: the verdict's beat that comes first (conductor.js: 1.5 s
+ * below 4x, 0.6 s from 4x), the call's 400 ms fade-in, the time it stays fully lit (2 s up to 4x, 1 s above) and some
+ * to spare (200 ms; 400 above 4x, where a late poll costs the most). Never more than CALL_RESERVE_SHARE of the wait:
+ * the play before it gets the rest.
+ */
+export const CALL_RESERVE_MS = Object.freeze({ slow: 4100, demo: 3200, fast: 2400 });
+export const CALL_RESERVE_SHARE = 0.7;
+/** The demo speed: below it the slow reserve, above it the fast one; a watch with no speed counts as it. */
+export const DEMO_SPEED = 4;
+/**
+ * A watch object from before the head row landed (watch.idx < head.seq) still points at that row's own landing, so
+ * its next_at is already past: the play waits for the next /api/version (every 250 ms while playing) rather than
+ * budget on it, and never longer than this past that landing.
+ */
+export const STALE_WATCH_HOLD_MS = 600;
+/** How early a landing may look to the browser and still count as past (the server stamps next_at from its clock). */
+const STALE_SKEW_MS = 250;
 
 export function emptyAnim() {
   return { token: 0, queue: [], playing: null, drawnThrough: 0, rebuilding: false };
@@ -58,15 +79,34 @@ function watchBudget(watch, now, animatedCount) {
   if (!watch || watch.state !== "playing" || !Number.isFinite(watch.next_at)) return Infinity;
   const ahead = watch.next_at - now;
   if (!(ahead > 0 && ahead < NEXT_AT_WINDOW_MS)) return Infinity;
-  return (BUDGET_SHARE * ahead) / Math.max(1, animatedCount);
+  const rows = Math.max(1, animatedCount);
+  const share = (BUDGET_SHARE * ahead) / rows;
+  if (watch.next_kind !== "caller_snap") return share;
+  const reserve = Math.min(callReserveMs(watch.speed), CALL_RESERVE_SHARE * ahead);
+  return Math.min(share, (ahead - reserve) / rows);
 }
 
-/** The next row to draw, or null while one plays, during a rebuild, or with nothing queued. */
+/** The next call's reserve at a watch speed (CALL_RESERVE_MS). */
+export function callReserveMs(speed) {
+  if (!Number.isFinite(speed) || speed === DEMO_SPEED) return CALL_RESERVE_MS.demo;
+  return speed < DEMO_SPEED ? CALL_RESERVE_MS.slow : CALL_RESERVE_MS.fast;
+}
+
+/** The watch object predates the head row: it waits on a row no later than the head, and that landing is past. */
+function staleWatch(watch, seq, now) {
+  return Boolean(watch) && watch.state === "playing" && Number.isInteger(watch.idx) && seq > watch.idx
+    && Number.isFinite(watch.next_at) && now > watch.next_at - STALE_SKEW_MS
+    && now < watch.next_at + STALE_WATCH_HOLD_MS;
+}
+
+/** The next row to draw, or null while one plays, during a rebuild, with nothing queued, or while the watch object is
+ * older than the row (staleWatch). */
 export function nextJob(anim, { now, watch, normalMs }) {
   if (anim.playing || anim.rebuilding || anim.queue.length === 0) return null;
   const head = anim.queue[0];
   const instant = { seq: head.seq, durationMs: 0, instant: true, token: anim.token };
   if (head.instant) return instant;
+  if (staleWatch(watch, head.seq, now)) return null;
   const normal = normalMs(head.seq);
   if (!Number.isFinite(normal) || normal <= 0) return instant;
   const animated = anim.queue.filter((q) => !q.instant).length;

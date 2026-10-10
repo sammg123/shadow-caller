@@ -6,9 +6,10 @@
 // server's game is never stepped, paused or restarted (3.8: never seek by stopping and restarting).
 //
 // Keys: ← reviews an earlier play (as the Left key does) and LIVE (Esc) returns to the live edge. On the strip, which
-// is a slider: Left and Right step a play, Page Up and Page Down a drive, Home the first play, End live, Esc live;
-// Space and 1 to 4 keep driving the watch, as they do everywhere else. A mouse press does not move keyboard focus,
-// so the page's shortcuts keep working after a scrub. Hovering previews the play under the pointer on the readout.
+// is a slider: Left and Right step a play, Page Up and Page Down a drive, Home the first play, End live, and Space
+// plays or pauses the watch. Every other key (Esc, 1 to 4, B, G, V, the retag keys) is the page's: core/keymap.js
+// runs it for a focused slider as anywhere else (G5-12). A mouse press does not move keyboard focus, so the page's
+// shortcuts keep working after a scrub. Hovering previews the play under the pointer on the readout.
 import { reconcile, el, setAttr, setData, setHidden, setText } from "./dom.js";
 import { keycap, lamp } from "./keycap.js";
 import { scrubVm, seqAtFraction, stepFrom } from "../model/vm-scrub.js";
@@ -16,8 +17,10 @@ import { scrubVm, seqAtFraction, stepFrom } from "../model/vm-scrub.js";
 const STEP_KEYS = Object.freeze({ ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1, Home: -Infinity,
   End: Infinity });
 const DRIVE_KEYS = Object.freeze({ PageUp: -1, PageDown: 1 });
-const SPEED_KEYS = Object.freeze({ 1: 1, 2: 2, 3: 4, 4: 10 });   // the digit, the speed (keymap 4.3)
 const SPACE = new Set([" ", "Spacebar"]);
+/** G5-12: each key's description names what it does and the keyboard key that does the same (its name stays the
+ * visible word, so the label is in the name, WCAG 2.5.3). */
+const KEY_HINT = Object.freeze({ earlier: "Left", live: "Esc" });
 const MAIN_BUTTON = 0;
 const FRACTION_DP = 5;
 const HALF_SLOT = 0.5;
@@ -27,10 +30,11 @@ const slotCenter = (seq, total) => String(Number(((seq - HALF_SLOT) / total).toF
 // ---------------------------------------------------------------- building
 function keys(ctx) {
   const { REVIEW, SCRUB } = ctx.copy;
-  const earlier = keycap({ cap: "←", name: REVIEW.earlier, shortcut: "ArrowLeft", title: REVIEW.earlier,
-    cls: ["sc-scrub-key", "sc-scrub-earlier"], data: { scrub: "earlier" } });
-  const live = keycap({ cap: "Esc", name: SCRUB.live, shortcut: "Escape", title: REVIEW.live,
-    cls: ["sc-scrub-key", "sc-scrub-live"], attrs: { "aria-label": REVIEW.live }, data: { scrub: "live" } });
+  const earlier = keycap({ cap: "←", name: REVIEW.earlier, shortcut: "ArrowLeft",
+    title: `${REVIEW.earlier} (${KEY_HINT.earlier})`, cls: ["sc-scrub-key", "sc-scrub-earlier"],
+    data: { scrub: "earlier" } });
+  const live = keycap({ cap: "Esc", name: SCRUB.live, shortcut: "Escape", title: `${REVIEW.live} (${KEY_HINT.live})`,
+    cls: ["sc-scrub-key", "sc-scrub-live"], data: { scrub: "live" } });
   const liveLamp = lamp("sc-scrub-live-lamp");
   live.node.insertBefore(liveLamp, live.name);
   return { earlier, live, liveLamp };
@@ -179,26 +183,19 @@ function onLeave(p, st) {
   if (!st.dragging) renderReadout(p, st);
 }
 
-/** Keys on the strip (a slider, so the page's keymap leaves it alone; 4.1 guard 3). */
+/** The strip's own keys (a slider: core/keymap.js leaves these to it and runs every other key, G5-12). */
 function onKey(ctx, st, e) {
   const { vm } = st;
   if (e.altKey || e.ctrlKey || e.metaKey || !vm.available) return;
   const step = own(STEP_KEYS, e.key);
   const drive = own(DRIVE_KEYS, e.key);
-  const speed = own(SPEED_KEYS, e.key);
   if (step !== undefined || drive !== undefined) {
     e.preventDefault();
     st.target = targetOf(vm);
     if (vm.plays.length) seek(ctx, st, stepFrom(vm, step ?? drive, { byDrive: drive !== undefined }));
-  } else if (e.key === "Escape" && vm.reviewing) {
-    e.preventDefault();
-    ctx.actions.exitReview();
   } else if (SPACE.has(e.key)) {
     e.preventDefault();
     if (!e.repeat) ctx.actions.watchToggle();
-  } else if (speed !== undefined && !e.repeat) {
-    e.preventDefault();
-    ctx.actions.watchSpeed(speed);
   }
 }
 

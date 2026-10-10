@@ -121,38 +121,74 @@ function startStep(r, row, msg) {
   row.from = row.to;
   row.to = panelOf(r, msg);
   row.msg = msg;
+  row.shownAt = r.now();
   row.step = r.instant() ? STEP.count : 0;
   row.t = 0;
   paintRow(r, row, row.step);
 }
 
-/** A message on ribbon "A" or "B"; with holdMs it steps back to `after` once the hold is over (a timer, no frames). */
+const wordsOf = (msg) => (msg?.parts ?? []).map((p) => p.text).join("");
+
+function clearNext(row) {
+  clearTimeout(row.timer);
+  Object.assign(row, { timer: null, after: null, queued: false });
+}
+
+/** Step to `row.after` at `at` (the ribbon's clock): the end of a moment's hold, or of a dwell (a timer, no frames). */
+function stepLater(r, row, at) {
+  clearTimeout(row.timer);
+  row.timer = setTimeout(() => {
+    const next = row.after;
+    clearNext(row);
+    if (next) startStep(r, row, next);
+    r.requestRender();
+  }, Math.max(0, at - r.now()));
+}
+
+/** A message on ribbon "A" or "B"; with holdMs it steps back to `after` once the hold is over. */
 function show(r, id, msg, after = null) {
   const row = r.rows[id];
   if (!msg) return;
-  clearTimeout(row.timer);
-  row.timer = null;
-  row.after = null;
+  clearNext(row);
   startStep(r, row, msg);
   if (msg.holdMs > 0 && after) {
     row.after = after;
-    row.timer = setTimeout(() => {
-      row.timer = null;
-      startStep(r, row, row.after);
-      row.after = null;
-      r.requestRender();
-    }, msg.holdMs);
+    stepLater(r, row, row.shownAt + msg.holdMs);
   }
   r.requestRender();
 }
 
-/** Change what a ribbon says without a second step: the message it steps back to during a hold, else the one on it
- * (mid-step or resting), redrawn where it is. */
+/**
+ * G3-6: a message that follows what the ribbon says now: after a moment's hold (in place of what the moment would step
+ * back to), or once a play's words have been up `dwellMs`, else at once (the idle board, a call). The same message
+ * again changes nothing.
+ */
+function queue(r, id, msg, dwellMs) {
+  const row = r.rows[id];
+  if (!msg || wordsOf(row.queued ? row.after : row.msg) === wordsOf(msg)) return;
+  const holding = Boolean(row.timer) && row.msg?.holdMs > 0;
+  const until = holding ? row.shownAt + row.msg.holdMs : row.msg?.kind === "play" ? row.shownAt + dwellMs : 0;
+  if (until <= r.now()) {
+    show(r, id, msg);
+    return;
+  }
+  Object.assign(row, { after: msg, queued: true });
+  stepLater(r, row, until);
+}
+
+/** A queued message that no longer applies (the next snap came first) is dropped; a moment's step-back stays. */
+function drop(r, id) {
+  const row = r.rows[id];
+  if (row.queued) clearNext(row);
+}
+
+/** Change what a ribbon says without a second step: during a moment's hold, what it steps back to (unless a queued
+ * message follows it instead); else the one on it (mid-step, resting or dwelling), redrawn where it is. */
 function revise(r, id, msg) {
   const row = r.rows[id];
   if (!msg) return;
-  if (row.timer) {
-    row.after = msg;
+  if (row.timer && row.msg?.holdMs > 0) {
+    if (!row.queued) row.after = msg;
     return;
   }
   row.msg = msg;
@@ -198,13 +234,17 @@ function loadLogos(r, urls) {
   }
 }
 
+const clockNow = () => globalThis.performance?.now?.() ?? Date.now();
+
 /**
  * The ribbons: one mesh with the LED material, and the messages on them. Without a document (node) the boards stay
  * dark and every call is a no-op, so the rest of the stadium still builds.
  * @param {object} THREE
- * @param {{ doc?: Document | null, requestRender?: () => void, instant?: () => boolean, logos?: string[] }} opts
+ * @param {{ doc?: Document | null, requestRender?: () => void, instant?: () => boolean, logos?: string[],
+ *   now?: () => number }} opts  now: the clock a dwell is measured on (ms; performance.now by default)
  */
-export function createRibbons(THREE, { doc = null, requestRender = () => {}, instant = () => false, logos = [] } = {}) {
+export function createRibbons(THREE, { doc = null, requestRender = () => {}, instant = () => false, logos = [],
+  now = clockNow } = {}) {
   const canvas = doc?.createElement ? canvasOf(doc, LED.cols, LED.rows * 2) : null;
   const texture = canvas ? new THREE.CanvasTexture(canvas)
     : new THREE.DataTexture(new Uint8Array(LED.cols * LED.rows * 2 * 4), LED.cols, LED.rows * 2);
@@ -215,10 +255,10 @@ export function createRibbons(THREE, { doc = null, requestRender = () => {}, ins
     panel: "#0f1114" });
   const mesh = new THREE.Mesh(ribbonGeometry(THREE), material);
   mesh.name = "uls-ribbons";
-  const r = { doc, canvas, ctx: canvas?.getContext("2d") ?? null, texture, requestRender, instant, face: textFace(doc),
-    logos: new Map(), disposed: false, rows: { A: { id: "A" }, B: { id: "B" } } };
+  const r = { doc, canvas, ctx: canvas?.getContext("2d") ?? null, texture, requestRender, instant, now,
+    face: textFace(doc), logos: new Map(), disposed: false, rows: { A: { id: "A" }, B: { id: "B" } } };
   for (const row of Object.values(r.rows)) Object.assign(row, { from: null, to: null, msg: null, step: STEP.count, t: 0,
-    timer: null, after: null });
+    timer: null, after: null, queued: false, shownAt: -Infinity });
   const live = Boolean(r.ctx);
   if (live) {
     loadLogos(r, logos);
@@ -228,6 +268,8 @@ export function createRibbons(THREE, { doc = null, requestRender = () => {}, ins
     mesh,
     show: (id, msg, after) => { if (live && !r.disposed) show(r, id, msg, after); },
     revise: (id, msg) => { if (live && !r.disposed) revise(r, id, msg); },
+    queue: (id, msg, dwellMs = 0) => { if (live && !r.disposed) queue(r, id, msg, dwellMs); },
+    drop: (id) => { if (live && !r.disposed) drop(r, id); },
     update: (dtMs) => (live ? step(r, dtMs) : false),
     message: (id) => r.rows[id]?.msg ?? null,
     dispose() {

@@ -3,10 +3,12 @@
 // still owns where every shot looks (its framing honors the HUD's safe area, follows the ball, glides with the
 // situation): a new shot is taken at once in the rig (shot(id, { instant })), so the shadow plays' words are laid
 // out for the view the camera lands in, and the visible camera then blends from where it was to wherever the rig is
-// each frame, over the shot's own time (a 650 ms push at the snap, a 1.7 s rise to the blimp). Between drives in
-// Watch this game the blimp drifts (drift.js: out to the whole bowl, then a slow sweep, at most 2.4 degrees a second,
-// then it holds still: no frames are drawn while nothing moves). props.js runs update() after the rig each frame;
-// reduced motion drops it all at once.
+// each frame, over the shot's own time (a 650 ms push at the snap, a 1.7 s rise to the blimp). A shot with a delay
+// (a touchdown or a turnover in Watch this game) first holds the camera exactly where the play left it, drawing no
+// frames of its own, and is taken when the hold is over (a timer); any other shot meanwhile cancels it. Between
+// drives in Watch this game the blimp drifts (drift.js: out to the whole bowl, then a slow sweep, at most 2.4 degrees
+// a second, then it holds still: no frames are drawn while nothing moves). props.js runs update() after the rig each
+// frame; reduced motion drops it all at once.
 import { EASE } from "../../../../field/timing.js";
 import { SHOTS, onLanded, onPlay, onPresnap } from "./choreo-plan.js";
 import { DRIFT, blendPose, driftPose } from "./drift.js";
@@ -22,21 +24,33 @@ function applyPose(camera, pose) {
   camera.updateMatrixWorld();
 }
 
+const later = (fn, ms) => globalThis.setTimeout(fn, ms);
+const drop = (id) => globalThis.clearTimeout(id);
+
 /**
- * @param {{ timing?: object, reduced?: () => boolean, requestRender?: () => void }} opts  timing: look.world.uls.camera
+ * @param {{ timing?: object, reduced?: () => boolean, requestRender?: () => void,
+ *   schedule?: (fn: () => void, ms: number) => unknown, cancel?: (id: unknown) => void }} opts  timing:
+ *   look.world.uls.camera; schedule and cancel: the hold's timer (setTimeout and clearTimeout by default)
  * @returns {{ attach(ctx), play(row, env), landed(row, env), presnap(env), update(dtMs): boolean, state(), reset() }}
  */
-export function createChoreo({ timing = {}, reduced = () => false, requestRender = () => {} } = {}) {
-  const st = { rig: null, camera: null, shot: null, blend: null, drift: null, visible: null, sign: 1 };
+export function createChoreo({ timing = {}, reduced = () => false, requestRender = () => {}, schedule = later,
+  cancel = drop } = {}) {
+  const st = { rig: null, camera: null, shot: null, blend: null, drift: null, visible: null, sign: 1, held: null,
+    timer: null };
+
+  function stopHold() {
+    if (st.timer !== null) cancel(st.timer);
+    st.timer = null;
+    st.held = null;
+  }
 
   function reset() {
+    stopHold();
     if (st.shot && st.rig) st.rig.shot(null, { instant: true });
     Object.assign(st, { shot: null, blend: null, drift: null, visible: null });
   }
 
-  function carry(d) {
-    if (!d || !st.rig) return;
-    const from = st.visible ?? st.rig.pose();
+  function take(d, from) {
     st.rig.shot(d.shot, { instant: true });
     st.shot = d.shot;
     st.blend = d.ms > 0 ? { from, t: 0, ms: d.ms } : null;
@@ -48,12 +62,34 @@ export function createChoreo({ timing = {}, reduced = () => false, requestRender
     requestRender();
   }
 
+  /** Hold the camera where it is for `d.delayMs`, then take the shot from there. */
+  function hold(d, from) {
+    Object.assign(st, { held: from, visible: from, blend: null });
+    st.timer = schedule(() => {
+      st.timer = null;
+      st.held = null;
+      if (st.rig) take(d, from);
+    }, d.delayMs);
+  }
+
+  function carry(d) {
+    if (!d || !st.rig) return;
+    const from = st.held ?? st.visible ?? st.rig.pose();
+    stopHold();
+    if (d.delayMs > 0) hold(d, from);
+    else take(d, from);
+  }
+
   const state = () => ({ shot: st.shot, drifting: Boolean(st.drift) });
 
   function update(dtMs) {
-    if (!st.rig || (!st.blend && !st.drift)) return false;
+    if (!st.rig || (!st.blend && !st.drift && !st.held)) return false;
     if (reduced()) {
       reset();
+      return false;
+    }
+    if (st.held) {
+      applyPose(st.camera, st.held);
       return false;
     }
     let pose = st.rig.pose();
@@ -79,7 +115,9 @@ export function createChoreo({ timing = {}, reduced = () => false, requestRender
   return {
     /** The moment's context: the engine's camera rig and camera (the first moment hands them over). */
     attach(ctx) {
-      if (ctx?.rig && ctx?.camera && st.rig !== ctx.rig) Object.assign(st, { rig: ctx.rig, camera: ctx.camera, shot: null });
+      if (!ctx?.rig || !ctx?.camera || st.rig === ctx.rig) return;
+      stopHold();
+      Object.assign(st, { rig: ctx.rig, camera: ctx.camera, shot: null, blend: null, drift: null, visible: null });
     },
     play: (row, env) => carry(onPlay(state(), row, env, timing)),
     landed: (row, env) => carry(onLanded(state(), row, env, timing)),

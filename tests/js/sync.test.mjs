@@ -134,7 +134,7 @@ test("an old server without /api/timeline still boots", async () => {
   assert.equal(store.getState().timeline.epoch, null);
 });
 
-test("a tick with nothing new fetches only the version (#3)", async () => {
+test("a tick with nothing new fetches only the version (#3): the boot's timeline counts as fetched at its version", async () => {
   const { timers, calls } = await booted();
   await timers.next();
   assert.deepEqual(calls, ["version"]);
@@ -151,6 +151,24 @@ test("a version change refetches the state; a bigger timeline_n appends since n 
   assert.deepEqual(store.getState().anim.queue.map((q) => q.seq), [16, 17]);
   assert.equal(store.getState().server.version, 2);
   assert.equal(store.getState().presented.version, 1, "the HUD waits for rows 16 and 17 to be drawn");
+});
+
+test("G5-5: a version change with the same rows refetches the timeline since n, once, for its drives", async () => {
+  const { timers, calls, srv, store } = await booted();
+  const drivesBefore = store.getState().timeline.snapshots.at(-1).drives;
+  srv.version = 2;                                    // a Punt: the drive ends, no row is added
+  const punted = drivesBefore.map((d, i) => (i === drivesBefore.length - 1 ? { ...d, complete: true, result: "PUNT" } : d));
+  srv.timelineBody = (since, epoch) => timelineBody(TL.body, { epoch, rows: [], since, n: srv.n, reset: false,
+    snapshot: { drives: punted, status: null, box: null, unlinked: [] } });
+  await timers.next();
+  assert.deepEqual([...calls].sort(), ["state", `timeline:15:${EPOCH}`, "version"]);
+  const s = store.getState();
+  assert.equal(s.timeline.n, 15);
+  assert.deepEqual(s.anim.queue, [], "no rows, nothing to draw");
+  assert.equal(s.timeline.snapshots.at(-1).drives.at(-1).result, "PUNT", "the snapshot for row n has the new drives");
+  calls.length = 0;
+  await timers.next();
+  assert.deepEqual(calls, ["version"], "fetched at this version: not again");
 });
 
 test("a new epoch refetches since 0 and rebuilds", async () => {
@@ -194,7 +212,8 @@ test("no state fetch while an action is in flight (3.2)", async () => {
   store.dispatch({ type: "req/action-start", reqSeq: 1 });
   srv.version = 5;
   await timers.next();
-  assert.deepEqual(calls, ["version"], "the action's response is about to replace the state");
+  assert.deepEqual(calls.filter((c) => c === "state"), [], "the action's response is about to replace the state");
+  assert.deepEqual(calls, ["version", `timeline:15:${EPOCH}`], "the timeline's drives may change with it (G5-5)");
 });
 
 test("a poll body older than an action applied meanwhile is dropped (3.2)", async () => {
@@ -215,7 +234,7 @@ test("a poll body older than an action applied meanwhile is dropped (3.2)", asyn
   assert.equal(store.getState().server.version, 7, "the older poll body was dropped");
 });
 
-test("failures back off 1, 2, 4 s and mark the connection offline after 3, then recover (G11)", async () => {
+test("failures back off 1, 2, then 3 s (G5-18) and mark the connection offline after 3, then recover (G11)", async () => {
   const { timers, srv, store } = await booted();
   srv.fail.add("version");
   await timers.next();
@@ -224,8 +243,11 @@ test("failures back off 1, 2, 4 s and mark the connection offline after 3, then 
   await timers.next();
   assert.deepEqual(timers.delays(), [2000]);
   await timers.next();
-  assert.deepEqual(timers.delays(), [4000]);
+  assert.deepEqual(timers.delays(), [3000]);
   assert.equal(store.getState().conn.failures, 3);
+  await timers.next();
+  assert.deepEqual(timers.delays(), [3000], "a restarted server is found within 3 s, however long it was down");
+  assert.equal(store.getState().conn.retryAt - timers.now(), 3000, "the banner counts down from 3 s");
   srv.fail.clear();
   await timers.next();
   assert.equal(store.getState().conn.failures, 0);

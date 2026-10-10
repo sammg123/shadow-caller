@@ -19,17 +19,26 @@ The whole single page: the live play-caller console and its demo playback, one H
 
 ## Direction and memorable moment
 
-Under the Lights (DESIGN.md; docs/design/direction-contract.md): the stadium is the interface. The memorable moment is **the projection**: before every Dallas snap the lights dip and the top 2 most likely plays appear on the turf as dashed, translucent shadow plays (a pass as an arc, a run as a straight line) with "1 · Deep shot (20+) · 31%" text underneath (docs/design/play-drawing.md, Sam's binding direction); the lights come back at the snap, the real play draws solid from the line of scrimmage with its label, and the SHADOW v LEAGUE scoreboard ticks.
+Under the Lights (DESIGN.md; docs/design/direction-contract.md): the stadium is the interface. The memorable moment is **the shadow plays**: before every Dallas snap the lights dip and the top 2 most likely plays appear on the turf as dashed, translucent shadow plays (a pass as an arc, a run as a straight line) with "1 · Deep shot (20+) · 31%" text underneath (docs/design/play-drawing.md, Sam's binding direction); the lights come back at the snap, the real play draws solid from the line of scrimmage with its label, and the SHADOW v LEAGUE scoreboard ticks.
 
-## Unresolved decisions
+## Settled since the seed (as built, 2026-10-10)
 
-1. **Camera safe area.** The board column covers the right 456 px (1440) or 624 px (1920); `camera-plan.poseFor` takes margins, but neither `Engine` nor `Look` can pass HUD insets yet.
-2. **Day or night by kickoff.** `Look` is static. Day games need a variant (lights, sky, fog, exposure) chosen at `setGameFrame` from the kickoff, or `props` owning the lights and sky.
-3. **Camera choreography.** The snap cut to tight, the settle back to wide, and the blimp drift between drives in Watch this game are not expressible in `look.cameras` modes.
-4. **Light dip setting.** World moments do not receive the app mode; read `#app[data-mode]` and an `sc:uls:` setting, or extend the moments context.
-5. **Room lights.** `data-ambient="room"` should lift the scene about +0.5 EV; the engine has no ambient hook.
-6. **Board expansion.** Hover or focus inside the board expands it for now; a D key (`toggleBoard`) needs an intent in the keymap.
-7. **Timed LED behavior.** Ribbon paging for long ESPN text, and the retag keys lighting for 8 s after each caller play, need a small piece of JS (component or world).
-8. **Unrolling ribbons.** The play feed and the drive chart unroll into taller LED boards on hover or focus (CSS `:hover` and `:focus-within`); check that focus order stays logical once `arrange` has placed every region.
-9. **Scoreboard pairs.** The band's row two shows three of `scorecardVm().pairs`; the scorecard component needs per-pair hooks (pair id, leader) so CSS can place them.
-10. **Provisional values.** Day palette, fog density, camera rigs and the light shafts settle on the first render. No visual comps were produced in this seed; the first build is checked with Playwright renders at 1440x900, 1920x1080 and 390x844 against DESIGN.md.
+1. **Camera safe area:** the HUD announces its insets (`sc:hud-insets`, `arrange.js`) and the camera keeps the line of scrimmage and the shadow plays clear of the board column and the open drawer.
+2. **Day or night by kickoff:** `game.light` from the kickoff's local hour; the stage swaps in the day look (`stage.js` `lookForGame`).
+3. **Camera choreography:** the snap's push to tight, the settle back to wide, the hold on a score and the blimp drift between drives (`stadium/choreo.js`, `choreo-plan.js`, `drift.js`).
+4. **Light dip setting:** `booth.js` `shouldDipNow` reads the mode and `sc:uls:dip-live`; Watch this game always dips.
+5. **Room lights:** `data-ambient="room"` lifts exposure 0.5 EV (`field/lighting.js` `ROOM_EV`).
+6. **Timed LED behavior:** the retag keys light for 8 s (`last-play.js` `RETAG_FRESH_MS`); the ribbons step and dwell (`look.world.uls.ribbons`).
+7. **Scoreboard pairs:** the band's row two shows the three pairs, captioned "Run/pass right", "Play in top 3", "Pass vs run log loss".
+8. **The next call's time in Watch this game:** at least 2 s fully up before every Dallas snap up to 4x, about 1.5 s at 10x (data contract E3; ui-architecture 23.1).
+9. **Provisional values:** settled in DESIGN.md (as built).
+
+## Open (known, owned elsewhere)
+
+1. The masthead's game name truncates at 1440.
+2. The scoreboard band stays Dallas navy after the game ends.
+3. 2D fallback: the shadow plays are small at full-field scale, and a play stands still while the 2D camera eases (`fallback-player.js` `remount()` resets the play clock; ui-architecture 23.1).
+4. On the phone the two shadow labels can stack #2 above #1.
+5. The pre-snap camera frames the old zone shapes rather than the shadow plays.
+6. A very long team name (the server caps it at 40 characters) overruns the band's team cell; the cell needs ellipsis truncation.
+7. Board expansion by key (a `D` intent in the keymap) is still hover or focus only.

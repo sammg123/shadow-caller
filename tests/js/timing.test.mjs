@@ -245,7 +245,18 @@ test("the kickoff peaks high above the field and the good field goal clears the 
   assert.ok(Math.max(...koKeys.map((k) => k.h)) > 15);
   const fg = buildDrawing(rowById("4018729802060"));
   const fgPlan = planDrawing(fg, DEFAULT_MOTION);
-  const atPosts = ballAt(fg, fgPlan, fgPlan.steps[1].endMs);
+  const atPosts = ballAt(fg, fgPlan, fgPlan.steps[0].endMs);
   near(atPosts.x, 110);
   assert.ok(atPosts.h > 3.333);
+});
+
+test("a field goal's ball leaves from the line of scrimmage and never goes behind it (no hold to read as a sack)", () => {
+  for (const [id, x0, dir] of [["4018729802060", 77, 1], ["4018729802919", 23, -1]]) {
+    const fg = buildDrawing(rowById(id));
+    const keys = sampleDrawing(fg, planDrawing(fg, DEFAULT_MOTION), { stepMs: 16 });
+    near(keys[0].x, x0, 1e-6, `${id}: the first frame is on the line`);
+    near(keys[0].h, 0);
+    for (const k of keys) assert.ok(dir * (k.x - x0) >= -1e-9, `${id} at ${k.t} ms: x ${k.x} is behind the line`);
+    near(keys.at(-1).x, dir === 1 ? 110 : -10, 1e-6, `${id} ends at the posts`);
+  }
 });

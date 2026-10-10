@@ -133,21 +133,26 @@ test("who carries: possession flips after an interception or a lost ball and aft
   assert.equal(spec.label.text, "Pass intercepted · short middle");
 });
 
+/** The badge's plate is on the other side of its spot from the play's words (on screen: y down). */
+function badgeAwayFromWords(spec, role, spot) {
+  const plate = spec.steps.find((st) => st.role === role).parts[0].children[0].attrs;
+  const wordsBelow = spec.label.at.py > spot.py;
+  return wordsBelow ? plate.y + plate.height <= spot.py : plate.y >= spot.py;
+}
+
 test("lettered marks (INT, TD) sit beside their spot like a badge, away from the play's words", () => {
   const ctx = ctxFor();
-  const int = specOf("4018729802466").steps[1].parts[0];
+  const pick = specOf("4018729802466");
+  const int = pick.steps[1].parts[0];
   const plate = int.children[0].attrs;
   const spot = ctx.pt(76, C);
   near(plate.x + plate.width / 2, spot.px, "centered over the spot");
-  assert.ok(plate.y + plate.height <= spot.py, `the words below: the INT above its spot (${plate.y + plate.height})`);
-  assert.ok(int.anim.cy < spot.py, "it pops in where it sits");
+  assert.ok(badgeAwayFromWords(pick, "int", spot), "the INT on the other side of its spot from the words");
+  assert.equal(int.anim.cy < spot.py, plate.y < spot.py, "it pops in where it sits");
   const run = playSpec(buildDrawing(rowBySeq(12)), rowBySeq(12), ctx);
-  const td = run.steps.find((st) => st.role === "td").parts[0].children[0].attrs;
-  assert.ok(run.label.at.py < ctx.pt(100, C).py, "this run's words sit above its end");
-  assert.ok(td.y >= ctx.pt(100, C).py, `so its TD sits below the spot (${td.y})`);
+  assert.ok(badgeAwayFromWords(run, "td", ctx.pt(100, C)), "a TD run's badge away from its words");
   const pass = playSpec(buildDrawing(rowBySeq(159)), rowBySeq(159), ctx);
-  const end = pass.steps.find((st) => st.role === "td").parts[0];
-  assert.ok(end.anim.cy < pass.label.at.py, "a TD pass with its words under the end: the badge above it");
+  assert.ok(badgeAwayFromWords(pass, "td", ctx.pt(100, C + 12)), "a TD pass's badge away from its words");
   const flag = specOf("401872980210").steps[1].parts[0];
   near(flag.anim.cy, ctx.pt(92, C).py, "a flag stays on its spot", 0.05);
 });
@@ -183,6 +188,24 @@ test("the label: the drawing's words at its spot (text, never markup), toned by 
   assert.equal(specOf("4018729802242", {}, resolveLook({ labels: { renderer: "none" } })).label, null);
 });
 
+test("the words are laid out in the 2D view itself: on a phone's small field they still never sit on the ball", () => {
+  const row = rowBySeq(6);
+  const px = { charPx: 6.2, linePx: 27, padPx: 12 };      // a 23 px plate of 11 px text, measured on the page
+  const phone = sceneContext({ look: NEUTRAL_LOOK, layout: layoutPlane({ width: 390, height: 844 }), field: T.field,
+    teams: T.teams, teamOrder: T.team_order, ids: "p2" });
+  const spec = playSpec(buildDrawing(row), row, phone, { labelPx: px });
+  assert.equal(spec.label.text, "Inside run (up the middle) · +21");
+  const ball = phone.pt(71, C);
+  const gapPx = Math.abs(spec.label.at.py - ball.py);
+  assert.ok(gapPx >= (px.linePx - 4) / 2 + 6.5, `the plate's edge clears the ball's ring: ${gapPx} px apart`);
+  const old = phone.pt(buildDrawing(row).label.at.x, buildDrawing(row).label.at.y);
+  assert.ok(Math.abs(old.py - ball.py) < (px.linePx - 4) / 2 + 6.5, "the desktop spot would have covered it");
+  const desk = playSpec(buildDrawing(row), row, ctxFor(), { labelPx: px });
+  const at = ctxFor().pt(71, C + 5);
+  assert.deepEqual([desk.label.at.px, desk.label.at.py], [at.px, at.py], "a desktop field: where it always was");
+  assert.deepEqual(playSpec(buildDrawing(row), row, ctxFor()).label.at, desk.label.at, "unmeasured: the label model's");
+});
+
 test("the verdict chip sits on the far side of the words from the end of the play", () => {
   const below = specOf("4018729802242", { verdict: "top1" });
   const chip = walk([below.verdictNode]).find((n) => n.tag === "text");
@@ -193,8 +216,9 @@ test("the verdict chip sits on the far side of the words from the end of the pla
   assert.ok(walk([above.verdictNode]).find((n) => n.tag === "text").attrs.y < above.label.at.py, "and up when above");
   const td = playSpec(buildDrawing(rowBySeq(159)), rowBySeq(159), ctxFor(), { verdict: "top3" });
   const chipY = walk([td.verdictNode]).find((n) => n.tag === "text").attrs.y;
-  assert.ok(chipY > td.label.at.py, "words between the end of the play and the center line: the chip goes away from "
-    + "the play, never onto its end");
+  const end = ctxFor().pt(100, C + 12);
+  assert.equal(Math.sign(chipY - td.label.at.py), Math.sign(td.label.at.py - end.py),
+    "the chip goes beyond the words, away from the play, never onto its end");
   assert.equal(specOf("4018729802242", { verdict: "none" }).verdictNode, null);
   assert.equal(specOf("4018729802242").verdictNode, null);
 });
@@ -226,11 +250,12 @@ test("the ball and its trail ride the arc as drawn", () => {
   near(y, top.py, "at the top of the arch (y)", 0.6);
 });
 
-test("a field goal's mark sits on the crossbar; kicks draw true-length arcs", () => {
+test("a field goal flies from the line of scrimmage; its mark sits on the crossbar", () => {
   const spec = specOf("4018729802060");
-  assert.deepEqual(spec.steps.map((s) => s.role), ["hold", "fg", "fg_good"]);
+  assert.deepEqual(spec.steps.map((s) => s.role), ["fg", "fg_good"], "no hold behind the line");
   const L = ctxFor().layout;
-  const pop = spec.steps[2].parts[0].anim;
+  near(partsOf(spec.steps[0], "core")[0].anim.geom.a.px, L.rect.x + 87 * L.px, "from the line of scrimmage, x 77");
+  const pop = spec.steps[1].parts[0].anim;
   near(pop.cy, L.rect.y + L.rect.h - (C + 3.333 * OBLIQUE) * L.px, "lifted to the crossbar", 0.05);
   assert.equal(spec.label.text, "FG 41 yds · good");
 });

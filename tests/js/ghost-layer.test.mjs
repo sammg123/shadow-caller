@@ -48,6 +48,35 @@ test("show: his top 2 as dashed, translucent shadows from the line of scrimmage,
   assert.ok(first.pt.y < D25.ballX, "underneath (toward the near sideline the camera sits on)");
 });
 
+test("G3-1: each shadow's text is tagged with its family, so the world tints its edge and rank as its stroke", async () => {
+  const { stage, L } = await setup({ reduced: true });
+  L.ghosts.show(SET);
+  const classes = () => shadowLabels(stage).map((h) => h.element.className.split(/\s+/).filter((c) => c.startsWith("family-")));
+  assert.deepEqual(classes(), [["family-run"], ["family-pa"]]);
+  L.ghosts.highlight("screen");
+  assert.ok(classes().some((c) => c[0] === "family-screen"), "the hovered screen's text too");
+  L.ghosts.highlight(null);
+  L.ghosts.relayout();
+  assert.deepEqual(classes(), [["family-run"], ["family-pa"]], "kept through a layout, once each");
+});
+
+test("G3-1: with the family tint each shadow's stroke takes its family's color over a dark casing", async () => {
+  const look = { ghost: { tint: "family" }, world: { plays: { families: { pass: "#fff3d1", run: "#ffb21e" },
+    casing: { color: "#0d1424", opacity: 0.4, width: 1.8 } } } };
+  const { stage, L } = await setup({ reduced: true, look });
+  L.ghosts.show(SET);
+  const strips = stripsUnder(shadowRoot(stage));
+  const hex = (m) => `#${m.material.uniforms.uColor.value.getHexString()}`;
+  const colors = new Set(strips.map(hex));
+  assert.ok(colors.has("#ffb21e") && colors.has("#fff3d1") && colors.has("#0d1424"), [...colors].join(" "));
+  const casings = strips.filter((m) => hex(m) === "#0d1424");
+  assert.equal(casings.length, 4, "a casing under each stroke and each end cue");
+  assert.ok(casings.every((m) => m.material.uniforms.uInner.value > 0.5), "rings outside the strokes");
+  assert.ok(casings.every((m) => strips.some((s) => s !== m && s.geometry !== m.geometry && s.renderOrder > m.renderOrder)));
+  L.ghosts.fade(0, 0);
+  assert.equal(stripsUnder(shadowRoot(stage)).length, 0, "the casings go with their shadows");
+});
+
 test("they grow out of the line of scrimmage over ghostInMs, then the loop may stop", async () => {
   const { stage, L, tick } = await setup();
   L.ghosts.show(SET);

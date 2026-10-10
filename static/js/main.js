@@ -3,7 +3,7 @@
 // engine, dialogs and worlds are imported dynamically, so a missing or broken one leaves a visible notice and boot
 // goes on: the page is never blank. Timers, fetch and the clock are called bare ("Illegal invocation" otherwise).
 import * as Copy from "./model/copy.js";
-import { createActions } from "./core/actions.js";
+import { TOAST_MS, createActions } from "./core/actions.js";
 import { createApi } from "./core/api.js";
 import { createConductor } from "./core/conductor.js";
 import { attachKeyboard } from "./core/keyboard.js";
@@ -16,7 +16,9 @@ import { createEngineLoader } from "./shell/engine.js";
 import { createFormHub, loadModules, mountComponents } from "./shell/mount.js";
 import { createNotices } from "./shell/notices.js";
 import { STORAGE_KEYS, readBootPrefs } from "./shell/prefs.js";
-import { applyPossession, applyRootAttrs, applyTeams, applyWorld, missingWorldTokens, watchMotion } from "./theme/apply.js";
+import {
+  POSSESSION_FINAL, applyPossession, applyRootAttrs, applyTeams, applyWorld, missingWorldTokens, watchMotion,
+} from "./theme/apply.js";
 import { LookError, resolveLook } from "./theme/look-schema.js";
 import { NEUTRAL_LOOK } from "./theme/neutral-look.js";
 import { REGION_NAMES, registry } from "./theme/registry.js";
@@ -26,6 +28,11 @@ import { createScheduler } from "./ui/scheduler.js";
 const HEARTBEAT_MS = 250;   // while a retry is pending, so "Retrying in N s" counts down on time
 const WORLD_CSS_TIMEOUT_MS = 3000;
 const TOKENS_LISTED = 3;
+/** G2-4: what a lost and a restored WebGL context say (a toast: the GPU going away is not a bug). */
+const SCENE_TOASTS = Object.freeze({
+  lost: "The 3D field paused (the graphics reset), so the 2D field is showing until it comes back.",
+  back: "The 3D field is back.",
+});
 
 const now = () => Date.now();
 const timers = Object.freeze({
@@ -138,6 +145,18 @@ async function loadDialogs() {
   return { confirmAction: (text) => Promise.resolve(Boolean(globalThis.confirm(String(text)))) };
 }
 
+/** ui/announcer.js (G2-6), loaded like every component: one that fails leaves a notice, and boot goes on. */
+async function loadAnnouncer(notices) {
+  try {
+    const mod = await import("./ui/announcer.js");
+    if (typeof mod.mountAnnouncer === "function" && typeof mod.announcerVm === "function") return mod;
+    throw new TypeError("ui/announcer.js has no mountAnnouncer() or announcerVm()");
+  } catch (err) {
+    notices.show("announcer", `Screen reader announcements didn't load (${message(err)}).`);
+    return null;
+  }
+}
+
 /** #field, created by the field host; made here when the field host did not mount, so the engine has a home. */
 function ensureFieldHost(doc) {
   const found = doc.getElementById("field");
@@ -170,40 +189,93 @@ async function bootEngine({ doc, look, world, boot, loader, notices, rt }) {
   applyRootAttrs(doc, { scene: res.engine?.kind === "webgl" ? "webgl" : "2d" });
 }
 
-/** The conductor's run-time failover: the 2D engine replaces a failed WebGL one (6.2). */
-function fallbackFactory({ doc, look, store, loader, notices, rt }) {
-  return (err) => {
-    const host = ensureFieldHost(doc);
-    const next = loader.fallbackNow(host, look, { reducedMotion: store.getState().prefs.motion === "reduced" });
+/** A toast from the shell, in the store's toast slot (its own ids, so it never clears an action's toast). */
+function shellToaster(store) {
+  let n = 0;
+  return (text) => {
+    n += 1;
+    const id = `shell-${n}`;
+    store.dispatch({ type: "toast/show", id, text, err: false });
+    timers.setTimeout(() => store.dispatch({ type: "toast/hide", id }), TOAST_MS);
+  };
+}
+
+/** Put `next` on the field: the engine it replaces is disposed, and rt, #field and <html> follow (6.2). */
+function installEngine({ doc, rt }, next, scene, error) {
+  const host = ensureFieldHost(doc);
+  const old = rt.engine;
+  rt.engine = next;
+  if (old && old !== next) {
     try {
-      rt.engine?.dispose?.();
+      old.dispose?.();
     } catch (disposeErr) {
       reportError(disposeErr);
     }
-    rt.engine = next;
-    setData(host, "sceneError", message(err));
-    applyRootAttrs(doc, { scene: "2d" });
-    notices.show("engine", `The 3D field stopped (${message(err)}), so the 2D field is showing.`);
-    rt.refreshExtras();
-    return next;
+  }
+  setData(host, "sceneError", error ? message(error) : null);
+  applyRootAttrs(doc, { scene });
+  rt.refreshExtras();
+}
+
+/**
+ * The conductor's engines at run time (6.1, 6.2; G2-4): the 2D field when WebGL fails (a notice) or loses its context
+ * (a toast: the GPU went away, not a bug), and a fresh WebGL field through loader.start once the browser restores the
+ * context or the next epoch tries again. WebGL that still can't start comes back as a new 2D field.
+ */
+function runtimeEngines({ doc, look, world, boot, store, loader, notices, rt }) {
+  const env = { doc, rt };
+  const toast = shellToaster(store);
+  const reducedMotion = () => store.getState().prefs.motion === "reduced";
+  return {
+    createFallback(err, { lost = false } = {}) {
+      const next = loader.fallbackNow(ensureFieldHost(doc), look, { reducedMotion: reducedMotion() });
+      installEngine(env, next, "2d", err);
+      if (lost) toast(SCENE_TOASTS.lost);
+      else notices.show("engine", `The 3D field stopped (${message(err)}), so the 2D field is showing.`);
+      return next;
+    },
+    async createWebgl() {
+      const res = await loader.start({ doc, host: ensureFieldHost(doc), look, world, scene: "auto",
+        reducedMotion: reducedMotion(), capture: boot.capture });
+      if (!res.engine) return null;
+      const webgl = res.engine.kind === "webgl";
+      installEngine(env, res.engine, webgl ? "webgl" : "2d", webgl ? null : res.error);
+      if (webgl) {
+        notices.hide("engine");
+        toast(SCENE_TOASTS.back);
+      }
+      return res.engine;
+    },
   };
 }
 
 // ---------------------------------------------------------------- shell bindings (theme follows the state)
-function shellBindings(doc, look, rt) {
+/** Whose paint the band wears (G2-5): the team with the ball; once ESPN calls the game final, nobody's (steel). */
+const bandPossession = (pv) => (pv.tl?.status?.state === "post" ? POSSESSION_FINAL
+  : fieldVm(pv).situation?.poss ?? null);
+
+function shellBindings(doc, look, rt, announcerMod) {
   const binding = (name, label, deps, select, update) => ({ name, region: "app", label, deps, select,
     component: { update, destroy() {} } });
+  const announcer = announcerMod ? announcerMod.mountAnnouncer(doc) : null;
   return [
     binding("teams", "Team colors", (s) => [s.timeline.teams], (pv) => pv.tl.teams,
       (teams) => applyTeams(teams, doc, look)),
     binding("possession", "Possession colors", (s) => [s.presented, s.timeline, s.anim.drawnThrough],
-      (pv) => fieldVm(pv).situation?.poss ?? null, (poss) => applyPossession(poss, doc)),
+      bandPossession, (poss) => applyPossession(poss, doc)),
     binding("prefs", "Display settings", (s) => [s.prefs.motion, s.prefs.ambient], (pv) => pv.prefs, (prefs) => {
       applyRootAttrs(doc, prefs);
       rt.engine?.setReducedMotion?.(prefs.motion === "reduced");
     }),
+    // G2-6: each drawn play, its verdict and every mode change, spoken to assistive tech (ui/announcer.js)
+    ...(announcer ? [binding("announcer", "Announcements", announcerDeps, (pv) => announcerMod.announcerVm(pv),
+      (vm) => announcer.update(vm))] : []),
   ];
 }
+
+/** What the announcer hears change: a drawn play, a rebuild, the camera, the watch, flag mode, a review. */
+const announcerDeps = (s, env) => [s.anim.token, s.anim.drawnThrough, s.view.camera, s.version?.watch?.state,
+  s.version?.watch?.speed, s.version?.feed?.on, s.view.flag.open, s.view.review.seq, env.extras?.cameraModes];
 
 // ---------------------------------------------------------------- store, sync, actions, components (steps 2 to 4)
 function createCore(doc, boot, theme, notices) {
@@ -228,8 +300,8 @@ function createAppActions({ core, form, dialogs, world, look, rt }) {
   });
 }
 
-function startScheduler({ doc, core, bindings, look, notices, rt }) {
-  const scheduler = createScheduler(core.store, [...bindings, ...shellBindings(doc, look, rt)], {
+function startScheduler({ doc, core, bindings, look, notices, rt, announcerMod }) {
+  const scheduler = createScheduler(core.store, [...bindings, ...shellBindings(doc, look, rt, announcerMod)], {
     raf: (fn) => globalThis.requestAnimationFrame(fn),
     cancelRaf: (id) => globalThis.cancelAnimationFrame(id),
     now,
@@ -257,11 +329,12 @@ function initialCamera(store, boot, look, rt) {
   if (id) store.dispatch({ type: "camera/set", id });
 }
 
-function startConductor({ doc, look, core, loader, notices, rt }) {
+function startConductor({ doc, look, world, boot, core, loader, notices, rt }) {
+  const engines = runtimeEngines({ doc, look, world, boot, store: core.store, loader, notices, rt });
   const conductor = createConductor({
     store: core.store, getEngine: () => rt.engine, look, now, setTimeout: timers.setTimeout,
     clearTimeout: timers.clearTimeout, app: doc.getElementById("app"), onError: core.onError,
-    createFallback: fallbackFactory({ doc, look, store: core.store, loader, notices, rt }),
+    createFallback: engines.createFallback, createWebgl: engines.createWebgl,
   });
   conductor.start();
   return conductor;
@@ -276,6 +349,7 @@ async function boot() {
   const loader = createEngineLoader();
   loader.preloadFallback();
   const dialogsLoading = loadDialogs();
+  const announcerLoading = loadAnnouncer(notices);
   const theme = await loadTheme(doc, prefs, notices);
   const { world, look } = theme;
   arrangeRegions(doc, world, notices);
@@ -285,10 +359,10 @@ async function boot() {
   const actions = createAppActions({ core, form: formHub.form, dialogs: await dialogsLoading, world, look, rt });
   const ctx = Object.freeze({ actions, form: formHub.form, engine: () => rt.engine, copy: Copy });
   const { bindings } = mountComponents(COMPONENTS, await modules, { doc, ctx, notices, formHub, shellIds: SHELL_IDS });
-  startScheduler({ doc, core, bindings, look, notices, rt });
+  startScheduler({ doc, core, bindings, look, notices, rt, announcerMod: await announcerLoading });
   await bootEngine({ doc, look, world, boot: prefs, loader, notices, rt });
   rt.refreshExtras();
-  startConductor({ doc, look, core, loader, notices, rt });
+  startConductor({ doc, look, world, boot: prefs, core, loader, notices, rt });
   // v1.4 (W3's ask, wired by W1): the HUD insets changed without a resize (mode, drawer): the camera re-reads them
   doc.getElementById("app")?.addEventListener("sc:hud-insets", () => rt.engine?.setSafeArea?.(null));
   // v1.4 (W4's ask, wired by W6): the booth's Room lights switch goes through the store, so prefs.ambient follows

@@ -33,15 +33,15 @@ def test_09_ball_on_20_starts_drive_1(upage, server):
     type_and_enter(upage, "#iYard", "20")
     expect_toast(upage, "Drive 1 started.")
     assert [r["body"] for r in sent] == [{"spot": "DAL 20"}]
-    expect(upage.locator("#driveInfo")).to_have_text("Drive 1, snap 1 of the game")
+    expect(upage.locator("#driveInfo")).to_have_text("Drive 1 · snap 1")
 
 
 def test_10_retyping_the_shown_25_starts_drive_1(upage, server):
-    """#10 [fix] (G2): Ball on already shows 25; typing 25 and Enter still starts drive 1."""
+    """#10 [fix] (G2): Ball on suggests 25 (its placeholder off the field, G5-3); typing 25 and Enter starts drive 1."""
     fresh(upage, server["base"])
     sent = record_requests(upage, "/api/situation")
     type_and_enter(upage, "#iYard", "25")
-    expect(upage.locator("#driveInfo")).to_have_text("Drive 1, snap 1 of the game")
+    expect(upage.locator("#driveInfo")).to_have_text("Drive 1 · snap 1")
     assert [r["body"] for r in sent] == [{"spot": "DAL 25"}]
     assert state(server["base"])["drive_active"] is True
 
@@ -94,9 +94,9 @@ def test_14_clock_16_00_is_refused_and_kept_with_the_invalid_style(upage, server
 @pytest.mark.parametrize("sel, typed, message", [
     ("#iDown", "7", "Down must be 1 to 4"),
     ("#iQtr", "6", "Quarter must be 1 to 4 (5 = overtime)"),
-    ("#iTogo", "0", "To go must be at least 1"),
+    ("#iTogo", "0", "To go must be from 1 to 99"),                # v1.5: the server's ranges (backend)
     ("#iYard", "60", "Yard line must be 1 to 50"),
-    ("#iOff", "x", "'x' isn't a number"),
+    ("#iOff", "x", "'x' isn't a number (score_off)."),
 ], ids=["down", "qtr", "togo", "ball-on", "score"])
 def test_15_strip_validation_messages(upage, server, sel, typed, message):
     """#15: each out-of-range or non-numeric value gives its red toast."""
@@ -106,15 +106,19 @@ def test_15_strip_validation_messages(upage, server, sel, typed, message):
     expect_invalid(upage, sel)
 
 
-def test_16_negative_score_is_saved_as_zero(upage, server):
-    """#16: a score of -3 is saved as 0."""
+def test_16_negative_score_is_refused(upage, server):
+    """#16 (v1.5, the server's ranges): a score of -3 is refused with a red toast, the field keeps -3 marked invalid
+    and explained beside the strip (G5-13), and the score stays 7."""
     base = server["base"]
     fresh(upage, base)
     command(base, "DAL 7 TB 3")
     expect(upage.locator("#iOff")).to_have_value("7")
     type_and_enter(upage, "#iOff", "-3")
-    expect(upage.locator("#iOff")).to_have_value("0")
-    assert state(base)["sit"]["score_off"] == 0
+    expect_toast(upage, "A score must be from 0 to 199", error=True)
+    expect(upage.locator("#iOff")).to_have_value("-3")
+    expect_invalid(upage, "#iOff")
+    expect(upage.locator("#stripError")).to_contain_text("A score must be from 0 to 199")
+    assert state(base)["sit"]["score_off"] == 7
 
 
 def test_17_to_go_g_means_goal(upage, server):
@@ -259,3 +263,71 @@ def test_g3_ball_on_d_25_starts_the_drive_at_dal_25(upage, server):
     expect(upage.locator("#sideTxt")).to_have_text("DAL")
     s = state(server["base"])
     assert (s["drive_active"], s["sit"]["yardline_100"]) == (True, 75)
+
+
+@pytest.mark.parametrize("typed, spot, yardline_100", [("25", "DAL 25", 75), ("t25", "T 25", 25)], ids=["bare", "sided"])
+def test_g5_3_ball_on_after_a_field_goal_starts_on_the_offense_side(upage, server, typed, spot, yardline_100):
+    """G5-3: after a Dallas field goal from TB 5 the strip offers Dallas's side: the chip reads DAL, Ball on is blank
+    with the placeholder 25, a bare 25 starts the next drive at DAL 25 and a typed side (t25) still picks TB 25."""
+    base = server["base"]
+    fresh(upage, base)
+    command(base, "new T5")
+    api_post(base, "/api/drive", {"end": "fg"})
+    expect(upage.locator("#driveInfo")).to_have_text("DAL off the field. Type where they get the ball in Ball on.")
+    expect(upage.locator("#sideTxt")).to_have_text("DAL")
+    expect(upage.locator("#iYard")).to_have_value("")
+    expect(upage.locator("#iYard")).to_have_attribute("placeholder", "25")
+    sent = record_requests(upage, "/api/situation")
+    type_and_enter(upage, "#iYard", typed)
+    expect_toast(upage, re.compile(r"^Drive \d+ started\.$"))
+    assert [r["body"] for r in sent] == [{"spot": spot}]
+    s = state(base)
+    assert (s["drive_active"], s["sit"]["yardline_100"]) == (True, yardline_100)
+    expect(upage.locator("#iYard")).to_have_value("25")
+    expect(upage.locator("#iYard")).not_to_have_attribute("placeholder", "25")
+
+
+def test_g5_13_a_refused_value_stays_explained_until_fixed(upage, server):
+    """G5-13: Clock "zz" is refused: the red toast is an alert that outlasts 2.6 s and Esc dismisses it, while the line
+    beside the strip keeps the server's words with the word Invalid, and the field points at it (aria-describedby)
+    until a good value is saved."""
+    fresh(upage, server["base"])
+    type_and_enter(upage, "#iClock", "zz")
+    expect_toast(upage, "Clock like 8:41 or 841, got 'zz'", error=True)
+    toast = upage.locator("#toast")
+    expect(toast).to_have_attribute("role", "alert")
+    expect_invalid(upage, "#iClock")
+    line = upage.locator("#stripError")
+    expect(line).to_be_visible()
+    expect(line).to_have_text(re.compile(r"^\s*Invalid\s+Clock like 8:41 or 841, got 'zz'\s*$"))
+    expect(upage.locator("#iClock")).to_have_attribute("aria-describedby", "stripError")
+    upage.wait_for_timeout(3200)
+    expect(toast).to_have_class(re.compile(r"(^|\s)show(\s|$)"))
+    upage.locator("body").press("Escape")
+    expect(toast).not_to_have_class(re.compile(r"(^|\s)show(\s|$)"))
+    expect(line).to_be_visible()
+    type_and_enter(upage, "#iClock", "8:41")
+    expect(upage.locator("#iClock")).to_have_value("8:41")
+    expect(line).to_be_hidden()
+    expect(upage.locator("#iClock")).not_to_have_attribute("aria-describedby", "stripError")
+    expect_valid(upage, "#iClock")
+
+
+@pytest.mark.parametrize("size", [(1440, 900), (1920, 1080)], ids=["1440x900", "1920x1080"])
+def test_g5_6_the_drive_end_keys_share_the_strip_row(ui_pages, server, size):
+    """G5-6 (Under the Lights): with two-digit scores and a drive on, Punt, FG good, FG missed and Half over sit whole
+    on the strip's one row under the ribbon (1440: y 44 to 96)."""
+    from ui_helpers import BOOT_TIMEOUT_MS, reset_game
+    base = server["base"]
+    reset_game(base)
+    for line in ("DAL 27 TB 10", "Q4 12:41", "new D25", "K 3", "P 6", "J 2"):
+        command(base, line)
+    page = ui_pages(width=size[0], height=size[1])
+    page.goto(f"{base}/?world=under-the-lights&scene=2d", wait_until="domcontentloaded", timeout=BOOT_TIMEOUT_MS)
+    page.wait_for_selector('#app[data-boot="ready"]', state="attached", timeout=BOOT_TIMEOUT_MS)
+    expect(page.locator("#endRow")).to_be_visible()
+    strip = page.locator("#rg-situation").bounding_box()
+    for kind in ("punt", "fg", "fg_miss", "half"):
+        key = page.locator(f'.sc-end[data-end="{kind}"]').bounding_box()
+        assert key["y"] >= strip["y"] and key["y"] + key["height"] <= strip["y"] + strip["height"] + 0.5, (kind, key, strip)
+        assert key["x"] + key["width"] <= size[0], (kind, key)

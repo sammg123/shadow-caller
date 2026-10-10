@@ -7,8 +7,8 @@
  */
 import { ballNodes } from "./fallback-draw.js";
 import { partAt, playSpec, shownBall, trailNodes } from "./fallback-plays.js";
-import { applyAttrs, buildNode, renderInto } from "./fallback-svg.js";
-import { easeFor, fitPlan, planDrawing, progressAt } from "./timing.js";
+import { applyAttrs, buildNode, patchInto, renderInto } from "./fallback-svg.js";
+import { ballAt, easeFor, fitPlan, planDrawing, progressAt } from "./timing.js";
 import { clear, svgEl } from "../ui/dom.js";
 
 function mountSpec(layer, spec) {
@@ -41,15 +41,33 @@ function apply(run, t) {
 }
 
 function mount(job) {
-  const { entry, ctx, stage, durationMs } = job;
+  const { entry, ctx, stage, durationMs, labelPx = null } = job;
   const plan = fitPlan(planDrawing(entry.drawing, ctx.look.motion), durationMs);
-  const spec = playSpec(entry.drawing, entry.row, ctx, { verdict: entry.verdict });
+  const spec = playSpec(entry.drawing, entry.row, ctx, { verdict: entry.verdict, labelPx });
   return { job, plan, spec, parts: mountSpec(stage.play, spec), start: null, t: 0 };
 }
 
+const shapeOf = (spec) => spec.steps.map((st) => st.parts.map((p) => `${p.tag}:${p.children?.length ?? 0}`).join(","))
+  .join("|");
+
+/** The same play in a new layout (a camera move, a resize): its parts patched in place when they keep their shape
+ * (nothing inserted, only what moved written), else mounted anew; it carries on from the same time. */
+function remount(run, ctx, labelPx) {
+  const job = { ...run.job, ctx, labelPx };
+  const spec = playSpec(job.entry.drawing, job.entry.row, ctx, { verdict: job.entry.verdict, labelPx });
+  if (shapeOf(spec) !== shapeOf(run.spec)) return { ...mount(job), t: run.t };
+  const parts = spec.steps.flatMap((step) => step.parts.map((part) => ({ part, index: step.index })))
+    .map((p, i) => {
+      patchInto(run.parts[i].el, p.part);
+      return { ...p, el: run.parts[i].el };
+    });
+  return { ...run, job, spec, parts, start: null };
+}
+
 /**
- * @returns {{ start(job: { entry, ctx, stage, durationMs }): void, tick(now: number): boolean, finish(): object|null,
- *   rebuild(ctx): void, active(): object|null, elapsed(): number }}
+ * @returns {{ start(job: { entry, ctx, stage, durationMs, labelPx? }): void, tick(now: number): boolean,
+ *   finish(): object|null, rebuild(ctx, labelPx?): void, active(): object|null, elapsed(): number,
+ *   ball(): ({x: number, y: number, h: number} | null) }}
  *   tick returns true while the play still runs; finish jumps to the end, clears the play layer and returns the job.
  */
 export function createPlayer() {
@@ -74,14 +92,19 @@ export function createPlayer() {
       clear(done.job.stage.ball);
       return { ...done.job, plan: done.plan };
     },
-    /** The layout changed mid-play: rebuild the parts in the new context and carry on from the same time. */
-    rebuild(ctx) {
+    /** The layout changed mid-play (a camera move, a resize): the parts move to the new context, and the play
+     * carries on from the same time. */
+    rebuild(ctx, labelPx = run?.job.labelPx ?? null) {
       if (!run) return;
-      const t = run.t;
-      run = { ...mount({ ...run.job, ctx }), start: null, t };
-      apply(run, t);
+      run = remount(run, ctx, labelPx);
+      apply(run, run.t);
     },
     active: () => run?.job ?? null,
     elapsed: () => run?.t ?? 0,
+    /** The ball now, in field yards at its true height (the WebGL engine's debugState().ball), or null. */
+    ball() {
+      const b = run ? ballAt(run.job.entry.drawing, run.plan, run.t) : null;
+      return b && run.start !== null ? { x: b.x, y: b.y, h: b.h } : null;
+    },
   };
 }

@@ -10,7 +10,13 @@
 // the page's whole words, data-page / data-pages count, and data-page-phase flips "a" / "b" so a world can step each
 // page in. Each page holds PAGE_HOLD_MS; after the last page it returns to the first and rests. Where rows wrap (the
 // neutral world, an unrolled feed) nothing overflows and nothing pages. ctx.timers and ctx.measureRibbon are for tests.
-import { el, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
+// G5-10: each row also carries its ribbon face (.sc-pf-face, aria-hidden): the field's words for the play and who had
+// the ball, one page, which a one-line world shows instead of ESPN's text (that text still names the button). No
+// paging under reduced motion, none while the feed is unrolled; a re-render writes only rows that changed.
+// G5-9: #rg-plays[data-open="true"] while keyboard focus is inside the feed (a world unrolls it then, so Tab can walk
+// its rows); it clears when focus leaves the feed, checked again on the next frame when the next focus is unknown,
+// and on Escape (focus goes back to the play the rolled-up ribbon shows).
+import { el, openWhileKeyboardInside, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
 
 const ROW_PARTS = new WeakMap();
 const GROUP_PARTS = new WeakMap();
@@ -57,6 +63,7 @@ function measureWords(control) {
   const range = doc.createRange();
   const spans = [];
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (!(node.parentElement?.getBoundingClientRect().width > 1)) continue;   // a visually hidden name, not on the face
     for (const word of node.data.matchAll(/\S+/g)) {
       range.setStart(node, word.index);
       range.setEnd(node, word.index + word[0].length);
@@ -71,7 +78,7 @@ function measureWords(control) {
  * One row paged at a time. measure(control) gives { width, spans } (or null: no layout, one page); apply(control,
  * { page, pages, shift, cut, phase }) writes it. start(control) restarts on a new row and resets the old one.
  */
-export function createPager({ timers, measure, apply }) {
+export function createPager({ timers, measure, apply, enabled = () => true }) {
   const s = { control: null, pages: [{ start: 0, end: 0 }], page: 0, phase: "b", timer: null };
   const stop = () => {
     if (s.timer !== null) timers.clearTimeout(s.timer);
@@ -101,6 +108,7 @@ export function createPager({ timers, measure, apply }) {
       s.control = control;
       s.pages = [{ start: 0, end: 0 }];
       show(0, null);
+      if (!enabled()) return;                           // G5-10: reduced motion: one page, cut at the face's edge
       const m = measure(control);
       s.pages = m ? pagesFor(m.spans, m.width) : s.pages;
       s.phase = "b";
@@ -134,6 +142,7 @@ function onRowPress(li, actions) {
 
 function rowParts(copy) {
   return {
+    face: el("span", { cls: "sc-pf-face", attrs: { "aria-hidden": "true" } }),
     time: el("span", { cls: ["sc-pf-time", "sc-num"] }),
     team: el("span", { cls: "sc-pf-team" }),
     sit: el("span", { cls: "sc-pf-sit" }),
@@ -150,7 +159,7 @@ function createRow(item, ctx) {
   const copy = ctx.copy.PLAYS;
   const p = rowParts(copy);
   const call = el("span", { cls: "sc-pf-call" }, [p.verdict, p.callName, p.retagged]);
-  const inner = [el("span", { cls: "sc-pf-meta" }, [p.time, p.team, p.sit, p.noPlay]), p.result, p.text, call];
+  const inner = [el("span", { cls: "sc-pf-meta" }, [p.time, p.team, p.sit, p.noPlay]), p.result, p.text, call, p.face];
   const control = item.reviewable
     ? el("button", { cls: "sc-pf-btn", attrs: { type: "button" } }, inner)
     : el("div", { cls: "sc-pf-btn" }, inner);
@@ -176,14 +185,21 @@ export function resultKind(word) {
   return text === "INC" ? "inc" : null;
 }
 
+const ROW_KEYS = Object.freeze(["seq", "id", "kind", "team", "caller", "verdict", "nullified", "retagged", "scoring",
+  "reviewing", "result", "time", "situation", "text", "verdictText", "call", "face", "reviewable"]);
+/** G5-10: the row shows exactly what it showed: nothing to write (183 rows are reconciled on every update). */
+const sameRow = (a, b) => Boolean(a) && ROW_KEYS.every((k) => a[k] === b[k]);
+
 function updateRow(li, item, newest, copy) {
   const p = ROW_PARTS.get(li);
-  ROW_PARTS.set(li, { ...p, item });            // the click handler reads the newest item
+  const isNewest = item.seq === newest;
+  if (p.shown === isNewest && sameRow(p.item, item)) return;
+  ROW_PARTS.set(li, { ...p, item, shown: isNewest });   // the click handler reads the newest item
   for (const key of ["seq", "id", "kind", "team", "caller", "verdict", "nullified", "retagged", "scoring", "reviewing"]) {
     setData(li, key, item[key]);
   }
   setData(li, "result", resultKind(item.result));
-  setData(li, "newest", item.seq === newest);
+  setData(li, "newest", isNewest);
   setText(p.time, item.time);
   setText(p.team, item.team);
   setText(p.sit, item.situation);
@@ -195,6 +211,7 @@ function updateRow(li, item, newest, copy) {
   setText(p.callName, item.call);
   setHidden(p.callName, !item.call || item.call === item.text);   // hand-entered rows already read as the call
   setHidden(p.retagged, !item.retagged);
+  setText(p.face, item.face || item.text || "");
   if (p.control.localName === "button") {
     setAttr(p.control, "aria-pressed", item.reviewing ? "true" : "false");
     setAttr(p.control, "title", item.reviewing ? copy.reviewing : copy.review);
@@ -234,17 +251,28 @@ function pageNewest(list, newest, paged, pager) {
   const control = newest === null ? null : list.querySelector(`[data-seq="${newest}"]`)?.firstChild ?? null;
   if (control === paged.control) return;
   paged.control = control;
+  paged.resize?.disconnect();
+  paged.resize = null;
   if (!control) {
     pager.stop();
     return;
   }
-  pager.start(control);
-  const fonts = list.ownerDocument?.fonts;
-  if (fonts?.status === "loading" && typeof fonts.ready?.then === "function") {
-    fonts.ready.then(() => {
-      if (paged.control === control && control.isConnected) pager.start(control);
-    }).catch((err) => globalThis.reportError?.(err));   // a throw here is reported, never swallowed
+  if (!paged.held()) pager.start(control);
+  // G5-10: measure again whenever the face changes width (fonts landing, a resize), not only once
+  const RO = list.ownerDocument?.defaultView?.ResizeObserver;
+  if (typeof RO === "function") {
+    let first = true;
+    paged.resize = new RO(() => {
+      if (first) { first = false; return; }               // the observer's first call is the size it starts at
+      if (paged.control === control && control.isConnected && !paged.held()) pager.start(control);
+    });
+    paged.resize.observe(control);
   }
+}
+
+/** Reduced motion (the app's <html data-motion>, which follows the OS setting): the ribbon never pages. */
+function motionOn(root) {
+  return root.ownerDocument?.documentElement?.getAttribute?.("data-motion") !== "reduced";
 }
 
 /**
@@ -261,15 +289,32 @@ export function mount(root, ctx) {
   const list = el("ol", { cls: "sc-pf-feed", attrs: { "aria-label": copy.heading }, data: { testid: "play-feed" } });
   const box = el("div", { cls: "sc-plays" }, [title, note, empty, list]);
   const timers = ctx.timers ?? browserTimers;
-  const pager = createPager({ timers, measure: ctx.measureRibbon ?? measureWords, apply: applyPage });
-  const paged = { control: null };
+  const pager = createPager({ timers, measure: ctx.measureRibbon ?? measureWords, apply: applyPage,
+    enabled: () => motionOn(root) });
+  const hover = { on: false };
+  const paged = { control: null, resize: null, held: () => hover.on || root.getAttribute("data-open") === "true" };
   // When the pointer or focus leaves (a world may unroll the feed under them), measure the newest play again on the
-  // next task, once the row is back on its one line.
-  const settle = () => timers.setTimeout(() => {
-    if (paged.control?.isConnected) pager.start(paged.control);
-  }, 0);
-  root.addEventListener("pointerleave", settle);
+  // next task, once the row is back on its one line. While it is unrolled, the face isn't shown: no page turns.
+  const settleTimers = new Set();
+  const settle = () => {
+    const id = timers.setTimeout(() => {
+      settleTimers.delete(id);
+      if (paged.control?.isConnected && !paged.held()) pager.start(paged.control);
+    }, 0);
+    settleTimers.add(id);
+  };
+  const enter = () => {
+    hover.on = true;
+    pager.stop();
+  };
+  const leave = () => {
+    hover.on = false;
+    settle();
+  };
+  root.addEventListener("pointerenter", enter);
+  root.addEventListener("pointerleave", leave);
   root.addEventListener("focusout", settle);
+  const stopOpen = openWhileKeyboardInside(root, { timers, onOpen: () => pager.stop(), escapeTo: () => paged.control });
   root.appendChild(box);
   return {
     update(vm) {
@@ -284,8 +329,13 @@ export function mount(root, ctx) {
       pageNewest(list, newest, paged, pager);
     },
     destroy() {
-      root.removeEventListener("pointerleave", settle);
+      root.removeEventListener("pointerenter", enter);
+      root.removeEventListener("pointerleave", leave);
       root.removeEventListener("focusout", settle);
+      stopOpen();
+      for (const id of settleTimers) timers.clearTimeout(id);
+      settleTimers.clear();
+      paged.resize?.disconnect();
       pager.stop();
       box.remove();
     },

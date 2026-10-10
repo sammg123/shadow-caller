@@ -3,8 +3,10 @@
 // Field math stays in field/coords.js (DC A5); this module only picks which facts to hand it.
 import { dirOf, goalX, xFromYardline100, yardline100FromX } from "../field/coords.js";
 import { ghostInputFromPrediction } from "../field/ghosts.js";
+import { LEAF_NAMES } from "../field/shadows.js";
 import { FIELD } from "./copy.js";
-import { downDistance, freezeDeep, spotText } from "./format.js";
+import { downDistance, freezeDeep, pct, spotText } from "./format.js";
+import { verdictOf, verdictText } from "./verdict.js";
 import { sourceOf } from "./vm-scoreboard.js";
 
 const finite = (x) => typeof x === "number" && Number.isFinite(x);
@@ -74,6 +76,30 @@ function ghostInputOf(presented, sit) {
   if (!sit || !presented.drive_active || !presented.prediction) return null;
   const input = ghostInputFromPrediction(presented.prediction);
   return input ? { ...input, leaves: (input.leaves || []).map((leaf) => ({ ...leaf })) } : null;
+}
+
+/** A leaf's name without its parenthesis: "Intermediate (10–19)" reads "Intermediate" on a chip. */
+function shortLeafName(leaf, leafNames) {
+  const own = (names) => (names && typeof names === "object" && Object.hasOwn(names, leaf) ? names[leaf] : null);
+  const name = [own(leafNames), own(LEAF_NAMES)].find((n) => typeof n === "string" && n.trim() !== "");
+  return name ? name.replace(/\s*\([^)]*\)\s*$/, "").trim() : "";
+}
+
+/**
+ * G2-7: what the field's verdict chip says was graded, from a caller row's pred: "Top pick · 43%", "In his top 3 ·
+ * #2 Intermediate · 39%", "Miss · #11 Deep shot · 3%" (his rank for the play he ran, its name, his odds for it). A
+ * grade without a specific play (a hand-typed play type, pass or run) keeps its plain words; no grade, "".
+ * @param {object | null} pred  a timeline row's pred
+ * @param {Record<string, string> | null} [leafNames]  the server's leaf names (timeline meta), else the engine's
+ */
+export function verdictChipText(pred, leafNames = null) {
+  const v = verdictOf(pred);
+  const head = verdictText(v.key);
+  if (!head || v.level !== "leaf") return head;
+  const odds = Number.isFinite(pred.leaf_p) ? pct(pred.leaf_p) : "";
+  if (v.top1) return [head, odds].filter(Boolean).join(" · ");
+  const play = [`#${v.rank}`, shortLeafName(pred.leaf, leafNames)].filter(Boolean).join(" ");
+  return [head, play, odds].filter(Boolean).join(" · ");
 }
 
 /**

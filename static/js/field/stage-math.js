@@ -1,14 +1,26 @@
 /**
  * Numbers behind the 3D stage (ui-architecture 6.1; three-recipe 6.3, 10.4): the device pixel ratio and its
- * frame-time governor, the HUD safe area as a camera view offset plus fit margins, camera pose easing, and the
- * alpha bleed that keeps logo decals free of dark fringes. Pure: no DOM, no three.js, no clock.
+ * frame-time governor, the ?dpr= override, when a resize reallocates the drawing buffer, whether two game frames are
+ * the same, the HUD safe area as a camera view offset plus fit margins, camera pose easing, and the alpha bleed that
+ * keeps logo decals free of dark fringes. Pure: no DOM, no three.js, no clock.
  *
  *   Pose = { position: {x, y, z}, target: {x, y, z}, fov }   (three.js world space, vertical fov in degrees)
  */
 import { deepFreeze } from "../core/domain.js";
 import { isFiniteNum } from "./grammar.js";
 
-export const DPR = deepFreeze({ CAP: 2, MAX_PIXELS: 3840 * 2160, FLOOR: 1, STEP: 0.25, SLOW_MS: 22, WINDOW: 30 });
+/**
+ * The pixel ratio and its governor (6.1, G7-3). Down: a window of WINDOW animated frames averaging over SLOW_MS
+ * (each frame's time less the engine's own CPU in the frame before it, so a play being built is not the GPU running
+ * out) steps down STEP, to FLOOR (WIDE_FLOOR for a viewport WIDE_PX wide or more). Up: RECOVER_MS of animated frames
+ * at the display's own pace (under FAST_MS, or within FAST_SLACK of the shortest frame seen: a 60 Hz TV never shows
+ * a frame under 12 ms) step back up STEP. Every step waits out COOLDOWN_MS; a step down within FLIP_MS of a step up
+ * is a flip, and after MAX_FLIPS the ratio stays down for the session. OVERRIDE bounds ?dpr=; SNAP_PX is the resize
+ * a canvas takes by CSS scaling instead of a new drawing buffer.
+ */
+export const DPR = deepFreeze({ CAP: 2, MAX_PIXELS: 3840 * 2160, FLOOR: 1, WIDE_FLOOR: 0.75, WIDE_PX: 3840, STEP: 0.25,
+  SLOW_MS: 22, WINDOW: 30, FAST_MS: 12, FAST_SLACK: 1.25, MIN_REFRESH_MS: 4, RECOVER_MS: 5000, COOLDOWN_MS: 2000,
+  FLIP_MS: 10000, MAX_FLIPS: 3, OVERRIDE: { min: 0.5, max: 3 }, SNAP_PX: 2 });
 
 /** Fit margins as fractions of the view (camera-plan's defaults), applied inside the free area. */
 export const BASE_MARGINS = deepFreeze({ left: 0.04, right: 0.04, top: 0.06, bottom: 0.06 });
@@ -25,22 +37,85 @@ export function pickDpr({ deviceDpr, width, height, maxDpr = DPR.CAP, maxPixels 
   return Math.min(device, maxDpr, pixelCap);
 }
 
-/** Governor state: the current DPR and the frame times of the window being filled. */
+/** The lowest pixel ratio the governor steps to: DPR.WIDE_FLOOR for a viewport DPR.WIDE_PX wide or more, else 1. */
+export function dprFloor(width) {
+  return isFiniteNum(width) && width >= DPR.WIDE_PX ? DPR.WIDE_FLOOR : DPR.FLOOR;
+}
+
+/** ?dpr=<n> from a location's search string: n clamped to DPR.OVERRIDE, or null when absent or not a number > 0. */
+export function dprOverride(search) {
+  let raw = null;
+  try {
+    raw = new URLSearchParams(typeof search === "string" ? search : "").get("dpr");
+  } catch {
+    return null;
+  }
+  const n = raw === null || raw.trim() === "" ? Number.NaN : Number(raw);
+  if (!isFiniteNum(n) || n <= 0) return null;
+  return Math.min(DPR.OVERRIDE.max, Math.max(DPR.OVERRIDE.min, n));
+}
+
+/** Governor state: the governed DPR, its ceiling, the slow window being filled and the step-up bookkeeping. */
 export function initialGovernor(dpr) {
-  return deepFreeze({ dpr, samples: [] });
+  return deepFreeze({ dpr, max: dpr, samples: [], fastMs: 0, coolMs: 0, sinceUpMs: Infinity, flips: 0,
+    refreshMs: null });
+}
+
+const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
+
+/** A step taken: a fresh window, the cooldown, and (down soon after an up) one more flip. */
+function stepped(s, dpr, up) {
+  const flip = !up && s.sinceUpMs < DPR.FLIP_MS;
+  return deepFreeze({ ...s, dpr, samples: [], fastMs: 0, coolMs: DPR.COOLDOWN_MS, sinceUpMs: up ? 0 : Infinity,
+    flips: s.flips + (flip ? 1 : 0) });
 }
 
 /**
- * One animated frame's time in. When a window of DPR.WINDOW frames averages over DPR.SLOW_MS, the DPR steps down
- * by DPR.STEP to a floor of DPR.FLOOR, and stays there for the session (6.1: never back up, no flapping).
+ * One animated frame in (its interval, ms). `cpuMs` is the engine's own CPU time in the frame before it; `floor` and
+ * `ceiling` bound the ratio now (dprFloor of the viewport; the device, tier and pixel cap). Returns a new state; the
+ * ratio steps down 0.25 when the GPU falls behind and back up 0.25 once it has had headroom for a while (DPR).
+ * @param {object} state  initialGovernor or a previous result
+ * @param {number} frameMs
+ * @param {{ cpuMs?: number, floor?: number, ceiling?: number }} [opts]
  */
-export function governDpr(state, frameMs) {
+export function governDpr(state, frameMs, { cpuMs = 0, floor = DPR.FLOOR, ceiling = state.max } = {}) {
   if (!isFiniteNum(frameMs) || frameMs <= 0) return state;
-  const samples = [...state.samples, frameMs];
-  if (samples.length < DPR.WINDOW) return deepFreeze({ dpr: state.dpr, samples });
-  const mean = samples.reduce((a, b) => a + b, 0) / samples.length;
-  const dpr = mean > DPR.SLOW_MS ? Math.max(Math.min(DPR.FLOOR, state.dpr), state.dpr - DPR.STEP) : state.dpr;
-  return deepFreeze({ dpr, samples: [] });
+  const work = Math.max(0, frameMs - (isFiniteNum(cpuMs) && cpuMs > 0 ? cpuMs : 0));
+  const refreshMs = Math.max(DPR.MIN_REFRESH_MS, Math.min(state.refreshMs ?? Infinity, frameMs));
+  const s = { ...state, refreshMs, sinceUpMs: state.sinceUpMs + frameMs };
+  if (state.coolMs > 0) return deepFreeze({ ...s, coolMs: state.coolMs - frameMs, samples: [], fastMs: 0 });
+  const cur = Math.min(ceiling, Math.max(floor, state.dpr));
+  const samples = [...state.samples, work];
+  if (samples.length >= DPR.WINDOW && mean(samples) > DPR.SLOW_MS && cur > floor) {
+    return stepped(s, Math.max(floor, cur - DPR.STEP), false);
+  }
+  const fast = work <= Math.max(DPR.FAST_MS, refreshMs * DPR.FAST_SLACK);
+  const fastMs = fast ? state.fastMs + frameMs : 0;
+  if (fastMs >= DPR.RECOVER_MS && cur < ceiling && state.flips < DPR.MAX_FLIPS) {
+    return stepped(s, Math.min(ceiling, cur + DPR.STEP), true);
+  }
+  return deepFreeze({ ...s, samples: samples.length >= DPR.WINDOW ? [] : samples, fastMs });
+}
+
+/** Whether a canvas resized from `cur` to `next` (CSS px) needs a new drawing buffer: past DPR.SNAP_PX either way. */
+export function needsRealloc(cur, next, snapPx = DPR.SNAP_PX) {
+  if (!cur) return true;
+  return Math.abs(next.width - cur.width) > snapPx || Math.abs(next.height - cur.height) > snapPx;
+}
+
+/** Deep equality of JSON data (two fetches of the same game frame are equal; arrays and objects never are). */
+function sameData(a, b) {
+  if (a === b) return true;
+  if (typeof a !== "object" || typeof b !== "object" || a === null || b === null) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => Object.hasOwn(b, k) && sameData(a[k], b[k]));
+}
+
+/** Whether two game frames ({ field, teams, teamOrder, game } or null) are the same: nothing to rebuild. */
+export function sameFrame(a, b) {
+  return sameData(a ?? null, b ?? null);
 }
 
 const clampInset = (v, max) => (isFiniteNum(v) ? Math.min(max, Math.max(0, v)) : 0);

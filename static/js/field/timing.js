@@ -43,8 +43,8 @@ export const EASE = Object.freeze({
   inOutSine: (u) => -(Math.cos(Math.PI * u) - 1) / 2,
 });
 
-/** The holder's set and the penalty walk ease in and out; every other line on the turf is a carry. */
-const SETTLE_ROLES = new Set(["hold", "march"]);
+/** The penalty walk eases in and out; every other line on the turf is a carry. */
+const SETTLE_ROLES = new Set(["march"]);
 /** Marks that appear the instant the ball arrives: the catch dot, so the YAC grows straight from it. */
 const INSTANT_MARKS = new Set(["catch"]);
 

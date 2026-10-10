@@ -68,16 +68,26 @@
 }
 
 /* The play feed unrolls down from the ribbon; the drive chart unrolls up from the lower ribbon. */
-#app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, :has(:focus-visible)) > * {
+#app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, [data-open="true"]) > * {
   animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
 }
-#app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, :has(:focus-visible)) > * {
+#app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, [data-open="true"]) > * {
   animation: uls-scan-up var(--uls-scan-ms) var(--uls-scan) both;
 }
 
-/* The drawer runs out on its rails (closing is instant: the cabinet is simply put away). */
+/* The drawer runs out on its rails (closing is instant: the cabinet is simply put away). The run leaves no translate
+   behind (fill backwards, G5-1): a drawer with a translate is the containing block of anything fixed inside it. */
 #app[data-layout="uls"][data-booth-open="true"] .uls-drawer {
-  animation: uls-rails-in var(--uls-rail-ms) var(--sc-ease-out) both;
+  animation: uls-rails-in var(--uls-rail-ms) var(--sc-ease-out) backwards;
+}
+/* Manual entry and flag mode: the scorer's strip hangs under the ribbon (position: fixed) from the drawer's SITUATION
+   rack, so the cabinet stays put and its other racks run out instead; the strip never leaves the ribbon. */
+#app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"]) .uls-drawer {
+  animation: none;
+}
+#app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"])
+  .uls-drawer > :not([data-rack="situation"]) {
+  animation: uls-rails-in var(--uls-rail-ms) var(--sc-ease-out) backwards;
 }
 
 /* Digits snap: a ticking number never tweens (The Ticking Number Rule). */
@@ -88,6 +98,7 @@
 /* ---------------------------------------------------------------- reduced motion: instant state changes */
 @media (prefers-reduced-motion: reduce) {
   #app[data-layout="uls"] .uls-drawer,
+  #app[data-layout="uls"] .uls-drawer > *,
   #app[data-layout="uls"] .uls-ribbon #rg-plays > *,
   #app[data-layout="uls"] .uls-lower #rg-drives > *,
   #app[data-layout="uls"] .uls-ribbon .sc-pf-btn,
@@ -96,6 +107,7 @@
   }
 }
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-drawer,
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-drawer > *,
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon #rg-plays > *,
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-lower #rg-drives > *,
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon .sc-pf-btn,

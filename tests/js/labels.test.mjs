@@ -5,7 +5,7 @@ import test from "node:test";
 import { loadThree, lookWith } from "./three-env.mjs";
 
 const THREE = await loadThree();
-const { createLabels, MAX_LABELS } = await import("../../static/js/field/labels.js");
+const { createLabels, MAX_LABELS, PLATE_PAD, plateShift } = await import("../../static/js/field/labels.js");
 
 class El {
   constructor(doc, tag) {
@@ -76,6 +76,38 @@ test("remove, clear and dispose free labels and the layer", async () => {
   labels.dispose();
   assert.equal(labels.group.parent, null);
 });
+
+test("G3-8: plateShift moves a plate just far enough to sit inside the field, and never one that fits", () => {
+  assert.equal(plateShift(195, 100, 390), 0, "in the middle: where it is");
+  assert.equal(plateShift(228, 356, 390), 390 - PLATE_PAD - (228 + 178), "off the right edge: back inside it");
+  assert.equal(plateShift(20, 100, 390), PLATE_PAD - (20 - 50), "off the left edge: back inside it");
+  assert.equal(plateShift(195, 400, 390), 0, "wider than the field: centered on it, as wrapped plates are not");
+  assert.equal(plateShift(200, 0, 390), 0, "not laid out (hidden): nothing");
+});
+
+test("G3-8: on render each plate is kept inside the field, its own spot otherwise (the inner span moves, not the anchor)",
+  async () => {
+    const { host, labels } = await setup();
+    const scene = new THREE.Scene();
+    scene.add(labels.group);
+    labels.setSize(390, 300);
+    const camera = new THREE.PerspectiveCamera(30, 390 / 300, 0.5, 1500);
+    camera.position.set(0, 60, 90);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    const wide = labels.add({ x: 78, y: 20 }, "Punt · 41 yds · downed · flag: offensive holding on DAL");
+    const small = labels.add({ x: 50, y: 26.667 }, "Kneel · −1");
+    wide.element.offsetWidth = 356;
+    small.element.offsetWidth = 80;
+    labels.render(scene, camera);
+    const anchorX = (h) => Number(/translate\(([-\d.]+)px/.exec(h.object.element.style.transform)?.[1]);
+    const shiftX = (h) => Number.parseFloat(h.element.style.translate || "0");
+    const x = anchorX(wide);
+    assert.ok(x + 178 > 390, `the anchor would put the plate past the right edge (${x})`);
+    assert.ok(Math.abs(x + shiftX(wide) + 178 - (390 - PLATE_PAD)) <= 0.5, "its right edge back inside, by the pad");
+    assert.equal(small.element.style.translate ?? "", "", "a plate that fits stays on its spot");
+    assert.ok(host.children.length >= 1);
+  });
 
 test("renderer none (or no document): adding does nothing", async () => {
   const { host, labels } = await setup("none");

@@ -40,48 +40,142 @@ export function applyAttrs(el, attrs) {
   for (const [name, value] of Object.entries(attrs ?? {})) setAttr(el, name, value);
 }
 
+/** The spec each layer's children (renderInto) and each patched element (patchInto) were last drawn from. */
+const DRAWN = new WeakMap();
+
 /** An element from a node spec, children and text included. */
 export function buildNode(spec) {
   const el = svgEl(spec.tag, spec.attrs ?? {});
   if (spec.text !== undefined) el.textContent = spec.text;
   for (const child of spec.children ?? []) el.appendChild(buildNode(child));
+  DRAWN.set(el, spec);
   return el;
 }
 
-/** Replace a layer's children with the built specs. */
+const kidsOf = (spec) => spec.children ?? [];
+const sameShape = (a, b) => a.tag === b.tag && kidsOf(a).length === kidsOf(b).length
+  && kidsOf(a).every((child, i) => sameShape(child, kidsOf(b)[i]));
+const elementsOf = (el) => [...el.childNodes].filter((n) => n.nodeType === 1);
+
+/**
+ * Bring an element drawn from `prev` up to `next` (the same shape): only what differs between the two specs is
+ * written, so what the page put on it since (a tag's plate fitted to its text, an entrance class) stays.
+ */
+function patchNode(el, prev, next, { keepClass = false } = {}) {
+  if (prev === next) return;
+  const [was, now] = [prev.attrs ?? {}, next.attrs ?? {}];
+  for (const [name, value] of Object.entries(now)) {
+    if (was[name] !== value && !(keepClass && name === "class")) setAttr(el, name, value);
+  }
+  for (const name of Object.keys(was)) if (!Object.hasOwn(now, name)) setAttr(el, name, null);
+  if (next.text !== prev.text) el.textContent = next.text ?? "";
+  const kids = elementsOf(el);
+  kidsOf(next).forEach((child, i) => patchNode(kids[i], kidsOf(prev)[i], child));
+}
+
+/**
+ * Draw a layer's children from specs: in place when the layer holds what it last drew in the same shape (a ball
+ * moving frame by frame, the same play drawn again), so nothing is inserted and only changed attributes are written;
+ * else built anew.
+ */
 export function renderInto(layer, specs) {
-  clear(layer);
-  for (const spec of specs) layer.appendChild(buildNode(spec));
+  const prev = DRAWN.get(layer);
+  const kids = elementsOf(layer);
+  const inPlace = prev && prev.length === specs.length && kids.length === specs.length
+    && kids.every((kid, i) => DRAWN.get(kid) === prev[i] && sameShape(prev[i], specs[i]));
+  if (inPlace) {
+    specs.forEach((spec, i) => {
+      patchNode(kids[i], prev[i], spec);
+      DRAWN.set(kids[i], spec);
+    });
+  } else {
+    clear(layer);
+    for (const spec of specs) layer.appendChild(buildNode(spec));
+  }
+  DRAWN.set(layer, specs);
   return layer;
 }
 
-function textBox(text) {
-  try {
-    const box = text.getBBox();
-    if (box && box.width > 0 && box.height > 0) return box;
-  } catch {
-    // Not rendered (a hidden host, or no layout engine): estimated from the text below.
+/** A kept element (a keyed shadow or tag) brought up to `spec`: patched in place when it has the same shape, its
+ * class kept (an entrance running on it is not cut short); else its children are built anew. */
+export function patchInto(el, spec) {
+  const prev = DRAWN.get(el);
+  if (prev && sameShape(prev, spec)) {
+    patchNode(el, prev, spec, { keepClass: true });
+  } else {
+    clear(el);
+    for (const child of kidsOf(spec)) el.appendChild(buildNode(child));
+    for (const [name, value] of Object.entries(spec.attrs ?? {})) if (name !== "class") setAttr(el, name, value);
   }
+  DRAWN.set(el, spec);
+}
+
+// ---------------------------------------------------------------- tags' plates
+/** What a tag's plate was fitted to (its words and where and how they are set), so an unchanged tag is skipped. */
+const FITTED = new WeakMap();
+/** Text sizes by words and style ({ dx, dy, width, height } from the text's anchor point): getBBox forces a layout. */
+const SIZES = new Map();
+const MAX_SIZES = 600;
+const MOTION_CLASSES = /\s*\bsc-fb-(in|grow)\b/g;
+const TEXT_KEY_ATTRS = Object.freeze(["style", "text-anchor", "dominant-baseline", "font-size"]);
+
+const fontsIn = (node) => {
+  const fonts = node.ownerDocument?.fonts;
+  return !fonts || fonts.status === "loaded";
+};
+
+/** The words and their style: two texts with the same key measure the same. */
+function sizeKey(tag, text) {
+  const cls = String(tag.getAttribute("class") ?? "").replace(MOTION_CLASSES, "");
+  return [cls, ...TEXT_KEY_ATTRS.map((a) => text.getAttribute(a) ?? ""), text.textContent ?? ""].join("|");
+}
+
+function estimate(text, x, y) {
   const size = Number.parseFloat(text.getAttribute("font-size")) || FALLBACK_FONT_PX;
   const width = (text.textContent ?? "").length * size * TEXT_EM;
-  const x = Number(text.getAttribute("x")) || 0;
-  const y = Number(text.getAttribute("y")) || 0;
   const anchor = text.getAttribute("text-anchor");
   const left = anchor === "end" ? x - width : anchor === "middle" ? x - width / 2 : x;
   return { x: left, y: y - size / 2, width, height: size };
 }
 
-/** Size every tag panel under `root` to its text plus the tag's padding. */
+/** The text's box: known words in a known style from SIZES, else measured (and kept once the fonts are in). */
+function textBox(text, key) {
+  const x = Number(text.getAttribute("x")) || 0;
+  const y = Number(text.getAttribute("y")) || 0;
+  const known = SIZES.get(key);
+  if (known) return { x: x + known.dx, y: y + known.dy, width: known.width, height: known.height };
+  try {
+    const box = text.getBBox();
+    if (box && box.width > 0 && box.height > 0) {
+      if (fontsIn(text)) {
+        if (SIZES.size >= MAX_SIZES) SIZES.clear();
+        SIZES.set(key, { dx: box.x - x, dy: box.y - y, width: box.width, height: box.height });
+      }
+      return box;
+    }
+  } catch {
+    // Not rendered (a hidden host, or no layout engine): estimated below.
+  }
+  return estimate(text, x, y);
+}
+
+/** Size every tag panel under `root` to its text plus the tag's padding; a tag already fitted to the same words, set
+ * the same way, is left alone. */
 export function fitTags(root) {
   for (const tag of root.querySelectorAll(".sc-fb-tag")) {
     const rect = tag.querySelector("rect");
     const text = tag.querySelector("text");
     if (!rect || !text) continue;
-    const box = textBox(text);
+    const key = sizeKey(tag, text);
+    const fit = [key, text.getAttribute("x"), text.getAttribute("y"), tag.getAttribute("data-pad-x"),
+      tag.getAttribute("data-pad-y")].join("|");
+    if (FITTED.get(tag) === fit && rect.getAttribute("width") !== "0") continue;
+    const box = textBox(text, key);
     const padX = Number(tag.getAttribute("data-pad-x")) || 0;
     const padY = Number(tag.getAttribute("data-pad-y")) || 0;
     applyAttrs(rect, { x: Math.round(box.x - padX), y: Math.round(box.y - padY),
       width: Math.round(box.width + 2 * padX), height: Math.round(box.height + 2 * padY) });
+    FITTED.set(tag, fit);
   }
 }
 
@@ -191,16 +285,14 @@ function boxOfTag(tag) {
 }
 
 /** Move a stage's tags on screen and apart (fitTags first); tags fading out don't count. `bounds` is { top, bottom,
- * left?, right? } in px. */
+ * left?, right? } in px. A plate's box is its rect's own attributes (a move is a transform on the tag), so each tag
+ * is only written when its move changes. */
 export function declutter(stage, bounds) {
   const tags = TAG_PRIORITY.flatMap((group) => [...stage[group].querySelectorAll(".sc-fb-tag")])
     .filter((tag) => tag.style?.getPropertyValue?.("opacity") !== "0");
-  for (const tag of tags) {
-    setAttr(tag, "transform", null);
-    setAttr(tag, "display", null);
-  }
   spreadBoxes(tags.map(boxOfTag), bounds).forEach(({ dx, dy, hidden }, i) => {
-    if (hidden) setAttr(tags[i], "display", "none");
-    else if (dx || dy) setAttr(tags[i], "transform", `translate(${Math.round(dx)} ${Math.round(dy)})`);
+    const moved = !hidden && (Math.round(dx) || Math.round(dy));
+    setAttr(tags[i], "display", hidden ? "none" : null);
+    setAttr(tags[i], "transform", moved ? `translate(${Math.round(dx)} ${Math.round(dy)})` : null);
   });
 }

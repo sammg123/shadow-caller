@@ -3,9 +3,14 @@
 Turns each play into what the engine needs: run gap and side, pass depth (air yards when ESPN
 gives yards after catch), sack / scramble / incomplete, TD, turnover, penalties that wipe out a
 play, punts and field goals. ESPN can't tell play-action, RPO or screen: retag those in the app.
+
+Live polls are checked before anything is applied (v1.4): an answer that isn't a game summary, or a thin one, is a
+failed poll that leaves the summary on screen alone (BadSummary), and another matchup's game stops the feed with the
+reason (WrongGame). Fetches refuse redirects and answers over 8 MB; a failing feed backs off from 4 s to 30 s.
 """
 import json
 import logging
+import math
 import os
 import re
 import threading
@@ -13,6 +18,7 @@ import time
 import urllib.request
 from datetime import datetime
 
+import logos
 from config import DATA_DIR, ESPN_OFFLINE, GAME
 from live import parse_clock
 
@@ -21,6 +27,26 @@ log = logging.getLogger(__name__)
 BASE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl"
 RAW_DIR = DATA_DIR / "espn"
 SEEN_PATH = DATA_DIR / "feed_seen.json"
+USER_AGENT = "Mozilla/5.0 shadow-caller"
+MAX_SUMMARY_BYTES = 8 * 1024 * 1024        # a finished game's summary is about 0.7 MB
+FETCH_DEADLINE_S = 30                      # the whole download; the timeout is per socket operation
+POLL_S, MAX_BACKOFF_S = 4, 30              # live polls: every 4 s, backing off to 30 s while they fail
+STATUS_MAX = 200                           # characters of an error kept in the feed's status line
+# Gamebook abbreviations in play text -> ESPN abbreviations. A spot that doesn't resolve is never guessed.
+TEAM_ALIASES = {"WAS": "WSH", "BLT": "BAL", "HST": "HOU", "ARZ": "ARI", "CLV": "CLE", "LA": "LAR", "JAC": "JAX",
+                "SD": "LAC", "OAK": "LV", "STL": "LAR"}
+
+
+class BadSummary(ValueError):
+    """ESPN's answer isn't a game summary the feed can use: a failed poll. The summary on screen stays."""
+
+
+class WrongGame(ValueError):
+    """The summary is another matchup's game: a stale or pasted event id. The live feed never applies it."""
+
+    def __init__(self, message, event_id=None):
+        super().__init__(message)
+        self.event_id = event_id
 
 GAP_RE = re.compile(r"\b(left end|left tackle|left guard|up the middle|right guard|right tackle|right end)\b", re.I)
 PASS_RE = re.compile(r"\bpass (incomplete )?(short|deep)? ?(left|middle|right)?", re.I)
@@ -43,6 +69,7 @@ SCRAMBLE_RE = re.compile(r"\bscrambles (left end|left tackle|left guard|up the m
                          re.I)
 EVENT_RE = re.compile(r"[0-9]{1,12}")      # ASCII digits only ('\d' takes Arabic-Indic too): ids reach paths and URLs
 ORDER_KEY = "_apply_order"                 # feed_seen.json: games whose id list is in apply order (older files sorted it)
+EVENTS_KEY = "_events"                     # feed_seen.json: {game_id: the ESPN event its applied ids came from}
 # Air yards of an incompletion, from the gamebook word: median and interquartile range, nflverse 2026 weeks 1 to 5
 # (65 games, pass attempts excluding sacks). Hard-coded for v1; build.py can write them into models/profile.json later.
 AIR_EST = {"short": {"air": 5, "band": [1, 10], "n": 1049}, "deep": {"air": 23, "band": [19, 32], "n": 461}}
@@ -50,9 +77,102 @@ AIR_EST_SOURCE = "nflverse 2026 weeks 1-5 (65 games), pass attempts excluding sa
 
 
 def fetch_json(url, timeout=10):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 shadow-caller"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(r.read().decode("utf-8"))
+    """JSON from ESPN: no redirects (a 3xx raises urllib's HTTPError), at most MAX_SUMMARY_BYTES (BadSummary past
+    that), the whole download within FETCH_DEADLINE_S."""
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+    deadline = time.monotonic() + FETCH_DEADLINE_S
+    with logos.build_opener().open(req, timeout=timeout) as r:
+        raw = _read_capped(r, deadline)
+    return json.loads(raw.decode("utf-8"))
+
+
+def _read_capped(resp, deadline):
+    chunks, size = [], 0
+    while size <= MAX_SUMMARY_BYTES:
+        chunk = resp.read1(MAX_SUMMARY_BYTES + 1 - size)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        size += len(chunk)
+        if time.monotonic() > deadline:
+            raise TimeoutError(f"ESPN's answer took over {FETCH_DEADLINE_S} s.")
+    if size > MAX_SUMMARY_BYTES:
+        raise BadSummary(f"ESPN's answer is over {MAX_SUMMARY_BYTES // (1024 * 1024)} MB.")
+    return b"".join(chunks)
+
+
+def _dict(value):
+    return value if isinstance(value, dict) else {}
+
+
+def whole_in(value, lo, hi):
+    """value when it is a whole number (never a bool) from lo to hi, else None."""
+    return value if isinstance(value, int) and not isinstance(value, bool) and lo <= value <= hi else None
+
+
+def finite(value):
+    """value when it is a finite number (never a bool), else None: a NaN would make JSON no browser reads."""
+    ok = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
+    return value if ok else None
+
+
+def competitors(summary):
+    """header.competitions[0].competitors as a list of dicts, or None when the header doesn't have them."""
+    comps = _dict(summary).get("header")
+    comps = _dict(comps).get("competitions")
+    first = comps[0] if isinstance(comps, list) and comps else None
+    teams = _dict(first).get("competitors")
+    if not isinstance(teams, list):
+        return None
+    teams = [c for c in teams if isinstance(c, dict)]
+    return teams or None
+
+
+def check_summary(summary, *, live=False, have_plays=False):
+    """The summary when the feed can use it: a dict, with drives a dict when it has drives. A live poll must also
+    name the teams (header.competitions[0].competitors), and once plays are applied it must list plays: a poll
+    without them is a thin answer, never a reason to forget the game on screen. BadSummary otherwise."""
+    if not isinstance(summary, dict):
+        raise BadSummary("ESPN's answer isn't a game summary.")
+    drives = summary.get("drives")
+    if drives is not None and not isinstance(drives, dict):
+        raise BadSummary("ESPN's answer has its drives in a shape the feed can't read.")
+    if live and competitors(summary) is None:
+        raise BadSummary("ESPN's answer doesn't name the teams.")
+    if live and have_plays and not iter_drive_plays(summary):
+        raise BadSummary("ESPN's answer lists no plays this time.")
+    return summary
+
+
+def same_team(a, b):
+    return isinstance(a, str) and isinstance(b, str) and TEAM_ALIASES.get(a, a) == TEAM_ALIASES.get(b, b)
+
+
+def check_matchup(summary, event_id):
+    """WrongGame unless the summary's teams are GAME's offense and opponent (ESPN abbreviations, aliases allowed)."""
+    away = home = None
+    teams = []
+    for c in competitors(summary) or []:
+        abbr = _dict(c.get("team")).get("abbreviation")
+        abbr = abbr[:6] if isinstance(abbr, str) and abbr.strip() else "?"
+        teams.append(abbr)
+        if c.get("homeAway") == "home":
+            home = abbr
+        elif c.get("homeAway") == "away":
+            away = abbr
+    want = (GAME["offense"], GAME["opponent"])
+    if len(teams) == 2 and all(any(same_team(t, w) for t in teams) for w in want):
+        return
+    if away and home:
+        named = f"{away} at {home}"
+    else:
+        named = " v ".join(teams) if teams else "a game with no teams named"
+    raise WrongGame(f"ESPN event {event_id} is {named}, not {want[0]} v {want[1]}.", event_id)
+
+
+def backoff_s(failures):
+    """Seconds to the next live poll after `failures` errors in a row: 4, then 4, 8, 16 and 30 at most."""
+    return min(MAX_BACKOFF_S, POLL_S * 2 ** max(0, failures - 1))
 
 
 def find_event(team_abbr, date=None):
@@ -84,25 +204,43 @@ def fetch_summary(event_id):
     return fetch_json(f"{BASE}/summary?event={event_id}")
 
 
-def iter_drive_plays(summary):
-    """All plays in order as (offense_abbr, drive_idx, drive_id, play). drive_idx counts ESPN's drives from 1
-    (drives.previous, then drives.current, the drive in progress)."""
-    drives = summary.get("drives") or {}
-    groups = list(drives.get("previous") or [])
+def drive_groups(summary):
+    """ESPN's drives in order (drives.previous, then drives.current, the drive in progress), dicts only: a null or
+    malformed entry in a poll is skipped, never the reason a request fails."""
+    drives = _dict(_dict(summary).get("drives"))
+    prev = drives.get("previous")
+    groups = [d for d in prev if isinstance(d, dict)] if isinstance(prev, list) else []
     cur = drives.get("current")
     if isinstance(cur, dict) and cur.get("plays"):
         groups.append(cur)
+    return groups
+
+
+def _seq_number(p):
+    try:
+        return int(p.get("sequenceNumber") or 0)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def iter_drive_plays(summary):
+    """All plays in order as (offense_abbr, drive_idx, drive_id, play). drive_idx counts ESPN's drives from 1
+    (drives.previous, then drives.current, the drive in progress). Plays that aren't objects are skipped."""
     seen, out = set(), []
-    for idx, d in enumerate(groups, start=1):
-        team = (d.get("team") or {}).get("abbreviation")
-        did = str(d["id"]) if d.get("id") is not None else None
-        for p in d.get("plays") or []:
+    for idx, d in enumerate(drive_groups(summary), start=1):
+        team = _dict(d.get("team")).get("abbreviation")
+        team = team if isinstance(team, str) else None
+        did = str(d["id"]) if isinstance(d.get("id"), (str, int)) and not isinstance(d.get("id"), bool) else None
+        plays = d.get("plays")
+        for p in plays if isinstance(plays, list) else []:
+            if not isinstance(p, dict):
+                continue
             pid = str(p.get("id"))
             if pid in seen:
                 continue
             seen.add(pid)
             out.append((team, idx, did, p))
-    out.sort(key=lambda x: int(x[3].get("sequenceNumber") or 0))
+    out.sort(key=lambda x: _seq_number(x[3]))
     return out
 
 
@@ -111,22 +249,22 @@ def iter_plays(summary):
     return [(team, p) for team, idx, did, p in iter_drive_plays(summary)]
 
 
+def _team_id(team, abbr):
+    tid = team.get("id")
+    if team.get("abbreviation") == abbr and isinstance(tid, (str, int)) and not isinstance(tid, bool):
+        return str(tid)
+    return None
+
+
 def team_id(summary, abbr):
     """ESPN team id for an abbreviation, from the drive records (fallback: boxscore, header)."""
-    drives = summary.get("drives") or {}
-    for d in list(drives.get("previous") or []) + [drives.get("current") or {}]:
-        t = d.get("team") or {}
-        if t.get("abbreviation") == abbr and t.get("id") is not None:
-            return str(t["id"])
-    for t in (summary.get("boxscore") or {}).get("teams") or []:
-        tt = t.get("team") or {}
-        if tt.get("abbreviation") == abbr:
-            return str(tt.get("id"))
-    for c in (((summary.get("header") or {}).get("competitions") or [{}])[0]).get("competitors") or []:
-        tt = c.get("team") or {}
-        if tt.get("abbreviation") == abbr:
-            return str(tt.get("id"))
-    return None
+    drives = _dict(_dict(summary).get("drives"))
+    prev = drives.get("previous") if isinstance(drives.get("previous"), list) else []
+    box = _dict(_dict(summary).get("boxscore")).get("teams")
+    sources = ([_dict(_dict(d).get("team")) for d in prev + [drives.get("current")]]
+               + [_dict(_dict(t).get("team")) for t in (box if isinstance(box, list) else [])]
+               + [_dict(c.get("team")) for c in competitors(summary) or []])
+    return next((tid for tid in (_team_id(t, abbr) for t in sources) if tid), None)
 
 
 def _depth(air):
@@ -139,10 +277,13 @@ def play_text(text):
     return TWO_POINT_RE.sub("", REVERSED_RE.split(text)[-1]).strip()
 
 
+FOUL_MAX = 60                              # characters of a foul's name kept from ESPN's text (G1-12)
+
+
 def penalty_note(text):
     """'defensive offside on TB' from '...PENALTY on TB-D.Walker, Defensive Offside, 4 yards...'."""
     m = PEN_RE.search(text or "")
-    return f"{m.group(2).strip().lower()} on {m.group(1)}" if m else None
+    return f"{m.group(2).strip().lower()[:FOUL_MAX]} on {m.group(1)}" if m else None
 
 
 def _gain(text):
@@ -186,8 +327,8 @@ def _yards(p, body, family, incomplete, intercepted):
         return 0
     gain = _gain(re.split(r"\bFUMBLES\b", body)[0])
     if gain is None:
-        stat = p.get("statYardage")
-        gain = int(stat) if isinstance(stat, (int, float)) else 0
+        stat = finite(p.get("statYardage"))
+        gain = int(stat) if stat is not None else 0
     return abs(gain) if family == "sack" else gain
 
 
@@ -196,8 +337,8 @@ def _pass_leaf(p, body, yards, incomplete, intercepted):
     Incompletions: 'deep' (15+) is 20+ air yards 70% of the time in 2022-25 nflverse, so deep -> 20+."""
     m = PASS_RE.search(body)
     word = (m.group(2) or "").lower() if m else ""
-    yac = p.get("yardsAfterCatch")
-    if not incomplete and not intercepted and isinstance(yac, (int, float)):
+    yac = finite(p.get("yardsAfterCatch"))
+    if not incomplete and not intercepted and yac is not None:
         depth = _depth(yards - int(yac))
         # gamebook 'deep' = 15+ air yards, 'short' = under 15: a whole bucket off means ESPN's YAC is wrong
         if word == "deep" and depth == "short":
@@ -221,8 +362,8 @@ def _pass_facts(p, body, yards, incomplete, intercepted):
     m = PASS_RE.search(body)
     word = ((m.group(2) or "").lower() or None) if m else None
     out = {"lat": ((m.group(3) or "").lower() or None) if m else None, "depth": word}
-    yac = p.get("yardsAfterCatch")
-    if not incomplete and not intercepted and isinstance(yac, (int, float)):
+    yac = finite(p.get("yardsAfterCatch"))
+    if not incomplete and not intercepted and yac is not None:
         air = yards - int(yac)
         conflict = (word == "deep" and air < 10) or (word == "short" and air >= 20)   # the same distrust as _pass_leaf
         out.update(air=air, yac=int(yac), air_src="yac_conflict" if conflict else "yac")
@@ -238,9 +379,10 @@ def _turnover(p, typ, low):
 
 
 def classify(team, p):
-    """What happened on this play, in the engine's terms."""
-    typ = ((p.get("type") or {}).get("text") or "").lower()
-    raw = p.get("text") or ""
+    """What happened on this play, in the engine's terms. A field of the wrong type reads as missing."""
+    typ = _dict(p.get("type")).get("text")
+    typ = typ.lower() if isinstance(typ, str) else ""
+    raw = p.get("text") if isinstance(p.get("text"), str) else ""
     text = play_text(raw)
     low = text.lower()
     nullified = "no play" in low
@@ -291,26 +433,26 @@ def classify(team, p):
 
 def situation(p, which, offense_is_home):
     """Down, distance, ball (distance to the end zone), quarter, clock, score at start or end of a play."""
-    st = p.get(which) or {}
+    st = _dict(p.get(which))
     out = {}
-    down, dist, ytg = st.get("down"), st.get("distance"), st.get("yardsToEndzone")
-    if isinstance(down, int) and 1 <= down <= 4 and isinstance(ytg, int) and 1 <= ytg <= 99:
-        out.update(down=down, togo=max(1, int(dist or 10)), yardline_100=ytg)
-    q = (p.get("period") or {}).get("number")
-    if isinstance(q, int) and 1 <= q <= 5:
+    down, ytg = whole_in(st.get("down"), 1, 4), whole_in(st.get("yardsToEndzone"), 1, 99)
+    if down and ytg:
+        out.update(down=down, togo=whole_in(st.get("distance"), 1, 99) or 10, yardline_100=ytg)
+    q = whole_in(_dict(p.get("period")).get("number"), 1, 5)
+    if q:
         out["qtr"] = q
-    clk = (p.get("clock") or {}).get("displayValue")
-    if which == "start" and clk:
+    clk = _dict(p.get("clock")).get("displayValue")
+    if which == "start" and isinstance(clk, str) and clk:
         try:
             out["clock"] = parse_clock(clk)
         except ValueError:
             pass
     if which == "end":
-        h, a = p.get("homeScore"), p.get("awayScore")
-        if isinstance(h, int) and isinstance(a, int):
+        h, a = whole_in(p.get("homeScore"), 0, 999), whole_in(p.get("awayScore"), 0, 999)
+        if h is not None and a is not None:
             out["score_off"], out["score_opp"] = (h, a) if offense_is_home else (a, h)
-    poss = (st.get("team") or {}).get("id")
-    out["_poss_id"] = str(poss) if poss is not None else None
+    poss = _dict(st.get("team")).get("id")
+    out["_poss_id"] = str(poss) if isinstance(poss, (str, int)) and not isinstance(poss, bool) else None
     return out
 
 
@@ -326,14 +468,15 @@ class Feed:
         self.engine, self.lock, self.on_change = engine, lock, on_change
         self.event_id = GAME.get("espn_event")
         self.on = False
-        self.interval = 4
+        self.interval = POLL_S
         self.status = {"state": "off", "detail": "", "last_poll": None, "last_play": None, "plays_logged": 0,
                        "skipped": None}
         self.gen = 0
-        self.reload_seen()
+        self.reload_seen()             # the event its applied ids came from, when the seen file says (v1.4)
         self.summary = None
         self.off_team_id = None
         self._thread = None
+        self._wake = threading.Event()  # start and stop cut the wait between polls short
         self.load_summary()
 
     @property
@@ -360,7 +503,7 @@ class Feed:
             try:
                 s = json.loads(path.read_text()) if path.exists() else None
             except (ValueError, OSError) as ex:
-                print(f"Couldn't read {path.name} ({ex}); trying the next saved copy.")
+                log.warning("Couldn't read %s (%s); trying the next saved copy.", path.name, ex)
                 continue
             if isinstance(s, dict):
                 self.summary = s
@@ -369,21 +512,29 @@ class Feed:
 
     # -------------------------------------------------- persistence of processed play ids
     def _load_seen(self):
-        """(ids in apply order, True if the file is the old string-sorted format)."""
+        """(ids in apply order, True if the file is the old string-sorted format, the ESPN event they came from or
+        None when the file doesn't say)."""
         if not SEEN_PATH.exists():
-            return [], False
+            return [], False, None
         try:
             d = json.loads(SEEN_PATH.read_text())
             ids = [str(x) for x in d.get(GAME["game_id"], [])]
             legacy = GAME["game_id"] not in (d.get(ORDER_KEY) or [])
+            event = _dict(d.get(EVENTS_KEY)).get(GAME["game_id"])
         except (ValueError, OSError, AttributeError, TypeError) as ex:
-            print(f"Couldn't read {SEEN_PATH.name} ({ex}); ESPN plays already in the log may be logged again.")
-            return [], False
-        return list(dict.fromkeys(ids)), legacy and len(ids) > 1
+            log.warning("Couldn't read %s (%s); ESPN plays already in the log may be logged again.", SEEN_PATH.name,
+                        ex)
+            return [], False, None
+        event = event if isinstance(event, str) and EVENT_RE.fullmatch(event) else None
+        return list(dict.fromkeys(ids)), legacy and len(ids) > 1, event
 
     def reload_seen(self):
-        """Read the applied ids from feed_seen.json again (after a backup of it is put back)."""
-        self.applied, self._legacy_order = self._load_seen()
+        """Read the applied ids from feed_seen.json again (after a backup of it is put back). When there are some,
+        the feed follows the event they came from: after a restart the game on screen stays the one they belong to,
+        whatever config.py says (v1.4)."""
+        self.applied, self._legacy_order, event = self._load_seen()
+        if self.applied and event:
+            self.event_id = event
         self.seen = set(self.applied)
         self.skipped_ids = []
 
@@ -407,6 +558,9 @@ class Feed:
         ordered = d.get(ORDER_KEY) if isinstance(d.get(ORDER_KEY), list) else []
         d[GAME["game_id"]] = list(self.applied)
         d[ORDER_KEY] = sorted(set(ordered) | {GAME["game_id"]})
+        events = {k: v for k, v in _dict(d.get(EVENTS_KEY)).items() if k != GAME["game_id"]}
+        eid = str(self.event_id or "")
+        d[EVENTS_KEY] = {**events, **({GAME["game_id"]: eid} if EVENT_RE.fullmatch(eid) else {})}
         tmp = SEEN_PATH.with_name(SEEN_PATH.name + ".tmp")
         tmp.write_text(json.dumps(d))
         os.replace(tmp, SEEN_PATH)                     # atomic: a crash mid-write can't corrupt it
@@ -417,7 +571,7 @@ class Feed:
         if self.applied:               # first, so a seen file that can't be saved never leaves a way back
             self.engine.clear_history()
         self.seen, self.applied, self._legacy_order, self.skipped_ids = set(), [], False, []
-        self.status["skipped"] = None
+        self.status.update(skipped=None, plays_logged=0)
         self._save_seen()
         self._bump_epoch()
 
@@ -451,6 +605,7 @@ class Feed:
             self.event_id = eid
         self.on = True
         self.status.update(state="starting", detail=f"ESPN event {self.event_id}")
+        self._wake.set()             # a loop waiting out a backoff polls now
         if not self._thread or not self._thread.is_alive():
             self._thread = threading.Thread(target=self._loop, daemon=True)
             self._thread.start()
@@ -458,35 +613,91 @@ class Feed:
     def stop(self):
         self.on = False
         self.status.update(state="off", detail="")
+        self._wake.set()
 
     def _loop(self):
-        while self.on:
+        """Poll while on: every POLL_S, backing off to MAX_BACKOFF_S while polls fail (backoff_s). Another matchup's
+        game stops the feed with the reason in its status (WrongGame); anything else is a failed poll. The thread
+        decides to end under the lock and lets go of self._thread there, so a start() at that moment (under the same
+        lock) starts a new one instead of trusting a thread on its way out."""
+        failures = 0
+        while True:
+            with self.lock:
+                if not self.on:
+                    if self._thread is threading.current_thread():
+                        self._thread = None
+                    return
+            self._wake.clear()
             try:
                 self.poll_once()
-            except Exception as e:  # network blips: keep polling, show the error
-                self.status.update(state="error", detail=f"{type(e).__name__}: {e}")
-            time.sleep(self.interval)
+                failures = 0
+            except WrongGame as ex:
+                self._refuse(ex)
+                continue
+            except Exception as ex:  # network blips, bad answers: keep polling, show the error
+                failures += 1
+                self.status.update(state="error", detail=f"{type(ex).__name__}: {ex}"[:STATUS_MAX])
+            self._wake.wait(backoff_s(failures))
+
+    def _refuse(self, ex):
+        """Stop the feed over a WrongGame for the event it still follows. True when it stopped."""
+        with self.lock:
+            if ex.event_id is not None and ex.event_id != self.event_id:
+                return False         # Sam switched events while that poll was out: the new one decides
+            self.on = False
+            self.status.update(state="error", detail=str(ex)[:STATUS_MAX])
+        log.warning("Live feed stopped: %s", ex)
+        return True
 
     def poll_once(self, summary=None):
+        """One poll: fetch (the live feed) or take `summary` (a replay), apply the plays not applied yet, then keep
+        the summary as summary_<event>.json when new plays arrived. A fetched summary is checked first (BadSummary,
+        WrongGame): then nothing is applied and the summary on screen stays."""
         gen, eid = self.gen, self.event_id             # read before the fetch: a replay or watch may start meanwhile,
-        summary = summary or fetch_summary(eid)        # and switch event_id; this poll stays with its own game's file
+        fetched = summary is None                      # and switch event_id; this poll stays with its own game's file
+        summary = fetch_summary(eid) if fetched else summary
         if gen != self.gen:
             return 0
-        RAW_DIR.mkdir(exist_ok=True)
-        (RAW_DIR / f"summary_{check_event(eid)}.json").write_text(json.dumps(summary))
+        if fetched:
+            check_summary(summary, live=True, have_plays=bool(self.applied))
+            check_matchup(summary, eid)
+        before = len(self.applied)
         n = self.apply(summary, gen)
+        unsaved = self._keep_raw(eid, summary) if len(self.applied) > before else None
         self.status.update(state="live" if self.on else self.status["state"], last_poll=datetime.now().strftime("%H:%M:%S"),
-                           detail=f"ESPN event {eid}")
+                           detail=f"ESPN event {eid}" + (f". {unsaved}" if unsaved else ""))
         return n
+
+    @staticmethod
+    def _keep_raw(eid, summary):
+        """summary_<event>.json, the last poll that brought plays (load_summary reads it after a restart): written
+        whole, a temp file then os.replace. A disk that refuses it never stops the feed: the plays are already in.
+        Returns what went wrong, or None."""
+        path = RAW_DIR / f"summary_{check_event(eid)}.json"
+        tmp = path.with_name(path.name + ".tmp")
+        try:
+            RAW_DIR.mkdir(exist_ok=True)
+            tmp.write_text(json.dumps(summary))
+            os.replace(tmp, path)
+            return None
+        except OSError as ex:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            log.warning("Couldn't save %s (%s); the plays were applied.", path.name, ex)
+            return f"Couldn't save {path.name}: {ex}"[:STATUS_MAX]
 
     # -------------------------------------------------- apply plays
     def apply(self, summary, gen=None):
         """Apply every play in the summary not applied yet, in order. gen: the generation read before the fetch;
-        when a replay, reset or watch has invalidated it since, nothing is applied (returns 0)."""
+        when a replay, reset or watch has invalidated it since, nothing is applied (returns 0). A summary the feed
+        can't read raises BadSummary before it replaces the one on screen."""
         logged = 0
         with self.lock:              # the replay button and the poll thread must not both apply the same plays
             if gen is not None and gen != self.gen:
                 return 0
+            check_summary(summary)
             self.summary = summary
             self.off_team_id = team_id(summary, GAME["offense"]) or self.off_team_id
             new = [(t, p) for t, p in iter_plays(summary) if str(p.get("id")) not in self.seen]
@@ -513,7 +724,7 @@ class Feed:
             try:
                 logged = self._apply_one(team, p)
             except Exception as ex:    # one bad play must not stall the feed for the rest of the game
-                self.status["skipped"] = f"{(p.get('text') or '')[:90]} ({ex})"
+                self.status["skipped"] = f"{str(p.get('text') or '')[:90]} ({str(ex)[:100]})"
                 if pid not in self.skipped_ids:
                     self.skipped_ids.append(pid)
                 log.exception("ESPN play %s skipped; enter it by hand if it was a %s snap", pid, GAME["offense"])
@@ -533,8 +744,8 @@ class Feed:
         try:
             self._save_seen()
         except OSError as ex:
-            self.status["detail"] = f"Couldn't save {SEEN_PATH.name}: {ex}"
-            print(f"Couldn't save {SEEN_PATH.name}:", ex)
+            self.status["detail"] = f"Couldn't save {SEEN_PATH.name}: {ex}"[:STATUS_MAX]
+            log.error("Couldn't save %s: %s", SEEN_PATH.name, ex)
 
     def _apply_one(self, team, p):
         """Apply one ESPN play to the engine. Returns 1 if it logged a snap that counts, else 0."""

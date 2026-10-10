@@ -4,7 +4,7 @@ import test from "node:test";
 
 import {
   CAMERA_PRESETS, FRAME_PRESETS, RIGS, fitDistance, frameBall, frameDrawing, frameDrive, framePoints,
-  framePresetFor, frameSituation, nextMode, poseFor, projectToNdc,
+  framePresetFor, frameSituation, nextMode, poseFor, projectToNdc, unionFrame,
 } from "../../static/js/field/camera-plan.js";
 import { buildGhostSet, ghostInputFromPred } from "../../static/js/field/ghosts.js";
 import { buildDrawing, situationFromRow } from "../../static/js/field/paths.js";
@@ -67,6 +67,33 @@ test("frameDrawing holds the whole play, kick height included", () => {
   assert.ok(ko.maxH > 15);
   const admin = frameDrawing(buildDrawing(rowById("401872980353")));
   assert.equal(admin.spanX, 120);
+});
+
+test("unionFrame holds both frames: the outer spans, the higher arc, the first frame's attack direction", () => {
+  const sit = situationFromRow(rowById("4018729802242"));       // TB's 72-yard run, from TB 14 toward the left
+  const live = frameSituation(sit);
+  const play = frameDrawing(buildDrawing(rowById("4018729802242")));
+  const u = unionFrame(live, play);
+  assert.equal(u.dir, live.dir);
+  assert.ok(Math.abs(lo(u) - Math.min(lo(live), lo(play))) < 1e-9 && Math.abs(hi(u) - Math.max(hi(live), hi(play))) < 1e-9);
+  for (const f of [live, play]) {
+    assert.ok(u.center.y - u.spanY / 2 <= f.center.y - f.spanY / 2 + 1e-9);
+    assert.ok(u.center.y + u.spanY / 2 >= f.center.y + f.spanY / 2 - 1e-9);
+  }
+  assert.ok(contains(u, 86) && contains(u, 14), "the line of scrimmage and where the run ended");
+  const kick = frameDrawing(buildDrawing(rowById("40187298040")));
+  assert.equal(unionFrame(live, kick).maxH, kick.maxH, "a kick's arc height comes along");
+  assert.equal(unionFrame(kick, live).maxH, kick.maxH);
+  const same = unionFrame(live, live);
+  for (const k of ["spanX", "spanY", "maxH"]) assert.ok(Math.abs(same[k] - live[k]) < 1e-9, `a frame with itself: ${k}`);
+  assert.ok(Math.abs(same.center.x - live.center.x) < 1e-9 && Math.abs(same.center.y - live.center.y) < 1e-9);
+});
+
+test("unionFrame with nothing to add is the frame it has", () => {
+  const live = frameSituation(situation());
+  assert.equal(unionFrame(live, null), live);
+  assert.equal(unionFrame(null, live), live);
+  assert.equal(unionFrame(null, undefined), null);
 });
 
 test("frameDrive spans a drive from its kickoff to the touchdown", () => {

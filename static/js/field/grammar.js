@@ -55,8 +55,6 @@ export const ARC_APEX = deepFreeze({
 export const CROSSBAR_YD = 3.333;
 /** A good field goal crosses the posts' plane this far above the crossbar. */
 export const FG_CLEARANCE_YD = 2;
-/** Holder depth when a field goal row has no kick spot (both TB at DAL kicks: 8 yd, DC B5). */
-export const FG_HOLD_YD = 8;
 
 // ---------------------------------------------------------------- air yards the row does not carry
 /** Catch depth when a completion has no air yards (manual screens and RPO throws carry no bucket). */
@@ -81,6 +79,8 @@ export const SHADOW_RUN_LATERAL = deepFreeze({
 export const SHADOW_SCREEN = deepFreeze({ behindYd: 1, wideYd: 10 });
 /** Shadow #1, then #2 and any hovered one: dashed and translucent, never solid. */
 export const SHADOW_OPACITY = deepFreeze([0.5, 0.35]);
+/** On 4th down he usually kicks (4 of Dallas's 5 at TB): the plays are what he would call if he goes, drawn quieter. */
+export const SHADOW_FOURTH_OPACITY = deepFreeze([0.35, 0.25]);
 
 // ---------------------------------------------------------------- prediction ghosts (deprecated: ghosts.js)
 export const MIN_BAND_YD = 2;

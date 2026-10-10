@@ -4,10 +4,17 @@
 // so a dimmed mark fades evenly. The materials color them (play-style.js: the team's light core and edge, or a tone),
 // so one mask serves every team. Letters wait for nothing: they use the world's display font when the page has it
 // (decals.fieldFont; the field's own glyphs load it first) and are drawn with fillText only.
-//   createGlyphs({ doc, maxAnisotropy }) -> { mask(glyph, layer, text?) -> Texture | null, aspect(glyph, text?), dispose() }
+//   createGlyphs({ doc, maxAnisotropy }) -> { mask(glyph, layer, text?) -> Texture | null, aspect(glyph, text?),
+//     prewarm() -> Texture[], prewarmWords() -> Promise<Texture[]>, count(), dispose() }
+// prewarm draws every shape's masks up front, prewarmWords the marks' words once the display font is in (G7-1: the
+// boot uploads them, so a play's first X or TD never stalls on a canvas, and no word is drawn in a fallback font).
 import * as THREE from "three";
-import { fieldFont } from "./decals.js";
+import { fieldFont, loadFont } from "./decals.js";
 import { markShared } from "./dispose.js";
+
+/** The words a mark carries (play-style.js MARKS: an interception's INT, a touchdown's TD). */
+export const MARK_WORDS = Object.freeze(["INT", "TD"]);
+const LAYERS = Object.freeze(["core", "edge"]);
 
 const S = 128;
 const TEXT_W = 256;
@@ -122,22 +129,33 @@ function toTexture(canvas, maxAnisotropy) {
  */
 export function createGlyphs({ doc = null, maxAnisotropy = 4 } = {}) {
   const cache = new Map();
-  let font = null;
+  const st = { font: null, alive: true };
   const make = (glyph, layer, text) => {
-    font ??= fieldFont(doc);
-    const canvas = maskCanvas(doc, glyph, layer, text, font);
+    st.font ??= fieldFont(doc);
+    const canvas = maskCanvas(doc, glyph, layer, text, st.font);
     return canvas ? toTexture(canvas, maxAnisotropy) : null;
   };
+  const mask = (glyph, layer, text = null) => {
+    if (!doc?.createElement || !st.alive) return null;
+    const key = `${glyph}|${layer}|${glyph === "text" ? text : ""}`;
+    if (!cache.has(key)) cache.set(key, make(glyph, layer, text));
+    return cache.get(key);
+  };
+  const masksOf = (specs) => specs.flatMap(([glyph, text]) => LAYERS.map((layer) => mask(glyph, layer, text)))
+    .filter(Boolean);
   return {
-    mask(glyph, layer, text = null) {
-      if (!doc?.createElement) return null;
-      const key = `${glyph}|${layer}|${glyph === "text" ? text : ""}`;
-      if (!cache.has(key)) cache.set(key, make(glyph, layer, text));
-      return cache.get(key);
+    mask,
+    /** Every shape's masks, made now (cached as mask() would); [] without a document. */
+    prewarm: () => masksOf(Object.keys(SHAPES).map((g) => [g, null])),
+    /** The marks' words, once the display font is in; [] if it never comes (they are drawn when a play needs them). */
+    async prewarmWords() {
+      if (!doc?.createElement || !(await loadFont(doc, fieldFont(doc))) || !st.alive) return [];
+      return masksOf(MARK_WORDS.map((w) => ["text", w]));
     },
     aspect: (glyph) => (glyph === "text" ? TEXT_W / S : 1),
     count: () => cache.size,
     dispose() {
+      st.alive = false;
       for (const tex of cache.values()) tex?.dispose();
       cache.clear();
     },

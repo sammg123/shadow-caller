@@ -56,6 +56,18 @@ test("goalposts: the crossbar 10 ft up, uprights to 45 ft, in the plane of each 
   assert.equal(pylons.count, 8);
 });
 
+test("a glyph that fails to draw is reported as a warning, and the field is still ready (G7-2)", async () => {
+  const broken = { createElement() { throw new Error("no 2D canvas"); }, documentElement: {}, defaultView: null };
+  const seen = [];
+  const f = buildField(await lookWith(), FRAME, { doc: broken, onError: (err) => seen.push(err.message) });
+  await f.ready;
+  assert.deepEqual(seen, ["no 2D canvas"]);
+  const quiet = buildField(await lookWith(), FRAME, { doc: broken });
+  await quiet.ready;
+  f.dispose();
+  quiet.dispose();
+});
+
 test("a plinth raises the field and lays the surround at its foot", async () => {
   const look = await lookWith({ field: { plinth: { height: 3, color: "#333333" } } });
   const f = buildField(look, FRAME);

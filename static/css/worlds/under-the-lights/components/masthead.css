@@ -10,7 +10,8 @@
 /* Doto draws "%" as two dot pairs and a diagonal, which reads "28X" on a board at ten feet; like the period and the
    colon (W3's "ULS LED Punct"), the percent sign comes from Big Shoulders Display. Ghost and lit text share the
    stack, so the unlit "88%" still sits cell for cell behind the lit figure. Same file as the world's fonts, already
-   preloaded (world.fonts). */
+   preloaded (world.fonts). v1.5 (G4-7): at full size the solid sign stood taller and darker than Doto's open dot
+   digits, and the eye landed on the unit; scaled to 58% it sits under the digits' height, a unit beside a number. */
 @font-face {
   /* impeccable-disable-next-line design-system-font: a one-glyph patch of DESIGN.md's Big Shoulders Display */
   font-family: "ULS LED Pct";
@@ -18,6 +19,7 @@
   font-weight: 700 800;
   font-style: normal;
   font-display: swap;
+  size-adjust: 58%;
   unicode-range: U+0025;
 }
 :root[data-world="under-the-lights"] {
@@ -139,6 +141,17 @@
   font-weight: var(--sc-weight-strong);
 }
 :where(:root[data-world="under-the-lights"]) .sc-masthead-who { font-weight: var(--sc-weight-regular); }
+/* v1.5 (G4-2): on the ribbon the plate's line names the caller this app shadows ("Shadowing Schottenheimer · DAL");
+   the band under the field names both teams, so the game label steps out of sight. It stays in the page for
+   assistive tech, and the plate's tooltip carries it whole. */
+:where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-game {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 /* The two key groups sit on the ribbon's LED face, the view keys behind a steel seam. */
 :where(#app[data-layout="uls"]) .sc-masthead-view-keys {

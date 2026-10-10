@@ -3,7 +3,7 @@
 import { own } from "./domain.js";
 import { keyContext, normalizeKey, resolveKey } from "./keymap.js";
 
-const TEXT_ROLES = new Set(["textbox", "slider", "combobox", "spinbutton"]);
+const TEXT_ROLES = new Set(["textbox", "combobox", "spinbutton"]);
 const ACTIVATABLE_ROLES = new Set(["button", "checkbox", "switch", "menuitem", "tab", "option"]);
 const ACTIVATABLE_INPUTS = new Set(["checkbox", "radio", "button", "submit", "reset", "file", "image"]);
 const IME_KEYCODE = 229;
@@ -14,16 +14,18 @@ function attr(node, name) {
 
 /**
  * Target class of a keydown (4.x table). Inputs are text unless they are buttons, checkboxes or radios (G4); an
- * unknown input type counts as text, because browsers treat it as one. `#yards` has its own class.
- * @returns {"text" | "yards" | "activatable" | "other"}
+ * unknown input type counts as text, because browsers treat it as one. `#yards` has its own class, and so does a
+ * slider (G5-12: the replay scrub keeps only its own keys; keymap.js passes the rest on).
+ * @returns {"text" | "yards" | "slider" | "activatable" | "other"}
  */
 export function classifyTarget(node) {
   if (!node || typeof node.tagName !== "string") return "other";
   if (node.id === "yards") return "yards";
   const tag = node.tagName.toLowerCase();
+  const role = attr(node, "role");
+  if (role === "slider" || (tag === "input" && attr(node, "type") === "range")) return "slider";
   if (tag === "input") return ACTIVATABLE_INPUTS.has(attr(node, "type")) ? "activatable" : "text";
   if (tag === "textarea" || tag === "select" || node.isContentEditable === true) return "text";
-  const role = attr(node, "role");
   if (TEXT_ROLES.has(role)) return "text";
   const isLink = tag === "a" && typeof node.hasAttribute === "function" && node.hasAttribute("href");
   if (tag === "button" || tag === "summary" || isLink || ACTIVATABLE_ROLES.has(role)) return "activatable";
@@ -45,6 +47,8 @@ const RUN = Object.freeze({
   retag: (a, i) => a.retag(i.key, { pauseFirst: i.pauseFirst }),
   cycleCamera: (a) => a.cycleCamera(),
   toggleBooth: (a) => a.toggleBooth(),
+  closeBooth: (a) => a.closeBooth(),
+  dismissToast: (a) => a.dismissToast(),
   toggleScorecard: (a) => a.toggleScorecard(),
   closeScorecard: (a) => a.closeScorecard(),
   watchToggle: (a) => a.watchToggle(),

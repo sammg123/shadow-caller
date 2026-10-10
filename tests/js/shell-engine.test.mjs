@@ -1,7 +1,10 @@
 // shell/engine.js (ui-architecture.md 3.1 step 3, 6.2, 9.5; owner A0): the WebGL engine or the 2D fallback.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createEngineLoader } from "../../static/js/shell/engine.js";
+import { ENGINE_TIMEOUT_MS, createEngineLoader } from "../../static/js/shell/engine.js";
+
+/** field/scene.js waits this long at most for the shader warm-up on a cold start (G2-9, G7-2). */
+const SCENE_WARM_UP_CAP_MS = 10_000;
 import { createDocument } from "./fake-dom.mjs";
 
 function fakeEngine(kind, log) {
@@ -87,6 +90,16 @@ test("a scene engine that takes too long is abandoned for 2D and disposed if it 
   resolveLate(fakeEngine("webgl", s.log));
   await new Promise((r) => setImmediate(r));
   assert.ok(s.log.includes("dispose webgl"));
+});
+
+test("G7-2: a cold start still compiling its shaders at the warm-up cap is waited for, not swapped for 2D", async () => {
+  const s = setup({ scene: async () => ({ createEngine: () => new Promise(() => {}) }) });
+  const { timeoutMs, ...rest } = base(s, { scene: "auto" });
+  assert.equal(timeoutMs, 8000, "the other tests pass their own");
+  s.loader.start(rest);
+  while (!s.timers.length) await new Promise((r) => setImmediate(r));
+  assert.equal(s.timers[0].ms, ENGINE_TIMEOUT_MS);
+  assert.ok(ENGINE_TIMEOUT_MS >= SCENE_WARM_UP_CAP_MS + 4000, "the warm-up cap, the stage's build and the modules' load");
 });
 
 test("when the fallback is missing too, there is no engine and the reason is kept", async () => {

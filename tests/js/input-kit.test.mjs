@@ -92,6 +92,32 @@ test("selectOnFocus never re-selects what was typed after the focus (a fast typi
     });
   });
 
+test("G5-4: the mouse press that focuses the box keeps it selected: its mouseup is prevented, once", async () => {
+  const { selectOnFocus } = await kit();
+  const doc = createDocument();
+  inDoc(doc, () => {
+    const timers = fakeTimers();
+    const input = doc.body.appendChild(doc.createElement("input"));
+    let selects = 0;
+    input.select = () => { selects += 1; };
+    selectOnFocus(input, { later: (fn) => timers.setTimeout(fn, 0) });
+    assert.equal(fire(input, "mousedown", { button: 0 }), false, "the press itself is the browser's");
+    input.focus();
+    fire(input, "focus");
+    timers.runAll();
+    assert.equal(fire(input, "mouseup", { button: 0 }), true, "the release would collapse the selection to a caret");
+    assert.equal(selects, 3, "and the box is selected once more");
+    assert.equal(fire(input, "mouseup", { button: 0 }), false, "only the first release after the focus");
+    fire(input, "mousedown", { button: 0 });
+    assert.equal(fire(input, "mouseup", { button: 0 }), false, "a click in a focused box places the caret as usual");
+    input.blur();
+    fire(input, "blur");
+    fire(input, "focus");
+    input.focus();
+    assert.equal(fire(input, "mouseup", { button: 0 }), false, "focus by keyboard (Tab) arms nothing");
+  });
+});
+
 test("setPct writes a clamped percentage custom property and removes it for non-numbers", async () => {
   const { setPct } = await kit();
   const doc = createDocument();

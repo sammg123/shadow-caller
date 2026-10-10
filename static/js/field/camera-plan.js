@@ -112,6 +112,26 @@ export function frameDrawing(drawing, { margin = DRAWING_MARGIN, minSpan = DRAWI
     maxH: isFiniteNum(b.h) ? b.h : 0 });
 }
 
+const edges = (f) => ({ x0: f.center.x - f.spanX / 2, x1: f.center.x + f.spanX / 2, y0: f.center.y - f.spanY / 2,
+  y1: f.center.y + f.spanY / 2 });
+
+/**
+ * The smallest frame that holds both: the outer edges of the two boxes, the higher arc, and the first frame's attack
+ * direction (a review frames the reviewed row's situation and its whole play). Either frame alone when the other is
+ * missing; null when both are.
+ */
+export function unionFrame(a, b) {
+  if (!a?.center) return b?.center ? b : null;
+  if (!b?.center) return a;
+  const [ea, eb] = [edges(a), edges(b)];
+  const x0 = Math.min(ea.x0, eb.x0);
+  const x1 = Math.max(ea.x1, eb.x1);
+  const y0 = Math.min(ea.y0, eb.y0);
+  const y1 = Math.max(ea.y1, eb.y1);
+  return { center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, spanX: x1 - x0, spanY: y1 - y0, dir: dirOr(a.dir),
+    maxH: Math.max(isFiniteNum(a.maxH) ? a.maxH : 0, isFiniteNum(b.maxH) ? b.maxH : 0) };
+}
+
 const rowXs = (r) => [r.geo.x0, r.geo.x_end, r.geo.x_next, r.kick?.land_x, r.kick?.ret_end_x, r.kick?.x_kick,
   r.kick?.post_x].filter(isFiniteNum);
 

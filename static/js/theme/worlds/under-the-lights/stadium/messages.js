@@ -5,6 +5,9 @@
 // the field draws beside the play, so the bowl never says anything the feed doesn't.
 import { safeLogoUrl } from "../../../../core/domain.js";
 import { playLabel } from "../../../../field/play-label.js";
+import { shadowInputOf } from "../../../../field/play-style.js";
+import { SHADOW_COUNT, shadowCandidates } from "../../../../field/shadows.js";
+import { pct } from "../../../../model/format.js";
 
 export const SEP = " · ";
 /** LED tones (DESIGN.md): warm white, gold, amber, the flag's yellow, and dim for secondary words. */
@@ -101,6 +104,27 @@ export function withVerdict(msg, key) {
   const v = Object.hasOwn(VERDICTS, key) ? VERDICTS[key] : null;
   if (!msg || !v) return msg;
   return { ...msg, parts: [...msg.parts, { text: SEP + v[0], tone: v[1] }] };
+}
+
+/** One shadow play on the ribbon: its name in warm white, its odds in amber (the video board's then-line). */
+const calledPlay = (c) => [{ text: `${upper(c.name)} `, tone: "warm" }, { text: pct(c.p), tone: "amber" }];
+
+/**
+ * The next call as the shadow plays show it (G3-6), for the field-wall ribbon before a caller snap: "NEXT CALL ·
+ * INSIDE RUN (A/B GAP) 24% · THEN PA SHORT (0–9) 16%". `set` is what the presnap moment gets (the conductor's
+ * GhostSet, ShadowPlays, or { source, situation?, leafNames? }); his top SHADOW_COUNT plays in his order, named as the
+ * field's shadows are and with the board's whole percentages. Null when there is nothing to call.
+ */
+export function callMessage(set) {
+  const input = shadowInputOf(set);
+  if (!input) return null;
+  const picks = shadowCandidates(input.source, { ...(input.leafNames ? { leafNames: input.leafNames } : {}),
+    ...(input.leafOrder ? { leafOrder: input.leafOrder } : {}) }).slice(0, SHADOW_COUNT);
+  if (!picks.length) return null;
+  const [first, ...rest] = picks;
+  const then = rest.flatMap((c) => [{ text: `${SEP}THEN `, tone: "dim" }, ...calledPlay(c)]);
+  return { kind: "call", parts: [{ text: `NEXT CALL${SEP}`, tone: "dim" }, ...calledPlay(first), ...then], logos: [],
+    holdMs: 0 };
 }
 
 /** The plain text of a message (tests, accessibility notes). */

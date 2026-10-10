@@ -8,13 +8,22 @@
 // .sc-call[data-enter] (flips "a"/"b" on every new call, so a world's entrance replays), data-family, data-top-leaf
 // and data-hot on families, data-picked and data-highlighted on plays, and the bar shares as custom properties
 // (--sc-share, --sc-league-share: "0%" to "100%").
+// v1.5 (G4-1, G4-2, G4-4): two more faces, each under its own plate (.sc-face-head): "recap" off the field in a fed
+// or watched game (.sc-recap: the lead [data-lead], his predicted call, what happened, the verdict [data-verdict],
+// the tally, his last six verdicts as glyphs, the off-field line) and "final" (.sc-final: the score in digit windows,
+// SHADOW v LEAGUE's three lines [data-pair][data-leader], the stat board's G key). The board speaks one sentence per
+// change in one live region outside the faces (.sc-board-spoken, so a face that appears is still heard), and the call
+// marks 4th down (.sc-call[data-fourth], the plate's tooltip).
 import { familyOf } from "../core/domain.js";
 import { clear, el, reconcile, setAttr, setClass, setData, setHidden, setText } from "./dom.js";
 import { act, setPct } from "./input-kit.js";
+import { keycap } from "./keycap.js";
 
 const PILL_CLASSES = Object.freeze(["tiltpass", "tiltrun", "leanpass", "leanrun", "noedge"]);
 const HOT = Object.freeze(["up", "down"]);
 const THEN_SEPARATOR = " · ";
+const KINDS = Object.freeze(["call", "offfield", "recap", "final"]);
+const GHOST_SCORE = "88";
 
 // ---------------------------------------------------------------- hover and focus -> actions.hoverLeaf
 /** The play a node under the pointer stands for: the nearest data-leaf (a play, a then-line item, the top pick),
@@ -108,8 +117,7 @@ function buildTop() {
   const pct = el("p", { cls: ["sc-call-pct", "sc-num"] });
   const pill = el("span", { cls: "pill" });
   const figure = el("div", { cls: "sc-call-figure" }, [pct, pill]);
-  const node = el("div", { cls: "sc-call-top", attrs: { "aria-live": "polite", "aria-atomic": "true" } },
-    [name, figure]);
+  const node = el("div", { cls: "sc-call-top" }, [name, figure]);
   return { node, name, pct, pill };
 }
 
@@ -117,8 +125,8 @@ function buildHead() {
   const label = el("span", { cls: "sc-call-label" });
   const sep = el("span", { cls: "sc-call-sep", attrs: { "aria-hidden": "true" }, text: THEN_SEPARATOR });
   const snap = el("span", { cls: "sc-call-snap" });
-  return { node: el("header", { cls: "sc-call-head" }, [el("p", { cls: "sc-call-kicker" }, [label, sep, snap])]),
-    label, sep, snap };
+  const kicker = el("p", { cls: "sc-call-kicker" }, [label, sep, snap]);
+  return { node: el("header", { cls: "sc-call-head" }, [kicker]), kicker, label, sep, snap };
 }
 
 function buildSplit() {
@@ -152,6 +160,8 @@ function renderTop(view, vm) {
   setText(view.head.label, vm.heading);
   setText(view.head.snap, vm.snap?.text ?? "");
   setHidden(view.head.sep, !vm.snap?.text);
+  setData(view.node, "fourth", Boolean(vm.fourth?.on));                 // v1.5 (G4-4)
+  setAttr(view.head.kicker, "title", vm.fourth?.on ? vm.fourth.title : null);
   setData(view.top.node, "leaf", call.leaf);
   setData(view.top.node, "family", call.leaf ? familyOf(call.leaf) : null);
   setText(view.top.name, call.name);
@@ -275,6 +285,118 @@ function renderCall(view, vm, deps) {
   markEntrance(view, vm);
 }
 
+// ---------------------------------------------------------------- v1.5 (G4-1): the recap and FINAL faces
+/** A face's painted plate, like the call's: the caption is the face's title. */
+function faceHead() {
+  const kicker = el("p", { cls: "sc-face-kicker" });
+  return { node: el("header", { cls: "sc-face-head" }, [kicker]), kicker };
+}
+
+function buildRecap() {
+  const head = faceHead();
+  const lead = el("p", { cls: "sc-recap-lead" }, [el("span", { cls: "sc-recap-glyph", attrs: { "aria-hidden": "true" } }),
+    el("span", { cls: "sc-recap-leadword" })]);
+  const call = el("p", { cls: "sc-recap-call" }, [el("span", { cls: "sc-recap-label" }), " ",
+    el("span", { cls: "sc-recap-name" }), " ", el("span", { cls: ["sc-recap-pct", "sc-num"] })]);
+  const happened = el("p", { cls: "sc-recap-happened" });
+  const verdict = el("p", { cls: "sc-recap-verdict" });
+  const tally = el("p", { cls: "sc-recap-tally" });
+  const glyphs = el("span", { cls: "sc-recap-glyphs", attrs: { role: "img" } });
+  const recentLabel = el("span", { cls: "sc-recap-label", attrs: { "aria-hidden": "true" } });
+  const recent = el("p", { cls: "sc-recap-recent" }, [recentLabel, glyphs]);
+  const off = el("p", { cls: "sc-recap-off" });
+  const body = el("div", { cls: "sc-recap-body" }, [lead, call, happened, verdict, tally, recent, off]);
+  return { node: el("article", { cls: "sc-recap" }, [head.node, body]), head, lead, call, happened, verdict, tally,
+    recent, recentLabel, glyphs, off };
+}
+
+function renderTally(node, tally) {
+  reconcile(node, tally ?? [], {
+    key: (t) => t.id,
+    create: () => el("span", { cls: "sc-recap-count" }, [el("span", { cls: "sc-recap-sep" }),
+      el("span", { cls: "sc-recap-countlabel" }), " ", el("b", { cls: "sc-recap-countvalue" })]),
+    update: (span, t, i) => {
+      setData(span, "tally", t.id);
+      setText(span.querySelector(".sc-recap-sep"), i === 0 ? "" : THEN_SEPARATOR);
+      setText(span.querySelector(".sc-recap-countlabel"), t.label);
+      setText(span.querySelector(".sc-recap-countvalue"), t.value);
+    },
+  });
+}
+
+function renderRecap(view, vm) {
+  setText(view.head.kicker, vm.plate);
+  setHidden(view.lead, !vm.lead);
+  setData(view.lead, "lead", vm.lead?.kind ?? null);
+  setText(view.lead.querySelector(".sc-recap-leadword"), vm.lead?.text ?? "");
+  setHidden(view.call, !vm.call);
+  setData(view.call, "family", vm.call?.family ?? null);
+  setText(view.call.querySelector(".sc-recap-label"), vm.predictedLabel);
+  setText(view.call.querySelector(".sc-recap-name"), vm.call?.name ?? "");
+  setText(view.call.querySelector(".sc-recap-pct"), vm.call?.pct ?? "");
+  setText(view.happened, vm.happened);
+  setData(view.verdict, "verdict", vm.verdict?.key ?? null);
+  setText(view.verdict, vm.verdict?.text ?? "");
+  setHidden(view.verdict, !vm.verdict?.text);
+  renderTally(view.tally, vm.tally);
+  setHidden(view.tally, !vm.tally?.length);
+  const items = vm.recent?.items ?? [];
+  setText(view.recentLabel, vm.recent?.label ?? "");
+  setAttr(view.glyphs, "aria-label", items.length ? `${vm.recent.label}: ${items.map((i) => i.text).join(", ")}` : null);
+  reconcile(view.glyphs, items, {
+    key: (_, i) => i,
+    create: () => el("span", { cls: "sc-recap-dot" }),
+    update: (dot, item) => setData(dot, "verdict", item.key),
+  });
+  setHidden(view.recent, items.length === 0);
+  setText(view.off, vm.heading);
+}
+
+function buildFinal(ctx) {
+  const head = faceHead();
+  const score = el("ol", { cls: "sc-final-score" });
+  const lines = el("ul", { cls: "sc-final-lines" });
+  const empty = el("p", { cls: "sc-final-empty" });
+  const key = keycap({ cap: "G", name: "", shortcut: "G", cls: "sc-final-key",
+    on: { click: () => act(() => ctx.actions.toggleScorecard()) } });
+  const body = el("div", { cls: "sc-final-body" }, [score, lines, empty, key.node]);
+  return { node: el("article", { cls: "sc-final" }, [head.node, body]), head, score, lines, empty, key };
+}
+
+function renderFinal(view, vm) {
+  setText(view.head.kicker, vm.plate);
+  reconcile(view.score, vm.teams ?? [], {
+    key: (t) => t.abbr,
+    create: () => el("li", { cls: "sc-final-team" }, [el("span", { cls: "sc-final-abbr" }), " ",
+      el("span", { cls: ["sc-digits", "sc-num", "sc-final-num"], data: { ghost: GHOST_SCORE } },
+        [el("span", { cls: "sc-digits-value" })])]),
+    update: (li, t) => {
+      setData(li, "team", t.abbr);
+      setData(li, "caller", Boolean(t.caller));
+      setText(li.querySelector(".sc-final-abbr"), t.abbr);
+      setText(li.querySelector(".sc-digits-value"), t.score);
+    },
+  });
+  reconcile(view.lines, vm.lines ?? [], {
+    key: (l) => l.id,
+    create: () => el("li", { cls: "sc-final-line" }, [el("span", { cls: "sc-final-label" }), " ",
+      el("span", { cls: "sc-final-value", data: { side: "shadow" } }), " ",
+      el("span", { cls: "sc-final-vs", text: "v" }), " ",
+      el("span", { cls: "sc-final-value", data: { side: "league" } })]),
+    update: (li, l) => {
+      setData(li, "pair", l.id);
+      setData(li, "leader", l.leader);
+      setText(li.querySelector(".sc-final-label"), l.label);
+      setText(li.querySelector('[data-side="shadow"]'), l.shadow);
+      setText(li.querySelector('[data-side="league"]'), l.league);
+    },
+  });
+  setText(view.empty, vm.empty);
+  setHidden(view.empty, !vm.empty);
+  setText(view.key.name, vm.key?.name ?? "");
+  setAttr(view.key.node, "title", vm.key?.title ?? null);
+}
+
 /**
  * @param {HTMLElement} root  #heroArea
  * @param {{ actions: object }} ctx
@@ -282,27 +404,32 @@ function renderCall(view, vm, deps) {
  */
 export function mount(root, ctx) {
   const hover = createHover(ctx.actions);
-  const off = buildOffField();
-  const call = buildCall(hover);
-  setHidden(off.node, true);
-  setHidden(call.node, true);
-  root.appendChild(off.node);
-  root.appendChild(call.node);
+  const faces = { offfield: buildOffField(), call: buildCall(hover), recap: buildRecap(), final: buildFinal(ctx) };
+  for (const face of Object.values(faces)) {
+    setHidden(face.node, true);
+    root.appendChild(face.node);
+  }
+  // v1.5 (G4-2): one live region for the whole board, never hidden, so the sentence of a face that just appeared is
+  // heard (a live region inside a hidden face says nothing); the faces' figures stay quiet.
+  const spoken = el("p", { cls: ["sr-only", "sc-board-spoken"], attrs: { "aria-live": "polite", "aria-atomic": "true" } });
+  root.appendChild(spoken);
   setData(root, "kind", "empty");
   return {
     update(vm) {
-      const kind = vm?.kind === "call" || vm?.kind === "offfield" ? vm.kind : "empty";
+      const kind = KINDS.includes(vm?.kind) ? vm.kind : "empty";
       setData(root, "kind", kind);
-      setHidden(off.node, kind !== "offfield");
-      setHidden(call.node, kind !== "call");
+      for (const [name, face] of Object.entries(faces)) setHidden(face.node, name !== kind);
       if (kind !== "call") hover.reset();
-      if (kind === "offfield") renderOffField(off, vm);
-      if (kind === "call") renderCall(call, vm, { ctx, hover });
+      if (kind === "offfield") renderOffField(faces.offfield, vm);
+      if (kind === "call") renderCall(faces.call, vm, { ctx, hover });
+      if (kind === "recap") renderRecap(faces.recap, vm);
+      if (kind === "final") renderFinal(faces.final, vm);
+      setText(spoken, typeof vm?.spoken === "string" ? vm.spoken : "");
     },
     destroy() {
       hover.reset();
-      off.node.remove();
-      call.node.remove();
+      for (const face of Object.values(faces)) face.node.remove();
+      spoken.remove();
     },
   };
 }

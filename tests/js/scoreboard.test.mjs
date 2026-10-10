@@ -64,6 +64,29 @@ test("the world can ask for ESPN's dark-background logos (--sc-logo-variant: dar
     ["/api/logo/TB?v=dark", "/api/logo/DAL?v=dark"]);
 }));
 
+// v1.5 (G4-11): reading the variant forces a style recalc, so it is read once per world and room-lights setting
+test("the logo variant is read once per world and room setting, not on every update (G4-11)", () => inDoc((doc) => {
+  let reads = 0;
+  doc.defaultView = { getComputedStyle: () => {
+    reads += 1;
+    return { getPropertyValue: (name) => (name === "--sc-logo-variant" ? (reads > 1 ? "dark" : "") : "") };
+  } };
+  doc.documentElement.setAttribute("data-world", "neutral");
+  doc.documentElement.setAttribute("data-ambient", "room");
+  const { root, sb } = setup(doc);
+  for (let i = 0; i < 5; i += 1) sb.update(espnVm(i % 2 ? timeline.final() : timeline.at104()));
+  assert.equal(reads, 1, "five updates, one read");
+  assert.equal(one(team(root, "TB"), "img").getAttribute("src"), "/api/logo/TB");
+  doc.documentElement.setAttribute("data-ambient", "dark");
+  sb.update(espnVm(timeline.final()));
+  assert.equal(reads, 2, "room lights changed: read again");
+  assert.equal(one(team(root, "TB"), "img").getAttribute("src"), "/api/logo/TB?v=dark");
+  sb.update(espnVm(timeline.final()));
+  doc.documentElement.setAttribute("data-world", "under-the-lights");
+  sb.update(espnVm(timeline.final()));
+  assert.equal(reads, 3, "another world: read again");
+}));
+
 test("after the interception TB has the ball at its 25: possession lamp, down and ball on", () => inDoc((doc) => {
   const { root, sb } = setup(doc);
   sb.update(espnVm(timeline.at104()));

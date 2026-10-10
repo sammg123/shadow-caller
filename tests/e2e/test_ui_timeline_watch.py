@@ -218,6 +218,27 @@ def test_watch_start_from_the_page(upage, wsrv):
     expect(upage.locator('[data-testid="watch-progress"]')).to_have_text(re.compile(r"^\s*\d+ / 183\s*$"))
 
 
+@pytest.mark.parametrize("how", ["mouse", "keyboard"])
+def test_g5_7_watch_this_game_puts_the_booth_away_and_focus_on_pause(upage, wsrv, how):
+    """G5-7: "Watch this game" (in the drawer on Under the Lights, the feed bar on neutral) starts the watch, the
+    drawer steps away from the field, and focus lands on Pause instead of the body (by mouse or by keyboard)."""
+    base = wsrv["base"]
+    reset_game(base)
+    load(upage, base)
+    answer_dialogs(upage, accept=True)
+    start = show(upage, '.sc-feed-watch[data-watch="start"]')
+    if how == "keyboard":
+        start.focus()
+        upage.keyboard.press("Enter")
+    else:
+        start.click()
+    expect(upage.locator("#app")).to_have_attribute("data-watch-state", re.compile("playing|paused"))
+    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "false")
+    expect(upage.locator('[data-testid="watch"] [data-watch="pause"]')).to_be_focused()
+    upage.keyboard.press("Space")                          # the keyboard is right where the transport is
+    expect(watch_box(upage)).to_have_attribute("data-watch-state", "paused")
+
+
 def test_space_pauses_and_resumes(upage, wsrv):
     """3.8, 4.3: Space pauses a playing watch and resumes a paused one."""
     base = wsrv["base"]
@@ -375,3 +396,43 @@ def expect_buttons(page, enabled, disabled):
         expect(page.locator(f'[data-watch="{name}"]')).to_be_enabled()
     for name in disabled:
         expect(page.locator(f'[data-watch="{name}"]')).to_be_disabled()
+
+
+def test_g5_12_keys_on_the_replay_slider_reach_the_page(upage, wsrv):
+    """G5-12: with the replay strip (a slider) focused, B opens the booth and Escape closes it, while Left still
+    reviews an earlier play on the strip itself."""
+    base = wsrv["base"]
+    start_watch(base, 10)
+    wait_watch(base, lambda w: w["idx"] >= 12, what="a dozen plays")
+    api_post(base, "/api/watch/pause")
+    load(upage, base)
+    track = upage.locator('[data-testid="scrub-track"]')
+    expect(track).to_be_visible()
+    track.focus()
+    upage.keyboard.press("b")
+    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "true")
+    upage.keyboard.press("Escape")
+    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "false")
+    track.focus()
+    upage.keyboard.press("ArrowLeft")
+    expect(upage.locator("#field")).to_have_attribute("data-review-seq", re.compile(r"^\d+$"))
+
+
+def test_g5_16_the_watch_booth_puts_settings_before_a_read_only_situation(upage, wsrv):
+    """G5-16 (Under the Lights): in Watch this game the drawer reads FEED, SETTINGS, SITUATION, and the situation is
+    read-only with no drive ends (ESPN's plays are applied)."""
+    from ui_helpers import BOOT_TIMEOUT_MS
+    base = wsrv["base"]
+    start_watch(base, 10)
+    wait_watch(base, lambda w: w["idx"] >= 5, what="a few plays")
+    api_post(base, "/api/watch/pause")
+    upage.goto(f"{base}/?world=under-the-lights&scene=2d", wait_until="domcontentloaded", timeout=BOOT_TIMEOUT_MS)
+    upage.wait_for_selector('#app[data-boot="ready"][data-mode="watch"]', state="attached", timeout=BOOT_TIMEOUT_MS)
+    upage.keyboard.press("b")
+    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "true")
+    tops = {name: upage.locator(f"#uls-plate-{name}").bounding_box()["y"] for name in ("feed", "settings", "situation")}
+    assert tops["feed"] < tops["settings"] < tops["situation"], tops
+    expect(upage.locator("#iClock")).to_have_attribute("readonly", "")
+    expect(upage.locator("#iClock")).to_have_attribute("tabindex", "-1")
+    expect(upage.locator("#endRow")).to_be_hidden()
+    expect(upage.locator("#ulsRoomLights")).to_be_in_viewport()

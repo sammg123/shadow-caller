@@ -1,5 +1,6 @@
 // Play feed (DC B, C1): every drawn row, both teams, newest first and grouped by drive, with the result word, the
 // call and its verdict on caller snaps, and the retag keys on the row a retag would edit (G19).
+import { LABEL_SEP, playLabel } from "../field/play-label.js";
 import { PLAYS } from "./copy.js";
 import { freezeDeep, qtrText, resultText } from "./format.js";
 import { verdictOf, verdictText } from "./verdict.js";
@@ -16,6 +17,33 @@ function timelineIdOf(logRow) {
 function reviewSeqOf(pv) {
   const seq = pv && pv.view && pv.view.review ? pv.view.review.seq : null;
   return Number.isInteger(seq) ? seq : null;
+}
+
+// G5-10: the ribbon's face, one page (about 60 characters) in the field's own words: what the play was (the label the
+// field draws, play-drawing.md 3, its yards left to the row's result word) and who had the ball, as ESPN names him.
+// ESPN's whole text stays in the replay board's rows and the desk's LAST PLAY.
+const NAME_RE = /\b[A-Z][A-Za-z]?\.[A-Z][A-Za-z'’-]+/;
+const TARGET_RE = /\bto ([A-Z][A-Za-z]?\.[A-Z][A-Za-z'’-]+)/;
+const PASS_RE = /\bpass\b/i;
+
+/** The ball carrier, or a pass's target; null when ESPN names nobody (a pass with no target, a kick, a flag). */
+function playerOf(text, what) {
+  if (typeof text !== "string" || text === "") return null;
+  if (PASS_RE.test(what)) return TARGET_RE.exec(text)?.[1] ?? null;
+  return NAME_RE.exec(text)?.[0] ?? null;
+}
+
+/** The face: a scrimmage play's label without its yards (the row shows its result word) and the player; kicks, flags
+ * and wiped-out plays keep the field's whole label. */
+export function faceOf(row) {
+  const label = playLabel(row);
+  if (!label) return "";
+  const parts = label.split(LABEL_SEP);
+  const scrimmage = row.kind === "play" && !(row.result && row.result.nullified) && parts.length > 1;
+  if (!scrimmage) return label;
+  const what = parts.slice(0, -1).join(LABEL_SEP);
+  const player = playerOf(row.text, what);
+  return player ? `${what}${LABEL_SEP}${player}` : what;
 }
 
 function playRow(row, retagId, reviewSeq) {
@@ -41,6 +69,7 @@ function playRow(row, retagId, reviewSeq) {
     retag: pred && retagId !== null && row.id === retagId ? retagButtons(pred) : null,
     reviewable: row.kind !== "admin",           // v1.2 (A8): admin rows draw nothing (core/review.js drawableSeqs)
     reviewing: row.seq === reviewSeq,
+    face: faceOf(row),
   };
 }
 
@@ -63,7 +92,7 @@ function groupsOf(rows, drives) {
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, rows: {seq, id, kind, team, caller, drive, time, situation, text, result, call,
- *   verdict, verdictText, nullified, retagged, scoring, retag, reviewable, reviewing}[] (newest first), groups: {idx,
+ *   verdict, verdictText, nullified, retagged, scoring, retag, reviewable, reviewing, face}[] (newest first), groups: {idx,
  *   team, caller, resultText, summary, complete, rows}[], retagSeq, unlinkedNote, reviewSeq}
  */
 export function playsVm(pv) {

@@ -9,7 +9,7 @@ import { buildGhostSet, ghostInputFromPred } from "../field/ghosts.js";
 import { buildDrawing, situationFromRow } from "../field/paths.js";
 import { normalDurationMs } from "../field/timing.js";
 import { verdictOf } from "../model/verdict.js";
-import { fieldVm } from "../model/vm-field.js";
+import { fieldVm, verdictChipText } from "../model/vm-field.js";
 import { nextJob } from "./anim-queue.js";
 import { keyContext, modeOf } from "./keymap.js";
 import { presentedView } from "./present.js";
@@ -20,9 +20,14 @@ import { rowBySeq } from "./timeline-cache.js";
 export const APP_ATTRS = Object.freeze(["data-mode", "data-phase", "data-poss", "data-booth-open", "data-scorecard-open",
   "data-conn", "data-boot", "data-watch-state", "data-source"]);
 const DEFAULT_VERDICT_MS = 1500;
+/** G2-3: Watch this game at 4x and up holds the verdict's beat to 600 ms (the next play's reserve assumes <= 800). */
+const FAST_WATCH_SPEED = 4;
+const FAST_WATCH_VERDICT_MS = 600;
 /** Past its planned length plus this, a play is hurried (finishNow); after twice this it is counted as drawn. */
 const WATCHDOG_GRACE_MS = 1500;
-const NO_SCENE = JSON.stringify({ situation: null, ghostInput: null });
+/** What the engine was last shown (showLive): nothing, before the first state. */
+const NOTHING_SHOWN = Object.freeze({ sit: JSON.stringify(null),
+  ghosts: JSON.stringify({ situation: null, ghostInput: null, beat: false }) });
 
 /** #app attribute values for a state (pure). */
 export function appAttrs(state, { phase, poss }) {
@@ -80,7 +85,7 @@ function drawFrame(c, state, throughSeq) {
   if (timeline.field && timeline.teams) call(c, "setGameFrame", timeline.field, timeline.teams, timeline.teamOrder, ...game);
   call(c, "drawRowsInstant", timeline.rows.filter((r) => r.seq <= throughSeq));
   if (state.view.camera) call(c, "setCamera", state.view.camera, { instant: true });
-  c.rt.sceneKey = null;
+  c.rt.shown = null;
 }
 
 function rebuild(c, state) {
@@ -88,6 +93,7 @@ function rebuild(c, state) {
   call(c, "finishNow");
   drawFrame(c, state, state.anim.drawnThrough);
   c.dispatch({ type: "anim/rebuilt", token: state.anim.token, now: c.now() });
+  if (c.rt.failedOver) void restoreWebgl(c);       // G2-9: a new epoch tries WebGL again; 2D never latches
 }
 
 function armWatchdog(c, job) {
@@ -105,18 +111,41 @@ function armWatchdog(c, job) {
   }, job.durationMs + WATCHDOG_GRACE_MS);
 }
 
+/** The verdict's beat (G2-3): the look's verdictMs, held to 600 ms while Watch this game plays at 4x or faster. */
+function beatMs(c, state) {
+  const watch = state.version?.watch;
+  const fast = watch?.state === "playing" && Number(watch.speed) >= FAST_WATCH_SPEED;
+  return fast ? Math.min(c.verdictMs, FAST_WATCH_VERDICT_MS) : c.verdictMs;
+}
+
+/** The beat is over: the next call's shadows go up (unless a review holds the field), and the phase moves on. */
+function endBeat(c) {
+  c.rt.verdictTimer = null;
+  const state = c.store.getState();
+  if (state.view.review.seq === null) showLive(c, state);
+  writeApp(c, state);
+}
+
+/**
+ * The caller's play is graded: its verdict, with what was graded (G2-7: "In his top 3 · #2 Intermediate · 39%", in
+ * the timeline's own leaf names), gets the field to itself for a beat before the next call's shadows (G2-3).
+ */
 function markVerdict(c, row) {
-  call(c, "markVerdict", { seq: row.seq, key: verdictOf(row.pred).key });
-  c.rt.verdictUntil = c.now() + c.verdictMs;
+  const state = c.store.getState();
+  const ms = beatMs(c, state);
+  const text = verdictChipText(row.pred, state.timeline.meta?.leaf_names ?? null);
+  call(c, "markVerdict", { seq: row.seq, key: verdictOf(row.pred).key, ...(text ? { text } : {}) });
+  c.rt.verdictUntil = c.now() + ms;
   if (c.rt.verdictTimer !== null) c.clearT(c.rt.verdictTimer);
-  c.rt.verdictTimer = c.setT(() => { c.rt.verdictTimer = null; writeApp(c, c.store.getState()); }, c.verdictMs);
+  c.rt.verdictTimer = c.setT(() => endBeat(c), ms);
 }
 
 function landed(c, job, row) {
+  // The beat starts before anim/done presents the next state, so the next call's shadows wait for the verdict.
+  const graded = !job.instant && row.offense_is_caller && row.pred && c.store.getState().anim.token === job.token;
+  if (graded) markVerdict(c, row);
   c.dispatch({ type: "anim/done", seq: job.seq, token: job.token, now: c.now() });
-  if (job.instant || !row.offense_is_caller || !row.pred || c.store.getState().anim.token !== job.token) return;
-  markVerdict(c, row);
-  writeApp(c, c.store.getState());
+  if (graded) writeApp(c, c.store.getState());
 }
 
 function play(c, state) {
@@ -142,15 +171,23 @@ function hurry(c, state) {
 }
 
 // ---------------------------------------------------------------- situation, ghosts, review (3.5)
+/**
+ * The presented situation and the next call's shadows, each sent once per change. During the verdict's beat (G2-3)
+ * the field holds no shadows: the graded play and its chip have it to themselves, then endBeat brings the call up.
+ */
 function showLive(c, state) {
   const fv = fieldVm(presentedView(state, c.now()));
-  c.rt.scene = { situation: fv.situation, ghostInput: fv.ghostInput };
-  const key = JSON.stringify(c.rt.scene);
-  if (key === c.rt.sceneKey) return;
-  c.rt.sceneKey = key;
-  const { situation, ghostInput } = c.rt.scene;
-  call(c, "showSituation", situation);
-  call(c, "showGhosts", ghostInput && situation ? buildGhostSet(ghostInput, situation) : null);
+  const { situation, ghostInput } = fv;
+  const beat = c.now() < c.rt.verdictUntil;
+  c.rt.scene = { situation, ghostInput };
+  const shown = c.rt.shown ?? { sit: null, ghosts: null };
+  const sit = JSON.stringify(situation);
+  const ghosts = JSON.stringify({ situation, ghostInput, beat });
+  c.rt.shown = { sit, ghosts };
+  if (sit !== shown.sit) call(c, "showSituation", situation);
+  if (ghosts !== shown.ghosts) {
+    call(c, "showGhosts", ghostInput && situation && !beat ? buildGhostSet(ghostInput, situation) : null);
+  }
 }
 
 function showReviewed(c, state) {
@@ -217,32 +254,79 @@ function update(c, state, prev) {
 
 /** The live scene depends only on these; ticks and connection events leave it alone. */
 function liveInputsChanged(c, state, prev) {
-  return state === prev || c.rt.sceneKey === null || state.presented !== prev.presented
+  return state === prev || c.rt.shown === null || state.presented !== prev.presented
     || state.timeline !== prev.timeline || state.anim.drawnThrough !== prev.anim.drawnThrough
     || state.view.review !== prev.view.review;
 }
 
-// ---------------------------------------------------------------- engine lifecycle (6.2)
+// ---------------------------------------------------------------- engine lifecycle (6.1, 6.2; G2-4, G2-9)
+const onOf = (engine) => (typeof engine?.on === "function" ? (ev, fn) => engine.on(ev, fn) : () => () => {});
+
 function attach(c, next) {
   for (const off of c.rt.detachEngine) off();
   c.rt.engine = next;
-  const on = typeof next?.on === "function" ? (ev, fn) => next.on(ev, fn) : () => () => {};
-  c.rt.detachEngine = [on("error", (err) => engineFailed(c, err)),
-    on("contextlost", () => engineFailed(c, new Error("WebGL context lost")))];
+  const on = onOf(next);
+  c.rt.detachEngine = [on("error", (err) => engineFailed(c, err)), on("contextlost", () => contextLost(c, next))];
 }
 
-function engineFailed(c, err) {
-  report(c, err);
+/** The 2D field takes over (once per failure: a fallback that can't start is reported once, the store untouched). */
+function failOver(c, err, { lost }) {
   if (!c.createFallback || c.rt.failedOver) return;
   c.rt.failedOver = true;
   let fallback;
   try {
-    fallback = c.createFallback(err);
+    fallback = c.createFallback(err, { lost });
   } catch (fallbackErr) {
     report(c, fallbackErr);
     return;
   }
   swapEngine(c, fallback);
+}
+
+/** A runtime error is a bug: reported, then the 2D field holds the game until the next epoch tries WebGL (G2-9). */
+function engineFailed(c, err) {
+  report(c, err);
+  failOver(c, err, { lost: false });
+}
+
+/**
+ * G2-4: the GPU went away (sleep and wake, an HDMI hot-plug, memory pressure). Not a bug: the 2D field holds the
+ * game, and the lost engine is watched for the browser's restore, which brings a fresh WebGL field back (6.1).
+ */
+function contextLost(c, lost) {
+  if (c.rt.engine !== lost) return;
+  c.rt.restoreWatch?.();
+  const off = onOf(lost)("contextrestored", () => {
+    off();
+    if (c.rt.restoreWatch === off) c.rt.restoreWatch = null;
+    void restoreWebgl(c);
+  });
+  c.rt.restoreWatch = off;
+  failOver(c, new Error("WebGL context lost"), { lost: true });
+}
+
+/**
+ * A fresh WebGL field in place of the fallback (createWebgl, main.js's loader.start), redrawn from the store. It may
+ * come back 2D (WebGL still can't start): that one is swapped in too, and the next epoch tries again.
+ */
+async function restoreWebgl(c) {
+  if (!c.createWebgl || !c.rt.failedOver || c.rt.restoring) return;
+  c.rt.restoring = true;
+  let next = null;
+  try {
+    next = await c.createWebgl();
+  } catch (err) {
+    report(c, err);
+  } finally {
+    c.rt.restoring = false;
+  }
+  if (!next || !c.rt.unsubscribe) return;
+  c.rt.failedOver = next.kind === "2d";       // before the swap: a failure while it redraws fails over again
+  if (!c.rt.failedOver) {
+    c.rt.restoreWatch?.();
+    c.rt.restoreWatch = null;
+  }
+  swapEngine(c, next);
 }
 
 /** Replace the engine (the fallback, or a restored WebGL one) and redraw it from the store. */
@@ -263,6 +347,8 @@ function stop(c) {
   c.rt.unsubscribe = null;
   for (const off of c.rt.detachEngine) off();
   c.rt.detachEngine = [];
+  c.rt.restoreWatch?.();
+  c.rt.restoreWatch = null;
   if (c.rt.verdictTimer !== null) c.clearT(c.rt.verdictTimer);
   c.rt.verdictTimer = null;
 }
@@ -272,23 +358,28 @@ const browserClearTimeout = (id) => globalThis.clearTimeout(id);
 
 /**
  * @param {{ store: object, getEngine: () => object, look?: object, now: () => number, setTimeout?: Function,
- *   clearTimeout?: Function, app?: { setAttribute: Function } | null, createFallback?: ((err: unknown) => object) | null,
- *   onError?: (err: unknown) => void }} deps   now: epoch milliseconds (Date.now), the clock DC E4 needs
+ *   clearTimeout?: Function, app?: { setAttribute: Function } | null,
+ *   createFallback?: ((err: unknown, opts: { lost: boolean }) => object) | null,
+ *   createWebgl?: (() => Promise<object | null>) | null, onError?: (err: unknown) => void }} deps
+ *   now: epoch milliseconds (Date.now), the clock DC E4 needs. createFallback: the 2D field, now (lost: the WebGL
+ *   context went away, not a bug). createWebgl: a fresh WebGL field (or a 2D one when WebGL still can't start).
  */
 export function createConductor({ store, getEngine, look = {}, now, setTimeout: setT = browserSetTimeout,
-  clearTimeout: clearT = browserClearTimeout, app = null, createFallback = null, onError = defaultOnError }) {
+  clearTimeout: clearT = browserClearTimeout, app = null, createFallback = null, createWebgl = null,
+  onError = defaultOnError }) {
   if (typeof now !== "function" || typeof setT !== "function" || typeof clearT !== "function") {
     throw new TypeError("createConductor needs now(), setTimeout and clearTimeout");
   }
   const c = {
     store, dispatch: (event) => store.dispatch(event), look, app,
-    createFallback: typeof createFallback === "function" ? (err) => createFallback(err) : null,
+    createFallback: typeof createFallback === "function" ? (err, opts) => createFallback(err, opts) : null,
+    createWebgl: typeof createWebgl === "function" ? () => createWebgl() : null,
     onError: (err) => onError(err), now: () => now(), setT: (fn, ms) => setT(fn, ms), clearT: (id) => clearT(id),
     verdictMs: Number.isFinite(look?.motion?.verdictMs) ? look.motion.verdictMs : DEFAULT_VERDICT_MS,
     normalCache: new WeakMap(),
-    rt: { engine: null, unsubscribe: null, detachEngine: [], sceneKey: NO_SCENE,
+    rt: { engine: null, unsubscribe: null, detachEngine: [], shown: NOTHING_SHOWN,
       scene: { situation: null, ghostInput: null }, rebuiltToken: -1, hurried: "", verdictUntil: 0, verdictTimer: null,
-      failedOver: false, lastError: null, written: {} },
+      failedOver: false, restoring: false, restoreWatch: null, lastError: null, written: {} },
   };
   function start() {
     if (c.rt.unsubscribe) return;

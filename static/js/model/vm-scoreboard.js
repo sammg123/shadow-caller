@@ -84,17 +84,31 @@ function callerWp(wpHome, t) {
   return callerHome ? wpHome : Math.round((1 - wpHome) * WP_DECIMALS) / WP_DECIMALS;
 }
 
+/**
+ * v1.5 (G4-9): one clock with the strip. While the caller's drive is on, the engine's clock is ESPN's at his last snap
+ * less its runoff estimate (live.py), the freshest the app has, so the band shows it and its EST caption. Off his
+ * drive the engine doesn't follow ESPN's clock through the opponent's plays, so ESPN's own clock stays.
+ */
+function engineClock(pv, status) {
+  const p = pv && pv.presented;
+  const sit = p && p.sit;
+  if (!p || !p.drive_active || !sit || sit.qtr !== status.qtr) return null;
+  const clock = clockText(sit.clock_str) || clockText(sit.clock);
+  return clock ? { clock, clockEst: Boolean(sit.clock_estimated) } : null;
+}
+
 function espnBoard(pv, t) {
   const status = pv.tl.status;
   const ball = status.state === "post" ? null : ballFromRows(pv.tl.rows || []);
   const wpCaller = callerWp(status.wp_home, t);
+  const engine = status.state === "post" ? null : engineClock(pv, status);
   return {
     teams: t.order.map((abbr) => teamEntry(abbr, t, { scores: status.score || {}, poss: status.poss,
       timeouts: status.timeouts || {} })),
     qtr: Number.isInteger(status.qtr) ? status.qtr : null,
     qtrText: qtrText(status.qtr),
-    clock: clockText(status.clock),
-    clockEst: false,
+    clock: engine ? engine.clock : clockText(status.clock),
+    clockEst: engine ? engine.clockEst : false,
     ...ballTexts(ball, t),
     state: status.state || "pre",
     poss: status.poss || null,
@@ -122,6 +136,11 @@ function manualBoard(pv, t) {
     wpCaller: null,
     wpText: "",
   };
+}
+
+/** v1.5 (G4-1): the game is over: ESPN's status says post (a hand-entered game has no final whistle). */
+export function isFinal(pv) {
+  return sourceOf(pv) === "espn" && Boolean(pv && pv.tl && pv.tl.status && pv.tl.status.state === "post");
 }
 
 /**

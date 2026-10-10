@@ -13,7 +13,7 @@
   min-width: 0;
   min-height: var(--uls-key-h);
   padding: 0 var(--sc-space-3);
-  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border: var(--sc-border-w) solid var(--uls-steel-frame);
   border-radius: var(--sc-radius-m);
   background: var(--uls-led-face);
   color: var(--sc-ink);

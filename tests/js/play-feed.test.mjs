@@ -147,3 +147,62 @@ test("a hand-entered row already reads as the call, so the call name is not repe
   assert.equal(one(row(root, 2), ".sc-pf-verdict").textContent, "In his top 3");
   assert.equal(one(row(root, 3), ".sc-pf-callname").hidden, false);
 }));
+
+test("G5-10: each row carries the field's words as its ribbon face (decoration: ESPN's text names the button)", () => inDoc((doc) => {
+  const { root, feed } = setup(doc);
+  feed.update(vmOf());
+  const face = one(row(root, 3), ".sc-pf-face");
+  assert.equal(text(face), "Short pass middle · J.Williams");
+  assert.equal(face.getAttribute("aria-hidden"), "true");
+  assert.match(text(one(row(root, 3), ".sc-pf-text")), /D\.Prescott pass short middle to J\.Williams/);
+}));
+
+test("G5-10: a re-render writes only rows that changed: the same game twice writes nothing", () => inDoc((doc) => {
+  const { feed } = setup(doc);
+  feed.update(vmOf(100));
+  const before = doc.writes;
+  feed.update(vmOf(100));
+  assert.equal(doc.writes, before, "nothing changed, nothing written");
+  feed.update(vmOf(101));
+  assert.ok(doc.writes - before < 80, `a new play writes the new row, the old newest and its group only (${doc.writes - before} writes)`);
+}));
+
+test("G5-9: keyboard focus inside the feed opens it (data-open) until focus leaves the feed or Escape", () => inDoc((doc) => {
+  const timers = { pending: [], setTimeout(fn) { this.pending.push(fn); return this.pending.length; },
+    clearTimeout() {}, flush() { const fns = this.pending.splice(0); fns.forEach((f) => f()); } };
+  const root = regionRoot(doc, { id: "rg-plays" });
+  const { ctx } = fakeCtx();
+  const feed = mount(root, { ...ctx, timers, measureRibbon: () => null });
+  feed.update(vmOf(20));
+  const first = one(row(root, 20), ".sc-pf-btn");
+  const second = one(row(root, 19), ".sc-pf-btn");
+  const outside = doc.createElement("button");
+  doc.body.appendChild(outside);
+  const focusin = (node) => { node.focus(); root.dispatchEvent({ type: "focusin", target: node }); };
+  const focusout = (node, relatedTarget) => root.dispatchEvent({ type: "focusout", target: node, relatedTarget });
+  first.matches = () => false;                         // a mouse click is not :focus-visible
+  focusin(first);
+  assert.equal(root.getAttribute("data-open"), null, "the pointer opens it by hover, not by focus");
+  first.matches = (sel) => sel === ":focus-visible";
+  focusin(first);
+  assert.equal(root.getAttribute("data-open"), "true");
+  focusout(first, second);
+  focusin(second);
+  assert.equal(root.getAttribute("data-open"), "true", "Tab within the feed keeps it open");
+  focusout(second, null);
+  assert.equal(root.getAttribute("data-open"), "true", "the next focus is unknown yet: checked on the next frame");
+  timers.flush();
+  assert.equal(root.getAttribute("data-open"), "true", "focus is still inside");
+  focusout(second, outside);
+  outside.focus();
+  assert.equal(root.getAttribute("data-open"), null, "focus left the feed");
+  focusin(second);
+  first.focus = function focusAndAnnounce() {              // a browser fires focusin for a programmatic focus too
+    doc.activeElement = this;
+    root.dispatchEvent({ type: "focusin", target: this });
+  };
+  root.dispatchEvent({ type: "keydown", key: "Escape", target: second });
+  assert.equal(root.getAttribute("data-open"), null, "and Escape's own refocus doesn't open it again");
+  assert.equal(doc.activeElement, first, "Escape rolls it up and keeps focus on the play the ribbon still shows");
+  feed.destroy();
+}));

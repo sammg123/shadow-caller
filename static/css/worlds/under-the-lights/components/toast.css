@@ -31,6 +31,33 @@
   background: var(--uls-tally-red);
 }
 
+/* G5-13: an error holds 8 s (and while the pointer or focus is on it) and carries a Dismiss key: a steel cap whose
+   LED window prints its key, ESC. */
+:where(:root[data-world="under-the-lights"]) .sc-toast-dismiss {
+  display: grid;
+  place-items: center;
+  min-width: calc(var(--uls-size-key) * 2.4);
+  min-height: calc(var(--uls-key-h) - 8px);
+  padding: 3px;
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: 0.04em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-toast-dismiss::before {
+  content: "ESC";
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  padding: 2px var(--sc-space-2) 0;
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .sc-toast-dismiss:hover { color: var(--uls-led-amber); }
+
 @media (prefers-reduced-motion: reduce) {
   :where(:root[data-world="under-the-lights"]) .toast.show { animation: none; }
 }

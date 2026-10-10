@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { scoreboardVm, teamsOf, sourceOf } from "../../static/js/model/vm-scoreboard.js";
+import { isFinal, scoreboardVm, teamsOf, sourceOf } from "../../static/js/model/vm-scoreboard.js";
 import { makePv, state, timeline, tlOf, patch, isDeepFrozen } from "./model-fixtures.mjs";
 
 const team = (vm, abbr) => vm.teams.find((t) => t.abbr === abbr);
@@ -105,4 +105,37 @@ test("each team carries ESPN's dark-background logo too, only as the app's own p
   assert.equal(team(vm, "TB").logoDark, null);
   assert.equal(team(vm, "DAL").logoDark, "/api/logo/DAL?v=dark");
   assert.equal(scoreboardVm(makePv({ presented: state.tilt() })).teams[0].logoDark, null, "no ESPN teams, no logos");
+});
+
+// v1.5 (G4-9): one clock. While his drive is on, the engine's clock (the strip's, an estimate after each of his snaps)
+// is the freshest, so the band shows it with its EST caption; otherwise ESPN's clock at its last play, which the
+// engine doesn't follow through the opponent's drives (its clock goes stale there).
+function midDrive(sitOver = {}, over = {}) {
+  const drive = state.drive();
+  return patch(drive, { drive_active: true, ...over,
+    sit: { ...drive.sit, qtr: 3, clock: 621, clock_str: "10:21", clock_estimated: true, ...sitOver } });
+}
+
+test("one clock: during his drive the band shows the strip's estimate with EST (G4-9)", () => {
+  const vm = scoreboardVm(espnPv(timeline.at104(), midDrive()));
+  assert.deepEqual([vm.clock, vm.clockEst], ["10:21", true]);
+  const synced = scoreboardVm(espnPv(timeline.at104(), midDrive({ clock: 651, clock_str: "10:51", clock_estimated: false })));
+  assert.deepEqual([synced.clock, synced.clockEst], ["10:51", false], "a clock synced from ESPN is no estimate");
+});
+
+test("one clock: off his drive, or in another quarter, the band keeps ESPN's clock (G4-9)", () => {
+  const off = scoreboardVm(espnPv(timeline.at104(), midDrive({}, { drive_active: false })));
+  assert.deepEqual([off.clock, off.clockEst], ["10:51", false], "the engine's clock is stale in the opponent's drive");
+  const otherQtr = scoreboardVm(espnPv(timeline.at104(), midDrive({ qtr: 2 })));
+  assert.deepEqual([otherQtr.clock, otherQtr.clockEst], ["10:51", false]);
+  const final = scoreboardVm(espnPv(timeline.final()));
+  assert.deepEqual([final.clock, final.clockEst], ["0:00", false]);
+});
+
+// v1.5 (G4-1): the game is over when ESPN's status says so (a hand-entered game never is)
+test("isFinal: ESPN's post status, never a hand-entered game (G4-1)", () => {
+  assert.equal(isFinal(espnPv(timeline.final())), true);
+  assert.equal(isFinal(espnPv(timeline.at104())), false);
+  assert.equal(isFinal(makePv({ presented: state.final() })), false);
+  assert.equal(isFinal(makePv()), false);
 });

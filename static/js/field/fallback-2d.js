@@ -6,29 +6,28 @@
  * (docs/design/play-drawing.md): every play from the line of scrimmage (field/paths.js: a pass an arc, an
  * incompletion an arc and an X, a run a straight line on the turf) with its words on the field, his top 2 plays as
  * dashed, translucent shadow plays before his snap (field/shadows.js), the situation, residue per look, and the
- * active look's colors and styles, so it reads as the same world seen from straight above.
+ * active look's colors and styles, so it reads as the same world seen from straight above. Two cameras (V): the
+ * Drive view by default (the snap and his shadows large enough to read, each play taken in whole), and Top.
  *
  * DOM side. Animation runs only while a play draws (render on demand: no frames while idle). Every public call is
  * guarded: a failure is reported (opts.onError, else globalThis.reportError) and emitted as "error", and playRow
  * never rejects. Clocks, frames and timers are injectable for node tests and called bare.
  */
-import { deepFreeze } from "../core/domain.js";
 import { resolveLook } from "../theme/look-schema.js";
 import { NEUTRAL_LOOK } from "../theme/neutral-look.js";
-import { setAttr } from "../ui/dom.js";
-import { r2, layoutPlane, sceneContext } from "./fallback-draw.js";
 import { shownLeaves } from "./fallback-ghosts.js";
 import { cancelFades } from "./fallback-layers.js";
 import { PLAYS_EMPTY } from "./fallback-plays.js";
 import { createPlayer } from "./fallback-player.js";
 import {
-  drawRowsInstant, emit, exitReview, failed, finishNow, highlightGhost, markVerdict, painted, playRow,
-  refreshLabels, renderAll, settleStage, showGhosts, showReview, showSituation,
+  CAMERA_MODES, drawRowsInstant, emit, exitReview, failed, finishNow, highlightGhost, markVerdict, painted, playRow,
+  refreshLabels, relayout, renderAll, setCamera, settleCamera, settleStage, showGhosts, showReview, showSituation,
 } from "./fallback-runtime.js";
-import { createSurface, measureHost, readInsets } from "./fallback-svg.js";
+import { createSurface, measureHost } from "./fallback-svg.js";
 
-/** The fallback's one camera mode: the whole field from straight above. */
-export const CAMERA_MODES = deepFreeze([{ id: "top", label: "Top" }]);
+/** The 2D field's cameras: the Drive view (the default: the snap, his shadows and each play large enough to read) and
+ * the whole field from straight above (Top). */
+export { CAMERA_MODES };
 const EVENTS = new Set(["ready", "anim", "camera", "frame", "error", "contextlost", "contextrestored"]);
 const READY_FALLBACK_MS = 120;
 const SAME_SIZE_PX = 0.5;
@@ -78,7 +77,8 @@ function createState(host, look, opts) {
   const ready = new Promise((resolve) => { readyResolve = resolve; });
   return {
     host, env, ready, readyResolve, ids: `scfb${(instances += 1)}`, baseLook: base, look: base,
-    size: measureHost(host), insetsOverride: null, ctx: null, specs: new WeakMap(), surface: null, observer: null,
+    size: measureHost(host), insetsOverride: null, ctx: null, fieldCtx: null, specs: new WeakMap(), labelPx: null,
+    surface: null, observer: null, camera: CAMERA_MODES[0].id, cam: { box: null, tween: null },
     frame: { field: null, teams: null, teamOrder: [] }, situation: null, ball: null,
     ghosts: null, pending: undefined, highlight: null,
     plays: PLAYS_EMPTY, drawnSeq: 0, dim: false, review: null, liveJob: null,
@@ -107,18 +107,6 @@ function armReady(s) {
   }
 }
 
-// ---------------------------------------------------------------- drawing the state
-function relayout(s) {
-  const insets = s.insetsOverride ?? readInsets(s.host, s.env.getStyle);
-  const layout = layoutPlane({ width: s.size?.width, height: s.size?.height, insets });
-  s.ctx = sceneContext({ look: s.look, layout, ...s.frame, ids: s.ids });
-  s.specs = new WeakMap();
-  const viewBox = `0 0 ${r2(layout.width)} ${r2(layout.height)}`;
-  setAttr(s.surface.base, "viewBox", viewBox);
-  setAttr(s.surface.svg, "viewBox", viewBox);
-  s.surface.svg.style.setProperty("--sc-fb-in", `${s.look.motion.ghostInMs}ms`);
-}
-
 // ---------------------------------------------------------------- labels, frame, size, visibility
 /** Extension (as in field/scene.js): an optional 4th argument `game`, the timeline's game facts (light, kickoff). */
 function setGameFrame(s, field, teams, teamOrder, game = null) {
@@ -128,7 +116,7 @@ function setGameFrame(s, field, teams, teamOrder, game = null) {
   s.look = lookForGame(s.baseLook, obj(game), s.env.onError);
   s.frame = { field: obj(field), teams: obj(teams), teamOrder: Array.isArray(teamOrder) ? [...teamOrder] : [] };
   Object.assign(s, { plays: PLAYS_EMPTY, drawnSeq: 0, situation: null, ball: null, ghosts: null, pending: undefined,
-    dim: false });
+    dim: false, cam: { box: null, tween: null }, labelPx: null });
   relayout(s);
   renderAll(s);
   painted(s);
@@ -155,7 +143,10 @@ function setSafeArea(s, insets) {
 
 function setVisible(s, visible) {
   s.visible = Boolean(visible);
-  if (s.visible) return;
+  if (s.visible) {
+    settleCamera(s);
+    return;
+  }
   finishNow(s);
   if (s.rafId !== null) s.env.cancelRaf(s.rafId);
   s.rafId = null;
@@ -164,10 +155,6 @@ function setVisible(s, visible) {
 function setReducedMotion(s, on) {
   s.reduced = Boolean(on);
   if (s.reduced) finishNow(s);
-}
-
-function setCamera(s, id) {
-  if (id === CAMERA_MODES[0].id) emit(s, "camera", { id });
 }
 
 /** The #field data-ghosts hook: the shadow plays on the field (his top 2, the hovered extra aside), in rank order. */
@@ -181,8 +168,8 @@ function debugState(s) {
   return {
     kind: "2d", ready: s.isReady, frames: s.frames,
     animState: s.review ? "reviewing" : playing ? "playing" : "idle", playingSeq: playing?.entry.seq ?? null,
-    ghosts: visibleGhosts(s), highlight: s.highlight, camera: CAMERA_MODES[0].id, situation: s.situation,
-    drawCalls: 0, triangles: 0, geometries: 0, textures: 0, dpr: s.env.dpr(),
+    ghosts: visibleGhosts(s), highlight: s.highlight, camera: s.camera, situation: s.situation,
+    drawCalls: 0, triangles: 0, geometries: 0, textures: 0, dpr: s.env.dpr(), ball: s.players.live.ball(),
   };
 }
 

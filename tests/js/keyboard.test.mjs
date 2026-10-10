@@ -17,7 +17,8 @@ test("classifyTarget follows the 4.x target classes (G4: checkboxes are activata
   const cases = [
     [el("input", { id: "yards", type: "text" }), "yards"],
     [el("input"), "text"], [el("input", { type: "text" }), "text"], [el("input", { type: "number" }), "text"],
-    [el("input", { type: "search" }), "text"], [el("input", { type: "email" }), "text"], [el("input", { type: "range" }), "text"],
+    [el("input", { type: "search" }), "text"], [el("input", { type: "email" }), "text"], [el("input", { type: "range" }), "slider"],
+    [el("div", { role: "slider" }), "slider"],                                  // G5-12: the replay scrub's strip
     [el("input", { type: "weird" }), "text"], [el("textarea"), "text"], [el("select"), "text"],
     [el("div", { editable: true }), "text"], [el("div", { role: "textbox" }), "text"], [el("div", { role: "spinbutton" }), "text"],
     [el("input", { type: "checkbox", id: "fTD" }), "activatable"], [el("input", { type: "radio" }), "activatable"],
@@ -98,11 +99,12 @@ test("runIntent maps every intent type to its action", () => {
     { type: "openFlag" }, { type: "closeFlag" }, { type: "applyFlag", code: "DH" }, { type: "undo" }, { type: "undoRefused" },
     { type: "clearPick" }, { type: "logPlay" }, { type: "retag", key: "O", pauseFirst: true }, { type: "cycleCamera" },
     { type: "toggleBooth" }, { type: "toggleScorecard" }, { type: "closeScorecard" }, { type: "watchToggle" },
-    { type: "watchSpeed", speed: 10 }, { type: "review", delta: -1, repeat: false }, { type: "exitReview" }];
+    { type: "watchSpeed", speed: 10 }, { type: "review", delta: -1, repeat: false }, { type: "exitReview" },
+    { type: "closeBooth" }, { type: "dismissToast" }];
   for (const intent of intents) runIntent(actions, intent);
   assert.deepEqual(calls.map((c) => c[0]), ["tap", "outcome", "toggleTD", "toggleTO", "openFlag", "closeFlag", "applyFlag", "undo",
     "undoRefused", "clearPick", "logPlay", "retag", "cycleCamera", "toggleBooth", "toggleScorecard", "closeScorecard",
-    "watchToggle", "watchSpeed", "review", "exitReview"]);
+    "watchToggle", "watchSpeed", "review", "exitReview", "closeBooth", "dismissToast"]);
   assert.deepEqual(calls[11], ["retag", "O", { pauseFirst: true }]);
   assert.equal(runIntent(actions, { type: "nope" }), false);
   assert.equal(runIntent(actions, { type: "constructor" }), false);

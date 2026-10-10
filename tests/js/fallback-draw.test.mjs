@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  APRON_YD, OBLIQUE, ballNodes, fieldNodes, layoutPlane, paintsFor, planePoint, sceneContext, situationNodes, tagSize,
+  APRON_YD, DRIVE_FRAME, OBLIQUE, ballNodes, driveFrame, fieldNodes, layoutPlane, lerpBox, paintsFor, planePoint,
+  sceneContext, situationNodes, tagSize, unionBox, viewBoxFor,
 } from "../../static/js/field/fallback-draw.js";
 import { resolveLook } from "../../static/js/theme/look-schema.js";
 import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
@@ -48,6 +49,59 @@ test("insets that leave too little room, and missing sizes, fall back to the who
   assert.ok(D.width > 0 && D.height > 0 && D.px > 0);
   const N = layoutPlane({ width: 800, height: 450, insets: { top: -20, left: "x" } });
   assert.deepEqual(N.free, { x: 0, y: 0, w: 800, h: 450 });
+});
+
+test("the Drive view: a field box fitted to the free area's aspect, centered on it; the whole field without one", () => {
+  const box = { x0: 22, x1: 50, y0: 15, y1: 35 };
+  const L = layoutPlane({ width: 1440, height: 900, insets: { right: 456, bottom: 140 }, frame: box });
+  near(L.px, Math.min(984 / 28, 760 / 20), "the box fills the free area one way");
+  const mid = planePoint(L, 36, 25);
+  near(mid.px, 984 / 2, "centered across the free area");
+  near(mid.py, 760 / 2, "and down it");
+  assert.deepEqual(L.view, box);
+  const whole = layoutPlane({ width: 1440, height: 900, frame: null });
+  assert.equal(whole.view, null);
+  near(whole.px, 1440 / (120 + 2 * APRON_YD), "no box: the whole field, as before");
+  for (const bad of [{ x0: 10, x1: 10, y0: 0, y1: 5 }, { x0: "a" }, { x0: 0, x1: 20, y0: 9, y1: Number.NaN }]) {
+    assert.equal(layoutPlane({ width: 800, height: 450, frame: bad }).view, null, JSON.stringify(bad));
+  }
+});
+
+test("driveFrame: the snap with his shadows and their words, never smaller than DRIVE_FRAME's spans", () => {
+  const sit = { ballX: 30, ltgX: 40, dir: 1, poss: "DAL", kind: "snap" };
+  const run = { from: { x: 30, y: 26.667 }, to: { x: 34, y: 26.667 }, apex: 0 };
+  const pass = { from: { x: 30, y: 26.667 }, to: { x: 55, y: 26.667 }, apex: 4.5 };
+  const f = driveFrame(sit, [run, pass]);
+  assert.ok(f.x0 <= 30 - DRIVE_FRAME.back && f.x1 >= 55, `from behind the line to the deep shot: ${JSON.stringify(f)}`);
+  assert.ok(f.y1 >= 26.667 + 4.5 && f.y0 <= 26.667 - DRIVE_FRAME.below, "the arc's lift above, the words below");
+  assert.ok(f.x1 - f.x0 >= DRIVE_FRAME.minSpanX && f.y1 - f.y0 >= DRIVE_FRAME.minSpanY);
+  const short = driveFrame(sit, [run]);
+  near(short.x1 - short.x0, DRIVE_FRAME.minSpanX, "a short shadow still shows the drive around it");
+  const away = driveFrame({ ...sit, ballX: 70, dir: -1, ltgX: 60 }, []);
+  assert.ok(away.x0 <= 60 && away.x1 >= 70 + DRIVE_FRAME.back, "the other way");
+  const goal = driveFrame({ ...sit, ballX: 105 }, []);
+  assert.ok(goal.x1 <= 110 + APRON_YD && goal.x1 - goal.x0 >= DRIVE_FRAME.minSpanX, "kept on the field and its apron");
+  assert.equal(driveFrame(null, []), null);
+  assert.equal(driveFrame({ ...sit, kind: "kickoff" }, []), null, "a kickoff: the whole field");
+  const both = unionBox(short, { x0: 0, x1: 80, y0: 10, y1: 40 });
+  assert.deepEqual(both, { x0: 0, x1: 80, y0: Math.min(short.y0, 10), y1: Math.max(short.y1, 40) });
+  assert.equal(unionBox(null, short), short);
+  const half = lerpBox({ x0: 0, x1: 10, y0: 0, y1: 10 }, { x0: 10, x1: 30, y0: 10, y1: 30 }, 0.5);
+  assert.deepEqual(half, { x0: 5, x1: 20, y0: 5, y1: 20 });
+});
+
+test("the static field shows the Drive view through a viewBox over its whole-field drawing", () => {
+  const top = layoutPlane({ width: 1440, height: 900 });
+  const view = layoutPlane({ width: 1440, height: 900, frame: { x0: 22, x1: 50, y0: 15, y1: 35 } });
+  const [x, y, w, h] = viewBoxFor(top, view).split(" ").map(Number);
+  const k = top.px / view.px;
+  near(w, 1440 * k, "", 0.01);
+  near(h, 900 * k, "", 0.01);
+  const p = planePoint(top, 36, 25);
+  const q = planePoint(view, 36, 25);
+  near((p.px - x) / k, q.px, "a field point lands on the same screen spot in both layers", 0.01);
+  near((p.py - y) / k, q.py, "", 0.01);
+  assert.equal(viewBoxFor(top, top), "0 0 1440 900");
 });
 
 test("planePoint: caller's end zone on the left, near sideline at the bottom, height lifts toward the far side", () => {

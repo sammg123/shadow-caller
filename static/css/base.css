@@ -1,6 +1,8 @@
 /* Base (ui-architecture.md 1.1; owner A0): reset, [hidden], focus ring, .sr-only, reduced motion, and the shell's
    own pieces (skip link, boot placeholder, notices). Tokens only: every color, font, size and duration is a
-   --sc-* token a world defines (theme/tokens.js). Specificity stays low (:where) so components and worlds win. */
+   --sc-* token a world defines (theme/tokens.js). Specificity stays low (:where) so components and worlds win.
+   The one exception is the page's ground (G2-8): before any world's tokens resolve it is the default world's night
+   sky, never the browser's white, so even a stylesheet that is late or missing never flashes a light frame. */
 
 /* Runtime team tokens: theme/apply.js sets the real values from the game's teams (DC C2). These neutral
    defaults only keep var() resolvable before the teams are known and in manual mode without ESPN colors. */
@@ -14,6 +16,8 @@
   --sc-team-off: #5b6470;
   --sc-team-off-ink: #ffffff;
   --sc-team-def: #6f6a63;
+  --sc-ground-default: #0d1424;     /* Under the Lights' night sky (DESIGN.md), the default world's ground */
+  --sc-ink-default: #fff3d1;        /* and its LED warm white */
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -23,14 +27,14 @@
 :where(html) {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  background: var(--sc-bg);
+  background: var(--sc-bg, var(--sc-ground-default));
 }
 
 :where(body) {
   margin: 0;
   min-height: 100vh;
-  background: var(--sc-bg);
-  color: var(--sc-ink);
+  background: var(--sc-bg, var(--sc-ground-default));
+  color: var(--sc-ink, var(--sc-ink-default));
   font-family: var(--sc-font-text);
   font-size: var(--sc-size-m);
   font-weight: var(--sc-weight-regular);
@@ -87,30 +91,26 @@
 }
 .sc-skip:focus-visible { transform: none; }
 
-/* Boot placeholder in index.html: covers the page until main.js mounts the boot screen. */
+/* Boot placeholder in index.html: covers the page until main.js mounts the boot screen. It wears the boot screen's own
+   classes (.sc-boot, .sc-boot-board, .sc-boot-plate, .sc-lamp, .sc-boot-heading), so components/boot-screen.css and
+   the world's skin dress it as that board from the first frame (G2-8: in Under the Lights, the LED board in its steel
+   cabinet, lamp amber). These rules keep it a readable cover should those sheets not load, and time the last line. */
 .sc-boot-static {
   position: fixed;
   inset: 0;
   z-index: 1000;
   display: grid;
-  align-content: center;
-  justify-items: center;
-  gap: var(--sc-space-3);
+  place-items: center;
   padding: var(--sc-gutter);
-  background: var(--sc-bg);
-  color: var(--sc-ink);
-  text-align: center;
+  background: var(--sc-bg, var(--sc-ground-default));
+  color: var(--sc-ink, var(--sc-ink-default));
 }
-.sc-boot-static-title {
-  font-family: var(--sc-font-display);
-  font-size: var(--sc-size-xl);
-  font-weight: var(--sc-weight-display);
-  line-height: var(--sc-leading-tight);
-}
-.sc-boot-static-text { color: var(--sc-ink-muted); }
+.sc-boot-static .sc-boot-board { position: relative; }
+/* Under the board, out of its flow, so the board is the boot screen's exact size until the line is needed. */
 .sc-boot-static-stuck {
-  max-width: 36rem;
-  color: var(--sc-ink);
+  position: absolute;
+  inset-block-start: calc(100% + var(--sc-space-3));
+  inset-inline: 0;
   visibility: hidden;
   animation: sc-boot-stuck 1ms linear 12s forwards;
 }

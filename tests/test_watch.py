@@ -85,15 +85,49 @@ def watched(make_feed, summary):
 # ---------------------------------------------------------------- E3: pacing
 def test_pacing_table_matches_the_contract(summary):
     plan = wm.pace_plan(iter_plays(summary), "DAL")
-    seconds = [s for kind, s in plan]
+    seconds = [s for pace, s in plan]
     counts = {s: seconds.count(s) for s in set(seconds)}
     assert counts == {7.0: 60, 4.0: 78, 5.0: 18, 1.0: 23, 3.0: 4}
-    assert sum(seconds) == 857.0                        # 14:17 at 1x; 214 s at 4x, 86 s at 10x
-    assert round(sum(seconds) / 4) == 214 and round(sum(seconds) / 10) == 86
-    assert plan[0] == ("kickoff", 5.0) and plan[1] == ("play", 7.0)      # DAL receives, then DAL's first snap
-    assert plan[-1] == ("admin", 3.0)                                   # END GAME
-    kinds = {k for k, s in plan}
-    assert kinds == {"play", "admin", "kickoff", "penalty", "punt", "fg", "kneel"}
+    assert sum(seconds) == 857.0                        # 14:17 at 1x
+    assert plan[0] == ("kick", 5.0) and plan[1] == ("caller_snap", 7.0)   # DAL receives, then DAL's first snap
+    assert plan[-1] == ("admin_end", 3.0)                                 # END GAME
+    paces = [pace for pace, s in plan]
+    assert {p: paces.count(p) for p in set(paces)} == {"caller_snap": 60, "snap": 78, "kick": 18, "admin": 23,
+                                                       "admin_end": 4}
+
+
+def test_the_next_call_gets_a_floor_before_every_caller_snap(summary):
+    """G1-1: at 4x a caller snap came 1.75 s after the play before it, so the next call blinked on the field. A
+    caller snap now waits at least what the page needs for the play before it and the call after it (the verdict's
+    beat, the call's fade-in, 2 s fully lit up to 4x and 1 s above): 6 s below 4x (a 1.5 s verdict), 4.8 s at 4x
+    (0.6 s), 3.6 s above. Every other row keeps its pace."""
+    assert [wm.delay_s("caller_snap", 7.0, speed) for speed in (0.5, 1, 2, 3, 4, 4.5, 10)] == \
+        [14.0, 7.0, 6.0, 6.0, 4.8, 3.6, 3.6]
+    assert (wm.delay_s("snap", 4.0, 4), wm.delay_s("kick", 5.0, 10), wm.delay_s("admin", 1.0, 4)) == (1.0, 0.5, 0.25)
+    plan = wm.pace_plan(iter_plays(summary), "DAL")
+    total = {speed: sum(wm.delay_s(pace, s, speed) for pace, s in plan) for speed in (1, 2, 4, 10)}
+    assert total[1] == 857.0                                       # 14:17 at 1x, as before
+    assert [round(total[speed] / 60, 1) for speed in (2, 4, 10)] == [9.6, 6.6, 4.3]      # minutes
+
+
+def test_a_caller_snap_waits_its_floor_and_says_so(make_feed, summary, watches):
+    """The watch object names the kind of row it waits on (next_kind, in /api/version too), so the page can keep
+    the next call on the field until the snap; a speed change rescales the wait to the new speed's floor."""
+    e, feed = make_feed()
+    w = watches(feed, 1.0)                    # real pace: the opening kickoff waits 5 / 4 = 1.25 s at 4x
+    w.start(ESPN_EVENT, summary, speed=4)
+    assert w.brief()["next_kind"] == "kick"
+    assert wait_for(lambda: w.idx == 1, timeout=10)
+    brief, before = w.brief(), left_s(w)
+    assert brief["next_kind"] == "caller_snap" and w.snapshot()["next_kind"] == "caller_snap"
+    assert 3.9 < before <= 4.8                                # the 4.8 s floor, not 7 / 4 = 1.75 s
+    w.set_speed(10)                                           # the floor above 4x is 3.6 s: that share of the wait
+    assert abs(left_s(w) - before * 3.6 / 4.8) < 0.25
+    w.pause()
+    w.set_speed(4)
+    w.resume()
+    assert abs(left_s(w) - before) < 0.25                     # back to the 4x floor, from where it was
+    assert w.idx == 1 and w.brief()["next_kind"] == "caller_snap"
 
 
 def run_py(code, env_extra):
@@ -178,7 +212,7 @@ def test_watch_backs_up_state_and_seen_then_resets(make_feed, summary, sandbox, 
     assert feed.applied == [] and feed.seen == set() and feed.event_id == ESPN_EVENT and feed.summary is summary
     assert (snap["state"], snap["idx"], snap["total"], snap["event_id"], snap["speed"]) == \
         ("playing", 0, 183, ESPN_EVENT, 0.5)
-    assert snap["next_kind"] == "kickoff" and snap["ff_until"] == 0 and snap["error"] is None
+    assert snap["next_kind"] == "kick" and snap["ff_until"] == 0 and snap["error"] is None
     assert snap["feed_was_on"] is False and snap["started_at"][:2] == "20"
 
 
@@ -192,6 +226,32 @@ def test_backups_never_overwrite_each_other(make_feed, sandbox):
     assert one["state"].read_bytes() == two["state"].read_bytes() == live.STATE_PATH.read_bytes()
     live.STATE_PATH.unlink()
     assert wm.backup_game("20261009-211001")["state"] is None       # nothing to back up: a fresh install
+
+
+def test_only_the_newest_twenty_backups_stay_but_never_one_a_session_needs(make_feed, sandbox):
+    """G1-11: every reset, replay and watch keeps a pair of backups, and one session left 18 pairs behind. Only the
+    newest 20 of each file stay now, plus any a session file names (Stop puts that one back)."""
+    e, feed = make_feed()
+    for old in sandbox.glob("feed_seen.json.backup-*"):
+        old.unlink()
+    feed.forget()                                                  # writes feed_seen.json
+    named = wm.backup_game("20261001-000000")
+    session = {"game_id": TEST_GAME["game_id"], "watching": ESPN_EVENT, "started_at": "2026-10-01T00:00:00",
+               "event_id": ESPN_EVENT, "feed_was_on": False,
+               "backup": {k: p.name for k, p in named.items()}}
+    (sandbox / wm.SESSION_FILE).write_text(json.dumps(session))
+    try:
+        for n in range(23):
+            wm.backup_game("20261009-211000" if n < 3 else f"20261009-2111{n:02d}")    # three in the same second
+        states = {p.name for p in sandbox.glob("live_state.backup-*.json")}
+        seens = {p.name for p in sandbox.glob("feed_seen.json.backup-*")}
+        newest = [f"20261009-2111{n:02d}" for n in range(3, 23)]
+        assert states == {f"live_state.backup-{s}.json" for s in newest} | {named["state"].name}
+        assert seens == {f"feed_seen.json.backup-{s}" for s in newest} | {named["seen"].name}
+        wm.backup_game("20261009-211122")                          # the same second as the newest: it is newer still
+        assert "live_state.backup-20261009-211122-2.json" in {p.name for p in sandbox.glob("live_state.backup-*")}
+    finally:
+        (sandbox / wm.SESSION_FILE).unlink()
 
 
 # ---------------------------------------------------------------- 27, 34: a whole game
@@ -632,7 +692,7 @@ def test_idle_watch_object_and_version_brief(make_feed):
                             "skipped": 0, "next_kind": None, "ff_until": 0, "started_at": None, "feed_was_on": False,
                             "backup": None, "error": None}
     assert w.brief() == {"state": "idle", "event_id": None, "speed": None, "idx": 0, "total": 0, "next_at": None,
-                         "skipped": 0, "error": None}
+                         "next_kind": None, "skipped": 0, "error": None}
     w.set_speed(2)                                           # a speed picked before a session is kept
     assert w.snapshot()["speed"] == 2.0 and w.join(timeout=0.1)
     with pytest.raises(ValueError):

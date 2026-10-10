@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  applyPossession, applyRootAttrs, applyTeams, applyWorld, missingWorldTokens, watchMotion,
+  POSSESSION_FINAL, applyPossession, applyRootAttrs, applyTeams, applyWorld, missingWorldTokens, watchMotion,
 } from "../../static/js/theme/apply.js";
 import { REQUIRED_TOKENS } from "../../static/js/theme/tokens.js";
 import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
@@ -130,6 +130,24 @@ test("applyPossession moves the offense and defense tokens with the ball", () =>
   assert.equal(token(doc, "--sc-team-off"), "#bd1c36", "new teams keep the current possession");
   applyPossession(null, doc);
   assert.equal(token(doc, "--sc-team-off"), "#002a5c");
+});
+
+test("G2-5: with no possession the caller is the offense; at the final whistle the band goes neutral steel", () => {
+  const doc = createDocument();
+  applyTeams(TEAMS, doc, NEUTRAL_LOOK);
+  applyPossession(null, doc);
+  assert.deepEqual([token(doc, "--sc-team-off"), token(doc, "--sc-team-def")], ["#002a5c", "#bd1c36"], "null: the caller");
+  applyPossession(POSSESSION_FINAL, doc);
+  assert.equal(POSSESSION_FINAL, "final");
+  assert.equal(token(doc, "--sc-team-off"), "#5b6470", "the neutral team's gray, which the world maps to its steel");
+  assert.equal(token(doc, "--sc-team-off-ink"), "#ffffff");
+  assert.equal(token(doc, "--sc-team-def"), "#5b6470", "nobody defends after the final whistle");
+  applyTeams(TEAMS, doc, NEUTRAL_LOOK);
+  assert.equal(token(doc, "--sc-team-off"), "#5b6470", "new team colors keep the final");
+  applyPossession("TB", doc);
+  assert.equal(token(doc, "--sc-team-off"), "#bd1c36", "a new game: the ball's team again");
+  applyPossession("FINAL", doc);
+  assert.equal(token(doc, "--sc-team-off"), "#002a5c", "only the exact word: a team abbreviation is upper case");
 });
 
 test("teams without colors (manual mode) and no teams at all give the neutral team", () => {

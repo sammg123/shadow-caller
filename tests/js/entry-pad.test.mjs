@@ -28,7 +28,8 @@ test("mount fills #manualEntry and keeps the other #entry children (9.1: never c
   assert.deepEqual(findAll(root, (n) => n.hasAttribute("data-out")).map((n) => n.getAttribute("data-out")),
     ["incomplete", "sack", "scramble"]);
   for (const id of ["flagBtn", "chosen", "yards", "fTD", "fTO", "logBtn"]) assert.ok(byId(id), id);
-  assert.equal(byId("yards").value, "0");
+  assert.equal(byId("yards").value, "", "G5-4: Yards starts empty; an empty box logs 0");
+  assert.equal(byId("yards").getAttribute("placeholder"), "0");
   assert.equal(byId("fTD").getAttribute("type"), "checkbox");
   assert.equal(byId("fTO").getAttribute("type"), "checkbox");
   for (const key of findAll(root, (n) => n.hasAttribute("data-k") || n.hasAttribute("data-out"))) {

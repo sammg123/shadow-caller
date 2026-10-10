@@ -4,9 +4,9 @@ import urllib.request
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import (COL, answer_dialogs, clear_history, command, csv_rows, ensure_finished, expect_off_field,
-                        expect_shows, expect_toast, fresh, load, log_table, quiet, record_requests, reset_game, state,
-                        until, with_drive)
+from ui_helpers import (COL, answer_dialogs, api_get, clear_history, command, csv_rows, ensure_finished,
+                        expect_off_field, expect_shows, expect_toast, fresh, load, log_table, quiet, record_requests,
+                        reset_game, state, until, with_drive)
 from ui_helpers import show  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
@@ -69,6 +69,19 @@ def test_80_i_logs_a_pass_turnover_with_dashes(upage, server):
     assert (row[COL["His % on it"]], row[COL["League %"]], row[COL["Rank"]]) == ("—", "—", "—")
 
 
+def test_80b_i_is_an_interception_on_the_field(upage, server):
+    """G1-5 (v1.4): `I` used to reach the timeline with no turnover kind, so the field said "Play · fumble lost". The
+    row now says int (grading stays pass versus run, no family is invented), and the words say interception."""
+    base = server["base"]
+    with_drive(upage, base)
+    run(upage, "I")
+    upage.wait_for_selector('#field[data-drawn-seq="1"]', state="attached")
+    row = api_get(base, "/api/timeline?since=0")["rows"][0]
+    assert (row["result"]["turnover"], row["result"]["turnover_kind"], row["pred"]["family"]) == (True, "int", None)
+    words = upage.evaluate("() => document.getElementById('field').textContent")
+    assert "fumble" not in words and ("INT" in words or "intercepted" in words), words
+
+
 @pytest.mark.parametrize("line, toast, moves", [
     ("X DH", "Done: Defensive holding: 5 yards, automatic first down. 1st & 10 at DAL 30.", True),
     ("X FS", "Done: False start: back 5 yards. 1st & 15 at DAL 20.", True),
@@ -94,7 +107,7 @@ def test_82_shorthand_situation_and_drive_ends(upage, server):
     base = server["base"]
     fresh(upage, base)
     run(upage, "new D25")
-    expect(upage.locator("#driveInfo")).to_have_text(re.compile(r"^Drive 1, snap 1 of the game$"))
+    expect(upage.locator("#driveInfo")).to_have_text(re.compile(r"^Drive 1 · snap 1$"))
     expect(upage.locator("#iYard")).to_have_value("25")
     run(upage, "new T30")
     expect(upage.locator("#sideTxt")).to_have_text("TB")
@@ -223,13 +236,13 @@ def test_89_reset_confirms_and_dismissing_changes_nothing(upage, server):
     asked = answer_dialogs(upage, accept=[False, True])
     upage.locator("#resetBtn").click()
     until(upage, lambda: len(asked) == 1, what="the reset confirm")
-    assert asked == ["Clear every snap logged for this game?"]
+    assert asked == ["Clear every snap logged for this game? A copy is kept in data/."]
     quiet(upage)
     assert state(base)["version"] == before
     expect(upage.locator("#iDown")).to_have_value("2")
     upage.locator("#resetBtn").click()
     expect_toast(upage, "Set the start of Dallas's first drive.")
-    assert asked == ["Clear every snap logged for this game?"] * 2
+    assert asked == ["Clear every snap logged for this game? A copy is kept in data/."] * 2
     s = state(base)
     assert (s["log"], s["drive_active"], s["sit"]["yardline_100"]) == ([], False, 75)
     show(upage, "#logArea")

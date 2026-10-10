@@ -13,6 +13,9 @@ Threading (E2). LOCK is app.LOCK, the RLock every engine mutation takes; cv guar
      session comes back as 'error' and Stop can still put the game back (data contract E2.7 said idle; that
      stranded the real game in a backup nothing pointed at).
 Pacing (E3): seconds before each row at 1x, divided by the speed, times SHADOW_WATCH_SCALE (config.WATCH_SCALE).
+A caller snap never comes sooner than its CALLER_FLOOR_S after the row before it (6 s below 4x, 4.8 s at 4x, 3.6 s
+above), so the next call and its shadow plays stay on the field long enough to read (v1.4, G1-1). The watch object
+names the pace of the row it waits on (next_kind), so the page can leave that time to the call.
 """
 import json
 import logging
@@ -36,12 +39,20 @@ ACTIVE = ("playing", "paused")                       # the thread is applying pl
 SESSION = ("playing", "paused", "done", "error")     # a watched game is on screen and can still be put back
 # E3, seconds before a row at 1x. TB at DAL: 60 caller snaps, 78 opponent snaps, 18 kicks, 23 + 4 admin = 857 s.
 PACE = {"caller_snap": 7.0, "snap": 4.0, "kick": 5.0, "admin": 1.0, "admin_end": 3.0}
+# The least time before a caller snap, in seconds at that speed (before SHADOW_WATCH_SCALE): the play before it (1 to
+# 1.7 s), what the page keeps for the next call (anim-queue.js CALL_RESERVE_MS: the verdict's beat, 1.5 s below 4x
+# and 0.6 s from 4x, the call's fade-in, then 2 s of it fully lit up to 4x and 1 s above) and the page's poll.
+# TB at DAL runs 9.6 minutes at 2x, 6.6 at 4x and 4.3 at 10x (14:17 at 1x, as before).
+CALLER_FLOOR_S = {"slow": 6.0, "demo": 4.8, "fast": 3.6}
+DEMO_SPEED = 4.0                                     # below it the slow floor, above it the fast one
 SNAP_KINDS = ("play", "penalty", "kneel", "spike", "other")
 END_ADMIN = ("end_period", "end_half", "end_game")
 SPEED_MIN, SPEED_MAX, DEFAULT_SPEED = 0.5, 10.0, 4.0
 EVENT_ID_RE = re.compile(r"[0-9]{6,12}")             # ASCII digits: the id ends up in file names and URLs
 START_KEYS, SPEED_KEYS, STOP_KEYS = ("event_id", "speed", "from_seq"), ("speed",), ("restore",)
 MAX_SAME_SECOND = 99                                 # backups made in one second are named -2 to -99
+KEEP_BACKUPS = 20                                    # of each file: older backups go (prune_backups)
+BACKUP_STAMP_RE = re.compile(r"\.backup-([0-9]{8}-[0-9]{6})(?:-([0-9]{1,2}))?(?:\.json)?$")
 MAX_SKIPS_IN_A_ROW = 3                               # plays the feed couldn't apply, in a row, before a watch gives up
 SESSION_FILE = "watch_session.json"                  # next to live_state.json while there is a game to put back
 BACKUP_NAMES = {"state": re.compile(r"live_state\.backup-[0-9-]{1,40}\.json"),    # what SESSION_FILE may name
@@ -59,21 +70,33 @@ class WatchError(Exception):
 
 # ---------------------------------------------------------------- E3: pacing
 def pace_of(team, p, caller):
-    """(kind, seconds before this row at 1x) for one ESPN play."""
+    """(pace, seconds before this row at 1x) for one ESPN play; pace is a PACE key."""
     info = espn_feed.classify(team, p)
     typ = (p.get("type") or {}).get("text") or ""
     kind = timeline.kind_of(info, typ, split_body(p.get("text"))[1])
     if kind in SNAP_KINDS:
-        return kind, PACE["caller_snap"] if team == caller else PACE["snap"]
-    if kind in timeline.KICKS:
-        return kind, PACE["kick"]
-    what = next((w for key, w in timeline.ADMIN_WHAT if key in typ.lower()), "other")
-    return kind, PACE["admin_end"] if what in END_ADMIN else PACE["admin"]
+        pace = "caller_snap" if team == caller else "snap"
+    elif kind in timeline.KICKS:
+        pace = "kick"
+    else:
+        what = next((w for key, w in timeline.ADMIN_WHAT if key in typ.lower()), "other")
+        pace = "admin_end" if what in END_ADMIN else "admin"
+    return pace, PACE[pace]
 
 
 def pace_plan(plays, caller):
-    """[(kind, seconds at 1x)] for (team, play) pairs, in apply order."""
+    """[(pace, seconds at 1x)] for (team, play) pairs, in apply order."""
     return [pace_of(team, p, caller) for team, p in plays]
+
+
+def delay_s(pace, seconds, speed):
+    """Seconds before a row at `speed`, before SHADOW_WATCH_SCALE: its pace divided by the speed, and never under the
+    caller-snap floor before a caller snap."""
+    wait = seconds / speed
+    if pace != "caller_snap":
+        return wait
+    band = "demo" if speed == DEMO_SPEED else "slow" if speed < DEMO_SPEED else "fast"
+    return max(wait, CALLER_FLOOR_S[band])
 
 
 # ---------------------------------------------------------------- E1: request bodies (validated at the HTTP boundary)
@@ -158,18 +181,24 @@ def load_game(event_id):
 def backup_game(stamp=None):
     """Copy live_state.json and feed_seen.json aside before a watch or a replay resets the game (E2.5, E6).
     {"state": path or None, "seen": path or None}: None when there was no such file. A backup is never overwritten;
-    another one in the same second gets -2, -3 and so on. Paths are read at call time (tests sandbox them)."""
+    another one in the same second gets -2, -3 and so on. Then only the newest KEEP_BACKUPS of each file stay
+    (prune_backups). Paths are read at call time (tests sandbox them)."""
     stamp = stamp or datetime.now().strftime("%Y%m%d-%H%M%S")
-    return {"state": _copy_aside(live.STATE_PATH, f"live_state.backup-{stamp}", ".json"),
+    made = {"state": _copy_aside(live.STATE_PATH, f"live_state.backup-{stamp}", ".json"),
             "seen": _copy_aside(espn_feed.SEEN_PATH, f"feed_seen.json.backup-{stamp}", "")}
+    prune_backups()
+    return made
 
 
 def _copy_aside(src, stem, suffix):
+    """src copied to <stem><suffix>, or <stem>-<n><suffix> past every copy made in the same second, so the newest
+    backup always sorts last (backup_order)."""
     try:
         data = src.read_bytes()
     except FileNotFoundError:
         return None
-    for n in range(1, MAX_SAME_SECOND + 1):
+    taken = [backup_order(p)[1] for p in src.parent.glob(f"{stem}*{suffix}") if backup_order(p)[0] == stem[-15:]]
+    for n in range(max(taken, default=0) + 1, MAX_SAME_SECOND + 1):
         dest = src.with_name(f"{stem}{'' if n == 1 else f'-{n}'}{suffix}")
         try:
             with open(dest, "xb") as f:                  # x: fail rather than overwrite an older backup
@@ -181,6 +210,36 @@ def _copy_aside(src, stem, suffix):
             dest.unlink(missing_ok=True)                 # never leave half a backup behind
             raise
     raise WatchError(f"Too many backups named {stem}; move some out of {src.parent}.")
+
+
+def backup_order(path):
+    """(stamp, n) of a backup's name, oldest first: live_state.backup-20261009-211000-2.json is (that stamp, 2)."""
+    m = BACKUP_STAMP_RE.search(path.name)
+    return (m.group(1), int(m.group(2) or 1)) if m else ("", 0)
+
+
+def prune_backups(keep=None):
+    """Only the newest `keep` (KEEP_BACKUPS) backups of each file stay; one the session file names never goes (Stop
+    puts it back). A session file that can't be read stops the pruning: nothing is removed blind."""
+    keep = KEEP_BACKUPS if keep is None else keep
+    try:
+        saved = json.loads(session_path().read_text())
+    except FileNotFoundError:
+        saved = {}
+    except (OSError, ValueError) as ex:
+        log.warning("Couldn't read %s (%s): no backups were removed.", SESSION_FILE, ex)
+        return
+    named = saved.get("backup") if isinstance(saved, dict) and isinstance(saved.get("backup"), dict) else {}
+    needed = {v for v in named.values() if isinstance(v, str)}
+    for key, home in (("state", live.STATE_PATH), ("seen", espn_feed.SEEN_PATH)):
+        found = [p for p in home.parent.glob(f"{home.name.split('.')[0]}*") if BACKUP_NAMES[key].fullmatch(p.name)]
+        for old in sorted(found, key=backup_order, reverse=True)[keep:]:
+            if old.name in needed:
+                continue
+            try:
+                old.unlink()
+            except OSError as ex:
+                log.warning("Couldn't remove the old backup %s (%s).", old.name, ex)
 
 
 def _put_files_back(pairs):
@@ -329,9 +388,8 @@ class Watch:
     def snapshot(self):
         """The watch object of /api/state and GET /api/watch (E1)."""
         with self.cv:
-            return {**self._brief(), "next_kind": self._next_kind(), "ff_until": self.ff_until,
-                    "started_at": self.started_at, "feed_was_on": self.feed_was_on,
-                    "backup": dict(self.backup) if self.backup else None}
+            return {**self._brief(), "ff_until": self.ff_until, "started_at": self.started_at,
+                    "feed_was_on": self.feed_was_on, "backup": dict(self.backup) if self.backup else None}
 
     def brief(self):
         """The small watch object of /api/version (E4), polled every 250 ms while playing."""
@@ -346,8 +404,10 @@ class Watch:
         return t is None or not t.is_alive()
 
     def _brief(self):
+        """next_kind (v1.4) is the pace of the row the session waits on: caller_snap while the next call is up."""
         return {"state": self.state, "event_id": self.event_id, "speed": self.speed, "idx": self.idx,
-                "total": len(self.queue), "next_at": self._next_at(), "skipped": self.skipped, "error": self.error}
+                "total": len(self.queue), "next_at": self._next_at(), "next_kind": self._next_kind(),
+                "skipped": self.skipped, "error": self.error}
 
     def _next_at(self):
         """Server epoch milliseconds when the next play lands; None unless playing."""
@@ -369,7 +429,21 @@ class Watch:
         """Seconds to wait before play i: none while fast-forwarding to from_seq, else its pace (E3)."""
         if i < self.ff_until:
             return 0.0
-        return self.plan[i][1] * self.scale / self.speed
+        return self._pace_s(i, self.speed) * self.scale
+
+    def _pace_s(self, i, speed):
+        """Seconds before play i at `speed`, before the scale (delay_s)."""
+        pace, seconds = self.plan[i]
+        return delay_s(pace, seconds, speed)
+
+    def _rescale(self, old):
+        """What a speed change does to the time left on the current wait: the new pace over the old one for the play
+        waited on (old / new speed, unless a caller snap's floor is in play)."""
+        i = self._due_idx
+        if i is None or not 0 <= i < len(self.plan):
+            return old / self.speed
+        before = self._pace_s(i, old)
+        return self._pace_s(i, self.speed) / before if before > 0 else 1.0
 
     def _nothing_to(self, verb):
         said = {"idle": "there's no watch", "done": "the watch has finished", "stopped": "the watch was stopped",
@@ -529,11 +603,12 @@ class Watch:
         with self.cv:
             old, self.speed = self.speed, float(speed)
             if old:
+                ratio = self._rescale(old)
                 if self._due is not None:
                     now = time.monotonic()
-                    self._due = now + max(0.0, self._due - now) * old / self.speed
+                    self._due = now + max(0.0, self._due - now) * ratio
                 if self._left is not None:
-                    self._left *= old / self.speed
+                    self._left *= ratio
             self.cv.notify_all()
 
     # ------------------------------------------------ step, stop (LOCK, then cv)

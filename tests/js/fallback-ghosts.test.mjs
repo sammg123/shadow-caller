@@ -39,7 +39,9 @@ const strokes = (zone) => walk([zone.node]).filter((n) => ["edge", "core"].inclu
 const layerOf = (opts = {}, ctx = ctxFor()) => shadowLayer(shadowPlaysFor(INPUT, ctx, opts), ctx);
 
 test("the conductor's GhostSet becomes a shadow request: his order, his odds, the snap and the team with the ball", () => {
-  assert.deepEqual(INPUT.situation, { ballX: 30, dir: 1, poss: "DAL", kind: "snap" });
+  assert.deepEqual(INPUT.situation, { ballX: 30, dir: 1, poss: "DAL", kind: "snap", down: 1 },
+    "the down comes from the snap on the field (the GhostSet carries none)");
+  assert.equal(shadowInput(SET, { ...SIT, ballX: 31 }).situation.down, undefined, "another snap's down is not this one's");
   assert.equal(INPUT.key, SET.key);
   assert.deepEqual(shownLeaves(INPUT), ["run_inside", "pa_short"], "the top 2");
   const own = shadowInput({ source: firstSnap.pred, situation: SIT, leafOrder: META_LEAVES });
@@ -116,6 +118,23 @@ test("hovering a play outside the top 2 draws its shadow too, lit, and dims the 
   assert.deepEqual(layerOf({ hover: "not_a_leaf" }).zones.map((z) => z.opacity), [0.5, 0.35]);
 });
 
+test("on 4th down the shadows read 'If he goes' and draw quieter, from the conductor's GhostSet and from a review", () => {
+  const fourth = { ...SIT, down: 4, togo: 6 };
+  const input = shadowInput(buildGhostSet(ghostInputFromPred(firstSnap.pred), fourth), fourth);
+  const ctx = ctxFor();
+  const layer = shadowLayer(shadowPlaysFor(input, ctx), ctx);
+  assert.deepEqual(layer.zones.map((z) => [z.key, z.opacity]), [["run_inside", 0.35], ["pa_short", 0.25]]);
+  assert.deepEqual(layer.labels.map(textOf), ["If he goes · 1 · Inside run (A/B gap) · 27%",
+    "If he goes · 2 · PA short (0–9) · 16%"]);
+  const go = rowBySeq(130);
+  const review = shadowInput(buildGhostSet(ghostInputFromPred(go.pred), situationFromRow(go)), situationFromRow(go));
+  assert.match(textOf(shadowLayer(shadowPlaysFor(review, ctx), ctx).labels[0]), /^If he goes · 1 · /,
+    "reviewing his 4th-and-3 go");
+  const request = shadowInput({ source: firstSnap.pred, situation: fourth, leafOrder: META_LEAVES });
+  assert.equal(request.situation.down, 4);
+  assert.deepEqual(layerOf().zones.map((z) => z.opacity), [0.5, 0.35], "1st down: as loud as ever");
+});
+
 test("the shadows' text keeps clear of the previous play's words, which stay on the field dimmed", () => {
   const ctx = ctxFor();
   const prev = buildDrawing(rowBySeq(2));
@@ -154,6 +173,27 @@ test("the world tints the shadows (team, the field's paint, or its own color); t
   const zone = shadowLayer(shadowPlaysFor(INPUT, ctxFor(resolveLook({ ghost: { fill: "#fff3d1" } }))),
     ctxFor(resolveLook({ ghost: { fill: "#fff3d1" } }))).zones[0];
   assert.ok(strokes(zone).some((n) => n.attrs.stroke === "#fff3d1" && n.attrs["stroke-dasharray"]));
+});
+
+test("ghost.tint 'family' (parity with the 3D field): pass warm white, run amber, RPO gold; the fill otherwise", () => {
+  const families = { pass: "#fff3d1", run: "#ffb21e", rpo: "#ffd27a" };
+  const look = resolveLook({ ghost: { tint: "family", fill: "neutral", stroke: "#eeeeee" }, world: { plays: { families } } });
+  const ctx = ctxFor(look);
+  const req = shadowInput({ source: { leaves: [{ leaf: "run_inside", p: 0.3 }, { leaf: "pa_short", p: 0.2 },
+    { leaf: "rpo_run", p: 0.1 }] }, situation: SIT });
+  const layer = shadowLayer(shadowPlaysFor(req, ctx, { hover: "rpo_run" }), ctx);
+  const coreOf = (zone) => strokes(zone).find((n) => n.attrs["data-stroke"] === "core").attrs.stroke;
+  assert.deepEqual(layer.zones.map((z) => [z.key, coreOf(z)]),
+    [["run_inside", "#ffb21e"], ["pa_short", "#fff3d1"], ["rpo_run", "#ffd27a"]]);
+  for (const zone of layer.zones) assert.ok(strokes(zone).every((n) => n.attrs["stroke-dasharray"]), "still dashed");
+  assert.match(layer.labels[0].node.attrs.class, /\bfamily-run\b/, "the words carry their family for the world's CSS");
+  assert.equal(shadowPaint(ctx, null, "screen").core, "#fff3d1", "a screen is a pass on the ramp");
+  const partial = resolveLook({ ghost: { tint: "family", fill: "#123456" }, world: { plays: { families: { run: "#ffb21e" } } } });
+  assert.equal(shadowPaint(ctxFor(partial), null, "pa").core, "#123456", "a family the ramp leaves out: the fill");
+  assert.equal(shadowPaint(ctxFor(resolveLook({ world: { plays: { families } } })), null, "run").core,
+    NEUTRAL_LOOK.field.paint, "no tint 'family': the ghost fill as before");
+  const odd = resolveLook({ ghost: { tint: "family" }, world: { plays: { families: { run: "orange" } } } });
+  assert.equal(shadowPaint(ctxFor(odd), null, "run").core, NEUTRAL_LOOK.field.paint, "not a color: ignored");
 });
 
 test("shadow dashes are square-ended, finer in a pixel or hatch look, like an LED board's dots", () => {

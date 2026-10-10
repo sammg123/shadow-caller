@@ -331,7 +331,9 @@ GET /api/timeline?since=<int >= 0>&epoch=<str, optional>
 - `field` (A1), `teams`, `team_order` and `meta` (`leaves`, `families`, `leaf_names`, `family_names`, `air_est` with provenance) are only included when `since` is 0 or `reset` is true.
 - `source` is `espn` once the feed has a summary and at least one applied id for this game, otherwise `log` (section D).
 - `mode` is `live` (feed on), `watch` (a watch session is active or done), `replay` (ESPN rows, feed off) or `manual`.
-- `unlinked` lists log `seq`s that were typed by hand and have no `espn_id`. They aren't drawn in ESPN mode. The UI can say "1 hand-entered play isn't on the field".
+- `unlinked` lists log `seq`s that were typed by hand and have no `espn_id`. They aren't drawn in ESPN mode. The UI can say "1 hand-entered play isn't on the field". A flag typed with no play (D, v1.4) is not a play and is never listed.
+- `skipped` lists the `seq`s of applied plays whose apply failed (drawn, but a caller snap among them has no `pred`); `missing` lists applied ids that have no row: ESPN dropped or re-id'd the play, or (v1.4, G1-6) its row couldn't be built from a malformed poll (the server log names the play once). A malformed field never fails the answer: every summary field is read for the type it should have, a null entry is skipped, and a number that isn't one is unknown (`pre.togo` null for a distance of `""`, say).
+- v1.4 (G1-12): ESPN text is capped on the way out: `teams[].name`, `location`, `display_name` 40 characters, a row's `text` 400, `type` 40, `result.penalty.foul` 60 and `note` 80. The page sets all of it with `textContent`.
 
 ### C2. `teams` and the logo proxy
 
@@ -443,22 +445,23 @@ When `source` is `log`, the server builds the same row shape from `engine.state[
 | `drive`, `team`, `offense_is_caller` | engine `drive`, caller, true |
 | `qtr`, `clock`, `clock_s`, `t` | row values. `clock_est` must be added to log rows, since `sit.clock_estimated` isn't copied today. |
 | `pre` | `down`, `togo`, `yardline_100`, plus text built like `situation_text()` |
-| `post` | the next log row in the same drive, else null |
+| `post` | the next log row in the same drive, else null. A flag typed by hand (v1.4) carries its own enforced spot (`yardline_after`, `down_after`, `togo_after` on the log row): that is its `post`, and null when a loss of down on 4th ended the drive there. |
 | `geo` | `x0 = 50 + dir*(50 - yardline_100)` (= `100 - yardline_100` with the caller on the left); `x_end = x0 + dir*yards` (TD: goal line); `x_next` = the next row's `x0` in the same drive. `lat` comes from a run leaf (`run_ot_left` gives left, `run_inside` gives middle). For passes `lat` is null and listed in `approx`. |
 | `call` | `family`, `leaf`, `outcome`. `depth` is the **leaf bucket** (short, mid, deep, which are not ESPN's words). `air` is the bucket median, `air_src: "bucket"`: short 3 (IQR -1 to 5, n = 2,847), mid 14 (12 to 16, n = 923), deep 26 (22 to 35, n = 513), nflverse 2026 weeks 1 to 5. `yac` null. |
-| `result` | `yards`, `td`, `turnover`, `nullified`; `penalty: {"code": "DPI"}` (engine code only). `first_down` comes from the next row (`down == 1`) or `yards >= togo`. |
+| `result` | `yards`, `td`, `turnover`, `nullified`; `first_down` comes from the next snap (`down == 1` on a new series) or `yards >= togo`. `turnover_kind` is the log row's (v1.4, G1-5): `"int"` for shorthand `I` or `INT`, `"fumble"` for `F`, null when the Turnover box was ticked with no kind. `penalty`, for a flag typed by hand (v1.4, G1-4), is ESPN's shape: `{"code": "DH", "foul": "defensive holding", "on": "TB", "yards": 5, "at_x": 24, "no_play": true, "status": "enforced" or "offsetting", "note": null}` (`foul` is the engine's label, lowercased, without its instructions or "on defense"); for an ESPN no-play or a game saved before v1.4, `{"code": ...}` only. |
 | `score` | after the play = the next row's `score` (`"off-opp"`), or `sit` for the last row |
 | `scoring` | `td` gives `{"team": caller, "type": "TD", "pts": 7}` (the engine assumes the PAT) |
 | `wp` | null |
 | `pred` | the log row itself |
 
-Drives come from the engine's `drive` numbers. `result` is `TD`, `TURNOVER` or `DOWNS` when the last row shows it, and null otherwise.
+Drives come from the engine's `drive` numbers. `result` is `TD`, `TURNOVER` or `DOWNS` when the last row shows it, and null otherwise. A drive's `plays` counts snaps that stand (not flags, not no-plays).
+
+**Flags typed by hand (v1.4, G1-4).** A foul with no play logged (pre-snap, or after a play that stands: `X FS`, the flag panel with nothing picked, `X URD` after a run) is a log entry of `kind: "penalty"` with its own `seq` (the timeline key: unique and increasing), the spot before (`down`, `togo`, `yardline_100`) and after (`yardline_after`, `down_after`, `togo_after`), `pen_on` (`def`, `off`, or null for offsetting) and `pen_yards` (the yards walked, half the distance included). It becomes a timeline row of kind `penalty` in ESPN's shape: `call` and `pred` null, `geo.x0` the line, `x_end` the line, `x_next` the enforced spot, `result.nullified` true for a pre-snap foul, `first_down` when it gives a new series (`fd_by: "penalty"`). The page draws it as ESPN's penalty rows: the flag at the line, the walk, "Flag · false start on DAL · −5". It is never a snap: the metrics, `/api/state`'s `log`, the DuckDB archive and the CSV export skip it, and `unlinked` never lists it. A no-play row (a flag on a picked call) records the same facts, so it walks to its own enforced spot instead of to wherever the next snap was.
 
 What manual mode can't show, so the UI must not pretend it can:
 
 - Opponent plays and drives. Opponent possessions are blank stretches.
 - Kicks. Punts, FGs and misses only end a drive. Recommend `end_drive` record `{drive_n: how}` in `state["drive_ends"]` so the result isn't null.
-- Pre-snap flags with no call. `apply_penalty` without a play moves the spot and logs nothing, so the ball jumps without a flag event.
 - Pass side, exact air yards, YAC, sack spots, return spots.
 - An exact clock (estimated until typed), wall time, win probability, box score for the opponent, time of possession.
 - Team colors and logos, unless a cached summary exists for `GAME["espn_event"]`.
@@ -482,7 +485,7 @@ All bodies are JSON objects read with `request.get_json(silent=True) or {}` and 
 
 ```json
 "watch": {"state": "playing", "event_id": "401872980", "speed": 4.0, "idx": 104, "total": 183,
-          "next_at": 1791504012345, "next_kind": "admin", "ff_until": 0,
+          "next_at": 1791504012345, "next_kind": "caller_snap", "ff_until": 0,
           "started_at": "2026-10-09T21:10:00", "feed_was_on": false,
           "backup": {"state": "live_state.backup-20261009-211000.json", "seen": "feed_seen.json.backup-20261009-211000"},
           "error": null}
@@ -491,6 +494,7 @@ All bodies are JSON objects read with `request.get_json(silent=True) or {}` and 
 - `state` is one of `idle`, `playing`, `paused`, `done`, `stopped` or `error`.
 - `idx` is the number of ESPN plays applied, which equals the timeline `n`.
 - `next_at` is server epoch milliseconds for when the next play lands, or null while paused (*illustrative value*).
+- `next_kind` (v1.4, G1-1, also in `/api/version`) is the pace of the row the session waits on: `caller_snap` (a snap of the modelled caller: his next call is up), `snap` (the opponent's), `kick`, `admin` or `admin_end` (end of a quarter, half or game); null unless playing or paused.
 - `ff_until` is set by `from_seq`: rows with `seq <= ff_until` are applied with no delay and drawn without animation.
 
 ### E2. Threading and locking
@@ -537,7 +541,7 @@ Invariants (the tests in G pin them):
 4. **The live poller can never race a watch.** `Feed` gets a `gen` counter. `poll_once` reads `gen` before it fetches. `apply(summary, gen)` returns 0 under the lock if `gen` is stale. `watch/start`, `/api/feed/replay` and `/api/reset` call `feed.stop()` and `feed.invalidate()` (`gen += 1`) under `LOCK`. `POST /api/feed {"on": true}` returns 409 while a watch is `playing` or `paused`.
 5. **Back up before the reset, inside the same `LOCK` block.** Copy `live_state.json` to `live_state.backup-<ts>.json`, exactly like `/api/feed/replay` does today. Also copy `feed_seen.json` to `feed_seen.json.backup-<ts>`: without it a restored game re-logs plays it already has. `.gitignore` already covers both names. Then `engine.reset()`, `engine.history = []` (so U can't half-restore the old game), `feed.forget()`, `feed.event_id = eid`, `feed.summary = summary`, `feed.off_team_id = team_id(...)`, bump the epoch, then start a daemon thread with the new `token`.
 6. **Restore** (`stop` with `restore: true`, under `LOCK`): atomically copy both backups back, `engine.state = engine._load() or engine._fresh()`, clear history, reload `feed.applied` and `feed.seen`, restore `feed.event_id`, bump the epoch, `engine._save()`, and restart the feed if `feed_was_on`. With no backup (a fresh install), restore means a fresh game.
-7. **Restarts.** The thread is a daemon, so a server restart ends the session. The partly watched game is still on disk, and `watch.state` comes back as `idle`.
+7. **Restarts.** The thread is a daemon, so a server restart ends the session. The partly watched game is still on disk. As built, the restore point is also in `data/watch_session.json`, so the session comes back as `error` ("The app restarted during a watch ... Stop puts your game back.") and Stop still puts the real game back (`idle` here stranded it in a backup nothing pointed at).
 8. Manual endpoints (retag, undo, play, flag) stay allowed during a watch. `LOCK` serializes them between plays. Retagging play-action in a watched game is a legitimate demo move. The UI should pause first.
 
 ### E3. Pacing
@@ -552,7 +556,18 @@ The delay applies before each row, at 1x, divided by `speed`, and multiplied by 
 | `admin` (timeouts, two-minute warning) | 1.0 | 23 |
 | `admin` end of quarter, half or game | 3.0 | 4 |
 
-The whole game takes **857 s (14:17) at 1x, 214 s at 4x and 86 s at 10x**. For comparison, ESPN's wall clock ran 3 h 2 min 30 s (00:15:54 to 03:18:24 UTC). An optional `pace: "real"` (wall-clock gaps capped at 45 s) can come later; don't build it now.
+**v1.4 (G1-1): a floor before every caller snap.** At 4x a caller snap came 1.75 s after the play before it, the page gave 80% of that to the play, and his next call was up for 0.31 to 0.62 s (11 snaps, GPU Chromium). Now a caller snap waits at least its floor, in seconds at that speed (still times `SHADOW_WATCH_SCALE`): **6.0 s below 4x, 4.8 s at 4x, 3.6 s above** (`watch.CALLER_FLOOR_S`; `delay_s`). The floor holds the play before it (1 to 1.7 s), the page's reserve for the call (E4: the verdict's beat, 1.5 s below 4x and 0.6 s from 4x; the call's 400 ms fade-in; 2 s of it fully lit up to 4x, 1 s above) and a poll's latency. Every other row keeps its pace. A speed change rescales the wait to the new speed's pace, floor included.
+
+The whole game takes **857 s (14:17) at 1x, 579 s (9.6 min) at 2x, 397 s (6.6 min) at 4x and 260 s (4.3 min) at 10x** (it was 214 s at 4x and 86 s at 10x). For comparison, ESPN's wall clock ran 3 h 2 min 30 s (00:15:54 to 03:18:24 UTC). An optional `pace: "real"` (wall-clock gaps capped at 45 s) can come later; don't build it now.
+
+The next call's window before each Dallas snap, measured (unscaled sandbox, GPU Chromium with Metal, Under the Lights unless noted; the shadows' `#field[data-ghosts]` up until the snap takes them down; "fully lit" subtracts their 400 ms fade-in):
+
+| Speed | Before v1.4 | Window, median / least | Fully lit, least |
+| --- | --- | --- | --- |
+| 1x | 3.5 to 6.5 s | 3.70 / 3.41 s (10 snaps) | 3.0 s |
+| 2x | 1.5 to 1.8 s | 2.73 / 2.63 s (10) | 2.2 s |
+| 4x | 0.44 s median (0.31 to 0.62) | 2.73 / 2.63 s (13); neutral 2.75 / 2.63 (14) | 2.2 s |
+| 10x | 0.29 s | 1.88 / 1.45 s (25); neutral 1.91 / 1.85 (25) | 1.05 s |
 
 ### E4. How the UI learns that a play arrived
 
@@ -561,7 +576,8 @@ The whole game takes **857 s (14:17) at 1x, 214 s at 4x and 86 s at 10x**. For c
 ```json
 {"version": 412, "epoch": "k3v9-2", "timeline_n": 104,
  "feed": {"state": "off", "on": false, "last_poll": "21:13:07", "last_play": "...", "plays_logged": 36, "skipped": null},
- "watch": {"state": "playing", "idx": 104, "total": 183, "speed": 4.0, "next_at": 1791504012345}}
+ "watch": {"state": "playing", "event_id": "401872980", "idx": 104, "total": 183, "speed": 4.0,
+           "next_at": 1791504012345, "next_kind": "caller_snap", "skipped": 0, "error": null}}
 ```
 
 ```
@@ -576,6 +592,7 @@ poll every 1000 ms (every 250 ms while watch.state == "playing"; the endpoint is
 - `timeline_n` goes up exactly once per applied play. It is the animation trigger.
 - Track `n` from the timeline response, not from `/api/version`.
 - Animation length is `min(normal, 0.8 * (watch.next_at - now))`. If more than 3 rows are queued (for example a hidden tab), draw the older ones instantly.
+- v1.4 (G1-1, `core/anim-queue.js`): when `watch.next_kind` is `caller_snap`, the play before it also leaves the next call its reserve: `min(CALL_RESERVE_MS, 0.7 * (next_at - now))`, with `CALL_RESERVE_MS` 4100 ms below 4x, 3200 at 4x and 2400 above (the verdict's beat, the 400 ms fade-in, the lit target and some to spare), shared across the animated queue. A watch object older than the head row (`watch.idx < row.seq`: its `next_at` is that row's own landing, already past) is never budgeted on: the play waits for the next `/api/version`, at most 600 ms past that landing. Scaled-down test runs (`SHADOW_WATCH_SCALE`) leave too little for a play, which then draws at once, as before.
 
 ### E5. No spoilers
 
@@ -590,6 +607,8 @@ In every mode, the server only reads **per-play fields of applied plays**, plus 
 ### E6. Related fixes to `/api/feed/replay`
 
 The replay endpoint has the same race today. It doesn't stop the poller, so a summary fetched just before a replay can be applied into the rebuilt game. Give it `feed.stop()`, `feed.invalidate()` and the `feed_seen.json` backup from E2. It holds `LOCK` for about 11.0 s while it rebuilds all 183 plays (measured in the sandbox). That is acceptable, but the UI should show progress.
+
+v1.4 (G1-11): the replay's message names the backup it made ("Your old game is backed up as live_state.backup-20261010-101500.json.") or says "No earlier game to back up."; `feed.status.plays_logged` starts over with each replay. `backup_game` keeps only the newest 20 backups of each file, never one a watch's session file names, and backups made in the same second are numbered past the newest (`-2`, `-3` ...). `data/.live_state.*` and `data/.feed_seen.*` (the files a restore stages) are git-ignored.
 
 ---
 
@@ -670,6 +689,45 @@ Pure tests use the existing `sandbox` and `make_feed` fixtures, build the timeli
 | 39 | `test_suite_never_touches_the_live_game` (session, autouse) | the sha256 of `data/live_state.json` and `data/feed_seen.json` (when present) is the same before and after the run |
 
 ---
+
+## H. Security model and the live game's safety (v1.4)
+
+The app is a single-user tool on localhost: no accounts and no secrets, and its one asset is the live game in `data/live_state.json` (with `feed_seen.json` and the DuckDB archive). Everything below protects that file from other sites, from ESPN's answers, and from Sam's own mistakes at speed.
+
+**Who may talk to it.**
+
+| Guard | Where | Answer |
+| --- | --- | --- |
+| Only `127.0.0.1` and `localhost` (a DNS name rebound to 127.0.0.1 is refused) | `TRUSTED_HOSTS` | 400, every route (page, static files, logos, export) |
+| Every change is JSON (a cross-site page can't send JSON without a CORS preflight this app never grants) | `own_page_json_only` | 415 |
+| An `Origin`, when sent, must be this app's own | `own_page_json_only` | 403 |
+| A body over 64 KB | `MAX_CONTENT_LENGTH` | 413 |
+| No other site may frame the page (a hidden frame could click "ESPN live"); Sam's own tools on other local ports may | `Content-Security-Policy: frame-ancestors 'self' http://localhost:* http://127.0.0.1:*` on every answer | |
+| No content sniffing, no referrer, no shared window with other origins | `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin` | |
+
+A full script and style CSP is deferred: the page loads its modules and fonts from its own origin, but a policy strict enough to matter needs the inline bootstrap moved out first.
+
+**What a request may say.** Every POST reads a JSON object (an empty body, a list or a broken one is a 400 with the state body, never an HTML page), checks types and ranges at the boundary (yards −100 to 100 as a JSON whole number; down 1 to 4; to go 1 to 99 or G; a clock up to 15:00; scores 0 to 199; penalty yards 1 to 99; short text fields at most 40 characters, a shorthand line 500) and answers with the state body plus `error`: **400** for a request the game can't take (a `KeyError` or `TypeError` is a 400 too, with its traceback in the server log in case it isn't the request's fault), **409** when the game's state refuses it (an undo past an ESPN play, a watch on screen), **500** with the traceback in the server log for anything else. Flask's own errors (404, 405, 413, a refused Host) are JSON too.
+
+**What ESPN may send.** A live poll is checked before anything is applied (`espn_feed.check_summary`, `check_matchup`):
+
+- An answer that isn't a game summary (`{"code": 500}`, a list, no `header.competitions[0].competitors`, `drives` that isn't an object), or a thin one (no plays once plays are applied), is a failed poll: nothing is applied and the summary on screen (colors, logos, venue) stays. Before kickoff a summary with no drives is fine.
+- Another matchup's game (the teams aren't `GAME`'s offense and opponent; ESPN's aliases allowed) is refused: `POST /api/feed {"on": true}` answers 400 "ESPN event X is NYG at PHI, not DAL v TB." and changes nothing; a poll that finds it later stops the feed with that reason in its status. Replay and Watch this game take any game with the caller in it, behind their own backups.
+- Fetches refuse redirects (a 3xx is a failed fetch) and answers over 8 MB, and give up on a download after 30 s. A failing feed waits 4, 8, 16, then 30 s between polls, and 4 s again after a good one.
+- The raw summary (`data/espn/summary_<event>.json`, what a restart reads) is written after the plays are applied, whole (a temp file, then a rename), and only when new plays arrived. A disk that refuses it is noted in the feed's status; the plays are in.
+- Every field is read for the type it should have; a row that still can't be built is left out and listed in `missing` (C1). Text is capped (C1).
+
+**Backups before anything replaces the game.** Reset, replay and Watch this game copy `live_state.json` and `feed_seen.json` aside first (E2, E6). Turning the live feed on does too when it follows another event than the one its applied plays came from, or when the game has typed plays and nothing from ESPN yet. A game file for another `game_id` (or with no game in it) is copied to `live_state.other-<game_id>-<time>.json` before the new game's first save, and an unreadable one to `live_state.unreadable-<time>.json`; the message names the copy. `feed_seen.json` records the ESPN event its applied ids came from (`_events`), so after a restart the feed follows that event, not whatever `config.py` says.
+
+**The models.** Missing models, or models built with another scikit-learn, are rebuilt at start (about 30 s, online) only when no game is in progress; otherwise the app stops and says to run `build.py`. `start.sh` installs `requirements.lock`: exact versions, each checked against its hash.
+
+## I. New-matchup checklist
+
+1. **Copy the old game first:** `cp data/live_state.json data/live_state.<old game_id>.json` (the app also copies another game's file aside on its own, as `live_state.other-<game_id>-<time>.json`, but keep your own copy).
+2. In `config.py`, change **`game_id` and `espn_event` together** (and `label`, `offense`, `opponent`, `offense_is_home`, `offense_spread`, `total_line`). A new `espn_event` under the old `game_id` would mix two games' ESPN ids in one `feed_seen.json` entry.
+3. Abbreviations are ESPN's (`WSH`, `LAR`, `JAX`): the live feed refuses an event whose teams aren't these two.
+4. A different play-caller: add his rows to `data/play_callers.csv` and run `.venv/bin/python build.py` (about 30 s, online) before the game, never during it.
+5. Restart (`Ctrl+C`, then `bash start.sh`). The page should read "Set the start of Dallas's first drive." (or name the old file it kept aside). Before kickoff, press ESPN live: a wrong event is refused with its teams named.
 
 ## Appendix: where the code goes
 

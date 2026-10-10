@@ -14,7 +14,7 @@ const ROOT = join(fileURLToPath(new URL("../..", import.meta.url)));
 const ID = "under-the-lights";
 const SKIN_DIR = join(ROOT, "static", "css", "worlds", ID, "components");
 const IMG_DIR = join(ROOT, "static", "img", "worlds", ID);
-const W2_SKINS = ["masthead", "prediction", "scoreboard", "scorecard", "play-feed", "drive-chart", "win-prob",
+const W2_SKINS = ["masthead", "prediction", "board", "scoreboard", "scorecard", "play-feed", "drive-chart", "win-prob",
   "situation-strip", "feed-bar", "toast", "conn-banner", "boot-screen", "review-banner", "field-host", "box-score",
   "tendencies", "play-log"];
 const GLYPHS = ["check", "three", "x", "td", "inc", "first", "flag", "turnover", "hot-up", "hot-down", "ref-touchdown",

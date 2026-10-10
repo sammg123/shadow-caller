@@ -43,6 +43,7 @@ test("mountComponents mounts in order, binds each component and registers Form p
   assert.equal(hub.form.readYards(), "7");
   hub.form.focusYards();
   assert.deepEqual(calls.at(-1), ["focus"]);
+  assert.equal(hub.form.focusTransport(), undefined, "G5-7: no transport mounted: a no-op");
 }));
 
 test("a module that fails to load, has no mount, or throws in mount leaves a visible notice; boot goes on", () => withDocument(page(), async () => {

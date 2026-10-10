@@ -52,17 +52,18 @@ function fakeTimers() {
   };
 }
 
-function setup({ look = {}, createFallback = null } = {}) {
+function setup({ look = {}, createFallback = null, createWebgl = null } = {}) {
   const store = createStore(reducer, initialState());
   const engine = fakeEngine();
   const timers = fakeTimers();
   const attrs = {};
+  const errors = [];
   const app = { setAttribute: (k, v) => { attrs[k] = v; }, removeAttribute: (k) => { delete attrs[k]; } };
   const conductor = createConductor({ store, getEngine: () => engine, look, now: timers.now, setTimeout: timers.setTimeout,
-    clearTimeout: timers.clearTimeout, app, createFallback });
+    clearTimeout: timers.clearTimeout, app, createFallback, createWebgl, onError: (err) => errors.push(err) });
   conductor.start();
   const names = () => engine.calls.map((c) => c[0]);
-  return { store, engine, timers, attrs, conductor, names };
+  return { store, engine, timers, attrs, conductor, names, errors };
 }
 
 const resetTo = (ctx, rows, epoch = EPOCH) => ctx.store.dispatch({ type: "timeline/loaded",
@@ -223,10 +224,119 @@ test("a caller snap goes snap, then verdict for verdictMs, with the engine's ver
   ctx.engine.plays.shift().resolve();
   await settle();
   assert.equal(ctx.attrs["data-phase"], "verdict");
-  assert.deepEqual(ctx.engine.calls.find((c) => c[0] === "markVerdict")[1], { seq: 2, key: "top3" });
+  // G2-7: what was graded (row 2's pred: his #3, dropback_short at 14%), in the timeline meta's leaf names
+  assert.deepEqual(ctx.engine.calls.find((c) => c[0] === "markVerdict")[1],
+    { seq: 2, key: "top3", text: "In his top 3 · #3 Short · 14%" });
   ctx.timers.advance(900);
   ctx.timers.runDue();
   assert.equal(ctx.attrs["data-phase"], "idle");
+});
+
+// ---------------------------------------------------------------- G2-3: the verdict's own beat
+const DRIVE = loadState("drive_d25");
+const ghostsShown = (ctx) => ctx.engine.calls.filter((c) => c[0] === "showGhosts").map((c) => c[1]);
+const leavesOf = (set) => set?.shapes?.map((s) => s.leaf) ?? null;
+const driveState = (version, n, prediction = DRIVE.prediction, watch = DRIVE.watch) => ({ ...structuredClone(DRIVE),
+  version, prediction, timeline: pointer(n), watch });
+const NEXT_CALL = { ...DRIVE.prediction, top: [...DRIVE.prediction.top].reverse() };
+
+/** His first call is up; his first snap (row 2) is drawing, with the next call waiting on it. */
+async function callerSnapDrawing(ctx, { watch = null } = {}) {
+  const session = watch ? { ...DRIVE.watch, next_at: ctx.timers.now() + 5000, ...watch } : DRIVE.watch;
+  resetTo(ctx, stubRows(1, 1));
+  ctx.store.dispatch({ type: "state/loaded", body: driveState(1, 1, DRIVE.prediction, session), origin: "poll",
+    reqSeq: 0, now: ctx.timers.now() });
+  if (watch) {
+    ctx.store.dispatch({ type: "version/loaded", body: { version: 2, epoch: EPOCH, timeline_n: 2, watch: session },
+      now: ctx.timers.now() });
+  }
+  appendRows(ctx, TL.rows(2, 2), 1);
+  ctx.store.dispatch({ type: "state/loaded", body: driveState(2, 2, NEXT_CALL, session), origin: "poll", reqSeq: 0,
+    now: ctx.timers.now() });
+  await settle();
+}
+
+test("G2-3: the verdict gets its own beat; the next call's shadows wait for it, then come up", async () => {
+  const ctx = setup({ look: { motion: { verdictMs: 900 } } });
+  await callerSnapDrawing(ctx);
+  assert.deepEqual(leavesOf(ghostsShown(ctx).at(-1)), DRIVE.prediction.top.map((t) => t.key), "his first call");
+  assert.equal(ctx.attrs["data-phase"], "snap");
+  const before = ghostsShown(ctx).length;
+  ctx.engine.plays.shift().resolve();
+  await settle();
+  assert.equal(ctx.store.getState().presented.version, 2, "the HUD has the next call");
+  assert.equal(ctx.attrs["data-phase"], "verdict");
+  assert.deepEqual(ghostsShown(ctx).slice(before), [null], "no shadows on the field during the verdict");
+  assert.deepEqual(ctx.engine.calls.find((c) => c[0] === "markVerdict")[1].key, "top3");
+  ctx.timers.advance(899);
+  ctx.timers.runDue();
+  assert.deepEqual(ghostsShown(ctx).slice(before), [null], "still the verdict's beat");
+  ctx.timers.advance(1);
+  ctx.timers.runDue();
+  assert.deepEqual(leavesOf(ghostsShown(ctx).at(-1)), NEXT_CALL.top.map((t) => t.key), "then the next call");
+  assert.equal(ghostsShown(ctx).length, before + 2);
+  assert.equal(ctx.attrs["data-phase"], "presnap");
+});
+
+test("G2-3: the same call again still gets the beat, and the situation is shown once", async () => {
+  const ctx = setup({ look: { motion: { verdictMs: 900 } } });
+  resetTo(ctx, stubRows(1, 1));
+  ctx.store.dispatch({ type: "state/loaded", body: driveState(1, 1), origin: "poll", reqSeq: 0, now: ctx.timers.now() });
+  appendRows(ctx, TL.rows(2, 2), 1);
+  ctx.store.dispatch({ type: "state/loaded", body: driveState(2, 2), origin: "poll", reqSeq: 0, now: ctx.timers.now() });
+  await settle();
+  const situations = () => ctx.engine.calls.filter((c) => c[0] === "showSituation").length;
+  const sits = situations();
+  const before = ghostsShown(ctx).length;
+  ctx.engine.plays.shift().resolve();
+  await settle();
+  ctx.timers.advance(900);
+  ctx.timers.runDue();
+  assert.deepEqual(ghostsShown(ctx).slice(before).map(leavesOf), [null, DRIVE.prediction.top.map((t) => t.key)]);
+  assert.equal(situations(), sits, "the same spot: no new situation call");
+});
+
+test("G2-3: Watch at 4x and up keeps the beat to 600 ms; 2x keeps the look's", async () => {
+  for (const [speed, beat] of [[4, 600], [10, 600], [2, 1500]]) {
+    const ctx = setup({ look: { motion: { verdictMs: 1500 } } });
+    await callerSnapDrawing(ctx, { watch: { state: "playing", speed } });
+    const before = ghostsShown(ctx).length;
+    ctx.engine.plays.shift().resolve();
+    await settle();
+    ctx.timers.advance(beat - 1);
+    ctx.timers.runDue();
+    assert.equal(ctx.attrs["data-phase"], "verdict", `${speed}x: still the verdict at ${beat - 1} ms`);
+    ctx.timers.advance(1);
+    ctx.timers.runDue();
+    assert.equal(ctx.attrs["data-phase"], "presnap", `${speed}x: the next call at ${beat} ms`);
+    assert.equal(ghostsShown(ctx).length, before + 2, `${speed}x`);
+  }
+});
+
+test("G2-3: reviewing during the beat leaves the live call alone; back at live it is up", async () => {
+  const ctx = setup({ look: { motion: { verdictMs: 900 } } });
+  await callerSnapDrawing(ctx);
+  ctx.engine.plays.shift().resolve();
+  await settle();
+  ctx.store.dispatch({ type: "review/set", seq: 2 });
+  const before = ghostsShown(ctx).length;
+  ctx.timers.advance(900);
+  ctx.timers.runDue();
+  assert.equal(ghostsShown(ctx).length, before, "a review holds the field");
+  ctx.store.dispatch({ type: "review/set", seq: null });
+  assert.deepEqual(leavesOf(ghostsShown(ctx).at(-1)), NEXT_CALL.top.map((t) => t.key));
+});
+
+test("G2-7: the verdict's words use the timeline's own leaf names", async () => {
+  const ctx = setup();
+  const meta = { ...TL.body.meta, leaf_names: { ...TL.body.meta.leaf_names, dropback_short: "Quick game (0–9)" } };
+  ctx.store.dispatch({ type: "timeline/loaded", resp: { ...timelineBody(TL.body, { rows: stubRows(1, 1), epoch: EPOCH }),
+    meta }, origin: "poll", hidden: false, reducedMotion: false, now: ctx.timers.now() });
+  appendRows(ctx, TL.rows(2, 2), 1);
+  await settle();
+  ctx.engine.plays.shift().resolve();
+  await settle();
+  assert.equal(ctx.engine.calls.find((c) => c[0] === "markVerdict")[1].text, "In his top 3 · #3 Quick game · 14%");
 });
 
 test("an engine error swaps in the fallback and redraws it from the store (6.2)", async () => {
@@ -244,6 +354,157 @@ test("an engine error swaps in the fallback and redraws it from the store (6.2)"
   assert.equal(ctx.store.getState().anim.drawnThrough, 102);
   assert.equal(ctx.engine.listeners("error"), 0, "the old engine is detached");
   assert.equal(ctx.attrs["data-scene"], undefined, "the field host owns data-scene");
+});
+
+// ---------------------------------------------------------------- G2-4, G2-9: the engine's life after a failure
+/** Engines main.js would hand over: the 2D field (createFallback) and fresh WebGL fields (createWebgl). */
+function engineShop({ webglFails = false } = {}) {
+  const shop = { fallbacks: [], webgls: [], fallbackCalls: [], webglTries: 0 };
+  shop.createFallback = (err, opts) => {
+    shop.fallbackCalls.push([err?.message, opts]);
+    const fb = fakeEngine("2d");
+    shop.fallbacks.push(fb);
+    return fb;
+  };
+  shop.createWebgl = async () => {
+    shop.webglTries += 1;
+    if (webglFails) throw new Error("no GPU yet");
+    const next = fakeEngine("webgl");
+    shop.webgls.push(next);
+    return next;
+  };
+  return shop;
+}
+const drewFrame = (engine) => engine.calls.some((c) => c[0] === "setGameFrame") && engine.calls.some((c) => c[0] === "drawRowsInstant");
+
+test("G2-4: a lost WebGL context is not a bug: the 2D field holds the game, and the restore brings WebGL back", async () => {
+  const shop = engineShop();
+  const ctx = setup({ createFallback: shop.createFallback, createWebgl: shop.createWebgl });
+  resetTo(ctx, TL.rows(1, 15));
+  ctx.engine.emit("contextlost");
+  await settle();
+  assert.deepEqual(ctx.errors, [], "no bug report for a lost context");
+  assert.deepEqual(shop.fallbackCalls, [["WebGL context lost", { lost: true }]]);
+  assert.ok(drewFrame(shop.fallbacks[0]), "the 2D field is drawn from the store");
+  assert.equal(shop.webgls.length, 0, "WebGL waits for the browser's restore");
+  ctx.engine.emit("contextrestored");
+  await settle();
+  assert.equal(shop.webgls.length, 1, "a fresh WebGL field");
+  const next = shop.webgls[0];
+  assert.ok(drewFrame(next), "redrawn from the store");
+  assert.deepEqual(next.calls.find((c) => c[0] === "drawRowsInstant")[1], Array.from({ length: 15 }, (_, i) => i + 1));
+  assert.equal(shop.fallbacks[0].listeners("error"), 0, "the 2D field is detached");
+  ctx.engine.emit("contextrestored");
+  await settle();
+  assert.equal(shop.webgls.length, 1, "one restore per loss");
+  next.emit("contextlost");
+  await settle();
+  assert.equal(shop.fallbacks.length, 2, "the restored field can pause and come back again");
+  assert.deepEqual(ctx.errors, []);
+});
+
+test("G2-9: an engine error is reported and fails over; the next epoch tries WebGL again instead of latching 2D", async () => {
+  const shop = engineShop();
+  const ctx = setup({ createFallback: shop.createFallback, createWebgl: shop.createWebgl });
+  resetTo(ctx, TL.rows(1, 15));
+  ctx.engine.emit("error", new Error("layer tick broke"));
+  await settle();
+  assert.deepEqual(ctx.errors.map((e) => e.message), ["layer tick broke"]);
+  assert.deepEqual(shop.fallbackCalls, [["layer tick broke", { lost: false }]]);
+  assert.equal(shop.webgls.length, 0, "no retry until the next epoch");
+  resetTo(ctx, TL.rows(1, 20), "another-epoch");
+  await settle();
+  assert.equal(shop.webgls.length, 1, "the new epoch tries WebGL again");
+  assert.deepEqual(shop.webgls[0].calls.find((c) => c[0] === "drawRowsInstant")[1].at(-1), 20, "the new epoch's rows");
+  resetTo(ctx, TL.rows(1, 21), "third-epoch");
+  await settle();
+  assert.equal(shop.webgls.length, 1, "back on WebGL: nothing to retry");
+});
+
+test("G2-9: a WebGL field that can't start again leaves the 2D field on, quietly retried at the next epoch", async () => {
+  const shop = engineShop({ webglFails: true });
+  const ctx = setup({ createFallback: shop.createFallback, createWebgl: shop.createWebgl });
+  resetTo(ctx, TL.rows(1, 15));
+  ctx.engine.emit("contextlost");
+  ctx.engine.emit("contextrestored");
+  await settle();
+  assert.deepEqual(ctx.errors.map((e) => e.message), ["no GPU yet"], "a factory that throws is reported");
+  const fb = shop.fallbacks[0];
+  assert.equal(fb.listeners("error"), 1, "still on the 2D field");
+  appendRows(ctx, TL.rows(16, 16), 15);
+  await settle();
+  assert.ok(fb.calls.some((c) => c[0] === "playRow" && c[1] === 16), "plays keep drawing on it");
+  assert.equal(shop.webglTries, 1);
+  resetTo(ctx, TL.rows(1, 20), "another-epoch");
+  await settle();
+  assert.equal(shop.webglTries, 2, "the next epoch tries again");
+  assert.equal(fb.listeners("error"), 1, "and the 2D field stays while WebGL can't start");
+});
+
+test("G2-9: createFallback throwing is reported once and leaves the store alone", async () => {
+  const ctx = setup({ createFallback: () => { throw new Error("no 2D module"); } });
+  resetTo(ctx, TL.rows(1, 15));
+  const before = ctx.store.getState();
+  ctx.engine.emit("error", new Error("GPU fault"));
+  ctx.engine.emit("error", new Error("GPU fault again"));
+  await settle();
+  assert.deepEqual(ctx.errors.map((e) => e.message), ["GPU fault", "no 2D module", "GPU fault again"]);
+  assert.equal(ctx.store.getState(), before, "no dispatch: the store is untouched");
+});
+
+test("G2-9: a play whose normal length can't be planned is drawn at once, and the problem reported", async () => {
+  const motion = new Proxy({}, { get(_, key) {
+    if (key === "verdictMs") return 900;
+    throw new Error(`bad motion: ${String(key)}`);
+  } });
+  const ctx = setup({ look: { motion } });
+  resetTo(ctx, stubRows(1, 101));
+  appendRows(ctx, TL.rows(102, 102), 101);
+  await settle();
+  const played = ctx.engine.calls.find((c) => c[0] === "playRow" && c[1] === 102);
+  assert.equal(played[2].durationMs, 0, "instant");
+  assert.equal(ctx.store.getState().anim.drawnThrough, 102);
+  assert.equal(ctx.errors.length, 1);
+  assert.match(ctx.errors[0].message, /bad motion/);
+});
+
+test("G2-9: a queued row the timeline no longer holds is counted as drawn, never played", async () => {
+  const real = createStore(reducer, initialState());
+  let hidden = null;
+  const filtered = (s) => (hidden === null ? s
+    : { ...s, timeline: { ...s.timeline, rows: s.timeline.rows.filter((r) => r.seq !== hidden) } });
+  const store = { getState: () => filtered(real.getState()), dispatch: (e) => real.dispatch(e),
+    subscribe: (fn) => real.subscribe((state, prev) => fn(filtered(state), filtered(prev))) };
+  const engine = fakeEngine();
+  const timers = fakeTimers();
+  createConductor({ store, getEngine: () => engine, now: timers.now, setTimeout: timers.setTimeout,
+    clearTimeout: timers.clearTimeout }).start();
+  real.dispatch({ type: "timeline/loaded", resp: timelineBody(TL.body, { rows: stubRows(1, 101), epoch: EPOCH }),
+    origin: "poll", hidden: false, reducedMotion: false, now: timers.now() });
+  hidden = 102;
+  real.dispatch({ type: "timeline/loaded", resp: timelineBody(TL.body, { rows: TL.rows(102, 102), since: 101, reset: false }),
+    origin: "poll", hidden: false, reducedMotion: false, now: timers.now() });
+  await settle();
+  assert.equal(real.getState().anim.drawnThrough, 102);
+  assert.equal(engine.calls.filter((c) => c[0] === "playRow").length, 0);
+});
+
+test("with no onError the conductor reports through the page's reportError", () => {
+  const seen = [];
+  const saved = globalThis.reportError;
+  globalThis.reportError = (err) => seen.push(err.message);
+  try {
+    const store = createStore(reducer, initialState());
+    const engine = fakeEngine();
+    const timers = fakeTimers();
+    createConductor({ store, getEngine: () => engine, now: timers.now, setTimeout: timers.setTimeout,
+      clearTimeout: timers.clearTimeout }).start();
+    engine.emit("error", new Error("no listener of its own"));
+    assert.deepEqual(seen, ["no listener of its own"]);
+  } finally {
+    globalThis.reportError = saved;
+  }
+  assert.throws(() => createConductor({ store: {}, getEngine: () => null, now: null }), TypeError);
 });
 
 test("stop detaches from the store and the engine", () => {

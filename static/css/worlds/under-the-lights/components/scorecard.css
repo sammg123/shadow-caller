@@ -4,7 +4,10 @@
    run log loss): a steel plate "SHADOW V LEAGUE", then each pair as a painted caption over two LED windows in amber
    segments (Doto, over their unlit 8s), a small "v" between them and an amber leader lamp beside the side that leads
    (both unlit when even). Only pairs the scorecard computes exist (no league top-pick or tilt count, ever). On the
-   stat board the same pairs and the FI groups read as LED rows with their labels. */
+   stat board the same pairs and the FI groups read as LED rows with their labels.
+   v1.5 (G4-3): the plate carries the basis once ("HIS MODEL V LEAGUE BASELINE · 59 SNAPS"), the leader's value
+   stays lit while the trailing one dims, and the full values stay in the accessibility tree (visually hidden) while
+   the screen shows the brief ones. v1.5 (G4-8): on the stat board the pairs stand two to a row. */
 
 /* ---------------------------------------------------------------- shared: the pair */
 :where(:root[data-world="under-the-lights"]) .sc-scorecard { color: inherit; }
@@ -60,8 +63,23 @@
   font-variation-settings: var(--uls-led-variation);
   line-height: 0.8;
 }
-:where(:root[data-world="under-the-lights"]) .sc-card-side > .sc-card-full { display: none; }
+/* The screen shows the brief form; the full one is what assistive tech reads (the brief twin is aria-hidden), so it
+   stays in the page, out of sight. */
+:where(:root[data-world="under-the-lights"]) .sc-card-side > .sc-card-full {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 :where(:root[data-world="under-the-lights"]) .sc-card-side > .sc-card-brief { display: inline-grid; }
+/* The side that trails dims to the LED's secondary light, so the leader reads at a glance, not only by its lamp. */
+:where(:root[data-world="under-the-lights"]) .sc-card-pair[data-leader="shadow"] [data-side="league"] .sc-card-num,
+:where(:root[data-world="under-the-lights"]) .sc-card-pair[data-leader="league"] [data-side="shadow"] .sc-card-num {
+  color: var(--uls-led-dim);
+}
 :where(:root[data-world="under-the-lights"]) .sc-card-side[data-lead="true"] .sc-card-num {
   font-weight: var(--sc-weight-display);
 }
@@ -80,18 +98,29 @@
 }
 
 /* ---------------------------------------------------------------- the band's row two */
-/* The plate: painted steel with white caps, the model's own scoreboard. */
-:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairs > .sc-card-sub {
-  display: grid;
+/* The plate: painted steel with white caps, the model's own scoreboard, and under its caption the basis, once. */
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-plate {
+  flex: none;
   align-content: center;
+  gap: 4px;
   min-height: calc(var(--uls-size-caption) + var(--uls-size-led-readout) * 0.8 + 9px);
   padding: 0 var(--sc-space-3);
   border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
   border-radius: var(--sc-radius-m);
   background: var(--uls-steel);
   color: var(--uls-caption-white);
+}
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-plate > .sc-card-sub {
+  color: var(--uls-caption-white);
   font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
   letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-basisline {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -130,9 +159,16 @@
 :where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pairs {
   gap: var(--sc-space-2);
 }
+:where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-basisline {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* Two pairs to a row: a pair is two readouts wide, half the score region, so the groups' numbers rise into view. */
 :where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pairlist {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(24rem, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sc-space-4) var(--sc-space-5);
 }
 /* On the stat board the snap count rides on the caption's line, so a pair is only as wide as its two readouts. */

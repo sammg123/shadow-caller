@@ -47,24 +47,49 @@ test("kicks are as before: true-length arcs, the result mark, the return", () =>
   nearPt(punt.label.at, 97, C - LABEL_GAP_YD);
 });
 
-test("field goals: the hold, the arc over the crossbar, the label inside the end zone", () => {
+test("field goals start on the line of scrimmage like every play: one arc over the crossbar, the true distance said", () => {
   const dal = draw(87);
-  assert.deepEqual(shape(dal), ["ground:hold", "arc:fg", "mark:fg_good"]);
-  nearPt(dal.steps[0].to, 69, C);
-  nearPt(dal.steps[1].to, 110, C);
-  near(dal.steps[1].endH, 3.333 + 2, "clears the crossbar");
+  assert.deepEqual(shape(dal), ["arc:fg", "mark:fg_good"], "no hold behind the line: it would read as a sack");
+  nearPt(dal.steps[0].from, 77, C, "from the line of scrimmage, TB 23");
+  nearPt(dal.steps[0].to, 110, C, "to the posts");
+  near(dal.steps[0].apex, 0.25 * 33, "the arc's height follows what is drawn");
+  near(dal.steps[0].endH, 3.333 + 2, "clears the crossbar");
+  assert.equal(dal.steps[0].approx, false);
+  nearPt(dal.steps[1].at, 110, C);
+  nearPt(dal.ballStart, 77, C);
   assert.equal(dal.ballEnd, null);
-  assert.deepEqual([dal.resultLabel.text, dal.label.text], ["FG 41 GOOD", "FG 41 yds · good"]);
+  assert.deepEqual([dal.resultLabel.text, dal.label.text], ["FG 41 GOOD", "FG 41 yds · good"],
+    "the words keep the true distance, the hold's 8 yards included");
   nearPt(dal.label.at, 110 - labelHalfSpanYd(dal.label.text), C - LABEL_GAP_YD, "inside the end line, under the arc");
+  nearPt(dal.resultLabel.at, 110, C, "the feed's word at the posts");
   const tb = draw(123);
-  nearPt(tb.steps[0].to, 31, C);
-  nearPt(tb.steps[1].to, -10, C);
+  assert.deepEqual(shape(tb), ["arc:fg", "mark:fg_good"]);
+  nearPt(tb.steps[0].from, 23, C, "TB's from its line of scrimmage, DAL 23");
+  nearPt(tb.steps[0].to, -10, C);
   nearPt(tb.label.at, -10 + labelHalfSpanYd(tb.label.text), C - LABEL_GAP_YD);
   const row = bySeq(87);
   const miss = buildDrawing({ ...row, kind: "fg_miss", kick: { ...row.kick, good: false }, scoring: null });
-  assert.deepEqual(shape(miss), ["ground:hold", "arc:fg", "mark:fg_miss"]);
-  near(miss.steps[1].endH, 3.333);
+  assert.deepEqual(shape(miss), ["arc:fg", "mark:fg_miss"]);
+  nearPt(miss.steps[0].from, 77, C);
+  near(miss.steps[0].endH, 3.333);
+  assert.equal(miss.steps[0].approx, true, "a miss's flight past the posts is a guess");
   assert.equal(miss.label.text, "FG 41 yds · no good");
+  const typed = buildDrawing({ ...row, kick: { ...row.kick, x_kick: null, dist: null, post_x: null } });
+  assert.deepEqual(shape(typed), ["arc:fg", "mark:fg_good"], "a typed kick with no distance: the same arc");
+  nearPt(typed.steps[0].from, 77, C);
+  nearPt(typed.steps[0].to, 110, C, "to the posts the offense attacks");
+});
+
+test("no drawing step of any kick or snap leaves from behind its line of scrimmage", () => {
+  let checked = 0;
+  for (const row of allRows()) {
+    const d = buildDrawing(row);
+    if (!["play", "kneel", "spike", "other", "punt", "fg", "fg_miss"].includes(row.kind) || !d.steps.length) continue;
+    const first = d.steps.find((s) => s.t !== "mark");
+    if (first) nearPt(first.from, row.geo.x0, C, `row ${row.seq} (${row.kind}) starts on its line`);
+    checked += 1;
+  }
+  assert.ok(checked >= 140, `checked ${checked}`);
 });
 
 test("no play: the same shape ghosted, then the flag and the march to the enforced spot", () => {
@@ -132,9 +157,12 @@ test("blocked kicks: a block mark where the kick died, then the recovery", () =>
   const fg = bySeq(87);
   const block = buildDrawing({ ...fg, kind: "fg_miss", geo: { ...fg.geo, x_next: 69 },
     kick: { ...fg.kick, blocked: true, good: false }, scoring: null });
-  assert.deepEqual(shape(block), ["ground:hold", "mark:blocked"]);
-  nearPt(block.steps[1].at, 69, C);
+  assert.deepEqual(shape(block), ["mark:blocked", "ground:return"], "blocked at the line, then the loose ball");
+  nearPt(block.steps[0].at, 77, C);
+  nearPt(block.steps[1].to, 69, C);
+  assert.equal(block.steps[1].approx, true);
   assert.equal(block.resultLabel.text, "FG BLOCKED");
+  assert.equal(block.label.text, "FG 41 yds · blocked");
 });
 
 test("a safety: sacked in the end zone, then the free kick from the 20", () => {

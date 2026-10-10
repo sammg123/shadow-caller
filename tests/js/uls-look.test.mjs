@@ -62,7 +62,18 @@ test("The Light Core Rule: every drawn path has a light-cone-white core and the 
   assert.deepEqual(night.teamColor.against, [ULS.turfDark, ULS.nightSky]);
 });
 
-test("the shadow plays are dashed LED warm white, never a team color, and fade out at the snap", () => {
+test("G3-1: the shadow plays are tinted by family on the board's ramp, never a team color, over a night-sky casing", () => {
+  assert.equal(night.ghost.tint, "family");
+  assert.equal(night.ghost.fill, "neutral", "no team color, ever (DESIGN.md)");
+  const plays = resolvePlayLook(night);
+  assert.deepEqual(plays.families, { pass: ULS.ledWarm, run: ULS.ledAmber, rpo: ULS.ledGold },
+    "DESIGN.md: pass, RPO and run are three steps of one ramp, warm white, gold and amber");
+  assert.deepEqual(plays.casing, { color: ULS.nightSky, opacity: 0.4, width: 1.8 });
+  assert.equal(plays.shadowWidth, 3.2, "wide enough to read from across the room");
+  assert.ok(contrast(ULS.ledAmber, ULS.ledWarm) > 1.2, "the run and the pass tell apart");
+});
+
+test("the shadow plays are dashed LED warm white where a family has no tone, and fade out at the snap", () => {
   assert.equal(night.ghost.fill, "neutral");
   assert.equal(night.ghost.stroke, ULS.ledWarm);
   // v1.4 (W6): play-drawing.md 4 (binding) "When the snap happens, the shadows fade out and the real play draws solid";
@@ -93,7 +104,10 @@ test("cameras by altitude: wide holds the drive (default), tight follows the bal
 test("the light dip and the moments' timings live in world.uls (DESIGN.md: 80% in 300 ms)", () => {
   assert.deepEqual(look.world.uls.dip, { level: 0.8, ms: 300 });
   assert.ok(look.world.uls.camera.driftDegPerS <= 3, "the blimp drifts at most 3 degrees a second");
+  assert.equal(look.world.uls.camera.holdScoreMs, 2000, "G3-4: a touchdown or a turnover holds 2 s before the rise");
   assert.equal(look.world.uls.ribbons.stepMs, 83);
+  assert.equal(look.world.uls.ribbons.dwellMs, 1500, "G3-6: a play's words get 1.5 s before the next call steps in");
+  assert.deepEqual(look.world.uls.flare, { peak: 1.15, ms: 300 }, "G3-7: the lamp banks flare x1.15 for 300 ms");
   assert.equal(night.motion.ghostInMs, 400, "his shadow plays come up over 400 ms (play-drawing.md 4)");
   assert.equal(night.motion.ghostOutMs, 300);
 });

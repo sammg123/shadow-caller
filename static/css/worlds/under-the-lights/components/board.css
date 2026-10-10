@@ -1,0 +1,281 @@
+/* Under the Lights: the video board's other faces (ui/prediction.js; DESIGN.md Components "Video board"; v1.5, G4-1).
+   The call face is prediction.css. The board never goes dark: off the field in a fed or watched game it recaps his
+   night under a plate naming him ("SCHOTTENHEIMER SO FAR"): a touchdown or turnover leads with the referee's signal at
+   call-name size; then the call the board made with its odds in Doto, what happened in the field's own words, the
+   verdict in its light, the night's tally and his last six verdicts as pixel glyphs, and "DAL IS OFF THE FIELD". At
+   the final whistle: FINAL, the score in LED digits, SHADOW v LEAGUE's three lines and the stat board's G key. Typing
+   by hand, off the field mid-game, the face keeps its copy and its unlit 88%. Every face shows one message, fits the
+   board at 416 x 324 and 560 x 430, and keeps Doto at 40 px and up. Flat hardware: no glow, no shadow. */
+
+/* ---------------------------------------------------------------- every face on the board */
+/* A column that fills the board: the message from the top, its footer (the off-field line, the stat board's key) on
+   the face's bottom edge, so a face never ends in a dead strip of unlit pixels. */
+:where(:root[data-world="under-the-lights"]) :is(.sc-recap, .sc-final) {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 0 var(--uls-face-pad);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-recap-body, .sc-final-body) {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  margin: var(--uls-face-pad) var(--uls-face-pad) 0;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-recap-off, .sc-final-key) { margin-top: auto; }
+:where(:root[data-world="under-the-lights"]) .sc-recap-body { gap: var(--sc-space-3); }
+:where(:root[data-world="under-the-lights"]) .sc-final-body { gap: var(--sc-space-3); }
+/* A face that appears scans in, row by row, like the call. */
+:where(#app[data-layout="uls"] .uls-board) :is(.sc-recap-body, .sc-final-body) {
+  animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
+}
+
+/* ---------------------------------------------------------------- off the field, typing by hand */
+:where(:root[data-world="under-the-lights"]) .sc-offfield { gap: var(--sc-space-3); padding: var(--uls-face-pad); }
+:where(:root[data-world="under-the-lights"]) .sc-offfield-heading {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--sc-size-l) / var(--sc-leading-tight) var(--sc-font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-offfield-body {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-offfield-body strong {
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+}
+/* With no call to show, the figure's cell stays on the face, every pixel unlit (DESIGN.md: an empty cell shows only its
+   unlit 8s). Decoration, hidden from assistive tech. */
+:where(:root[data-world="under-the-lights"]) .sc-offfield::after {
+  content: "88%" / "";
+  margin-top: var(--sc-space-2);
+  color: var(--uls-unlit);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-call);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.75;
+}
+
+/* ---------------------------------------------------------------- his night so far */
+/* The lead: the referee's signal as a 9 x 9 pixel glyph (4 px a pixel; 5 on the TV) and the word at call-name size.
+   Points light amber, the scoreboard's own light. */
+:where(:root[data-world="under-the-lights"]) .sc-recap-lead {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-3);
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--sc-size-l) / var(--sc-leading-tight) var(--sc-font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-lead[data-lead="td"] { color: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-recap-glyph {
+  --uls-lead-glyph: calc(var(--uls-glyph) * 2);
+  flex: none;
+  width: var(--uls-lead-glyph);
+  height: var(--uls-lead-glyph);
+  background: currentColor;
+  -webkit-mask: url("/static/img/worlds/under-the-lights/ref-turnover.svg") center / contain no-repeat;
+  mask: url("/static/img/worlds/under-the-lights/ref-turnover.svg") center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-lead[data-lead="td"] .sc-recap-glyph {
+  -webkit-mask-image: url("/static/img/worlds/under-the-lights/ref-touchdown.svg");
+  mask-image: url("/static/img/worlds/under-the-lights/ref-touchdown.svg");
+}
+/* The call the board made: its label over the name (Display caps, never cut) and its odds in Doto over unlit 88%. */
+:where(:root[data-world="under-the-lights"]) .sc-recap-call {
+  --uls-recap-name: calc(clamp(24px, 1.6667vw, 32px) * var(--uls-hud-scale, 1));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: "label label" "name pct";
+  align-items: end;
+  gap: 2px var(--sc-space-3);
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-call > .sc-recap-label { grid-area: label; }
+:where(:root[data-world="under-the-lights"]) .sc-recap-label {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-name {
+  grid-area: name;
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-recap-name) / var(--sc-leading-tight) var(--sc-font-display);
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-pct {
+  grid-area: pct;
+  position: relative;
+  z-index: 0;
+  display: inline-grid;
+  justify-items: end;
+  color: var(--sc-tone, var(--sc-ink));
+  font-family: var(--uls-led-num);
+  font-size: var(--uls-size-led-readout);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.75;
+  letter-spacing: 0;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-pct::before {
+  content: "88%" / "";
+  position: absolute;
+  inset: 0 0 auto auto;
+  z-index: -1;
+  color: var(--uls-unlit);
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-pct::after {
+  content: "88%" / "";
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-call[data-family] { --sc-tone: var(--sc-pass); }
+:where(:root[data-world="under-the-lights"]) .sc-recap-call[data-family="run"] { --sc-tone: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-recap-call[data-family="rpo"] { --sc-tone: var(--sc-rpo); }
+/* What happened: the field's own words, in the ribbon's caps. */
+:where(:root[data-world="under-the-lights"]) .sc-recap-happened {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-m) / 1.15 var(--sc-font-text);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+/* The verdict and the last six: words and 9 x 9 glyphs in the ribbon's lights (TOP PICK warm white with a check, IN
+   HIS TOP 3 amber with a 3, MISS tally red with an X). */
+:where(:root[data-world="under-the-lights"]) .sc-recap-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  align-self: flex-start;
+  font: var(--sc-weight-display) var(--uls-size-ribbon) / 1 var(--sc-font-display);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-verdict::before,
+:where(:root[data-world="under-the-lights"]) .sc-recap-dot {
+  flex: none;
+  width: var(--uls-glyph);
+  height: var(--uls-glyph);
+  background: currentColor;
+  -webkit-mask: var(--uls-verdict-glyph, none) center / contain no-repeat;
+  mask: var(--uls-verdict-glyph, none) center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-verdict::before { content: ""; }
+:where(:root[data-world="under-the-lights"]) .sc-recap-dot[data-verdict]::before { content: none; }   /* the mask is the glyph */
+:where(:root[data-world="under-the-lights"]) :is(.sc-recap-verdict, .sc-recap-dot)[data-verdict="top1"] {
+  --uls-verdict-glyph: url("/static/img/worlds/under-the-lights/check.svg");
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-recap-verdict, .sc-recap-dot)[data-verdict="top3"] {
+  --uls-verdict-glyph: url("/static/img/worlds/under-the-lights/three.svg");
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-recap-verdict, .sc-recap-dot)[data-verdict="miss"] {
+  --uls-verdict-glyph: url("/static/img/worlds/under-the-lights/x.svg");
+  color: var(--uls-tally-red);
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-tally {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.15 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-recap-countvalue { color: var(--sc-ink); font-weight: var(--sc-weight-display); }
+:where(:root[data-world="under-the-lights"]) .sc-recap-recent { display: flex; align-items: center; gap: var(--sc-space-3); }
+:where(:root[data-world="under-the-lights"]) .sc-recap-glyphs { display: inline-flex; gap: 6px; }
+:where(:root[data-world="under-the-lights"]) .sc-recap-off {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- FINAL */
+/* The score in segment digits over their unlit 88 (the band's own windows, scoreboard.css), as big as the call. */
+:where(:root[data-world="under-the-lights"]) .sc-final-score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-final-team { display: inline-flex; align-items: center; gap: var(--sc-space-2); }
+:where(:root[data-world="under-the-lights"]) .sc-final-abbr {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-final-num {
+  --uls-win-x: 6px;
+  --uls-win-y: 3px;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--uls-segment-lit);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-call);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: 0.8;
+}
+/* SHADOW v LEAGUE's three lines: the leader's value lit, the trailing one dim, as on the band. */
+:where(:root[data-world="under-the-lights"]) .sc-final-lines { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+:where(:root[data-world="under-the-lights"]) .sc-final-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sc-space-2);
+  font: var(--sc-weight-strong) var(--uls-size-ribbon) / 1.15 var(--sc-font-text);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-final-label { margin-inline-end: auto; color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-final-value {
+  color: var(--uls-segment-lit);
+  font-family: var(--sc-font-display);
+  font-weight: var(--sc-weight-display);
+}
+:where(:root[data-world="under-the-lights"]) .sc-final-line[data-leader="shadow"] [data-side="league"],
+:where(:root[data-world="under-the-lights"]) .sc-final-line[data-leader="league"] [data-side="shadow"] {
+  color: var(--uls-led-dim);
+}
+:where(:root[data-world="under-the-lights"]) .sc-final-vs { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-final-empty {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-final-key { align-self: flex-start; }
+
+/* ---------------------------------------------------------------- on the stadium board */
+:where(#app[data-layout="uls"] .uls-board) :is(.sc-recap, .sc-final) { min-height: 0; overflow: hidden; }
+@media (min-width: 1200px) and (min-height: 640px) {
+  /* Only the call has more to show when the board opens (its 14 plays, the why lines): the other faces keep the
+     board's own size under the pointer or focus, so the G key never moves under the pointer that reaches for it. */
+  #app[data-layout="uls"] .uls-board:has(#heroArea:not([data-kind="call"])):is(:hover, :has(:focus-visible)),
+  #app[data-layout="uls"][data-board-open="true"] .uls-board:has(#heroArea:not([data-kind="call"])) {
+    z-index: 11;
+    width: var(--uls-board-w);
+    height: var(--uls-board-h);
+  }
+  /* The TV's lead glyph: 5 px a pixel. */
+  @media (min-width: 1700px) and (min-height: 900px) {
+    :where(:root[data-world="under-the-lights"]) .sc-recap-glyph { --uls-lead-glyph: calc(var(--uls-glyph) * 2.5); }
+  }
+}
+
+/* ---------------------------------------------------------------- reduced motion: the faces appear at once */
+@media (prefers-reduced-motion: reduce) {
+  #app[data-layout="uls"] .uls-board :is(.sc-recap-body, .sc-final-body) { animation: none; }
+}
+:root[data-motion="reduced"] #app[data-layout="uls"] .uls-board :is(.sc-recap-body, .sc-final-body) { animation: none; }

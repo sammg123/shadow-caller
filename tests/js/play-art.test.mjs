@@ -2,11 +2,14 @@
 // meshes, revealed by step progress) and play-ball.js (the ball in play), in node with the vendored three.js.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { D25, THREE, actionStage, row, stripsUnder } from "./action-stage.mjs";
+import { D25, THREE, TL, actionStage, row, stripsUnder } from "./action-stage.mjs";
 
 const { stripGeometry, stripMaterial, stripMesh, writeStrip, setReveal, ALL } = await import(
   "../../static/js/field/play-strip.js");
-const { buildArt, fieldLabel, playEnv, setLabelOpacity } = await import("../../static/js/field/play-art.js");
+const { buildArt, fieldLabel, playEnv, setLabelOpacity, warmUpPrograms } = await import(
+  "../../static/js/field/play-art.js");
+const { isShared, programKind } = await import("../../static/js/field/dispose.js");
+const { buildGhostSet } = await import("../../static/js/field/ghosts.js");
 const { createFlight } = await import("../../static/js/field/play-ball.js");
 const { createGlyphs } = await import("../../static/js/field/play-glyphs.js");
 const { carriersOf, pathOf, playParts, resolvePlayLook } = await import("../../static/js/field/play-style.js");
@@ -175,6 +178,69 @@ test("the page's meaning colors reach the marks (the world's --sc-good|bad|warn)
   assert.equal(playEnv(stage), playEnv(stage), "cached");
   const broken = { ...stage, doc: { defaultView: { getComputedStyle: () => { throw new Error("no style"); } } } };
   assert.equal(playEnv(broken).plays.tones.bad, "#e5484d", "the fallback when the page can't say");
+});
+
+/** A document whose canvases draw nothing: enough for the glyph masks to exist (marks carry an alphaMap). */
+function canvasDoc() {
+  const ctx = new Proxy({}, { get: (t, name) => (name in t ? t[name] : name === "measureText" ? () => ({ width: 40 })
+    : () => {}), set: (t, name, v) => { t[name] = v; return true; } });
+  return { createElement: () => ({ width: 0, height: 0, getContext: () => ctx }), documentElement: {},
+    defaultView: { getComputedStyle: () => ({ getPropertyValue: () => "\"Big Shoulders Display\", sans-serif" }) } };
+}
+
+/** The program kinds drawn under `roots`, the kit's shared materials (alive for the engine anyway) and the warm-up aside. */
+function kindsUnder(...roots) {
+  const kinds = new Set();
+  for (const root of roots) {
+    root.traverse((o) => {
+      if (!(o.isMesh || o.isSprite) || o.parent?.name === "play-warm-up") return;
+      for (const m of [].concat(o.material)) if (!isShared(m)) kinds.add(programKind(m, o));
+    });
+  }
+  return kinds;
+}
+
+/** The kinds the warm-up group holds. */
+const warmKinds = (group) => new Set(group.children.flatMap((o) => [].concat(o.material).map((m) => programKind(m, o))));
+
+const SHADOW_INPUT = Object.freeze({
+  leaves: [{ leaf: "run_inside", p: 0.273 }, { leaf: "pa_short", p: 0.158 }, { leaf: "dropback_short", p: 0.14 }],
+  all: [{ leaf: "run_inside", p: 0.273 }, { leaf: "pa_short", p: 0.158 }, { leaf: "dropback_deep", p: 0.12 }],
+});
+
+const { default: ULS_LOOK } = await import("../../static/js/theme/worlds/under-the-lights/look.js");
+
+for (const [world, partial] of [["neutral", {}], ["under-the-lights", ULS_LOOK]]) test(`G7-1 (${world}): the boot warm-up \
+holds a material of every program kind the action layer draws, so no play compiles`, async () => {
+  const { stage, tick, layers } = await actionStage({ look: { ...partial, residue: { keep: "game", opacity: 0.2 } } });
+  stage.doc = canvasDoc();
+  const L = layers();
+  const seen = new Set();
+  const note = (...roots) => { for (const k of kindsUnder(...roots)) seen.add(k); };
+  for (const r of TL.rows) {
+    const drawing = buildDrawing(r);
+    if (!drawing.steps.length) continue;
+    const plan = fitPlan(planDrawing(drawing, stage.look.motion), 1500);
+    const job = L.player.start(drawing, plan, r);
+    job.update(plan.totalMs / 2);
+    note(stage.roots.plays);
+    job.finish();
+    note(stage.roots.plays, stage.roots.residue);
+  }
+  const shadows = buildGhostSet(SHADOW_INPUT, D25);
+  stage.cams.view({ situation: D25, ghosts: shadows }, { instant: true });
+  L.ghosts.show(shadows);
+  tick(2000);
+  note(stage.roots.ghosts);
+  L.player.review({ row: row(104), drawing: buildDrawing(row(104)) });
+  tick(300);
+  note(stage.roots.plays, stage.roots.residue);
+  const warm = warmUpPrograms();
+  const covered = warmKinds(warm.group);
+  assert.deepEqual([...seen].filter((k) => !covered.has(k)), [], "a kind the warm-up misses compiles mid-game");
+  assert.ok(seen.size >= 8, `${seen.size} kinds drawn`);
+  warm.dispose();
+  for (const layer of Object.values(L)) layer.dispose();
 });
 
 test("the trail hides before the ball has a track; a flight with no play answers nothing", async () => {

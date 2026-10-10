@@ -547,7 +547,7 @@ function flushAll(anim): AnimState                               // every queued
 ```
 
 - `enqueue`: hidden tab or reduced motion → every item instant. Otherwise append; when more than 3 items are queued, every item except the newest 3 becomes instant (DC E4).
-- `nextJob`: `null` while playing or when empty. Instant items → `{instant: true, durationMs: 0}`. Otherwise `normal = normalMs(seq)`; when `watch.state === "playing"` and `0 < watch.next_at - now < 60000`, `durationMs = min(normal, BUDGET_SHARE * (watch.next_at - now) / queue.length)` (DC E4, with the budget shared across queued rows); origin `action` caps at `OWN_ACTION_MAX_MS`; a result under `MIN_ANIM_MS` becomes instant. `next_at` outside that window is ignored (clock skew guard; server and browser share a clock on localhost).
+- `nextJob`: `null` while playing or when empty. Instant items → `{instant: true, durationMs: 0}`. Otherwise `normal = normalMs(seq)`; when `watch.state === "playing"` and `0 < watch.next_at - now < 60000`, `durationMs = min(normal, BUDGET_SHARE * (watch.next_at - now) / queue.length)` (DC E4, with the budget shared across queued rows); origin `action` caps at `OWN_ACTION_MAX_MS`; a result under `MIN_ANIM_MS` becomes instant. `next_at` outside that window is ignored (clock skew guard; server and browser share a clock on localhost). v1.4 (G1-1, section 23): before a caller snap (`watch.next_kind === "caller_snap"`) the play also leaves the next call its reserve, and a watch object older than the head row holds the play for the next poll.
 
 ```ts
 // core/review.js   (Left/Right, client-only; the server is never rewound)
@@ -1459,7 +1459,7 @@ Children: `canvas[data-testid="field-canvas"]` (WebGL) or `svg[data-testid="fiel
 | Startup | HUD filled within 500 ms of DOMContentLoaded on localhost; `data-scene-ready` within 2 s | e2e timing |
 | DOM | whole game in the play feed (183 rows) with keyed reconcile; the play log is never paginated (FI 3.9) | |
 | Hidden tab | no RAF; polling every 5 s; arriving rows drawn instantly; catch-up per DC E4 on return | `sync.js`, `anim-queue.js` |
-| Context loss | `webglcontextlost`: `preventDefault`, switch to the fallback; `webglcontextrestored`: rebuild the WebGL engine from the store | `renderer.js`, conductor |
+| Context loss | `webglcontextlost`: `preventDefault`, switch to the fallback; `webglcontextrestored`: rebuild the WebGL engine from the store. As built (v1.4, G2-4): a lost context is a pause, not a failure: the conductor swaps in the 2D field and disposes the WebGL engine, and the canvas keeps one listener for the browser's restore, so `contextrestored` brings a fresh WebGL field back (`conductor.contextLost`, `scene.js`). It is only as good as the browser's restore, which a sleep and wake usually gives and an HDMI hot-plug may not: re-check on the TV before a demo. | `renderer.js`, conductor |
 | Reduced motion | every draw instant, camera cuts, moments skipped, CSS transitions off | `prefers-reduced-motion` and `data-motion` |
 
 ### 6.2 WebGL-unavailable fallback
@@ -2922,6 +2922,8 @@ value takes its default): `headGlow` 2.5, `headYd` 1.3, `trackOpacity` 0.28, `tr
 
 ### 20.5 Budget as measured (`?debug=1`, Watch this game at 4x, 12 s, plays 95 to 103; Chromium on the Apple M4 Max)
 
+**Re-measure after G7 (v1.4 note, 2026-10-10).** These 12 s windows (plays 95 to 103) miss the frames a whole game drops: a full watched game shows about 120 frames over 25 ms (a play's first frame, the camera's cuts and the stadium's moments), so "0 of 718 over 20 ms" is not the game's number. G7's frame work and a whole-game run replace this table; until then quote it as a window, not as the game.
+
 | Size, DPR | Frame interval p50 / p95 / p99 / max | Frames over 20 ms | Engine CPU p50 / p95 / max | Draw calls max | Triangles |
 | --- | --- | --- | --- | --- | --- |
 | 1440x900, 2 | 16.7 / 16.8 / 16.8 / 16.8 ms | 0 of 718 | 0.4 / 0.6 / 8.0 ms | 51 | 4.3k |
@@ -2989,6 +2991,8 @@ safe area) is never touched, so every shot keeps the free area's optical center.
 driftZoom, driftPitchDeg, driftLiftYd }`, `ribbons { stepMs 83, steps 5, holdTdMs 3200 }`.
 
 ### 21.4 Budget as measured (`?debug=1`, GPU Chromium on the Apple M4 Max, Watch this game)
+
+**Re-measure after G7 (v1.4 note):** the same caveat as 20.5. These are short windows; a whole game has about 120 frames over 25 ms.
 
 | Run | Frame p50 / p95 / p99 / max | Over 20 ms | Engine CPU p50 / p95 / max | Draw calls max | Triangles max |
 | --- | --- | --- | --- | --- | --- |
@@ -3072,3 +3076,67 @@ binding throughout; where it left a choice open, the choice and its reason are b
   ball in flight is caught on the same frame every run (counted by the engine from its first frame). Compared within 1%
   of pixels (a channel off by more than 24); `SC_UPDATE_GOLDENS=1` rewrites them; a failure leaves the capture in
   `test-results/visual/under-the-lights/`; without a GPU (tier low) the comparison is skipped with the reason.
+
+## 23. v1.4: the next call's time, the live feed's safety and the backend (G1, 2026-10-10)
+
+### 23.1 The next call stays up before every Dallas snap
+
+At the default 4x his next call and its shadow plays were on the field for 0.31 to 0.62 s before each Dallas snap (11
+snaps, GPU Chromium): the snap came 1.75 s after the play before it (DC E3: 7.0 s at 1x, divided by the speed), and the
+queue gave that play 80% of the wait. Two pieces fix it, sized from the time the call needs: the verdict's beat
+before it (conductor, G2-3: 1.5 s below 4x, 0.6 s from 4x), its 400 ms fade-in, and 2 s fully lit up to 4x (1 s above).
+
+- **Server (`watch.py`):** a caller snap waits at least `CALLER_FLOOR_S`: 6.0 s below 4x, 4.8 s at 4x, 3.6 s above
+  (seconds at that speed, still times `SHADOW_WATCH_SCALE`). The watch object names the pace of the row it waits on,
+  `next_kind` (`caller_snap`, `snap`, `kick`, `admin`, `admin_end`), in `/api/version` as well (DC E1).
+- **Client (`core/anim-queue.js`):** when `next_kind` is `caller_snap`, the play before it is held to
+  `next_at - now - reserve`, with `reserve = min(CALL_RESERVE_MS, 0.7 * (next_at - now))` and `CALL_RESERVE_MS` 4100 ms
+  below 4x, 3200 at 4x, 2400 above. A watch object older than the head row (`watch.idx < row.seq`, its `next_at` that
+  row's own landing) isn't budgeted on: the play waits for the next `/api/version`, at most 600 ms. That stale case cost
+  the call about 0.5 s whenever the timeline answered before the version poll (the play ran its full length).
+
+Measured (unscaled sandbox, GPU Chromium with Metal; window = `#field[data-ghosts]` up until the snap takes it down):
+1x 3.41 to 3.90 s; 2x 2.63 to 2.93; 4x 2.62 to 3.29 (median 2.73, both worlds); 10x 1.45 to 2.59 (median 1.88). Before:
+4x median 0.44, 10x 0.29. The new e2e `tests/e2e/test_watch_presnap_exposure.py` asserts at least 2.0 s at 4x, on the 2D
+field with the suite's browser and on the 3D field with a GPU browser.
+
+**Found, not fixed here (2D field, `field/fallback-player.js`, another owner):** `remount()` sets `start: null` on every
+camera frame, so a play stands still while the 2D camera eases (`look.cameras.moveMs`: 1100 ms on Under the Lights, 600
+on neutral) and every 2D play overruns its budget by that much (measured: 2.53 s against a 1.43 s budget on Under the
+Lights, 2.04 s on neutral). Keeping `start` through a remount fixes it. Until then the 2D variant of the exposure test
+allows for that overrun (2.0 s minus the world's `moveMs`), still far above the 0.31 to 0.62 s it was written against.
+
+### 23.2 Vocabulary: shadows, not ghosts
+
+Sam's word, the copy and play-drawing.md say **shadow plays**: his top 2 drawn dashed and translucent before a Dallas
+snap. The code kept the older word: `field/ghosts.js` (`buildGhostSet`, `ghostInputFromPred`), `ghost-layer.js`,
+`fallback-ghosts.js`, `#field[data-ghosts]`, `look.ghost`. Read "ghost" in code as "shadow". At the time of writing
+`buildGhostSet` still builds the input both engines take (17 references in `static/js`), so G2-1's removal of the
+GhostSet is not in the code yet; this section is corrected when it lands.
+
+### 23.3 Rows typed by hand (DC D)
+
+A flag typed with no play is now a timeline row of kind `penalty` in ESPN's shape (the flag at the line, the walk to the
+enforced spot, "Flag · false start on DAL · −5"); a no-play walks to its own enforced spot; shorthand `I` (or `INT`) is
+an interception (`result.turnover_kind: "int"`), `F` a fumble. The flag rows are timeline rows only: the play log,
+metrics, archive and CSV list snaps.
+
+### 23.4 What the server answers (DC H)
+
+Every POST answers 400, 409 or 500 with the state body and `error`, and only a real fault is a 500 (with its traceback
+in the server log); error pages are JSON; every answer carries `frame-ancestors 'self' http://localhost:*
+http://127.0.0.1:*`, `nosniff`, `no-referrer` and `same-origin` opener isolation. The live feed checks the teams, keeps
+the summary on screen through a bad poll, backs off, refuses redirects and answers over 8 MB, and is backed up before it
+adds to a typed game or follows another event.
+
+### 23.5 Tests
+
+- `tests/e2e/test_watch_presnap_exposure.py`: the call's window before Dallas snaps in a real-time 4x watch (23.1).
+- `tests/e2e/test_ui_hostile_text.py`: markup in team names, the venue and a flag's words stays text, on both worlds and
+  both engines.
+- `test_ui_checklist_flags.py` (G1-4: typed flags drawn with their words; a no-play's own spot) and
+  `test_ui_checklist_shorthand_drive.py` (G1-5: `I` is an interception on the field).
+- Python: `test_watch.py` (floors, `next_kind`, pruning), `test_espn_replay.py` (matchup, bad and thin polls, raw file,
+  backoff, redirects and size, the seen file's event), `test_timeline.py` (600 seeded mutations of a real summary;
+  flags and interceptions typed by hand; another game's file kept), `test_api_safety.py` (the feed refusing another
+  matchup, headers, bad bodies, 500s, the replay's message, the model-rebuild guard), `test_backend_gaps.py` (CSV, caps).

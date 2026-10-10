@@ -55,3 +55,34 @@ test("no drive and no live ESPN ball: a bare field (FI 3.3)", async () => {
   assert.ok(isDeepFrozen(vm));
   assert.equal(fieldVm(makePv()).ariaLabel, "");
 });
+
+// ---------------------------------------------------------------- G2-7: what the field's verdict chip says was graded
+const chipText = async () => (await import("../../static/js/model/vm-field.js")).verdictChipText;
+const { loadJson } = await import("./fixtures.mjs");
+const PRED = Object.fromEntries(loadJson("timeline_tb_dal.json").rows.filter((r) => r.pred).map((r) => [r.seq, r.pred]));
+
+test("the verdict chip names the graded play's rank, name and odds (G2-7)", async () => {
+  const text = await chipText();
+  assert.equal(text(PRED[159]), "In his top 3 · #2 Intermediate · 39%", "the Dallas TD: his #2, dropback_mid");
+  assert.equal(text(PRED[7]), "Miss · #11 Deep shot · 3%");
+  assert.equal(text(PRED[101]), "Top pick · 54%", "his top pick needs no name: the play's own words are above it");
+  assert.equal(text(PRED[2]), "In his top 3 · #3 Short · 14%");
+  assert.equal(text(PRED[5]), "Top pick · 24%");
+});
+
+test("the chip uses the server's leaf names, short (no parenthesis), else the engine's (G2-7)", async () => {
+  const text = await chipText();
+  assert.equal(text(PRED[159], { dropback_mid: "Medium shot (10–19)" }), "In his top 3 · #2 Medium shot · 39%");
+  assert.equal(text(PRED[159], { run_inside: "x" }), "In his top 3 · #2 Intermediate · 39%", "missing: the engine's");
+  assert.equal(text({ ...PRED[7], leaf: "rpo_run" }), "Miss · #11 RPO, handed off or kept · 3%");
+});
+
+test("a grade without a specific play keeps its plain words; no pred, no words (G2-7)", async () => {
+  const text = await chipText();
+  assert.equal(text({ family: "pa", fam_top: "run" }), "Miss");
+  assert.equal(text({ family: "run", fam_top: "run" }), "Top pick");
+  assert.equal(text({ p: 0.7, dropback: 1 }), "Top pick");
+  assert.equal(text(null), "");
+  assert.equal(text({ ...PRED[7], leaf_p: Number.NaN }), "Miss · #11 Deep shot");
+  assert.equal(text({ ...PRED[7], leaf: "not_a_leaf" }), "Miss · #11 · 3%");
+});

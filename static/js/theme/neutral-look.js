@@ -42,13 +42,10 @@ export const NEUTRAL_LOOK = deepFreeze({
   strokes: {
     arc: stroke("line2", { widthPx: 4 }),
     ground: stroke("line2", { widthPx: 5 }),
-    corridor: stroke("ribbon", { widthYd: 3, opacity: 0.55, ghostedOpacity: 0.25, approx: "soft" }),
-    area: stroke("decal", { widthYd: 5, opacity: 0.6, ghostedOpacity: 0.25, approx: "soft" }),
-    band: stroke("decal", { opacity: 0.35, ghostedOpacity: 0.2, approx: "hatch" }),
     mark: stroke("decal", { widthYd: 2, ghostedOpacity: 0.4, approx: "soft" }),
   },
   ghost: {
-    fill: "neutral", stroke: WHITE, opacity: [0.5, 0.3, 0.18], style: "zone", afterSnapOpacity: 0, labels: true,
+    fill: "neutral", stroke: WHITE, style: "zone", afterSnapOpacity: 0, labels: true,
   },
   lastPlay: { keep: "until-next-snap", dimOpacity: 0.5 },
   residue: { keep: "drive", opacity: 0.3 },

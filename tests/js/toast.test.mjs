@@ -11,13 +11,13 @@ function setup() {
   root.setAttribute("class", "toast");
   root.setAttribute("role", "status");
   root.setAttribute("aria-live", "polite");
-  const { ctx } = chromeCtx();
+  const { ctx, calls } = chromeCtx();
   const mounted = withDocument(doc, () => mount(root, ctx));
   // el() reads globalThis.document when it creates a node, so every call runs inside this test's document.
   const component = { update: (t) => withDocument(doc, () => mounted.update(t)), destroy: () => mounted.destroy() };
   const text = () => root.querySelector(".sc-toast-text");
   const classes = () => root.className.split(" ");
-  return { doc, root, component, text, classes };
+  return { doc, root, component, text, classes, calls };
 }
 
 test("mount keeps the shell's live region and its legacy class", () => {
@@ -83,4 +83,30 @@ test("destroy leaves the shell's #toast in place and empty", () => {
   component.destroy();
   assert.equal(root.children.length, 0);
   assert.equal(root.getAttribute("role"), "status");
+});
+
+test("G5-13: an error is an alert with a Dismiss key (Esc) that keeps it while the pointer or focus is on it", () => {
+  const { root, component, calls } = setup();
+  const dismiss = root.querySelector(".sc-toast-dismiss");
+  assert.ok(dismiss, "a Dismiss key in the toast");
+  assert.equal(dismiss.localName, "button");
+  assert.equal(dismiss.getAttribute("aria-label"), "Dismiss (Esc)");
+  assert.equal(dismiss.getAttribute("aria-keyshortcuts"), "Escape");
+  assert.equal(dismiss.textContent, "", "its key is drawn by CSS: the toast's words are only the message");
+  assert.equal(dismiss.hidden, true, "no key without an error");
+  component.update({ id: 4, text: "Clock like 8:41 or 841, got 'zz'", err: true });
+  assert.deepEqual([root.getAttribute("role"), root.getAttribute("aria-live")], ["alert", "assertive"]);
+  assert.equal(dismiss.hidden, false);
+  assert.equal(root.textContent, "Clock like 8:41 or 841, got 'zz'");
+  for (const type of ["pointerenter", "focusin", "pointerleave", "focusout"]) root.dispatchEvent({ type });
+  dismiss.dispatchEvent({ type: "click", preventDefault() {} });
+  assert.deepEqual(calls.filter((c) => /Toast$/.test(c[0])),
+    [["holdToast", 4], ["holdToast", 4], ["releaseToast", 4], ["releaseToast", 4], ["dismissToast", 4]]);
+  component.update({ id: 5, text: "Logged.", err: false });
+  assert.deepEqual([root.getAttribute("role"), root.getAttribute("aria-live")], ["status", "polite"]);
+  assert.equal(dismiss.hidden, true);
+  for (const type of ["pointerenter", "focusin"]) root.dispatchEvent({ type });
+  assert.equal(calls.filter((c) => c[0] === "holdToast").length, 2, "an info toast just goes");
+  component.update(null);
+  assert.deepEqual([root.getAttribute("role"), root.getAttribute("aria-live")], ["status", "polite"]);
 });

@@ -45,8 +45,11 @@ def test_111_log_loss_values_styled_better_or_worse(upage, server):
     pairs = [(fixed(g["leaf_logloss"], 2), g["leaf_logloss"], g["leaf_logloss_league"]),
              (fixed(g["fam_logloss"], 2), g["fam_logloss"], g["fam_logloss_league"]),
              (fixed(m["logloss_model"], 3), m["logloss_model"], m["logloss_league"])]
-    better = [text for text, model, league in pairs if model < league]
-    worse = [text for text, model, league in pairs if model >= league]
+    # v1.5 (G4-3): the screen's numbers decide: a pair that reads the same at its precision is neither
+    dps = (2, 2, 3)
+    shown = [(text, model, league, dp) for (text, model, league), dp in zip(pairs, dps)]
+    better = [text for text, model, league, dp in shown if fixed(model, dp) != fixed(league, dp) and model < league]
+    worse = [text for text, model, league, dp in shown if fixed(model, dp) != fixed(league, dp) and model > league]
     expect(kpi(upage).locator(".better")).to_have_count(len(better))
     expect(kpi(upage).locator(".worse")).to_have_count(len(worse))
     expect(kpi(upage).locator('.better[data-tone="better"]')).to_have_count(len(better))
@@ -165,9 +168,10 @@ def test_g12_background_messages_go_to_the_polite_region(upage, server):
     assert toasts_shown(upage) == []
 
 
-def test_117_a_400_shows_its_error_for_2_6_s_and_the_returned_state(upage, server):
-    """#117: a 400 shows its error in a red toast for about 2.6 s and the page shows the state the 400 returned (here
-    a change only that body carries: /api/version is frozen, so no poll can bring it)."""
+def test_117_a_400_shows_its_error_for_8_s_and_the_returned_state(upage, server):
+    """#117: a 400 shows its error in a red toast (an alert that holds 8 s since G5-13, so it is read) and the page
+    shows the state the 400 returned (here a change only that body carries: /api/version is frozen, so no poll can
+    bring it)."""
     base = server["base"]
     with_drive(upage, base)
     expect(upage.locator("#iQtr")).to_have_value("1")
@@ -179,12 +183,13 @@ def test_117_a_400_shows_its_error_for_2_6_s_and_the_returned_state(upage, serve
     upage.locator("#iDown").press("Enter")
     expect_toast(upage, "Down must be 1 to 4", error=True)
     expect(upage.locator("#iQtr")).to_have_value("3")        # only the 400's body can bring it (version frozen)
-    expect(upage.locator("#toast")).not_to_have_class(SHOW_RE)
+    expect(upage.locator("#toast")).to_have_attribute("role", "alert")
+    expect(upage.locator("#toast")).not_to_have_class(SHOW_RE, timeout=12_000)
     log = toast_log(upage)[1]
     shown = next(e for e in log if e["kind"] == "show" and e["text"] == "Down must be 1 to 4")
     hidden = next(e for e in log if e["kind"] == "hide" and e["at"] > shown["at"])
     lasted = hidden["at"] - shown["at"]
-    assert 2300 <= lasted <= 3100, f"the toast showed for {lasted:.0f} ms (2600 ms expected)"
+    assert 7700 <= lasted <= 8600, f"the toast showed for {lasted:.0f} ms (8000 ms expected)"
 
 
 def test_118_toast_is_a_polite_live_region_and_replaces(upage, server):

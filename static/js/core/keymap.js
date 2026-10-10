@@ -4,7 +4,7 @@
 import { own } from "./domain.js";
 import { FLAG_KEYS } from "./flags.js";
 
-/** @typedef {"text" | "yards" | "activatable" | "other"} Target */
+/** @typedef {"text" | "yards" | "slider" | "activatable" | "other"} Target */
 
 const LEGACY_NAMES = Object.freeze({ Spacebar: "Space", Esc: "Escape", Left: "ArrowLeft", Right: "ArrowRight" });
 const WATCH_SESSION = Object.freeze(["playing", "paused"]);
@@ -18,7 +18,12 @@ const NORMAL_SIMPLE = Object.freeze({ T: "toggleTD", F: "toggleTO", X: "openFlag
 const YARDS_CHARS_RE = /^[0-9-]$/;
 /** Intents a held key must not repeat: requests (log, undo, retag, flag, Space, digits) and modal toggles. */
 const NO_REPEAT = new Set(["logPlay", "undo", "undoRefused", "retag", "applyFlag", "watchToggle", "watchSpeed",
-  "openFlag", "closeFlag", "cycleCamera", "toggleBooth", "toggleScorecard", "closeScorecard", "exitReview", "clearPick"]);
+  "openFlag", "closeFlag", "cycleCamera", "toggleBooth", "closeBooth", "toggleScorecard", "closeScorecard", "exitReview",
+  "clearPick", "dismissToast"]);
+/** G5-12: a slider's own keys (ui/scrub.js moves the review cursor and plays or pauses with them); every other key
+ * on a focused slider works as it does anywhere on the page. */
+const SLIDER_KEYS = new Set(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown",
+  "Space"]);
 
 const NOTHING = Object.freeze({ intent: null, prevent: false });
 const PREVENT_ONLY = Object.freeze({ intent: null, prevent: true });
@@ -53,6 +58,8 @@ export function keyContext(state) {
     scorecardOpen: Boolean(view.scorecardOpen),
     reviewing: view.review.seq !== null && view.review.seq !== undefined,
     driveActive: Boolean(server?.drive_active),
+    boothOpen: Boolean(view.booth?.open),
+    toastErr: Boolean(view.toast?.err),
   };
 }
 
@@ -75,8 +82,10 @@ function globalTable(k, target, ctx, repeat) {
     return act({ type: "review", delta: k === "ArrowLeft" ? -1 : 1, repeat });
   }
   if (own(SPEED_OF, k) && session && target !== "yards") return act({ type: "watchSpeed", speed: SPEED_OF[k] });
+  if (k === "Escape" && ctx.toastErr) return act({ type: "dismissToast" });   // G5-13: the topmost layer
   if (k === "Escape" && ctx.scorecardOpen) return act({ type: "closeScorecard" });
   if (k === "Escape" && ctx.reviewing) return act({ type: "exitReview" });
+  if (k === "Escape" && ctx.boothOpen) return act({ type: "closeBooth" });   // G5-12: before the pick is cleared
   return null;
 }
 
@@ -125,7 +134,9 @@ export function resolveKey({ key, repeat = false, mods = {}, composing = false, 
   const mode = modeOf(ctx);
   const done = (res) => ({ ...res, mode, nextMode: modeAfter(ctx, res.intent) });
   if (mods.meta || mods.ctrl || mods.alt || composing || target === "text") return done(NOTHING);
-  const res = resolveInMode(mode, normalizeKey(key), target, ctx, Boolean(repeat));
+  const k = normalizeKey(key);
+  if (target === "slider" && SLIDER_KEYS.has(k)) return done(NOTHING);
+  const res = resolveInMode(mode, k, target, ctx, Boolean(repeat));
   if (repeat && res.intent && NO_REPEAT.has(res.intent.type)) return done(PREVENT_ONLY);
   return done(res);
 }

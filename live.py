@@ -1,6 +1,8 @@
 """Live game engine: holds the situation, his in-game memory, every prediction and its result."""
 import threads  # noqa: F401  (first: pins OpenMP/BLAS before numpy and sklearn load)
 import copy
+import csv
+import io
 import json
 import logging
 import os
@@ -22,6 +24,11 @@ from granular import (FAMILIES, FAMILY_NAMES, LEAF_FAMILY, LEAF_NAMES, LEAVES, S
 log = logging.getLogger(__name__)
 
 HOT_PTS, HOT_RATIO = 0.04, 1.3
+YARDS_MAX = 100                    # a play gains or loses at most this (G1-9: the API took -999999999999)
+TOGO_MAX, SCORE_MAX = 99, 199
+FEED_TEXT_MAX = 400                # ESPN's play text kept on a log row (G1-12)
+TURNOVER_KINDS = (None, "int", "fumble")
+FORMULA_START = ("=", "+", "-", "@", "\t", "\r")   # a spreadsheet reads a text cell starting so as a formula
 BOOT_ID = secrets.token_hex(2)     # new on every server start; the first half of the timeline epoch
 OUTCOME_NAMES = {"sack": "sack", "scramble": "scramble", "incomplete": "incomplete"}
 HISTORY_STEPS = 200                # undo steps kept in memory
@@ -35,6 +42,46 @@ ESPN_UNDO_FLOOR = ("Undo can't take back a play ESPN logged: the feed would neve
 
 class UndoRefused(ValueError):
     """An undo that would step back past a play ESPN applied (the feed, a replay or a watch). The app answers 409."""
+
+
+class ModelVersionError(RuntimeError):
+    """The models were built with another scikit-learn: app.py may rebuild them, but never under a game in progress."""
+
+
+SAFE_NAME_RE = re.compile(r"[A-Za-z0-9_]{1,40}")
+MAX_SAME_SECOND = 99               # copies kept aside in one second are named -2 to -99
+
+
+def file_safe(text):
+    """`text` when it can sit in a file name as it is (letters, digits, underscores, 40 at most), else 'unknown'."""
+    return text if isinstance(text, str) and SAFE_NAME_RE.fullmatch(text) else "unknown"
+
+
+def keep_aside(kind, why):
+    """Copy the game file to live_state.<kind>-<time>.json before anything can write over it ('xb': never over an
+    older copy; another in the same second gets -2, -3 ...). Returns the copy's name, or None if it couldn't be made
+    (the warning in the server log says why)."""
+    stamp = f"{datetime.now():%Y%m%d-%H%M%S}"
+    try:
+        data = STATE_PATH.read_bytes()
+        for n in range(1, MAX_SAME_SECOND + 1):
+            dest = STATE_PATH.with_name(f"live_state.{kind}-{stamp}{'' if n == 1 else f'-{n}'}.json")
+            try:
+                f = open(dest, "xb")
+            except FileExistsError:
+                continue
+            try:
+                with f:
+                    f.write(data)
+            except OSError:
+                dest.unlink(missing_ok=True)       # never half a copy
+                raise
+            log.warning("%s: kept a copy as %s; starting a fresh %s game.", why, dest.name, GAME["game_id"])
+            return dest.name
+        raise OSError(f"{MAX_SAME_SECOND} copies named live_state.{kind}-{stamp} already")
+    except OSError as err:
+        log.warning("%s, and no copy of it could be kept (%s).", why, err)
+        return None
 
 # code: (label, against 'def'/'off'/None, yards | 'spot' | 'box', auto first down, loss of down, pre-snap)
 PENALTIES = {
@@ -64,6 +111,20 @@ PEN_SHORT = {"OFF": "OFFSIDE", "ENC": "OFFSIDE", "NZI": "OFFSIDE", "DH": "DH", "
              "IBB": "IBB", "IG": "IG", "URO": "URO", "OFFSET": "OFFSET"}
 
 
+def is_snap(row):
+    """A log row the model is scored on: every row but a flag typed with no play (kind 'penalty', v1.4)."""
+    return row.get("kind") != "penalty"
+
+
+def csv_cell(value):
+    """One CSV cell: '' for None, numbers as Python writes them, text with a formula's first character defused."""
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return "'" + value if value.startswith(FORMULA_START) else value
+    return str(value)
+
+
 def fmt_clock(sec):
     sec = max(0, int(round(sec)))
     return f"{sec // 60}:{sec % 60:02d}"
@@ -91,7 +152,8 @@ class GameEngine:
         import sklearn
         self.profile = json.loads((MODEL_DIR / "profile.json").read_text())
         if self.profile.get("sklearn") != sklearn.__version__:
-            raise RuntimeError("Model was built with a different scikit-learn version")
+            raise ModelVersionError(f"Model was built with a different scikit-learn version "
+                                    f"({self.profile.get('sklearn')}, this setup has {sklearn.__version__})")
         self.stage1 = joblib.load(MODEL_DIR / "stage1.joblib")
         self.G = joblib.load(MODEL_DIR / "granular.joblib")
         self.w = {c: v["est"] for c, v in self.profile["coefs"].items()}
@@ -102,7 +164,10 @@ class GameEngine:
         self.epoch_n = 0
         self._pred_memo = None
         self._batching = False             # command(): one checkpoint and one save for the whole line
+        self.kept_aside = None             # the old game file _load copied aside, named once in the message
         self.state = self._load() or self._fresh()
+        if self.kept_aside:
+            self.state["message"] = f"Kept the old game file as {self.kept_aside}. {self.state['message']}"
         self._version = self.state.get("version", 0)
 
     @property
@@ -137,17 +202,23 @@ class GameEngine:
         }
 
     def _load(self):
-        """The saved game, or None (no file, or another game's). A file that can't be read is copied aside first
-        (live_state.unreadable-<time>.json): the fresh game's first save would otherwise destroy what is left."""
+        """The saved game, or None (no file, or not this game). The fresh game's first save would destroy whatever
+        else the file holds, so it is copied aside first and named in the message: a file that can't be read as
+        live_state.unreadable-<time>.json, another game's (every new matchup in config.py) or one with no game in
+        it as live_state.other-<game_id>-<time>.json."""
+        self.kept_aside = None
         if not STATE_PATH.exists():
             return None
         try:
             s = json.loads(STATE_PATH.read_text())
         except (OSError, ValueError) as ex:
-            self._keep_unreadable(ex)
+            self.kept_aside = keep_aside("unreadable", f"Couldn't read {STATE_PATH.name} ({ex})")
             return None
         game = s.get("game") if isinstance(s, dict) else None
-        if not isinstance(game, dict) or game.get("game_id") != GAME["game_id"]:
+        gid = game.get("game_id") if isinstance(game, dict) else None
+        if gid != GAME["game_id"]:
+            what = f"the {gid} game" if isinstance(gid, str) else "no game this app can read"
+            self.kept_aside = keep_aside(f"other-{file_safe(gid)}", f"{STATE_PATH.name} holds {what}"[:160])
             return None
         return self._upgrade(s)
 
@@ -159,17 +230,6 @@ class GameEngine:
             if isinstance(r, dict) and r.get("seq") is None:
                 r["seq"] = i
         return s
-
-    @staticmethod
-    def _keep_unreadable(ex):
-        dest = STATE_PATH.with_name(f"live_state.unreadable-{datetime.now():%Y%m%d-%H%M%S}.json")
-        try:
-            with open(dest, "xb") as f:            # x: never over an older copy
-                f.write(STATE_PATH.read_bytes())
-            log.warning("Couldn't read %s (%s). Kept a copy as %s; starting a fresh game.", STATE_PATH.name, ex,
-                        dest.name)
-        except OSError as err:
-            log.warning("Couldn't read %s (%s) or keep a copy of it (%s).", STATE_PATH.name, ex, err)
 
     def _save(self):
         """Write the whole file, then swap it in (os.replace): a save cut short leaves the last good game, never
@@ -214,11 +274,11 @@ class GameEngine:
                 raise UndoRefused(self.undo_floor)
             self.state["message"] = "Nothing to undo."
             return
-        last = self.state["log"][-1]["snap"] if self.state["log"] else None
+        had_rows = bool(self.state["log"])
         self.state = self.history.pop()
         self.state["message"] = "Undid the last action."
         self._save()
-        if last is not None:
+        if had_rows:
             self._db_delete_after(len(self.state["log"]))
 
     def reset(self):
@@ -310,8 +370,11 @@ class GameEngine:
         goal = isinstance(togo, str) and togo.strip().upper() in ("G", "GOAL")
         if togo is not None and not goal:
             togo = int(togo)
-            if togo < 1:
-                raise ValueError("To go must be at least 1")
+            if not 1 <= togo <= TOGO_MAX:
+                raise ValueError(f"To go must be from 1 to {TOGO_MAX}")
+        for score in (score_off, score_opp):
+            if score is not None and not 0 <= int(score) <= SCORE_MAX:
+                raise ValueError(f"A score must be from 0 to {SCORE_MAX}")
         self._checkpoint()
         s = self.state["sit"]
         starting = not self.state["drive_active"] and any(v is not None for v in (down, togo, yardline_100))
@@ -345,6 +408,8 @@ class GameEngine:
         self._save()
 
     def new_drive(self, yardline_100, qtr=None, clock=None, score_off=None, score_opp=None):
+        if not 1 <= int(yardline_100) <= 99:
+            raise ValueError("Ball must be between the goal lines")
         self._checkpoint()
         s = self.state["sit"]
         s.update({"down": 1, "yardline_100": int(yardline_100)})
@@ -528,19 +593,24 @@ class GameEngine:
                 "score": f"{s['score_off']}-{s['score_opp']}", "clock_est": bool(s.get("clock_estimated"))}
 
     def record_play(self, call=None, yards=0, td=False, turnover=False, penalty=False,
-                    leaf=None, family=None, outcome=None, source="manual", feed=None):
+                    leaf=None, family=None, outcome=None, source="manual", feed=None, turnover_kind=None):
         """Granular: leaf (e.g. 'run_edge_left', 'pa_deep') and/or family ('run','dropback','pa','screen','rpo'),
         outcome None/'sack'/'scramble'/'incomplete'. Legacy: call R (run), P (pass), SC (scramble), S (sack).
-        penalty=True: replay the down, nothing else changes (use apply_penalty for yardage)."""
+        penalty=True: replay the down, nothing else changes (use apply_penalty for yardage).
+        turnover_kind: 'int' or 'fumble' when it is known (shorthand I, INT, F; v1.4), kept on the row."""
+        if turnover_kind not in TURNOVER_KINDS:
+            raise ValueError("A turnover is an int or a fumble.")
         if not self.state["drive_active"]:
             raise ValueError("No Dallas drive in progress. Start a new drive first.")
         if penalty:
             return self.apply_penalty("OFFSET")
         family, leaf, outcome, dropback, code, name = self._resolve_call(call, leaf, family, outcome)
+        yards = int(yards)
+        if not -YARDS_MAX <= yards <= YARDS_MAX:
+            raise ValueError(f"Yards must be from -{YARDS_MAX} to {YARDS_MAX}.")
         self._checkpoint()
         s, m = self.state["sit"], self.state["mem"]
         pred = self.predict()
-        yards = int(yards)
         if outcome == "sack":
             yards = -abs(yards)
         if outcome == "incomplete":
@@ -551,11 +621,12 @@ class GameEngine:
         success = visible_success(s["down"], s["togo"], yards, td, turnover)
         row = {**self._sit_fields(), **self._pred_fields(pred, family, leaf),
                "call": code, "dropback": dropback, "yards": yards, "success": success,
-               "td": bool(td), "turnover": bool(turnover),
+               "td": bool(td), "turnover": bool(turnover), "turnover_kind": turnover_kind if turnover else None,
                "family": family, "leaf": leaf, "outcome": outcome, "name": name,
                "nullified": False, "penalty": None, "source": source,
                "depth": leaf.split("_")[1] if leaf and leaf.startswith(("dropback_", "pa_")) else None,
-               "feed_text": (feed or {}).get("text"), "align": (feed or {}).get("align"),
+               "feed_text": (feed or {}).get("text")[:FEED_TEXT_MAX] if (feed or {}).get("text") else None,
+               "align": (feed or {}).get("align"),
                "espn_id": (feed or {}).get("id")}
         self.state["log"].append(row)
         self._db_insert(row)
@@ -607,12 +678,44 @@ class GameEngine:
         play = {'leaf'/'family'/'outcome'} when the call was already picked: that snap is logged as
         nullified (counts for scoring the prediction, not for his in-game memory). Pre-snap fouls ignore it.
         yards: distance past the line for DPI, or the yardage for OTHER_D / OTHER_O.
-        espn_id: the ESPN play a nullified call came from (the timeline's join key)."""
+        espn_id: the ESPN play a nullified call came from (the timeline's join key).
+        v1.4 (G1-4): a foul typed by hand records what it did, so the field can draw it: a no-play row gets its
+        enforced spot, and a flag with no play logged (pre-snap, or after a play that stands) becomes a flag row of
+        its own (kind 'penalty': a timeline row, never a snap: metrics, the play log and the archive skip it)."""
         code = code.upper()
         if code not in PENALTIES:
             raise ValueError(f"Unknown penalty '{code}'")
         if not self.state["drive_active"]:
             raise ValueError("No Dallas drive in progress. Type the ball spot first.")
+        label, against, pen_yds, first, lod, presnap = self._penalty_terms(code, yards, auto_first)
+        rec = None
+        if play and not presnap and any(play.get(k) for k in ("leaf", "family", "outcome", "call")):
+            rec = self._resolve_call(play.get("call"), play.get("leaf"), play.get("family"), play.get("outcome"))
+        self._checkpoint()
+        before = self._sit_fields()
+        row = self._no_play_row(rec, code, label, against, note, source, espn_id) if rec else None
+        msg, ended = self._enforce(code, label, against, pen_yds, first, lod)
+        if not ended:
+            s = self.state["sit"]
+            s["togo"] = max(1, min(s["togo"], s["yardline_100"]))
+        if source == "manual":                     # ESPN's own spots come from the feed, not from this engine
+            facts = self._flag_facts(before, against, ended)
+            if row is not None:
+                row.update(facts)
+            else:
+                fields = {k: v for k, v in before.items() if k != "snap"}      # a flag is not a snap
+                self.state["log"].append({**fields, "kind": "penalty", "penalty": code, "name": msg[:160],
+                                          "nullified": presnap, "source": source, **facts})
+        if ended:
+            self.state["message"] = msg + ". Turnover on downs."
+        else:
+            self.state["message"] = f"{msg}. {self.situation_text()}." + \
+                (" His call still counts for scoring." if rec else "")
+        self._save()
+
+    @staticmethod
+    def _penalty_terms(code, yards, auto_first):
+        """(label, against, yards, first down, loss of down, pre-snap) of a known foul, its yards checked."""
         label, against, pen_yds, first, lod, presnap = PENALTIES[code]
         if code in ("OTHER_D", "OTHER_O"):
             label = f"Penalty on {GAME['opponent'] if against == 'def' else GAME['offense']}"
@@ -621,33 +724,44 @@ class GameEngine:
             if yards in (None, "") or int(yards) <= 0:
                 raise ValueError("Type the yards first: how far past the line for DPI, or the penalty yardage.")
             pen_yds = int(yards)
-        rec = None
-        if play and not presnap and any(play.get(k) for k in ("leaf", "family", "outcome", "call")):
-            rec = self._resolve_call(play.get("call"), play.get("leaf"), play.get("family"), play.get("outcome"))
-        self._checkpoint()
+            if pen_yds > TOGO_MAX:
+                raise ValueError(f"Penalty yards must be from 1 to {TOGO_MAX}.")
+        return label, against, pen_yds, first, lod, presnap
+
+    def _no_play_row(self, rec, code, label, against, note, source, espn_id):
+        """The picked call a flag wiped out, logged as a nullified snap (scored, not remembered)."""
+        family, leaf, outcome, dropback, callcode, name = rec
+        pred = self.predict()
+        row = {**self._sit_fields(), **self._pred_fields(pred, family, leaf),
+               "call": callcode, "dropback": dropback, "yards": 0, "success": None, "td": False,
+               "turnover": False, "family": family, "leaf": leaf, "outcome": outcome,
+               "name": f"{name} (no play" + (f": {note}" if note else f": {label.lower()}" if against else ", flag") + ")",
+               "nullified": True, "penalty": code, "source": source, "espn_id": espn_id}
+        self.state["log"].append(row)
+        self._db_insert(row)
+        return row
+
+    def _flag_facts(self, before, against, ended):
+        """What a hand-typed foul did: who it was on, the yards walked, and the snap after it (None when the drive
+        ended there)."""
+        s = self.state["sit"]
+        return {"pen_on": against, "pen_yards": abs(before["yardline_100"] - s["yardline_100"]) if against else None,
+                "yardline_after": None if ended else s["yardline_100"], "down_after": None if ended else s["down"],
+                "togo_after": None if ended else s["togo"]}
+
+    def _enforce(self, code, label, against, pen_yds, first, lod):
+        """Move the ball for a foul. (message, True when a loss of down on 4th ended the drive)."""
         s = self.state["sit"]
         yl, togo, down = s["yardline_100"], s["togo"], s["down"]
         goal_to_go = togo >= yl
-
-        if rec:
-            family, leaf, outcome, dropback, callcode, name = rec
-            pred = self.predict()
-            row = {**self._sit_fields(), **self._pred_fields(pred, family, leaf),
-                   "call": callcode, "dropback": dropback, "yards": 0, "success": None, "td": False,
-                   "turnover": False, "family": family, "leaf": leaf, "outcome": outcome,
-                   "name": f"{name} (no play" + (f": {note}" if note else f": {label.lower()}" if against else ", flag") + ")",
-                   "nullified": True, "penalty": code, "source": source, "espn_id": espn_id}
-            self.state["log"].append(row)
-            self._db_insert(row)
-
         if against is None:
-            msg = label
-        elif code == "DPI":
+            return label, False
+        if code == "DPI":
             new_yl = max(1, yl - pen_yds)
             s["yardline_100"] = new_yl
             s["down"], s["togo"] = 1, min(10, new_yl)
-            msg = f"{label}: ball at the spot, {pen_yds} yards, automatic first down"
-        elif against == "def":
+            return f"{label}: ball at the spot, {pen_yds} yards, automatic first down", False
+        if against == "def":
             dist = pen_yds if pen_yds <= yl / 2 else yl / 2
             new_yl = max(1, int(round(yl - dist)))
             gained = yl - new_yl
@@ -657,29 +771,22 @@ class GameEngine:
             else:
                 s["togo"] = new_yl if goal_to_go else togo - gained
             half = " (half the distance)" if dist < pen_yds else ""
-            msg = f"{label}: {gained} yards{half}" + (", automatic first down" if first else "")
-        else:
-            room = 100 - yl
-            dist = pen_yds if pen_yds <= room / 2 else room / 2
-            new_yl = min(99, int(round(yl + dist)))
-            lost = new_yl - yl
-            s["yardline_100"] = new_yl
-            s["togo"] = new_yl if goal_to_go else togo + lost
-            half = " (half the distance)" if dist < pen_yds else ""
-            msg = f"{label}: back {lost} yards{half}"
-            if lod:
-                msg += ", loss of down"
-                if down == 4:
-                    self.state["drive_active"] = False
-                    self.state["mem"]["prev"] = None
-                    self.state["message"] = msg + ". Turnover on downs."
-                    self._save()
-                    return
-                s["down"] = down + 1
-        s["togo"] = max(1, min(s["togo"], s["yardline_100"]))
-        self.state["message"] = f"{msg}. {self.situation_text()}." + \
-            (" His call still counts for scoring." if rec else "")
-        self._save()
+            return f"{label}: {gained} yards{half}" + (", automatic first down" if first else ""), False
+        room = 100 - yl
+        dist = pen_yds if pen_yds <= room / 2 else room / 2
+        new_yl = min(99, int(round(yl + dist)))
+        lost = new_yl - yl
+        s["yardline_100"] = new_yl
+        s["togo"] = new_yl if goal_to_go else togo + lost
+        half = " (half the distance)" if dist < pen_yds else ""
+        msg = f"{label}: back {lost} yards{half}" + (", loss of down" if lod else "")
+        if lod and down == 4:
+            self.state["drive_active"] = False
+            self.state["mem"]["prev"] = None
+            return msg, True
+        if lod:
+            s["down"] = down + 1
+        return msg, False
 
     def situation_text(self):
         """'1st & 4 at TB 4'."""
@@ -748,7 +855,7 @@ class GameEngine:
                 done.append(self.state["message"])
                 continue
             if toks[0] == "I":
-                self.record_play("P", 0, turnover=True)
+                self.record_play("P", 0, turnover=True, turnover_kind="int")
                 done.append("interception")
                 continue
             if toks[0] in SHORTHAND or toks[0] in ("SC", "S"):
@@ -756,7 +863,8 @@ class GameEngine:
                 for t in toks[1:]:
                     if re.fullmatch(r"[+-]?\d+", t):
                         yards = int(t)
-                extra = dict(td="TD" in toks[1:], turnover="F" in toks[1:] or "INT" in toks[1:])
+                kind = "int" if "INT" in toks[1:] else "fumble" if "F" in toks[1:] else None
+                extra = dict(td="TD" in toks[1:], turnover=kind is not None, turnover_kind=kind)
                 if toks[0] in ("SC", "S"):
                     self.record_play(toks[0], yards, **extra)
                 else:
@@ -812,7 +920,7 @@ class GameEngine:
 
     # ------------------------------------------------------------ scoring
     def metrics(self):
-        log = self.state["log"]
+        log = [r for r in self.state["log"] if is_snap(r)]
         if not log:
             return {"n": 0}
         y = np.array([r["dropback"] for r in log], float)
@@ -860,7 +968,7 @@ class GameEngine:
             "penalties": {c: {"label": v[0], "against": v[1], "yards": v[2], "first": v[3], "lod": v[4],
                               "presnap": v[5]} for c, v in PENALTIES.items()},
             "leaf_names": LEAF_NAMES, "family_names": FAMILY_NAMES,
-            "log": [{k: v for k, v in r.items() if k != "tree"} for r in reversed(s["log"])],
+            "log": [{k: v for k, v in r.items() if k != "tree"} for r in reversed(s["log"]) if is_snap(r)],
             "metrics": self.metrics(), "version": self.version,
             "message": s.get("message", ""), "profile": self.profile,
             "memory": {"snap_n": s["mem"]["snap_n"], "value_gap": s["mem"]["qp"] - s["mem"]["qr"],
@@ -888,6 +996,8 @@ class GameEngine:
                      ("seq", "INTEGER"), ("nullified", "BOOLEAN"), ("penalty", "VARCHAR")]
 
     def _db_insert(self, r):
+        if not is_snap(r):                 # the archive holds snaps and their predictions only
+            return
         try:
             con = self._db()
             names = ["game_id", "snap", "drive", "logged_at"] + self.BASE_DB_COLS[3:] + [c for c, _ in self.EXTRA_DB_COLS]
@@ -896,7 +1006,7 @@ class GameEngine:
             con.execute(f"INSERT INTO live_log ({', '.join(names)}) VALUES ({', '.join('?' * len(vals))})", vals)
             con.close()
         except Exception as e:  # the JSON state file is the source of truth; never block the UI
-            print("DuckDB write skipped:", e)
+            log.warning("DuckDB write skipped: %s", e)
 
     def _db_delete_after(self, n_keep):
         try:
@@ -905,10 +1015,14 @@ class GameEngine:
                         [GAME["game_id"], n_keep, n_keep])
             con.close()
         except Exception as e:
-            print("DuckDB delete skipped:", e)
+            log.warning("DuckDB delete skipped: %s", e)
 
     def export_csv(self):
+        """The log as CSV (csv module: a comma or a line break stays inside its quoted cell). A text cell that starts
+        like a formula (= + - @ tab CR) gets a leading apostrophe; numbers are written as numbers."""
         cols = self.BASE_DB_COLS + [c for c, _ in self.EXTRA_DB_COLS]
-        cell = lambda v: "" if v is None else str(v).replace(",", ";")
-        lines = [",".join(cols)] + [",".join(cell(r.get(c)) for c in cols) for r in self.state["log"]]
-        return "\n".join(lines) + "\n"
+        out = io.StringIO()
+        w = csv.writer(out, quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
+        w.writerow(cols)
+        w.writerows([csv_cell(r.get(c)) for c in cols] for r in self.state["log"] if is_snap(r))
+        return out.getvalue()

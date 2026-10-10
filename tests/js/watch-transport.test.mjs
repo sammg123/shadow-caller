@@ -135,6 +135,69 @@ test("every key calls its action", () => {
     ["watchStart", ""], ["watchStart", ""], ["watchSpeed", 10], ["watchSpeed", 1]]);
 });
 
+test("G5-7: focusTransport puts focus on Pause once the started watch shows it, unless someone is typing", () => {
+  const { doc, btn, render, component } = setup();
+  const watchBtn = doc.createElement("button");
+  doc.body.appendChild(watchBtn);
+  render(watch({ state: "idle" }));
+  watchBtn.focus();                                           // "Watch this game" in the drawer, by keyboard
+  withDocument(doc, () => component.form.focusTransport());
+  assert.equal(doc.activeElement, watchBtn, "Pause isn't shown yet: wait for the render that shows it");
+  watchBtn.remove();                                          // the drawer closes: focus falls to the body
+  render(watch());
+  assert.equal(doc.activeElement, btn("pause"), "the start's control is gone: Pause has focus");
+  btn("pause").blur?.();
+  render(watch());
+  assert.notEqual(doc.activeElement, btn("pause"), "once only");
+
+  const handedBack = setup();
+  const boothKey = handedBack.doc.createElement("button");
+  handedBack.doc.body.appendChild(boothKey);
+  handedBack.render(watch({ state: "idle" }));
+  withDocument(handedBack.doc, () => handedBack.component.form.focusTransport());
+  boothKey.focus();                                           // the closing booth gives focus back to its B key
+  handedBack.render(watch());
+  assert.equal(handedBack.doc.activeElement, handedBack.btn("pause"), "the started game's Pause still wins");
+
+  const typingNow = setup();
+  const box = typingNow.doc.createElement("input");
+  box.setAttribute("type", "text");
+  typingNow.doc.body.appendChild(box);
+  typingNow.render(watch({ state: "idle" }));
+  withDocument(typingNow.doc, () => typingNow.component.form.focusTransport());
+  box.focus();                                                // someone typing meanwhile
+  typingNow.render(watch());
+  assert.equal(typingNow.doc.activeElement, box, "a box being typed in is never left");
+
+  const failed = setup();
+  failed.render(watch({ state: "idle" }));
+  withDocument(failed.doc, () => failed.component.form.focusTransport());
+  failed.render(watch({ state: "error", error: "ESPN didn't answer." }));
+  failed.render(watch());
+  assert.notEqual(failed.doc.activeElement, failed.btn("pause"), "a start that failed leaves nothing pending");
+});
+
+test("G5-7: a Pause key not laid out yet (its region hidden while the page turns to Watch) gets focus once it is", () => {
+  const doc = chromePage([["section", "rg-transport"]]);
+  const { ctx } = chromeCtx();
+  const pending = [];
+  const timers = { setTimeout: (fn) => { pending.push(fn); return pending.length; }, clearTimeout: () => {} };
+  const root = doc.getElementById("rg-transport");
+  const component = withDocument(doc, () => mount(root, { ...ctx, timers }));
+  const pause = root.querySelector('[data-watch="pause"]');
+  let shown = false;
+  pause.getClientRects = () => (shown ? [{ width: 80, height: 40 }] : []);
+  withDocument(doc, () => component.form.focusTransport());
+  component.update(transportVm(makePv({ presented: state.final(), version: { watch: watch() } })));
+  assert.notEqual(doc.activeElement, pause, "display: none until #app[data-mode] says watch");
+  assert.ok(pending.length >= 1, "it tries again shortly");
+  shown = true;
+  pending.splice(0).forEach((fn) => fn());
+  assert.equal(doc.activeElement, pause);
+  pending.splice(0).forEach((fn) => fn());
+  assert.equal(pending.length, 0, "done: no more tries");
+});
+
 test("a focused key that the new state hides hands focus to its counterpart (Pause to Play and back)", () => {
   const { doc, btn, render } = setup();
   render(watch());

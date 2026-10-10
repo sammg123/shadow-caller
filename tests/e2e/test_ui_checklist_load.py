@@ -9,12 +9,15 @@ pytestmark = pytest.mark.e2e
 
 
 def test_01_title_game_label_and_who_label(upage, server):
-    """#1: title "Shadow Play-Caller", #gameLabel = game.label, #whoLabel "Modelling Brian Schottenheimer (DAL offense)"."""
+    """#1: title "Shadow Play-Caller", #gameLabel = game.label, #whoLabel "Shadowing Schottenheimer · DAL" (v1.5, G4-2:
+    the plate names the caller it shadows; its tooltip keeps "Modelling Brian Schottenheimer (DAL offense)")."""
     fresh(upage, server["base"])
     s = state(server["base"])
     expect(upage).to_have_title("Shadow Play-Caller")
     expect(upage.locator("#gameLabel")).to_have_text(s["game"]["label"])
-    expect(upage.locator("#whoLabel")).to_have_text("Modelling Brian Schottenheimer (DAL offense)")
+    expect(upage.locator("#whoLabel")).to_have_text("Shadowing Schottenheimer · DAL")
+    expect(upage.locator(".sc-masthead-plate")).to_have_attribute(
+        "title", f"{s['game']['label']} · Modelling Brian Schottenheimer (DAL offense)")
 
 
 def test_02_no_page_or_console_errors_on_load_and_idle(upage, server):
@@ -41,11 +44,13 @@ def test_03_version_polls_without_state_refetch(upage, server):
 
 
 def test_04_fresh_strip_values(upage, server):
-    """#4: Qtr 1, Clock 15:00, 0 and 0, Down 1, To go 10, side chip DAL, Ball on 25, est. hidden."""
+    """#4: Qtr 1, Clock 15:00, 0 and 0, Down 1, To go 10, side chip DAL, Ball on 25 (its placeholder: no drive yet,
+    G5-3), est. hidden."""
     fresh(upage, server["base"])
     for sel, value in (("#iQtr", "1"), ("#iClock", "15:00"), ("#iOff", "0"), ("#iOpp", "0"), ("#iDown", "1"),
-                       ("#iTogo", "10"), ("#iYard", "25")):
+                       ("#iTogo", "10"), ("#iYard", "")):
         expect(upage.locator(sel)).to_have_value(value)
+    expect(upage.locator("#iYard")).to_have_attribute("placeholder", "25")
     expect(upage.locator("#sideTxt")).to_have_text("DAL")
     expect(upage.locator("#clockEst")).to_be_hidden()
 

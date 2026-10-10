@@ -49,6 +49,8 @@
   text-align: center;
   transition: border-color var(--sc-dur-fast) var(--sc-ease-out);
 }
+/* Off the field Ball on is blank with where a drive usually starts as its placeholder (G5-3). */
+.sc-strip-input::placeholder { color: var(--sc-ink-muted); opacity: 1; }
 .sc-strip-input:hover { border-color: var(--sc-rule-strong); }
 .sc-strip-input:focus { border-color: var(--sc-focus); background: var(--sc-surface); }
 /* A rejected value keeps its text with a red underline (FI 4.4, #14). */
@@ -130,3 +132,16 @@
   .sc-strip { padding: var(--sc-space-3) var(--sc-space-4); }
   .sc-strip-fields { column-gap: var(--sc-space-4); }
 }
+
+/* G5-13: a refused value's words stay beside the strip until it is fixed, led by the word Invalid (not colour alone);
+   in their place the drive line steps aside. */
+.sc-strip-error { margin: 0; color: var(--sc-ink); font-size: var(--sc-size-s); line-height: var(--sc-leading-body); }
+.sc-strip-error-tag {
+  padding: 0 var(--sc-space-1);
+  border: var(--sc-border-w) solid var(--sc-bad);
+  border-radius: var(--sc-radius-s);
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+  text-transform: uppercase;
+}
+.sc-strip-drive:has(> .sc-strip-error:not([hidden])) > .sc-drive-info { display: none; }

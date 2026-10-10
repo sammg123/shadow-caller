@@ -24,13 +24,15 @@ def highlighted(page):
 
 def test_a_mouse_click_selects_the_whole_strip_value(upage, server):
     """FI 1.8: focus selects the value, also when a mouse click focused it (the click's caret can't undo it), so
-    typing replaces "25" instead of extending it."""
-    fresh(upage, server["base"])
+    typing replaces "25" instead of extending it (during a drive: off the field Ball on is blank, G5-3)."""
+    with_drive(upage, server["base"])
+    expect(upage.locator("#iYard")).to_have_value("25")
     sent = record_requests(upage, "/api/situation")
     upage.locator("#iYard").click()
     upage.keyboard.type("20")
     upage.keyboard.press("Enter")
-    expect(upage.locator("#driveInfo")).to_have_text("Drive 1, snap 1 of the game")
+    expect(upage.locator("#iYard")).to_have_value("20")
+    expect(upage.locator("#driveInfo")).to_have_text("Drive 1 · snap 1")
     assert [r["body"] for r in sent] == [{"spot": "DAL 20"}]
     assert js_errors(upage) == []
 

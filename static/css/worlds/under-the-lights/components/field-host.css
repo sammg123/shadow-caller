@@ -21,3 +21,22 @@
   background: var(--uls-led-face);
   color: var(--sc-ink);
 }
+
+/* G3-1: a shadow play's words wear its stroke's tone, the board's family ramp (pass warm white, run amber, RPO gold;
+   look.js world.plays.families), on the dashed edge and the rank numeral, so "1" and "2" each point at their stroke.
+   The words stay LED ink; the family is named in them, the tone is the second cue (DESIGN.md). Hover keeps the focus
+   frame. */
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label {
+  --uls-shadow-tint: var(--sc-pass);
+}
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label.family-run { --uls-shadow-tint: var(--sc-run); }
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label.family-rpo { --uls-shadow-tint: var(--sc-rpo); }
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label:not(.is-hovered) {
+  border-color: var(--uls-shadow-tint);
+}
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label:is(:not(.rank-1), .is-muted):not(.is-hovered) {
+  border-color: color-mix(in srgb, var(--uls-shadow-tint) 70%, var(--sc-surface-2));
+}
+:where(:root[data-world="under-the-lights"]) .sc-field-label > .sc-shadow-label::first-letter {
+  color: var(--uls-shadow-tint);
+}

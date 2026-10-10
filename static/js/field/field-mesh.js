@@ -79,10 +79,11 @@ async function addGlyphs(look, group, ctx, frame) {
 /**
  * @param {object} look  a resolved Look (field, renderer)
  * @param {{ field: object, teams: object } | null} frame  DC A1 `field` and C2 `teams`; null for a bare field
- * @param {{ doc?: Document, maxAnisotropy?: number }} [deps]
+ * @param {{ doc?: Document, maxAnisotropy?: number, onError?: (err: Error) => void }} [deps]  onError: a glyph that
+ *   failed to draw (the stage reports it as a "warning"; the field is ready without it)
  * @returns {{ group: THREE.Group, ready: Promise<void>, dispose(): void }}
  */
-export function buildField(look, frame, { doc = null, maxAnisotropy = 1 } = {}) {
+export function buildField(look, frame, { doc = null, maxAnisotropy = 1, onError = () => {} } = {}) {
   const group = new THREE.Group();
   group.name = "field";
   const ez = endZoneTeams(frame?.field, frame?.teams);
@@ -101,7 +102,9 @@ export function buildField(look, frame, { doc = null, maxAnisotropy = 1 } = {}) 
   group.add(glyphs);
   const life = { alive: true };
   const ctx = { doc, font: fieldFont(doc), maxAnisotropy, alive: () => life.alive };
-  const ready = addGlyphs(look, glyphs, ctx, frame).catch(() => undefined);
+  const ready = addGlyphs(look, glyphs, ctx, frame).catch((err) => {
+    if (life.alive) onError(err);
+  });
   return {
     group, ready, turf,
     /** Free everything the field built, including glyphs that arrive after this (their loads are dropped). */

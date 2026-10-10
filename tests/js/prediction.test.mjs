@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { predictionVm } from "../../static/js/model/vm-prediction.js";
-import { makePv, patch, state } from "./model-fixtures.mjs";
+import { makePv, patch, state, timeline, tlOf } from "./model-fixtures.mjs";
 import { findAll, fire, focusIn, hasClass, inDoc, mountWith, shellDocument } from "./ui-input-harness.mjs";
 
 const load = () => import("../../static/js/ui/prediction.js");
@@ -43,7 +43,7 @@ test("off the field: the off-field heading and the manual copy with its strong p
   assert.deepEqual(findAll(body, (n) => n.localName === "strong").map((n) => n.textContent), ["Ball on", "D 25"]);
   assert.equal(root.querySelector(".sc-call").hidden, true);
   assert.equal(root.getAttribute("data-kind"), "offfield");
-  inDoc(doc, () => component.update(vmOf(state.feedOn())));
+  inDoc(doc, () => component.update(vmOf(patch(state.feedOn(), { log: [] }))));
   assert.equal(body.textContent,
     "When DAL gets the ball, the ESPN feed starts the drive and the next call appears here.");
 });
@@ -55,13 +55,13 @@ test("the call: name, figure, pill, then-line, split labels and the league mark 
   const call = root.querySelector(".sc-call");
   assert.ok(visible(call));
   assert.equal(root.querySelector(".sc-offfield").hidden, true);
-  assert.equal(root.querySelector(".sc-call-label").textContent, "Most likely call");
+  assert.equal(root.querySelector(".sc-call-label").textContent, "Schottenheimer's next call");
   assert.equal(root.querySelector(".sc-call-snap").textContent, "Snap 56");
   assert.equal(root.querySelector(".sc-call-name").textContent, presented.prediction.top[0].name);
   assert.equal(root.querySelector(".sc-call-pct").textContent, "48%");
   assert.equal(root.querySelector(".sc-call-top").getAttribute("data-leaf"), "dropback_deep");
   const pill = root.querySelector(".pill");
-  assert.equal(pill.textContent, "No edge");
+  assert.equal(pill.textContent, "Like the league");
   assert.ok(hasClass(pill, "noedge"));
   assert.equal(pill.getAttribute("data-flag"), "noedge");
   assert.equal(pill.getAttribute("title"), "Pass vs run against the league");
@@ -84,7 +84,7 @@ test("TILT PASS gets its own pill class and the opening-script note shows in the
   const { doc, root, component } = await setup();
   inDoc(doc, () => component.update(vmOf(state.tilt())));
   const pill = root.querySelector(".pill");
-  assert.equal(pill.textContent, "TILT PASS");
+  assert.equal(pill.textContent, "Tilts pass");
   assert.ok(hasClass(pill, "tiltpass") && !hasClass(pill, "noedge"));
   assert.equal(pill.getAttribute("data-flag"), "tiltpass");
   const why = root.querySelector(".why");
@@ -241,4 +241,119 @@ test("before the first state nothing shows and nothing throws", async () => {
   inDoc(doc, () => component.update(null));
   assert.equal(root.getAttribute("data-kind"), "empty");
   component.destroy();
+});
+
+// ---------------------------------------------------------------- v1.5 (G4-2, G4-4): the plate and the spoken call
+test("the call speaks one sentence in the board's live region; the visible figures stay quiet (G4-2)", async () => {
+  const { doc, root, component } = await setup();
+  inDoc(doc, () => component.update(vmOf(state.drive())));
+  const spoken = root.querySelector(".sc-board-spoken");
+  assert.equal(spoken.parentNode, root, "outside every face, so a face that appears is still heard");
+  assert.equal(spoken.hidden, false);
+  assert.equal(spoken.textContent,
+    "Next call, snap 56: Deep shot (20+), 48 percent. Then Short (0–9 air yds), 25 percent.");
+  assert.deepEqual([spoken.getAttribute("aria-live"), spoken.getAttribute("aria-atomic")], ["polite", "true"]);
+  assert.ok(hasClass(spoken, "sr-only"));
+  assert.equal(root.querySelector(".sc-call-top").hasAttribute("aria-live"), false,
+    "the name, figure and tag no longer run together as one announcement");
+});
+
+test("on 4th down the plate says the call is if he goes for it, with the reason as its tooltip (G4-4)", async () => {
+  const { doc, root, component } = await setup();
+  const drive = state.drive();
+  inDoc(doc, () => component.update(vmOf(patch(drive, { sit: { ...drive.sit, down: 4 } }))));
+  assert.equal(root.querySelector(".sc-call-label").textContent, "4th down · if he goes for it");
+  assert.equal(root.querySelector(".sc-call-snap").textContent, "Snap 56");
+  assert.match(root.querySelector(".sc-call-kicker").getAttribute("title"), /no punt or field-goal class/);
+  assert.equal(root.querySelector(".sc-call").getAttribute("data-fourth"), "true");
+  inDoc(doc, () => component.update(vmOf(drive)));
+  assert.equal(root.querySelector(".sc-call").getAttribute("data-fourth"), "false");
+  assert.equal(root.querySelector(".sc-call-kicker").hasAttribute("title"), false);
+});
+
+// ---------------------------------------------------------------- v1.5 (G4-1): the recap and FINAL faces
+function recapPv(seq) {
+  const body = timeline.final();
+  const logSeq = body.rows.filter((r) => r.seq <= seq && r.pred).map((r) => r.pred.log_seq).pop();
+  const presented = patch(state.final(), { log: state.final().log.filter((r) => r.seq <= logSeq) });
+  return makePv({ presented, tl: tlOf(patch(body, { status: { ...body.status, state: "in" } }), seq),
+    version: { watch: { state: "paused" } } });
+}
+
+test("off the field in a watched game the board recaps his last call and his night (G4-1)", async () => {
+  const { doc, root, component } = await setup();
+  inDoc(doc, () => component.update(predictionVm(recapPv(104))));
+  assert.equal(root.getAttribute("data-kind"), "recap");
+  const face = root.querySelector(".sc-recap");
+  assert.ok(visible(face));
+  for (const sel of [".sc-call", ".sc-offfield", ".sc-final"]) assert.equal(root.querySelector(sel).hidden, true, sel);
+  assert.equal(face.querySelector(".sc-face-kicker").textContent, "Schottenheimer so far");
+  const lead = face.querySelector(".sc-recap-lead");
+  assert.deepEqual([lead.hidden, lead.getAttribute("data-lead"), lead.querySelector(".sc-recap-leadword").textContent],
+    [false, "int", "Intercepted"]);
+  const call = face.querySelector(".sc-recap-call");
+  assert.deepEqual([call.getAttribute("data-family"), call.querySelector(".sc-recap-label").textContent,
+    call.querySelector(".sc-recap-name").textContent, call.querySelector(".sc-recap-pct").textContent],
+  ["dropback", "Predicted", "Short (0–9 air yds)", "36%"]);
+  assert.equal(face.querySelector(".sc-recap-happened").textContent, "Pass intercepted · short middle");
+  const verdict = face.querySelector(".sc-recap-verdict");
+  assert.deepEqual([verdict.getAttribute("data-verdict"), verdict.textContent], ["top1", "Top pick"]);
+  assert.equal(face.querySelector(".sc-recap-tally").textContent, "Top pick 32 of 59 · In his top 3 47 of 59");
+  const dots = findAll(face, (n) => hasClass(n, "sc-recap-dot"));
+  assert.equal(dots.length, 6);
+  const strip = face.querySelector(".sc-recap-glyphs");
+  assert.equal(strip.getAttribute("role"), "img");
+  assert.match(strip.getAttribute("aria-label"), /^Last 6: (Top pick|In his top 3|Miss)(, (Top pick|In his top 3|Miss)){5}$/);
+  assert.equal(face.querySelector(".sc-recap-off").textContent, "DAL is off the field");
+  const spoken = root.querySelector(".sc-board-spoken");
+  assert.equal(spoken.getAttribute("aria-live"), "polite");
+  assert.match(spoken.textContent, /^Schottenheimer so far\. Predicted Short/);
+});
+
+test("the recap after his touchdown leads with it; after a punt there is no lead (G4-1)", async () => {
+  const { doc, root, component } = await setup();
+  inDoc(doc, () => component.update(predictionVm(recapPv(161))));
+  const lead = root.querySelector(".sc-recap-lead");
+  assert.deepEqual([lead.hidden, lead.getAttribute("data-lead"), lead.textContent], [false, "td", "Touchdown"]);
+  inDoc(doc, () => component.update(predictionVm(recapPv(44))));
+  assert.equal(lead.hidden, true);
+  assert.equal(root.querySelector(".sc-recap-verdict").getAttribute("data-verdict"), "top3");
+});
+
+test("FINAL: the plate, the score, three SHADOW v LEAGUE lines and the scorecard key (G4-1)", async () => {
+  const { doc, root, component, named } = await setup();
+  inDoc(doc, () => component.update(predictionVm(makePv({ presented: state.final(), tl: tlOf(timeline.final()) }))));
+  assert.equal(root.getAttribute("data-kind"), "final");
+  const face = root.querySelector(".sc-final");
+  assert.ok(visible(face));
+  assert.equal(face.querySelector(".sc-face-kicker").textContent, "Final");
+  const teams = findAll(face, (n) => hasClass(n, "sc-final-team"));
+  assert.deepEqual(teams.map((t) => [t.getAttribute("data-team"), t.getAttribute("data-caller"),
+    t.querySelector(".sc-final-abbr").textContent, t.querySelector(".sc-digits-value").textContent]),
+  [["TB", "false", "TB", "24"], ["DAL", "true", "DAL", "16"]]);
+  const lines = findAll(face, (n) => hasClass(n, "sc-final-line"));
+  assert.deepEqual(lines.map((l) => [l.getAttribute("data-pair"), l.getAttribute("data-leader"), l.textContent]), [
+    ["called_right", "shadow", "Run/pass right 85% v 81%"],
+    ["top3", "league", "Play in top 3 47 v 48"],
+    ["passrun_logloss", "shadow", "Pass vs run log loss .421 v .424"],
+  ]);
+  const key = face.querySelector(".sc-key");
+  assert.deepEqual([key.getAttribute("aria-keyshortcuts"), key.getAttribute("title"),
+    key.querySelector(".sc-key-name").textContent], ["G", "Full scorecard (G)", "Tonight's scorecard"]);
+  fire(key, "click");
+  assert.deepEqual(named("toggleScorecard"), [[]]);
+  assert.equal(root.querySelector(".sc-board-spoken").textContent, "Final. Buccaneers 24, Cowboys 16.");
+  assert.doesNotMatch(root.textContent.replace(/\s+/g, " "), /type the spot/, "the hidden faces keep no stale copy in view");
+});
+
+test("faces swap cleanly: FINAL, then a typed drive's call, then the off-field copy (G4-1)", async () => {
+  const { doc, root, component } = await setup();
+  inDoc(doc, () => component.update(predictionVm(makePv({ presented: state.final(), tl: tlOf(timeline.final()) }))));
+  inDoc(doc, () => component.update(predictionVm(makePv({ presented: state.drive(), tl: tlOf(timeline.final()) }))));
+  assert.equal(root.getAttribute("data-kind"), "call");
+  assert.equal(root.querySelector(".sc-final").hidden, true);
+  inDoc(doc, () => component.update(vmOf(state.final())));
+  assert.equal(root.getAttribute("data-kind"), "offfield");
+  for (const sel of [".sc-call", ".sc-recap", ".sc-final"]) assert.equal(root.querySelector(sel).hidden, true, sel);
+  assert.equal(root.querySelector(".sc-board-spoken").textContent, "", "the off-field copy is read where it stands");
 });

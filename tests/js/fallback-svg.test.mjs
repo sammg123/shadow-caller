@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  INSET_PROPS, REVIEW_LAYERS, STAGE_LAYERS, buildNode, createSurface, declutter, fitTags, readInsets, spreadBoxes,
+  INSET_PROPS, REVIEW_LAYERS, STAGE_LAYERS, buildNode, createSurface, declutter, fitTags, readInsets, renderInto,
+  spreadBoxes,
 } from "../../static/js/field/fallback-svg.js";
 import { tagNode } from "../../static/js/field/fallback-draw.js";
 import { createDocument, withDocument } from "./fake-dom.mjs";
@@ -73,6 +74,74 @@ test("declutter moves a colliding tag, keeps tags inside the sides, hides one wi
   declutter(stage, { top: 190, bottom: 215 });
   const hidden = [...stage.tags.querySelectorAll(".sc-fb-tag")].filter((t) => t.getAttribute("display") === "none");
   assert.equal(hidden.length, 2, "no room: the lower-priority labels hide");
+}));
+
+test("renderInto writes only what changed: a redraw of the same specs touches nothing, a moved ball moves in place", () =>
+  withDocument(createDocument(), () => {
+    const doc = globalThis.document;
+    const layer = buildNode({ tag: "g", attrs: {} });
+    const ball = (cx, extra = {}) => [{ tag: "g", attrs: { "data-part": "ball" }, children: [
+      { tag: "circle", attrs: { cx, cy: 50, r: 6, ...extra } }, { tag: "text", attrs: { x: cx }, text: `x${cx}` }] }];
+    renderInto(layer, ball(10, { "stroke-dasharray": "2 2" }));
+    const [g] = layer.childNodes;
+    const [moves, writes] = [doc.moves, doc.writes];
+    renderInto(layer, ball(10, { "stroke-dasharray": "2 2" }));
+    assert.deepEqual([doc.moves - moves, doc.writes - writes], [0, 0], "the same frame again: nothing written");
+    renderInto(layer, ball(20));
+    assert.equal(doc.moves, moves, "the ball moved without a new node");
+    assert.equal(layer.childNodes[0], g);
+    const circle = g.querySelector("circle");
+    assert.deepEqual([circle.getAttribute("cx"), circle.getAttribute("stroke-dasharray")], ["20", null]);
+    assert.equal(g.querySelector("text").textContent, "x20");
+    renderInto(layer, [...ball(20), { tag: "path", attrs: { d: "M0 0" } }]);
+    assert.equal(layer.childNodes.length, 2, "a different shape is drawn anew");
+    renderInto(layer, []);
+    assert.equal(layer.childNodes.length, 0);
+  }));
+
+test("fitTags measures a tag's words once: an unchanged tag is left alone, the same words reuse their size", () =>
+  withDocument(createDocument(), () => {
+    const probe = buildNode({ tag: "text", attrs: {} });
+    const proto = Object.getPrototypeOf(probe);
+    let calls = 0;
+    proto.getBBox = function getBBox() {
+      calls += 1;
+      const x = Number(this.getAttribute("x"));
+      return { x: x - 40, y: Number(this.getAttribute("y")) - 7, width: 80, height: 14 };
+    };
+    try {
+      const root = buildNode({ tag: "g", attrs: {} });
+      const tag = (px, text) => buildNode(tagNode({ at: { px, py: 100 }, text, part: "t" }));
+      const first = tag(200, "Deep pass left · +21");
+      root.appendChild(first);
+      fitTags(root);
+      assert.equal(calls, 1);
+      assert.deepEqual(["x", "width"].map((a) => first.querySelector("rect").getAttribute(a)), ["154", "92"]);
+      fitTags(root);
+      assert.equal(calls, 1, "nothing changed: not measured again");
+      root.appendChild(tag(500, "Deep pass left · +21"));
+      fitTags(root);
+      assert.equal(calls, 1, "the same words in the same style elsewhere: the size is known");
+      assert.equal(root.querySelectorAll("rect")[1].getAttribute("x"), "454");
+      first.querySelector("text").textContent = "Deep pass left · +22";
+      fitTags(root);
+      assert.equal(calls, 2, "new words: measured");
+    } finally {
+      delete proto.getBBox;
+    }
+  }));
+
+test("declutter leaves a tag that stays put alone (no transform written again)", () => withDocument(createDocument(), () => {
+  const surface = createSurface(globalThis.document.body, globalThis.document);
+  const stage = surface.live;
+  for (const [group, text] of [["tagPlay", "+8"], ["tagGhost", "35%"]]) {
+    stage[group].appendChild(buildNode(tagNode({ at: { px: 300, py: 200 }, text, part: "t" })));
+  }
+  fitTags(stage.tags);
+  declutter(stage, { top: 0, bottom: 1000 });
+  const writes = globalThis.document.writes;
+  declutter(stage, { top: 0, bottom: 1000 });
+  assert.equal(globalThis.document.writes, writes, "the same layout: nothing written");
 }));
 
 test("readInsets reads the --sc-field-safe-* properties in px and ignores anything else", () => {

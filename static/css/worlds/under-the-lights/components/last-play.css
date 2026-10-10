@@ -87,12 +87,16 @@
   border-radius: inherit;
   pointer-events: none;
 }
-/* Fresh (8 s after each caller play): every retag window lights amber, the board steps the new play in. */
-:where(#app[data-layout="uls"]) #lastPlay[data-fresh="true"] .sc-retag .sc-key-cap {
+/* Fresh (8 s after each caller play): every retag window lights amber, the board steps the new play in. G5-11: not
+   in Watch this game, where nobody retags and the lit windows were the brightest shapes on the HUD exactly while
+   the ball landed; the play's words still step in. */
+:where(#app[data-layout="uls"]:not([data-mode="watch"])) #lastPlay[data-fresh="true"] .sc-retag .sc-key-cap {
   background: var(--uls-led-amber);
   color: var(--uls-led-panel);
 }
-:where(#app[data-layout="uls"]) #lastPlay[data-fresh="true"] .sc-retag .sc-key { color: var(--sc-ink); }
+:where(#app[data-layout="uls"]:not([data-mode="watch"])) #lastPlay[data-fresh="true"] .sc-retag .sc-key {
+  color: var(--sc-ink);
+}
 :where(#app[data-layout="uls"]) #lastPlay[data-fresh="true"] :is(.sc-last-name, .sc-last-yards, .sc-last-text) {
   animation: uls-step-in var(--uls-step-ms) var(--uls-step) both;
 }
@@ -125,7 +129,8 @@
     width: calc(var(--uls-board-w) - 2 * var(--uls-frame));
     padding-bottom: var(--uls-frame);
   }
-  #app[data-layout="uls"][data-mode="watch"]:has(#lastPlay[data-kind="play"]:not([hidden])) .uls-desk {
+  /* G5-8: the desk is the :has() subject, so only a change inside the desk is checked, never the whole app. */
+  #app[data-layout="uls"][data-mode="watch"] .uls-desk:has(#lastPlay[data-kind="play"]:not([hidden])) {
     padding-bottom: calc(var(--uls-frame) + var(--uls-size-key) + var(--sc-size-xs) + 23px);
   }
 }

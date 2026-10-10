@@ -30,6 +30,19 @@ test("v1.4 (W6): the neutral look's shadow plays fade out at the snap, as the 2D
   assert.equal(NEUTRAL_LOOK.ghost.afterSnapOpacity, 0);
 });
 
+test("G3-9: a Look keeps only the keys something reads: the strokes the plays draw with, no ghost opacity list", () => {
+  assert.deepEqual(Object.keys(NEUTRAL_LOOK.strokes), ["arc", "ground", "mark"]);
+  assert.deepEqual(Object.keys(NEUTRAL_LOOK.ghost).sort(), ["afterSnapOpacity", "fill", "labels", "stroke", "style"],
+    "the shadows' opacities are play-drawing.md's (grammar.js SHADOW_OPACITY); ghost.style is the 2D field's dash");
+});
+
+test("G3-1: ghost.tint is optional: absent or fill tints every shadow by ghost.fill, family by the world's ramp", () => {
+  assert.equal(NEUTRAL_LOOK.ghost.tint, undefined, "the neutral world keeps one shadow tint");
+  for (const tint of ["fill", "family"]) {
+    assert.deepEqual(errorsOf(variant((l) => { l.ghost.tint = tint; })), [], tint);
+  }
+});
+
 test("the look's motion carries every timing.js field plus the ghost and verdict times", () => {
   for (const key of Object.keys(DEFAULT_MOTION)) assert.equal(NEUTRAL_LOOK.motion[key], DEFAULT_MOTION[key], key);
   for (const key of ["ghostInMs", "ghostOutMs", "verdictMs"]) assert.ok(Number.isFinite(NEUTRAL_LOOK.motion[key]), key);
@@ -50,13 +63,14 @@ test("each bad field is rejected with its path", () => {
     [(l) => { l.field.logo = true; }, "field.logo is not a Look field"],
     [(l) => { l.extra = {}; }, "extra is not a Look field"],
     [(l) => { delete l.lines.ltg.mode; }, "lines.ltg.mode is missing"],
-    [(l) => { l.ghost.opacity = [0.5, 0.3]; }, "ghost.opacity must have 3 items"],
-    [(l) => { l.ghost.opacity[2] = 1.5; }, "ghost.opacity[2] must be <= 1"],
+    [(l) => { l.ghost.opacity = [0.5, 0.3, 0.2]; }, "ghost.opacity is not a Look field"],
+    [(l) => { l.ghost.tint = "rainbow"; }, "ghost.tint must be one of fill, family"],
     [(l) => { l.version = 2; }, "version must be 1"],
     [(l) => { l.id = "Bad World"; }, "id must be a lowercase id (a-z, 0-9 and -)"],
     [(l) => { l.strokes.arc.edge = "teal"; }, "strokes.arc.edge must be team, team-alt or a #rrggbb color"],
     [(l) => { l.strokes.fan = l.strokes.arc; }, "strokes.fan is not a Look field"],
-    [(l) => { delete l.strokes.band; }, "strokes.band is missing"],
+    [(l) => { delete l.strokes.mark; }, "strokes.mark is missing"],
+    [(l) => { l.strokes.band = l.strokes.arc; }, "strokes.band is not a Look field"],
     [(l) => { l.strokes.arc.dash = [4]; }, "strokes.arc.dash must have 2 items"],
     [(l) => { l.renderer.shadowMapSize = 4096; }, "renderer.shadowMapSize must be one of 1024, 2048"],
     [(l) => { l.environment.fog = { kind: "fancy" }; }, "environment.fog.kind must be one of exp2, linear"],

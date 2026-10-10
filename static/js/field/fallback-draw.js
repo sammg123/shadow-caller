@@ -58,22 +58,102 @@ function insetsOf(insets, w, h) {
   return roomy ? out : { top: 0, right: 0, bottom: 0, left: 0 };
 }
 
+const isBox = (b) => Boolean(b) && [b.x0, b.x1, b.y0, b.y1].every(isFiniteNum) && b.x1 > b.x0 && b.y1 > b.y0;
+
 /**
  * Where the field sits in a host of `width` by `height` px: inside the free area the HUD leaves (`insets` in px;
- * ignored when they would leave less than 40% of either side), with its apron, centered, at true proportions.
- * `px` is one yard in pixels; `rect` is the coords.toPlane rect of x -10 to 110 and y 0 to 53.333.
+ * ignored when they would leave less than 40% of either side), at true proportions: the whole field with its apron,
+ * centered, or (`frame`, a field box { x0, x1, y0, y1 } in yards: the Drive view) that box as large as the free area
+ * holds it, centered on it. `px` is one yard in pixels; `rect` is the coords.toPlane rect of x -10 to 110 and y 0 to
+ * 53.333 (larger than the host when framed); `view` the box shown, null for the whole field.
  */
-export function layoutPlane({ width, height, insets } = {}) {
+export function layoutPlane({ width, height, insets, frame = null } = {}) {
   const sized = isFiniteNum(width) && isFiniteNum(height) && width > 0 && height > 0;
   const w = sized ? width : DEFAULT_SIZE.width;
   const h = sized ? height : DEFAULT_SIZE.height;
   const ins = insetsOf(insets, w, h);
   const free = { x: ins.left, y: ins.top, w: w - ins.left - ins.right, h: h - ins.top - ins.bottom };
-  const px = Math.min(free.w / BOX_W, free.h / BOX_H);
+  const view = isBox(frame) ? { x0: frame.x0, x1: frame.x1, y0: frame.y0, y1: frame.y1 } : null;
+  const px = view ? Math.min(free.w / (view.x1 - view.x0), free.h / (view.y1 - view.y0))
+    : Math.min(free.w / BOX_W, free.h / BOX_H);
   const rw = (FIELD.X_MAX - FIELD.X_MIN) * px;
   const rh = W * px;
-  return deepFreeze({ width: w, height: h, free, px,
-    rect: { x: free.x + (free.w - rw) / 2, y: free.y + (free.h - rh) / 2, w: rw, h: rh } });
+  const rect = view
+    ? { x: free.x + free.w / 2 - ((view.x0 + view.x1) / 2 - FIELD.X_MIN) * px,
+      y: free.y + free.h / 2 - (W - (view.y0 + view.y1) / 2) * px, w: rw, h: rh }
+    : { x: free.x + (free.w - rw) / 2, y: free.y + (free.h - rh) / 2, w: rw, h: rh };
+  return deepFreeze({ width: w, height: h, free, px, rect, view });
+}
+
+// ---------------------------------------------------------------- the Drive view (camera "drive")
+/** Before a snap the Drive view frames (yards): `back` behind the line of scrimmage, `ahead` past it (and the line to
+ * gain), each shadow's stroke with its arc's lift, room `below` the lowest one for its words, a `margin`, at least
+ * the min spans, kept on the field and its apron. */
+export const DRIVE_FRAME = deepFreeze({ back: 4, ahead: 16, margin: 2, minSpanX: 28, minSpanY: 20, below: 9 });
+const isPt = (p) => isFiniteNum(p?.x) && isFiniteNum(p?.y);
+
+/** [lo, hi] grown to `min` about its middle, then slid (or cut) to stay inside [floor, ceil]. */
+function fitRange(lo, hi, min, floor, ceil) {
+  const width = Math.min(ceil - floor, Math.max(hi - lo, min));
+  const start = Math.min(ceil - width, Math.max(floor, (lo + hi) / 2 - width / 2));
+  return [start, start + width];
+}
+
+/**
+ * The Drive view's box before a snap: the line of scrimmage with room behind it and ahead of it, the line to gain,
+ * and every stroke given ({ from, to, apex? }: a shadow's; an arc is drawn bowing up the screen by its apex), with
+ * room below the lowest for the words underneath. Null without a snap (no ball, a kickoff): the whole field then.
+ */
+export function driveFrame(sit, strokes = []) {
+  if (!sit || sit.kind === "kickoff" || !isFiniteNum(sit.ballX)) return null;
+  const f = DRIVE_FRAME;
+  const dir = sit.dir === -1 ? -1 : 1;
+  const tops = strokes.filter((s) => isPt(s?.from) && isPt(s?.to) && isFiniteNum(s.apex) && s.apex > 0)
+    .map((s) => ({ x: (s.from.x + s.to.x) / 2, y: Math.max(s.from.y, s.to.y) + s.apex }));
+  const pts = [...strokes.flatMap((s) => [s?.from, s?.to]).filter(isPt), ...tops, { x: sit.ballX, y: C }];
+  const xs = [sit.ballX - dir * f.back, sit.ballX + dir * f.ahead, ...(isFiniteNum(sit.ltgX) ? [sit.ltgX] : []),
+    ...pts.map((p) => p.x)];
+  const ys = pts.map((p) => p.y);
+  const [x0, x1] = fitRange(Math.min(...xs) - f.margin, Math.max(...xs) + f.margin, f.minSpanX,
+    FIELD.X_MIN - APRON_YD, FIELD.X_MAX + APRON_YD);
+  const [y0, y1] = fitRange(Math.min(...ys) - f.below - f.margin, Math.max(...ys) + f.margin, f.minSpanY, -APRON_YD,
+    W + APRON_YD);
+  return { x0, x1, y0, y1 };
+}
+
+/** The box holding a drawing's strokes ({ from, to, apex? }, an arc bowing up the screen by its apex), a margin
+ * around them; null without any. */
+export function strokesBox(strokes, margin = DRIVE_FRAME.margin) {
+  const list = (Array.isArray(strokes) ? strokes : []).filter((s) => isPt(s?.from) && isPt(s?.to));
+  if (!list.length) return null;
+  const pts = list.flatMap((s) => [s.from, s.to, { x: (s.from.x + s.to.x) / 2,
+    y: Math.max(s.from.y, s.to.y) + (isFiniteNum(s.apex) && s.apex > 0 ? s.apex : 0) }]);
+  const [xs, ys] = [pts.map((p) => p.x), pts.map((p) => p.y)];
+  return { x0: Math.min(...xs) - margin, x1: Math.max(...xs) + margin, y0: Math.min(...ys) - margin,
+    y1: Math.max(...ys) + margin };
+}
+
+/** The smallest box holding both (either alone when the other is missing). */
+export function unionBox(a, b) {
+  if (!isBox(a)) return isBox(b) ? b : null;
+  if (!isBox(b)) return a;
+  return { x0: Math.min(a.x0, b.x0), x1: Math.max(a.x1, b.x1), y0: Math.min(a.y0, b.y0), y1: Math.max(a.y1, b.y1) };
+}
+
+/** The box `u` of the way from `a` to `b` (0 to 1). */
+export function lerpBox(a, b, u) {
+  const k = Math.min(1, Math.max(0, u));
+  const at = (key) => a[key] + (b[key] - a[key]) * k;
+  return { x0: at("x0"), x1: at("x1"), y0: at("y0"), y1: at("y1") };
+}
+
+/** The viewBox that shows, over a drawing made in `top` (the whole field), what `view` shows: the static field zooms
+ * with the Drive view without being drawn again; a point lands on the same screen spot in both. */
+export function viewBoxFor(top, view) {
+  const k = top.px / view.px;
+  const x = top.rect.x - view.rect.x * k;
+  const y = top.rect.y - view.rect.y * k;
+  return [x, y, view.width * k, view.height * k].map(r2).join(" ");
 }
 
 /** Screen point of field (x, y) at height h (yards). */
@@ -107,10 +187,11 @@ export function paintsFor(look, field, teams, teamOrder) {
   });
 }
 
-/** The scene context every spec builder takes. `ids` prefixes element ids, unique per engine. */
-export function sceneContext({ look, layout, field, teams, teamOrder, ids = "scfb" }) {
+/** The scene context every spec builder takes. `ids` prefixes element ids, unique per engine; `paints` (paintsFor's)
+ * reuses another context's team paints. */
+export function sceneContext({ look, layout, field, teams, teamOrder, ids = "scfb", paints = null }) {
   return Object.freeze({
-    look, layout, ids, paints: paintsFor(look, field, teams, teamOrder),
+    look, layout, ids, paints: paints ?? paintsFor(look, field, teams, teamOrder),
     pixel: look.ghost.style === "pixel" || look.strokes.mark.approx === "pixel",
     pt: (x, y, h = 0) => planePoint(layout, x, y, h),
     yd: (n) => n * layout.px,
@@ -343,7 +424,8 @@ function lineNode(ctx, x, spec, part) {
 function downTag(ctx, sit) {
   const text = downDistance(sit.down, sit.togo, sit.goalToGo ? sit.togo : null);
   if (!text) return [];
-  const at = ctx.pt(sit.ballX - sit.dir * 0.8, W - 2.6);
+  const top = Math.min(W, ctx.layout.view?.y1 ?? W);          // the Drive view: inside the box it shows
+  const at = ctx.pt(sit.ballX - sit.dir * 0.8, top - 2.6);
   return [tagNode({ at, text, anchor: sit.dir === 1 ? "end" : "start", size: tagSize(ctx, "xs"), part: "down-tag" })];
 }
 

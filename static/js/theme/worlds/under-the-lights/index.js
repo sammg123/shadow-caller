@@ -12,7 +12,8 @@ const ID = "under-the-lights";
 const CSS = (name) => `/static/css/worlds/${ID}/${name}.css`;
 const FONT = (path) => `/static/fonts/${ID}/${path}`;
 // v1.4 (W2): the HUD component skins under components/, after W3's sheets; masthead first (the shared keys and lamps).
-const W2_SKINS = Object.freeze(["masthead", "prediction", "scoreboard", "scorecard", "play-feed", "drive-chart",
+// v1.5 (G4-1): "board", the video board's other faces (off the field, his night so far, FINAL), after the call's skin.
+const W2_SKINS = Object.freeze(["masthead", "prediction", "board", "scoreboard", "scorecard", "play-feed", "drive-chart",
   "win-prob", "situation-strip", "feed-bar", "toast", "conn-banner", "boot-screen", "review-banner", "field-host",
   "box-score", "tendencies", "play-log"]);
 /** W4: the booth (drawer racks, lamp switches) and the desk's skins (entry pad, flag panel, last play, shorthand). */

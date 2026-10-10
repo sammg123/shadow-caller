@@ -70,12 +70,13 @@ def test_watch_session_over_http(srv):
     assert status == 200 and set(out["watch"]) == WATCH_KEYS
     w = out["watch"]
     assert (w["state"], w["event_id"], w["speed"], w["idx"], w["total"], w["next_kind"]) == \
-        ("playing", EVENT, 0.5, 0, 183, "kickoff")
+        ("playing", EVENT, 0.5, 0, 183, "kick")
     assert (srv["data"] / w["backup"]["state"]).exists() and (srv["data"] / w["backup"]["seen"]).exists()
     assert out["log"] == [] and out["timeline"]["mode"] == "watch" and out["timeline"]["n"] == 0
     assert out["timeline"]["epoch"] != pre["timeline"]["epoch"]
     v = get(base + "/api/version")
-    assert set(v["watch"]) == {"state", "event_id", "idx", "total", "speed", "next_at", "skipped", "error"}
+    assert set(v["watch"]) == {"state", "event_id", "idx", "total", "speed", "next_at", "next_kind", "skipped", "error"}
+    assert v["watch"]["next_kind"] == "kick"                                    # v1.4: the pace of the row it waits on
     assert v["watch"]["next_at"] > time.time() * 1000 + 5000                    # 5 s x 1 / 0.5: about 10 s away
 
     for path, body in (("/api/watch/start", {"event_id": EVENT}), ("/api/watch/step", {}), ("/api/reset", {}),
@@ -162,11 +163,17 @@ def test_garbled_watch_bodies_are_refused(srv):
 def test_an_unexpected_error_is_a_500_with_its_traceback_in_the_log(srv):
     base, data = srv["base"], srv["data"]
     broken = data / "espn" / "summary_401872001_final.json"
-    broken.write_text(json.dumps({"drives": "not a list"}))       # a saved game in a shape nothing expects
+    broken.write_text(json.dumps({"drives": "not a list"}))       # v1.4 (G1-6): a shape the feed now reads as no plays
     try:
         status, out = send(base, "/api/watch/start", {"event_id": "401872001"})
     finally:
         broken.unlink()
-    assert status == 500 and "server log" in out["error"] and "attribute" not in out["error"]
+    assert status == 400 and "no plays" in out["error"]
+    broken.write_text("[" * 100_000 + "]" * 100_000)              # valid JSON nothing can decode: RecursionError
+    try:
+        status, out = send(base, "/api/watch/start", {"event_id": "401872001"})
+    finally:
+        broken.unlink()
+    assert status == 500 and "server log" in out["error"] and "recursion" not in out["error"].lower()
     assert get(base + "/api/watch")["state"] not in ("playing", "paused")
-    assert wait_until(lambda: "AttributeError" in srv["log"].read_text(), 5)
+    assert wait_until(lambda: "RecursionError" in srv["log"].read_text(), 5)

@@ -9,7 +9,7 @@
 //                            dispose() }
 import * as THREE from "three";
 import { toWorld } from "./coords.js";
-import { disposeTree } from "./dispose.js";
+import { disposeTree, keepPrograms } from "./dispose.js";
 import { LAYERS } from "./materials.js";
 import { trailStyle } from "./play-style.js";
 import { stripGeometry, stripMaterial, stripMesh, writeStrip } from "./play-strip.js";
@@ -179,6 +179,7 @@ export function createFlight(stage) {
       const spec = trailStyle(stage.look, env?.paint?.(teams[0]) ?? null);
       f.trail = spec.kind === "none" || !(spec.fadeMs > 0) || !(spec.widthPx > 0) ? null : trailOf(spec);
       if (f.trail) root.add(f.trail);
+      keepPrograms(stage, root);        // G7-1: the trail made every play keeps its program kind
       f.st = { drawing, plan, teams, env, spec, index: 0, pos: null, trailTeam: teams[0] };
       hide(f);
     },

@@ -13,6 +13,9 @@ import { canLog, flagPayload, pickLeaf as findLeaf, playPayload } from "./select
 import { commit, sideSwitch, stripValues } from "./strip.js";
 
 export const TOAST_MS = 2600;
+/** G5-13: an error stays up until it has been read: 8 s, held while the pointer or focus is on it, or until Dismiss
+ * (or Esc). An info toast is gone in 2.6 s (FI 4.5). */
+export const TOAST_ERROR_MS = 8000;
 const DRIVE_ENDS = Object.freeze(["punt", "fg", "fg_miss", "half"]);
 const WATCH_SPEEDS = Object.freeze([1, 2, 4, 10]);
 const WATCH_SESSION = Object.freeze(["playing", "paused"]);
@@ -55,19 +58,40 @@ function safeForm(getForm) {
     to: () => Boolean(call("readTO", false)), setTO: (b) => call("writeTO", undefined, b),
     autoFirst: () => Boolean(call("readAutoFirst", false)), setAutoFirst: (b) => call("writeAutoFirst", undefined, b),
     focusYards: () => call("focusYards", undefined),
+    focusTransport: () => call("focusTransport", undefined),
   };
 }
 
 // ---------------------------------------------------------------- toasts, confirms, the POST queue
-function makeToaster(dispatch, setTimer) {
+/** The toast's clock: show(message, err) and, for the toast now up (by id), hold, release and dismiss. A replaced
+ * toast's timer may still fire: toast/hide carries the id, so it never hides a newer toast. */
+function makeToaster(dispatch, setTimer, clearTimer) {
   let seq = 0;
-  return function toast(message, err = false) {
+  let live = null;   // the toast now up: { id, ms, timer } (timer null while held)
+  const arm = (id, ms) => ({ id, ms, timer: setTimer(() => dispatch({ type: "toast/hide", id }), ms) });
+  const show = (message, err = false) => {
     if (typeof message !== "string" || message === "") return;
     seq += 1;
-    const id = seq;
-    dispatch({ type: "toast/show", id, text: message, err });
-    setTimer(() => dispatch({ type: "toast/hide", id }), TOAST_MS);
+    dispatch({ type: "toast/show", id: seq, text: message, err });
+    live = arm(seq, err ? TOAST_ERROR_MS : TOAST_MS);
   };
+  const isLive = (id) => live !== null && (id === undefined || id === live.id);
+  return Object.assign(show, {
+    hold(id) {
+      if (!isLive(id) || live.timer === null) return;
+      clearTimer(live.timer);
+      live = { ...live, timer: null };
+    },
+    release(id) {
+      if (isLive(id) && live.timer === null) live = arm(live.id, live.ms);
+    },
+    dismiss(id) {
+      if (!isLive(id)) return;
+      if (live.timer !== null) clearTimer(live.timer);
+      dispatch({ type: "toast/hide", id: live.id });
+      live = null;
+    },
+  });
 }
 
 function respond(c, { status, body }, reqSeq, toastOn) {
@@ -137,9 +161,13 @@ function offenseName(c) {
 }
 
 // ---------------------------------------------------------------- manual entry and flags (FI 1.3 to 1.6, G6)
+/** Yards after a log, a clear or an incompletion: empty, its placeholder reads 0 (an empty box logs 0), so a click
+ * anywhere in the box and a digit never extend a 0 into "40" (G5-4). */
+const NO_YARDS = "";
+
 function clearPick(c) {
   c.dispatch({ type: "pick/clear" });
-  c.f.setYards("0");
+  c.f.setYards(NO_YARDS);
   c.f.setTD(false);
   c.f.setTO(false);
 }
@@ -186,7 +214,13 @@ async function saveSituation(c, body) {
   return res;
 }
 
-const chipTeamOf = (c, p) => stripValues(p.sit, p.game, c.st().view.sideAtFifty).side.team;
+/** The side chip's team as the strip shows it: with no drive (G5-3) the offense's own side, so a bare number in
+ * Ball on starts the next drive on its side, not where the last snap was. */
+/** The server's words for a refused request ("" when it never answered), for the line beside the strip (G5-13). */
+const serverError = (res) => (isPlainObject(res.body) && typeof res.body.error === "string" ? res.body.error : "");
+
+const chipTeamOf = (c, p) => stripValues(p.sit, p.game, c.st().view.sideAtFifty,
+  { driveActive: Boolean(p.drive_active) }).side.team;
 
 async function commitStrip(c, fieldId, raw, edited) {
   const p = shown(c);
@@ -198,14 +232,15 @@ async function commitStrip(c, fieldId, raw, edited) {
   }
   const res = await saveSituation(c, body);
   if (res.ok) c.dispatch({ type: "strip/clear", field: fieldId });
-  else c.dispatch({ type: "strip/rejected", field: fieldId, text: String(raw ?? "") });
+  else c.dispatch({ type: "strip/rejected", field: fieldId, text: String(raw ?? ""), error: serverError(res) });
   return { sent: true, ok: res.ok };
 }
 
 async function flipSide(c, yardText) {
   const p = shown(c);
   if (!p) return { ok: false };
-  const { body, sideAtFifty } = sideSwitch({ chipTeam: chipTeamOf(c, p), yardText, sit: p.sit, game: p.game });
+  const { body, sideAtFifty } = sideSwitch({ chipTeam: chipTeamOf(c, p), yardText, sit: p.sit, game: p.game,
+    driveActive: Boolean(p.drive_active) });
   if (sideAtFifty) c.dispatch({ type: "side/fifty", team: sideAtFifty });
   return { ok: (await saveSituation(c, body)).ok };
 }
@@ -244,7 +279,12 @@ async function watchStart(c, eventId) {
   }
   if (!(await confirm(c, c.text.confirmWatch(id)))) return;
   if (watchState(c) === "done" && !(await send(c, ROUTES.watchStop, { restore: true }, QUIET)).ok) return;
-  await send(c, ROUTES.watchStart, { event_id: String(id), speed: c.st().prefs.watchSpeed, from_seq: 0 }, QUIET);
+  const res = await send(c, ROUTES.watchStart, { event_id: String(id), speed: c.st().prefs.watchSpeed, from_seq: 0 },
+    QUIET);
+  if (!res.ok) return;
+  // G5-7: the game plays on the field: the drawer that started it steps away, and the keyboard lands on Pause
+  c.dispatch({ type: "booth/close" });
+  c.f.focusTransport();
 }
 
 async function watchToggle(c) {
@@ -310,7 +350,7 @@ function entryActions(c) {
     tap(key) { if (keys(c)) { c.dispatch({ type: "pick/tap", key }); c.f.focusYards(); } },
     outcome(out) {
       c.dispatch({ type: "pick/outcome", out });
-      if (c.st().view.pick.out === "incomplete") c.f.setYards("0");
+      if (c.st().view.pick.out === "incomplete") c.f.setYards(NO_YARDS);
       c.f.focusYards();
     },
     pickLeaf(leaf) { if (findLeaf(keys(c), leaf)) { c.dispatch({ type: "pick/leaf", leaf }); c.f.focusYards(); } },
@@ -350,6 +390,7 @@ function watchAndViewActions(c) {
     cycleCamera: () => cycleCamera(c),
     setCamera: (id) => setCamera(c, id),
     toggleBooth: () => c.dispatch({ type: "booth/toggle" }),
+    closeBooth: () => c.dispatch({ type: "booth/close" }),
     toggleScorecard: () => c.dispatch({ type: "scorecard/toggle" }),
     closeScorecard: () => c.dispatch({ type: "scorecard/close" }),
     review: (delta, opts) => review(c, delta, opts),
@@ -357,26 +398,30 @@ function watchAndViewActions(c) {
     exitReview: () => c.dispatch({ type: "review/set", seq: null }),
     hoverLeaf: (leaf) => c.dispatch({ type: "hover/leaf", leaf: leaf ?? null }),
     retryNow: () => c.sync?.kick(),
+    holdToast: (id) => c.toast.hold(id),
+    releaseToast: (id) => c.toast.release(id),
+    dismissToast: (id) => c.toast.dismiss(id),
     setAmbient: (value) => setAmbient(c, value),
   };
 }
 
 /**
  * @param {{ store: object, api: object, sync: { kick: Function } | null, form: object | null, dialogs: object,
- *   now: () => number, timers?: { setTimeout: Function }, copy?: typeof ACTION_COPY,
+ *   now: () => number, timers?: { setTimeout: Function, clearTimeout?: Function }, copy?: typeof ACTION_COPY,
  *   cameraModes?: () => { id: string }[], defaultCamera?: () => string | null, boothHoldsFlags?: () => boolean,
  *   persist?: (key: string, value: string) => void }} deps   now: epoch milliseconds (Date.now)
  */
 export function createActions({ store, api, sync, form, dialogs, now, timers = globalThis, copy = ACTION_COPY,
   cameraModes = () => [], defaultCamera = () => null, boothHoldsFlags = () => false, persist = () => {} }) {
   const setT = timers?.setTimeout;
+  const clearT = typeof timers?.clearTimeout === "function" ? timers.clearTimeout : () => {};
   if (typeof now !== "function" || typeof setT !== "function") {
     throw new TypeError("createActions needs now() and setTimeout");
   }
   const dispatch = (event) => store.dispatch(event);
   const c = {
     st: () => store.getState(), dispatch, api, sync, dialogs, now: () => now(), text: { ...ACTION_COPY, ...copy },
-    f: safeForm(() => form), toast: makeToaster(dispatch, (fn, ms) => setT(fn, ms)),
+    f: safeForm(() => form), toast: makeToaster(dispatch, (fn, ms) => setT(fn, ms), (id) => clearT(id)),
     cameraModes: () => cameraModes(), defaultCamera: () => defaultCamera(), boothHoldsFlags: () => boothHoldsFlags(),
     persist: (key, value) => persist(key, value),   // injected functions are called bare, like the clock
     q: { tail: Promise.resolve(), reqSeq: 0, entryBusy: 0 },   // the POST queue's own bookkeeping

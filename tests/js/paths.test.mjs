@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { LABEL_GAP_YD, labelHalfSpanYd } from "../../static/js/field/grammar.js";
-import { buildDrawing, situationAfterRow } from "../../static/js/field/paths.js";
+import { BALL_RADIUS_YD, buildDrawing, placePlayLabel, situationAfterRow } from "../../static/js/field/paths.js";
 import { labelBox, labelFootprint } from "../../static/js/field/play-label.js";
 import { allRows, manualRow, rowBySeq } from "./field-rows.mjs";
 
@@ -68,6 +68,60 @@ test("every label is clear of its own play as the sideline cameras show it (an a
     checked += 1;
   }
   assert.ok(checked > 150, `checked ${checked}`);
+});
+
+/** The ball as a view shows it: a disc BALL_RADIUS_YD round around its spot. */
+const discOf = (p, r = BALL_RADIUS_YD) => [p, ...Array.from({ length: 24 }, (_, i) => ({
+  x: p.x + r * Math.cos((i * Math.PI) / 12), y: p.y + r * Math.sin((i * Math.PI) / 12) }))];
+/** The first point of `points` under the label's box in the view `metrics`, or undefined. */
+function under(label, points, metrics) {
+  const box = labelBox(label, metrics);
+  const d = metrics?.down ?? { x: 0, y: -1 };
+  return points.find((p) => Math.abs(p.x * -d.y + p.y * d.x - box.u) < box.hw && Math.abs(p.x * d.x + p.y * d.y - box.v) < box.hh);
+}
+/** A phone held upright: the Under the Lights wide camera at 390x844 as measured on the page (its pose before the
+ * 7th snap, 29 px plate lines): deep lines, deeper still past the line of scrimmage. */
+const PHONE = Object.freeze({ charYd: 0.82, lineYd: 8.96, padYd: 1.55, down: { x: 0, y: -1 }, lifts: [2.18],
+  grow: 0.0175, atV: -C });
+
+test("a play's words never cover the ball, a disc 1.5 yd round: in the default view and laid out in a phone's", () => {
+  assert.equal(BALL_RADIUS_YD, 1.5);
+  const run = rowBySeq(6);
+  const desk = buildDrawing(run);
+  assert.equal(desk.label.text, "Inside run (up the middle) · +21");
+  const phone = buildDrawing(run, { metrics: PHONE });
+  assert.equal(under(desk.label, discOf(desk.ballEnd), PHONE) !== undefined, true,
+    "the desktop spot, seen on a phone, sits on the ball (84b-phone-field-zoom.png)");
+  assert.equal(under(phone.label, [...discOf(phone.ballStart), ...discOf(phone.ballEnd)], PHONE), undefined,
+    "laid out in the phone's own view it clears the ball");
+  assert.deepEqual(phone.label.text, desk.label.text);
+  assert.deepEqual(phone.steps, desk.steps, "only the words move");
+  assert.deepEqual(placePlayLabel(desk, PHONE), phone.label, "a drawing already built re-lays its words in a view");
+  assert.deepEqual(placePlayLabel(desk), desk.label, "no view: the default one");
+  assert.deepEqual(buildDrawing(run, {}), desk);
+  assert.equal(placePlayLabel(buildDrawing(rowBySeq(13)), PHONE), null, "an admin row has no words");
+});
+
+test("every row's words, in the default view and in a phone's: clear of its own play and of both balls' discs", () => {
+  let checked = 0;
+  for (const row of allRows()) {
+    for (const metrics of [undefined, PHONE]) {
+      const d = buildDrawing(row, metrics ? { metrics } : {});
+      if (!d.label) continue;
+      const balls = [d.ballStart, d.ballEnd].filter(Boolean).flatMap((b) => discOf(b));
+      const hit = under(d.label, [...labelFootprint(d.steps, metrics), ...balls], metrics);
+      if (metrics && hit) continue;                    // a phone's view may run out of room: never on the ball, below
+      assert.equal(hit, undefined, `${row.seq} "${d.label.text}" covers ${JSON.stringify(hit)}`);
+      checked += 1;
+    }
+  }
+  assert.ok(checked > 300, `checked ${checked}`);
+  for (const row of allRows()) {
+    const d = buildDrawing(row, { metrics: PHONE });
+    if (!d.label) continue;
+    const balls = [d.ballStart, d.ballEnd].filter(Boolean).flatMap((b) => discOf(b, BALL_RADIUS_YD - 1e-6));
+    assert.equal(under(d.label, balls, PHONE), undefined, `${row.seq} "${d.label.text}" on the ball in a phone's view`);
+  }
 });
 
 test("a completion: arc from the line to the catch in the side's lane, a catch dot, YAC flat on the turf", () => {
@@ -244,6 +298,45 @@ test("manual mode: a screen lands behind the line; an incompletion with no depth
   assert.deepEqual(shape(inc), ["arc:pass", "mark:incomplete"]);
   nearPt(inc.steps[1].at, 30, C);
   assert.equal(inc.label.text, "Pass · incomplete");
+});
+
+test("an interception typed by hand (no play type known) is still a pass: the arc, INT, the return; 'Pass intercepted'", () => {
+  const base = manualRow();
+  const pick = { ...base, geo: { ...base.geo, x_end: 25, x_next: null, x_catch: null, approx: ["lat"] },
+    call: { ...base.call, family: null, leaf: null, depth: null, air: null, air_src: null, air_band: null },
+    result: { ...base.result, yards: 0, turnover: true, turnover_kind: "int" } };
+  const d = buildDrawing(pick);
+  assert.deepEqual(shape(d), ["arc:pass", "mark:int", "ground:return"], "never a run line");
+  nearPt(d.steps[0].from, 25, C, "thrown from the line of scrimmage");
+  nearPt(d.steps[0].to, 28, C, "a short throw down the middle: the row knows no depth or side");
+  nearPt(d.steps[2].to, 25, C, "returned to where the defense took over");
+  assert.equal(d.label.text, "Pass intercepted");
+  const atCatch = buildDrawing({ ...pick, geo: { ...pick.geo, x_end: 28 } });
+  assert.deepEqual(shape(atCatch), ["arc:pass", "mark:int"], "down where he caught it: no return");
+  assert.equal(atCatch.label.approx, true, "where it was caught is a guess");
+  const runFamily = buildDrawing({ ...pick, call: { ...pick.call, family: "run", leaf: "run_inside" } });
+  assert.deepEqual(shape(runFamily).slice(0, 2), ["arc:pass", "mark:int"], "an interception whatever the family says");
+});
+
+test("a short completion typed by hand: the estimated catch is never past where he went down (no backward YAC)", () => {
+  const base = manualRow();                         // play-action short: the bucket's catch at 28
+  const short = buildDrawing({ ...base, geo: { ...base.geo, x_end: 27, x_next: 27 },
+    result: { ...base.result, yards: 2 } });
+  assert.deepEqual(shape(short), ["arc:pass", "mark:catch"], "caught where he went down");
+  nearPt(short.steps[0].to, 27, C);
+  const mid = buildDrawing({ ...base, geo: { ...base.geo, x_catch: 39, x_end: 37, x_next: 37 },
+    call: { ...base.call, family: "dropback", leaf: "dropback_mid", depth: "mid", air: 14 },
+    result: { ...base.result, yards: 12 } });
+  assert.deepEqual(shape(mid), ["arc:pass", "mark:catch"], "AA 12: the 14-yd bucket estimate gives way to the 12 he got");
+  nearPt(mid.steps[1].at, 37, C);
+  const none = buildDrawing({ ...base, geo: { ...base.geo, x_catch: 39, x_end: 25, x_next: 25 },
+    call: { ...base.call, leaf: "pa_mid", depth: "mid", air: 14 }, result: { ...base.result, yards: 0 } });
+  assert.deepEqual(shape(none), ["arc:pass", "mark:catch"], "PP 0: no 14-yard throw and 14 yards back");
+  nearPt(none.steps[0].to, 25, C);
+  const real = draw(120);
+  assert.deepEqual(shape(real), ["arc:pass", "mark:catch", "ground:yac"], "ESPN's exact catch keeps its loss after it");
+  nearPt(real.steps[1].at, 25, C - 12);
+  nearPt(real.steps[2].to, 26, C - 12);
 });
 
 test("manual mode: a run knows only its leaf, so it angles to the leaf's gap", () => {

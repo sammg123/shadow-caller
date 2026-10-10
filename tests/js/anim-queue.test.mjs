@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  BUDGET_SHARE, MAX_ANIMATED_QUEUE, MIN_ANIM_MS, OWN_ACTION_MAX_MS, emptyAnim, enqueue, flushAll, markDone, markRebuilt,
-  markStarted, nextJob, rebuild,
+  BUDGET_SHARE, CALL_RESERVE_MS, CALL_RESERVE_SHARE, MAX_ANIMATED_QUEUE, MIN_ANIM_MS, OWN_ACTION_MAX_MS,
+  STALE_WATCH_HOLD_MS, emptyAnim, enqueue, flushAll, markDone, markRebuilt, markStarted, nextJob, rebuild,
 } from "../../static/js/core/anim-queue.js";
 import { deepFreeze, loadTimeline } from "./fixtures.mjs";
 
@@ -69,6 +69,51 @@ test("nextJob fits the watch budget, shared across the animated queue (DC E4)", 
   assert.equal(job(one, { watch: { state: "paused", next_at: null } }).durationMs, 2000);
   assert.equal(job(one, { watch: playingWatch(-50) }).durationMs, 2000, "next_at in the past is ignored");
   assert.equal(job(one, { watch: playingWatch(120000) }).durationMs, 2000, "clock-skew guard");
+});
+
+test("before a caller snap the play leaves the next call its reserve, at most 70% of the wait (G1-1)", () => {
+  assert.deepEqual(CALL_RESERVE_MS, { slow: 4100, demo: 3200, fast: 2400 });
+  assert.equal(CALL_RESERVE_SHARE, 0.7);
+  const one = enqueue(emptyAnim(), plays(1, 1), POLL);
+  const two = enqueue(emptyAnim(), plays(1, 2), POLL);
+  const before = (msAhead, speed, nextKind = "caller_snap") => ({ ...playingWatch(msAhead), speed, next_kind: nextKind });
+  // 4x: the 4.8 s floor seen 200 ms late. The call keeps 3.2 s (a 0.6 s verdict, the fade-in, 2 s lit); the play 1.4 s.
+  assert.equal(job(one, { watch: before(4600, 4) }).durationMs, 1400);
+  assert.equal(job(two, { watch: before(4600, 4) }).durationMs, 700, "shared across the queue");
+  // Below 4x the verdict's beat is 1.5 s: 4.1 s for the call. 2x: the 6 s floor; 1x: a normal 2 s play keeps its length.
+  assert.equal(job(one, { watch: before(5750, 2) }).durationMs, 1725);
+  assert.equal(job(one, { watch: before(6750, 1) }).durationMs, 2000);
+  assert.equal(job(one, { watch: before(6750, 1), normalMs: () => 4000 }).durationMs, 2650);
+  // 10x: the 3.6 s floor. 2.4 s for the call (1 s lit), the play the rest.
+  assert.equal(job(one, { watch: before(3500, 10) }).durationMs, 1100);
+  // Late, the play gives up its time first; the reserve never takes more than 70% of what is left.
+  assert.equal(job(one, { watch: before(2000, 10) }).durationMs, 600);
+  // Any other row next: the share as before. No speed: the 4x reserve.
+  for (const kind of ["snap", "kick", "admin", "admin_end", null, undefined]) {
+    assert.equal(job(one, { watch: { ...playingWatch(1000), speed: 4, next_kind: kind } }).durationMs, 800, String(kind));
+  }
+  assert.equal(job(one, { watch: { ...playingWatch(4600), next_kind: "caller_snap" } }).durationMs, 1400);
+  // A scaled-down test pace (SHADOW_WATCH_SCALE): too little left for a play, so it draws at once, as it did.
+  assert.deepEqual(job(one, { watch: before(225, 4) }), { seq: 1, durationMs: 0, instant: true, token: 0 });
+});
+
+test("a watch object older than the head row is not budgeted on: the play waits for the next poll (G1-1)", () => {
+  assert.equal(STALE_WATCH_HOLD_MS, 600);
+  const q = enqueue({ ...emptyAnim(), drawnThrough: 6 }, plays(7, 7), POLL);
+  // idx 6: the watch still waits on row 7 itself (next_at is its landing, just past). Budgeting on it gave the play its
+  // full length and took the next call's time.
+  const stale = { state: "playing", idx: 6, next_at: 1_000_000 - 50, next_kind: "caller_snap", speed: 10 };
+  assert.equal(job(q, { watch: stale }), null);
+  assert.equal(job(q, { watch: stale, now: 1_000_000 + 549 }), null);
+  assert.equal(job(q, { watch: stale, now: 1_000_000 + 550 }).durationMs, 2000, "never held past 600 ms");
+  const fresh = { state: "playing", idx: 7, next_at: 1_000_000 + 3500, next_kind: "caller_snap", speed: 10 };
+  assert.equal(job(q, { watch: fresh }).durationMs, 1100);
+  const hidden = enqueue({ ...emptyAnim(), drawnThrough: 6 }, plays(7, 7), { ...POLL, hidden: true });
+  assert.deepEqual(job(hidden, { watch: stale }), { seq: 7, durationMs: 0, instant: true, token: 0 }, "instant: now");
+  assert.equal(job(q, { watch: { ...stale, state: "paused" } }).durationMs, 2000, "only a playing watch");
+  assert.equal(job(q, { watch: { ...stale, idx: undefined } }).durationMs, 2000, "no idx: as before");
+  const ahead = { ...stale, next_at: 1_000_000 + 5000, next_kind: "snap" };
+  assert.equal(job(q, { watch: ahead }).durationMs, 2000, "a landing still ahead is not this row's: no hold");
 });
 
 test("nextJob caps the operator's own rows and turns tiny lengths into instant draws", () => {

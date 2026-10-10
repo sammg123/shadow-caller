@@ -216,9 +216,11 @@ export function buildArt(parts, { glyphs = null } = {}) {
 
 // ---------------------------------------------------------------- shader programs, compiled at boot
 /**
- * One tiny mesh per shader program the action layer draws with, under the turf (drawn, never seen). The engine
- * compiles the scene's programs before its first frame (renderer.compileAsync), so the first play never stalls on a
- * compile mid-flight; the player removes the group after its first frames.
+ * One tiny mesh for each kind of shader program the action layer draws with (dispose.js programKind: the plays, the
+ * shadows, the residue and the ball in play; play-art.test pins the list against all of them), under the turf: drawn
+ * in the first frames, never seen. The engine compiles them before its first frame (renderer warmUp) and the program
+ * keeper (dispose.keepPrograms) holds them for the engine's life, so no play, shadow or review ever compiles or links
+ * a program mid-game (G7-1). The player hides the group after its first frames and frees it with the layer.
  */
 export function warmUpPrograms() {
   const group = new THREE.Group();
@@ -227,29 +229,36 @@ export function warmUpPrograms() {
   const tex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
   tex.needsUpdate = true;
   const path = { points: [{ x: 50, y: 26, h: 0 }, { x: 51, y: 26, h: 0 }] };
-  const quad = () => new THREE.PlaneGeometry(0.1, 0.1).rotateX(-Math.PI / 2);
+  const tip = { at: { x: 50, y: 26 }, dir: { x: 1, y: 0 }, length: 0.1, width: 0.1, inner: 0 };
+  const plane = () => new THREE.PlaneGeometry(0.1, 0.1).rotateX(-Math.PI / 2);
   const basic = (extra) => new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide,
     fog: false, ...extra });
-  const rgba = quad();
-  rgba.setAttribute("color", new THREE.Float32BufferAttribute(new Array(16).fill(1), 4));
-  const instanced = new THREE.InstancedMesh(quad(), basic({ alphaMap: tex }), 1);
+  const tinted = arrowGeometry(tip);
+  tinted.setAttribute("color", new THREE.Float32BufferAttribute(new Array(12).fill(1), 4));
+  const instanced = new THREE.InstancedMesh(plane(), basic({ alphaMap: tex }), 1);
   instanced.setMatrixAt(0, new THREE.Matrix4());
   instanced.setColorAt(0, new THREE.Color("#ffffff"));
   const sprite = (extra) => new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false,
     fog: false, ...extra }));
   group.add(
-    stripMesh(stripGeometry([path]), stripMaterial({ color: "#ffffff" })),
-    stripMesh(stripGeometry([{ ...path, color: "#ffffff" }]), stripMaterial({ color: "#ffffff", vertexColors: true })),
-    stripMesh(stripGeometry([path]), stripMaterial({ color: "#ffffff", units: "yd" })),
-    new THREE.Mesh(quad(), basic({})), new THREE.Mesh(quad(), basic({ alphaMap: tex })),
-    new THREE.Mesh(rgba, basic({ vertexColors: true })), instanced,
-    sprite({ alphaMap: tex }), sprite({ map: tex, blending: THREE.AdditiveBlending }),
+    ...["px", "yd"].flatMap((units) => [                 // strokes, shadows, the trail; residue's (per-path colors)
+      stripMesh(stripGeometry([path]), stripMaterial({ color: "#ffffff", units })),
+      stripMesh(stripGeometry([{ ...path, color: "#ffffff" }]), stripMaterial({ color: "#ffffff", units,
+        vertexColors: true }))]),
+    new THREE.Mesh(arrowGeometry(tip), basic({})),       // an arrowhead
+    new THREE.Mesh(tinted, basic({ vertexColors: true })), // residue's arrowheads (RGBA per piece)
+    new THREE.Mesh(plane(), basic({})),                  // a mark with no mask
+    new THREE.Mesh(plane(), basic({ alphaMap: tex })),   // a mark
+    new THREE.Mesh(plane(), basic({ alphaMap: tex, side: THREE.FrontSide })),   // the ball's contact shadow
+    instanced,                                           // residue's marks
+    sprite({ alphaMap: tex }), sprite({ map: tex, blending: THREE.AdditiveBlending }),   // a kick's mark; the head
   );
   return {
     group,
     dispose() {
       instanced.dispose();
       disposeTree(group);
+      tex.dispose();
     },
   };
 }

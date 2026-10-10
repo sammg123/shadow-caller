@@ -11,6 +11,13 @@
 // hudInsets / readHudInsets are the JS getter; the watcher dispatches INSET_EVENT on #app (detail: the insets)
 // whenever they change without a resize (manual entry's strip, the drawer, the stat board), so the engine can re-read
 // them at once: app.addEventListener(INSET_EVENT, () => engine.setSafeArea(null)).
+//
+// G5-2: the HUD fits the window's height. The stadium's fixtures are measured for 1440x900 and 1920x1080 (and the
+// widths between, where the reference height is 0.375 x width + 360); a shorter window (a laptop's browser with its
+// toolbars, 1440x790) would squeeze the desk to a sliver. hudScale is the window's height over the reference height
+// (at most 1, at least HUD_SCALE_MIN); arrange sets it on <html> as --uls-hud-scale, and the watcher updates it on
+// every resize, before it reads the insets. tokens.css multiplies the HUD's sizes by it, so every fixture keeps its
+// proportions, and 1440x900 and 1920x1080 stay exact.
 
 import { mountBooth } from "./booth.js";
 
@@ -18,6 +25,15 @@ export const LAYOUT_ID = "uls";
 export const INSET_EVENT = "sc:hud-insets";
 export const SAFE_PROPS = Object.freeze({ top: "--sc-field-safe-top", right: "--sc-field-safe-right",
   bottom: "--sc-field-safe-bottom", left: "--sc-field-safe-left" });
+
+export const HUD_SCALE_PROP = "--uls-hud-scale";
+/** The reference height for a width (px): 900 at 1440, 1080 at 1920 (DESIGN.md's two first viewports), held
+ * outside them as the tokens' clamps hold their sizes (narrower windows keep the laptop's, wider ones the TV's). */
+const HUD_REF = Object.freeze({ perWidth: 0.375, base: 360, fromWidth: 1440, toWidth: 1920 });
+export const HUD_SCALE_MIN = 0.6;
+/** layout.css's stadium block: narrower or shorter windows are one scrolling column, never scaled. */
+const STADIUM_MIN = Object.freeze({ width: 1200, height: 640 });
+const SCALE_DP = 4;
 
 /** App attributes that move the HUD without resizing the window (#app hooks the conductor writes, 2.7). */
 const WATCHED_ATTRS = Object.freeze(["data-mode", "data-booth-open", "data-scorecard-open"]);
@@ -47,10 +63,10 @@ export const PLAN = Object.freeze([
     rack("settings", "Settings", []),
   ]) }),
   fixture("field", ["field"], { bare: true }),
-  fixture("board", ["call"]),
+  fixture("board", ["call"], { attrs: Object.freeze({ role: "region", "aria-label": "Next call" }) }),   // G5-9
   fixture("desk", ["transport", "entry"]),
   fixture("lower", ["drives", "wp"]),
-  fixture("band", ["scoreboard"]),
+  fixture("band", ["scoreboard"], { attrs: Object.freeze({ role: "region", "aria-label": "Scoreboard" }) }),
   fixture("statboard", ["score", "tendencies", "box", "log"]),
 ]);
 
@@ -90,6 +106,7 @@ function hang(app, spec, regions) {
     return;
   }
   const node = ownChild(app, spec.cls) ?? make(doc, "div", { class: spec.cls, "data-fixture": spec.key });
+  for (const [name, value] of Object.entries(spec.attrs ?? {})) node.setAttribute(name, value);
   app.appendChild(node);
   for (const r of spec.racks ?? []) {
     const holder = buildRack(doc, node, r);
@@ -108,11 +125,42 @@ function hang(app, spec, regions) {
 export function arrange(app, regions) {
   for (const spec of PLAN) hang(app, spec, regions ?? {});
   app.setAttribute("data-layout", LAYOUT_ID);
+  app.setAttribute("role", "main");   // G5-9: the page's main landmark, without moving a fixture
+  // ...so the masthead's <header>, inside it, is no banner of its own (a banner never sits inside main)
+  regions?.masthead?.setAttribute?.("role", "none");
+  applyHudScale(app.ownerDocument);
   if (!WATCHERS.has(app)) {
     const watcher = watchInsets(app);
     if (watcher) WATCHERS.set(app, watcher);
   }
   mountBooth(app);   // W4: the SETTINGS rack's switches, room lights, X opens the drawer to FLAGS (booth.js)
+}
+
+// ---------------------------------------------------------------- the HUD's scale (G5-2)
+/**
+ * How much the stadium's HUD shrinks to fit a window `width` x `height` (CSS px): 1 at the reference height or taller,
+ * else height over the reference height, never under HUD_SCALE_MIN. The one-column layout (narrow or short windows)
+ * scrolls instead: 1. Pure.
+ * @param {number} width
+ * @param {number} height
+ * @returns {number}
+ */
+export function hudScale(width, height) {
+  if (!(width >= STADIUM_MIN.width && height >= STADIUM_MIN.height)) return 1;
+  const sized = Math.min(HUD_REF.toWidth, Math.max(HUD_REF.fromWidth, width));
+  const ratio = height / (HUD_REF.perWidth * sized + HUD_REF.base);
+  return Number(Math.min(1, Math.max(HUD_SCALE_MIN, ratio)).toFixed(SCALE_DP));
+}
+
+/** Set --uls-hud-scale on <html> for the page's window; returns the scale (1, and nothing set, without a window). */
+export function applyHudScale(doc) {
+  const view = doc?.defaultView;
+  const root = doc?.documentElement;
+  if (!view || !root?.style) return 1;
+  const scale = hudScale(view.innerWidth, view.innerHeight);
+  const value = String(scale);
+  if (root.style.getPropertyValue(HUD_SCALE_PROP) !== value) root.style.setProperty(HUD_SCALE_PROP, value);
+  return scale;
 }
 
 // ---------------------------------------------------------------- the HUD insets
@@ -162,14 +210,18 @@ export function watchInsets(app) {
     last = next;
     app.dispatchEvent(new view.CustomEvent(INSET_EVENT, { detail: next, bubbles: true }));
   };
+  const onResize = () => {
+    applyHudScale(doc);                // G5-2: the insets follow the HUD's new scale
+    check();
+  };
   const observer = new view.MutationObserver(check);
   observer.observe(app, { attributes: true, attributeFilter: [...WATCHED_ATTRS] });
-  view.addEventListener("resize", check);
+  view.addEventListener("resize", onResize);
   return {
     current: () => last,
     stop() {
       observer.disconnect();
-      view.removeEventListener("resize", check);
+      view.removeEventListener("resize", onResize);
     },
   };
 }

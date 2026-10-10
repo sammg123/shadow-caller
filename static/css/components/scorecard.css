@@ -5,7 +5,9 @@
                   [data-leader="shadow|league|even"][data-better="higher|lower"]
      .sc-card-side[data-side="shadow|league"][data-lead]  each side: caption, .sc-card-full ("0.421") and
                   .sc-card-brief (".421", hidden here), both .sc-digits with data-ghost; .sc-card-lamp
-     .sc-card-group[data-group="leaf|family|passrun"], .sc-kpi-value[data-tone="better|worse"] (.better / .worse) */
+     .sc-card-group[data-group="leaf|family|passrun"], .sc-kpi-value[data-tone="better|worse"] (.better / .worse)
+     v1.5 (G4-3): .sc-card-plate (the caption .sc-card-sub and .sc-card-basisline under it),
+                  .sc-card-pairs[data-basis-shared="true|false"] */
 
 .sc-scorecard {
   container: sc-scorecard / inline-size;
@@ -41,6 +43,12 @@
 
 /* ---------------------------------------------------------------- SHADOW v LEAGUE */
 .sc-card-pairs { display: grid; gap: var(--sc-space-2); min-width: 0; }
+/* v1.5 (G4-3): the caption's plate carries the basis once ("his model v league baseline · 59 snaps"); when every pair
+   counts those snaps, the per-pair counts step aside (they stay when the pairs count different snaps). */
+.sc-card-plate { display: grid; gap: 2px; min-width: 0; }
+.sc-card-basisline { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); line-height: var(--sc-leading-body); }
+.sc-card-basisline:empty { display: none; }
+.sc-card-pairs[data-basis-shared="true"] .sc-card-basis { display: none; }
 .sc-card-pairlist { display: grid; gap: 0; min-width: 0; margin: 0; padding: 0; list-style: none; }
 
 .sc-card-pair {

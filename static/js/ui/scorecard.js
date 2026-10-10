@@ -4,6 +4,9 @@
 // loss styled better or worse (.better/.worse and data-tone, #111); then the note. Before the first logged snap it
 // shows the empty line only. data-pair and data-leader let a world hang chosen pairs on its scoreboard band, and
 // data-expanded follows the G toggle (the full stat board). Text only (G27).
+// v1.5 (G4-3): the SHADOW v LEAGUE caption sits on a plate (.sc-card-plate) with the basis said once under it
+// (.sc-card-basisline, "his model v league baseline · 59 snaps"); .sc-card-pairs[data-basis-shared] says whether every
+// pair counts those snaps, so the per-pair counts can step aside.
 import { el, reconcile, setClass, setData, setHidden, setText } from "./dom.js";
 
 const PAIR_PARTS = new WeakMap();
@@ -94,9 +97,11 @@ function skeleton(copy) {
     pairList: el("ol", { cls: "sc-card-pairlist" }),
     groups: el("div", { cls: "sc-card-groups" }),
     note: el("p", { cls: "sc-card-note" }),
+    basisLine: el("p", { cls: "sc-card-basisline" }),
   };
-  ui.pairs = el("section", { cls: "sc-card-pairs", attrs: { "aria-label": copy.pairsHeading } }, [
-    el("h3", { cls: "sc-card-sub", text: copy.pairsHeading }),
+  const plate = el("div", { cls: "sc-card-plate" }, [el("h3", { cls: "sc-card-sub", text: copy.pairsHeading }),
+    ui.basisLine]);
+  ui.pairs = el("section", { cls: "sc-card-pairs", attrs: { "aria-label": copy.pairsHeading } }, [plate,
     el("p", { cls: "sc-card-legend", text: copy.pairsLegend }), ui.pairList]);
   ui.box = el("div", { cls: "sc-scorecard" }, [ui.title, ui.empty, ui.pairs, ui.groups, ui.note]);
   return ui;
@@ -119,6 +124,8 @@ export function mount(root, ctx) {
       setText(ui.empty, vm.emptyText);
       setHidden(ui.empty, !vm.empty);
       setHidden(ui.pairs, vm.pairs.length === 0);
+      setText(ui.basisLine, vm.basisLine);
+      setData(ui.pairs, "basisShared", Boolean(vm.basisShared));
       reconcile(ui.pairList, vm.pairs, { key: (p) => p.id, create: () => createPair(copy),
         update: (node, p) => updatePair(node, p, copy) });
       reconcile(ui.groups, vm.groups, { key: (g) => g.id, create: createGroup, update: updateGroup });

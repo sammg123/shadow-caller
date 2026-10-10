@@ -2,6 +2,7 @@
 // Pure: the Drawing's steps as frozen "parts" (strokes, the arc's ground track, arrowheads, marks) with every color,
 // width, dash and opacity taken from the Look, the team colors and the world's optional look.world.plays group.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
@@ -146,7 +147,9 @@ test("approximate steps take the look's approx style; a zero-length carry draws 
   assert.deepEqual(loose.find((p) => p.layer === "core").dash, DASH_YD);
   const soft = resolveLook({ strokes: { arc: { approx: "soft" } } });
   const miss = { ...row(87), seq: 870, kind: "fg_miss", kick: { ...row(87).kick, good: false } };
-  const flight = playParts(buildDrawing(miss), miss, soft, envFor(soft)).filter((p) => p.step === 1
+  const missDrawing = buildDrawing(miss);
+  const arcStep = missDrawing.steps.findIndex((s) => s.t === "arc");
+  const flight = playParts(missDrawing, miss, soft, envFor(soft)).filter((p) => p.step === arcStep
     && p.type === "stroke");
   near(flight[0].opacity, soft.strokes.arc.opacity * SOFT, "soft: the stroke at 55%");
   const noGain = parts(9);
@@ -287,4 +290,93 @@ test("v1.4 (W6): a kick on display dims further once the next call is up (look.w
   assert.equal(dimOpacityOf(look, { kind: "play" }), 0.3, "a scrimmage play keeps lastPlay.dimOpacity");
   assert.equal(dimOpacityOf(look, null), 0.3);
   assert.equal(resolvePlayLook({ world: { plays: { kickDim: 2 } } }).kickDim, 1, "out of range: the default");
+});
+
+// ---------------------------------------------------------------- G3-1: two shadow plays that read as two plays
+const RAMP = Object.freeze({ pass: "#fff3d1", run: "#ffb21e", rpo: "#ffd27a" });
+const CASING = Object.freeze({ color: "#0d1424", opacity: 0.4, width: 1.8 });
+const familyLook = (plays = {}) => resolveLook({ ghost: { tint: "family" },
+  world: { plays: { families: RAMP, casing: CASING, shadowWidth: 3.2, ...plays } } });
+/** A shadow's own parts: its stroke and end cue (no casing), by type and order. */
+const lit = (list) => list.filter((p) => p.layer !== "casing");
+const casings = (list) => list.filter((p) => p.layer === "casing");
+
+test("G3-1: ghost.tint family colors each shadow by its family on the board's ramp: pass warm, run amber, RPO gold", () => {
+  const look = familyLook();
+  const env = envFor(look);
+  const shadows = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.28 }, { leaf: "pa_short", p: 0.16 },
+    { leaf: "rpo_run", p: 0.05 }, { leaf: "dropback_deep", p: 0.04 }, { leaf: "screen", p: 0.03 }] }, D25,
+  { hover: "rpo_run" });
+  const color = (leaf) => lit(shadowParts(shadows.find((s) => s.leaf === leaf), look, env)).map((p) => p.color);
+  assert.deepEqual(color("run_inside"), [RAMP.run, RAMP.run], "the run's line and its chevron in amber");
+  assert.deepEqual(color("pa_short"), [RAMP.pass, RAMP.pass], "play-action is a pass: warm white");
+  assert.deepEqual(color("rpo_run"), [RAMP.rpo, RAMP.rpo], "the RPO in gold, between the two");
+  for (const leaf of ["dropback_deep", "screen"]) {
+    const one = shadowForLeaf(leaf, 0.04, D25, 4);
+    assert.deepEqual(lit(shadowParts(one, look, env)).map((p) => p.color), [RAMP.pass, RAMP.pass], leaf);
+  }
+  const partial = resolveLook({ ghost: { tint: "family", stroke: "#abcdef" }, world: { plays: { families: { run: RAMP.run } } } });
+  assert.equal(lit(shadowParts(shadows[1], partial, envFor(partial)))[0].color, "#abcdef",
+    "a family the world gives no tone takes ghost.stroke (the fallback the 2D field draws with)");
+});
+
+test("G3-1: shadows stay dashed and translucent (0.5, 0.35) and wider; a dark casing rings each dashed stroke", () => {
+  const look = familyLook();
+  const env = envFor(look);
+  const [run, pa] = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.28 }, { leaf: "pa_short", p: 0.16 }] }, D25);
+  const runParts = shadowParts(run, look, env);
+  const paParts = shadowParts(pa, look, env);
+  const [runStroke] = lit(runParts);
+  const [paStroke, ring] = lit(paParts);
+  assert.equal(runStroke.opacity, 0.5);
+  assert.equal(paStroke.opacity, 0.35);
+  assert.deepEqual(paStroke.dash, PLAY_LOOK.shadowDash, "dashed, never solid (play-drawing.md 4)");
+  near(runStroke.width, look.strokes.ground.widthPx * 3.2, "the world's shadowWidth (a px-wide ground here)");
+  near(paStroke.width, look.strokes.arc.widthPx * 3.2);
+  for (const [own, list] of [[runParts, lit(runParts)], [paParts, lit(paParts)]]) {
+    const under = casings(own);
+    assert.equal(under.length, list.length, "one casing per part: the stroke and its end cue");
+    under.forEach((c, i) => {
+      const p = list[i];
+      assert.equal(c.path, p.path, "the same path");
+      assert.equal(c.color, CASING.color);
+      assert.equal(c.opacity, CASING.opacity);
+      near(c.width, p.width * CASING.width, "1.8x the stroke's width");
+      near(c.inner, 1 / CASING.width, "a ring outside the stroke: the stroke's own color is never darkened");
+      assert.deepEqual(c.dash, p.dash, "dashed with its stroke");
+      assert.equal(c.lag, p.lag, "and drawn as it grows");
+      assert.ok(c.order < p.order, "under it");
+      assert.equal(c.units, p.units);
+    });
+  }
+  assert.ok(ring.dash, "the pass's target ring is dashed too");
+  const chevron = lit(runParts)[1];
+  near(chevron.width, look.strokes.ground.widthPx * 1.6, "a wide shadow's chevron stays a chevron (at most 1.6x)");
+  near(lit(shadowParts(run, NEUTRAL_LOOK, envFor()))[1].width, NEUTRAL_LOOK.strokes.ground.widthPx
+    * PLAY_LOOK.shadowWidth, "the neutral one is as wide as its stroke");
+});
+
+test("G3-1: without tint family (the neutral world) a shadow keeps ghost.stroke and no casing; bad values fall back", () => {
+  const env = envFor();
+  const [run] = buildShadowPlays({ leaves: [{ leaf: "run_inside", p: 0.28 }] }, D25);
+  const plain = shadowParts(run, NEUTRAL_LOOK, env);
+  assert.equal(casings(plain).length, 0);
+  assert.ok(plain.every((p) => p.color === NEUTRAL_LOOK.ghost.stroke));
+  const fill = resolveLook({ ghost: { tint: "fill" }, world: { plays: { families: RAMP } } });
+  assert.ok(shadowParts(run, fill, envFor(fill)).every((p) => p.color === fill.ghost.stroke), "tint fill: one color");
+  const bad = resolvePlayLook({ world: { plays: { families: { pass: "white", run: "#FFB21E", nope: "#000000" },
+    casing: { color: "#00000", opacity: 2, width: 9 } } } });
+  assert.deepEqual(bad.families, { pass: null, run: "#ffb21e", rpo: null }, "hex colors only, lowercased");
+  assert.deepEqual(bad.casing, { color: null, opacity: PLAY_LOOK.casing.opacity, width: PLAY_LOOK.casing.width });
+  assert.deepEqual(resolvePlayLook(NEUTRAL_LOOK).casing, { color: null, opacity: 0.4, width: 1.8 }, "no casing by default");
+});
+
+test("G3-5: every kick kind the server sends (timeline.py KICKS) dims as a kick, a missed field goal included", () => {
+  const src = readFileSync(new URL("../../timeline.py", import.meta.url), "utf8");
+  const kicks = [...(src.match(/^KICKS\s*=\s*\(([^)]*)\)/m)?.[1] ?? "").matchAll(/"([a-z_]+)"/g)].map((m) => m[1]);
+  assert.ok(kicks.includes("fg_miss"), `timeline.py KICKS: ${kicks}`);
+  const look = { lastPlay: { dimOpacity: 0.3 }, world: { plays: { kickDim: 0.4 } } };
+  for (const kind of kicks) near(dimOpacityOf(look, { kind }), 0.12, kind);
+  const miss = { ...row(87), seq: 870, kind: "fg_miss", kick: { ...row(87).kick, good: false } };
+  near(dimOpacityOf(look, buildDrawing(miss)), 0.12, "a missed field goal's drawing");
 });

@@ -22,7 +22,7 @@
 :where(:root[data-world="under-the-lights"]) .sc-strip-input {
   min-height: var(--uls-key-h);
   padding: 2px var(--sc-space-2) 0;
-  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border: var(--sc-border-w) solid var(--uls-steel-frame);
   border-radius: var(--sc-radius-m);
   background: var(--uls-led-face);
   color: var(--sc-ink);
@@ -54,7 +54,7 @@
   gap: 6px;
   min-height: var(--uls-key-h);
   padding: 2px var(--sc-space-2) 0;
-  border: var(--sc-border-w) solid var(--uls-steel-edge);
+  border: var(--sc-border-w) solid var(--uls-steel-frame);
   border-inline-end: 0;
   border-radius: var(--sc-radius-m) 0 0 var(--sc-radius-m);
   background: var(--uls-led-face);
@@ -105,3 +105,26 @@
   :is(.sc-strip-input, .sc-side, .sc-end) {
   min-height: calc(var(--uls-strip-h) - 14px);
 }
+
+/* G5-13: the refused value's words on the strip's row, in place of the drive line: an INVALID tag in a tally-red frame
+   (the word is the cue, the frame the second one), then the server's words in warm white, on one line. */
+:where(:root[data-world="under-the-lights"]) .sc-strip-error {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: 0;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.15 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-strip-error-tag {
+  flex: none;
+  padding: 3px var(--sc-space-1) 2px;
+  border: var(--sc-border-w) solid var(--uls-tally-red);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-strip-error-text { min-width: 0; }

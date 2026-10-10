@@ -1,11 +1,12 @@
 // Starting the field engine (ui-architecture.md 3.1 step 3, 6.2, 9.5; owner A0). DOM side.
 // The 2D fallback when ?scene=2d or there is no WebGL2; else field/scene.js createEngine, given ENGINE_TIMEOUT_MS
-// to start. Any failure (a module that won't load, an EngineInitError, a timeout) falls back to 2D and keeps the
-// reason for main.js to show. A WebGL engine that arrives after its timeout is disposed. The fallback module is
+// to start (long enough for a first launch's cold shader warm-up, which scene.js caps at 10 s: G2-9, G7-2). Any
+// failure (a module that won't load, an EngineInitError, a timeout) falls back to 2D and keeps the reason for main.js
+// to show. A WebGL engine that arrives after its timeout is disposed. The fallback module is
 // preloaded so the conductor can swap it in synchronously when WebGL fails at run time. The three.js bundle is
 // fetched only when WebGL2 exists. Loaders and timers are injectable for node tests; timers are called bare.
 
-export const ENGINE_TIMEOUT_MS = 8000;
+export const ENGINE_TIMEOUT_MS = 15000;
 
 const DEFAULT_LOADERS = Object.freeze({
   support: () => import("../field/webgl-support.js"),

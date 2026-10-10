@@ -107,6 +107,50 @@ def test_boots_into_under_the_lights_unless_neutral_is_asked_for(ui_pages, wsrv)
     no_errors(page)
 
 
+FIRST_FRAME_JS = """() => {
+  const css = (sel, prop) => { const e = document.querySelector(sel); return e ? getComputedStyle(e)[prop] : null; };
+  return { world: document.documentElement.dataset.world, ground: css('html', 'backgroundColor'),
+    cover: css('.sc-boot-static', 'backgroundColor'), lamp: css('.sc-boot-static .sc-lamp', 'backgroundColor'),
+    face: css('.sc-boot-static .sc-boot-board', 'backgroundImage'),
+    plateFont: css('.sc-boot-static .sc-boot-plate', 'fontFamily'),
+    words: document.querySelector('.sc-boot-static .sc-boot-heading')?.textContent ?? null,
+    wordsCase: css('.sc-boot-static .sc-boot-heading', 'textTransform') };
+}"""
+SHEETS_IN_JS = "() => [...document.querySelectorAll('link[rel=stylesheet]')].every((l) => l.sheet !== null)"
+NIGHT_SKY = "rgb(13, 20, 36)"           # --uls-night-sky #0D1424
+LED_AMBER = "rgb(255, 178, 30)"         # --uls-led-amber #FFB21E: the loading lamp
+
+
+def test_the_first_frame_is_the_stadium_before_any_script_runs(ui_pages, wsrv):
+    """G2-8: with main.js held back, the page as shipped is already Under the Lights: the night sky and the loading
+    board (the LED face, its plate in Big Shoulders, the lamp amber), never a neutral screen; let go, the script boots
+    into the same world with no notice."""
+    base = wsrv["base"]
+    reset_game(base)
+    page = ui_pages()
+    held = []
+    page.route("**/static/js/main.js", lambda route: held.append(route))
+    page.goto(base + "/", wait_until="commit", timeout=BOOT_TIMEOUT_MS)
+    page.wait_for_selector(".sc-boot-static .sc-boot-heading", state="attached", timeout=BOOT_TIMEOUT_MS)
+    # the first paint waits for every stylesheet in <head> (render-blocking); script can read styles before that
+    page.wait_for_function(SHEETS_IN_JS, timeout=BOOT_TIMEOUT_MS)
+    page.evaluate("document.fonts.ready.then(() => true)")
+    first = page.evaluate(FIRST_FRAME_JS)
+    assert first["world"] == WORLD_ID, first
+    assert first["ground"] == NIGHT_SKY and first["cover"] == NIGHT_SKY, first
+    assert first["lamp"] == LED_AMBER, first
+    assert "radial-gradient" in first["face"], first
+    assert first["plateFont"].startswith('"Big Shoulders Display"'), first
+    assert (first["words"], first["wordsCase"]) == ("Loading the game…", "uppercase"), first
+    assert len(held) == 1, "main.js was asked for once and held"
+    held[0].continue_()
+    wait_ready(page)
+    expect(page.locator("html")).to_have_attribute("data-world", WORLD_ID)
+    expect(page.locator(".sc-boot-static")).to_have_count(0)
+    expect(page.locator('[data-testid="notices"] > *')).to_have_count(0)
+    no_errors(page)
+
+
 # ---------------------------------------------------------------- play-drawing.md 4: the shadow plays
 def shadow_text(rank, play):
     return f"{rank} · {play['name']} · {pct(play['p'])}"
@@ -213,16 +257,38 @@ def band_pair(page, pair_id):
 
 def test_scoreboard_band_matches_the_server(ui_pages, wsrv):
     """DESIGN.md scoreboard band: the scores against /api/state, the quarter, clock, down and ball on against the
-    timeline's status (an ESPN game's band shows ESPN's clock, not the engine's estimate), and row two's three
-    SHADOW V LEAGUE pairs against /api/state metrics, mid-game and final."""
+    timeline's status (an ESPN game's band shows ESPN's clock, or during his drive the engine's, G4-9), and row two's
+    three SHADOW V LEAGUE pairs against /api/state metrics, mid-game and final. Its paint is the offense's color
+    mid-game and neutral scoreboard steel once the game is final (G2-5: nobody has the ball)."""
     base = wsrv["base"]
     page = ui_pages()
     for setup in (lambda: watch_paused_at(base, 40), lambda: replayed(base)):
         setup()
         open_uls(page, base)
-        s, status = state(base), full_timeline(base)["status"]
+        tl = full_timeline(base)
+        s, status = state(base), tl["status"]
         expect_band(page, s, status)
+        expect_band_paint(page, tl)
     no_errors(page)
+
+
+STEEL_NEUTRAL = "rgb(51, 64, 92)"       # --uls-steel-neutral #33405C (tokens.css): the band with no team's paint
+
+
+def rgb(hex_color):
+    return "rgb({}, {}, {})".format(*(int(hex_color[i:i + 2], 16) for i in (1, 3, 5)))
+
+
+def expect_band_paint(page, tl):
+    """The band wears the offense's ESPN primary (the team #field reports with the ball, else the caller), and the
+    neutral steel after the final whistle."""
+    band = page.locator(".uls-band")
+    if tl["status"]["state"] == "post":
+        expect(band).to_have_css("background-color", STEEL_NEUTRAL)
+        return
+    caller = next(t["abbr"] for t in tl["teams"].values() if t["caller"])
+    poss = page.locator(FIELD).get_attribute("data-poss") or caller
+    expect(band).to_have_css("background-color", rgb(tl["teams"][poss]["color"]))
 
 
 def expect_band(page, s, status):
@@ -231,7 +297,7 @@ def expect_band(page, s, status):
     expect(board.locator('[data-testid="team-score"][data-team="DAL"]')).to_have_text(str(sit["score_off"]))
     expect(board.locator('[data-testid="team-score"][data-team="TB"]')).to_have_text(str(sit["score_opp"]))
     expect(board.locator('[data-fact="qtr"]')).to_contain_text(f"Q{status['qtr']}")
-    expect(board.locator('[data-testid="game-clock"]')).to_contain_text(status["clock"])
+    expect(board.locator('[data-testid="game-clock"]')).to_contain_text(band_clock(s, status))
     down, _, spot = (status.get("down_text") or "").partition(" at ")
     if status["state"] != "post":
         expect(board.locator('[data-fact="down"]')).to_contain_text(down)
@@ -247,6 +313,15 @@ def expect_band(page, s, status):
         expect(pair.locator('[data-side="shadow"]')).to_contain_text(mine)
         expect(pair.locator('[data-side="league"]')).to_contain_text(league)
         expect(pair).to_have_attribute("data-leader", leader(mine, league, better))
+
+
+def band_clock(s, status):
+    """G4-9 (model/vm-scoreboard.js engineClock): one clock with the strip. During the caller's drive, in ESPN's
+    quarter, the band shows the engine's clock (ESPN's at his last snap less its runoff estimate); otherwise, and
+    always after the final whistle, ESPN's own."""
+    sit = s["sit"]
+    live = s["drive_active"] and status["state"] != "post" and sit.get("qtr") == status["qtr"]
+    return sit["clock_str"] if live and sit.get("clock_str") else status["clock"]
 
 
 def leader(mine, league, better):

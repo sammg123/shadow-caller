@@ -1,18 +1,27 @@
 """Timeline of every applied play, both teams, for the 3D GameCast (docs/design/data-contract.md, sections A to D).
 
-Pure: no Flask, no I/O. Everything is derived on request from the ESPN summary, the feed's applied ids (in apply
-order) and the engine state. Field frame (A): x = yards from the caller's own goal line, the caller always attacks
-left to right, x from ESPN's yardLine (never yardsToEndzone). y is never sent: there is no player tracking.
+Pure: no Flask, no I/O (but a log line for a play it can't draw). Everything is derived on request from the ESPN
+summary, the feed's applied ids (in apply order) and the engine state. Field frame (A): x = yards from the caller's own
+goal line, the caller always attacks left to right, x from ESPN's yardLine (never yardsToEndzone). y is never sent:
+there is no player tracking.
+
+v1.4 (G1-6): a poll can be malformed anywhere. Every field is read for the type it should have (a null entry is
+skipped, a number that isn't one is unknown), and a row that still can't be built is left out and listed in
+`missing`, so one bad play never fails the whole answer.
 """
+import logging
 import re
 
-from espn_feed import AIR_EST, AIR_EST_SOURCE, _gain, classify, iter_drive_plays
+from espn_feed import AIR_EST, AIR_EST_SOURCE, _gain, classify, finite, iter_drive_plays, whole_in
 from granular import FAMILIES, FAMILY_NAMES, LEAF_FAMILY, LEAF_NAMES, LEAVES
-from live import fmt_clock
-from timeline_text import (INT_SPOT_RE, RETURN_RE, SACK_SPOT_RE, TIMEOUT_BY_RE, clamp_x, clock_seconds, dir_of,
-                           down_text, elapsed, espn_box, game_facts, goal_x, kick_facts, mm_ss, pat_of, penalty_of,
-                           resolve_team, score_pair, search_x, split_body, spot_x, teams_of, text_x, x_from_yardline,
-                           x_from_yl100, yl100_from_x)
+from live import PENALTIES, fmt_clock
+from timeline_text import (ABBR_RE, INT_SPOT_RE, RETURN_RE, SACK_SPOT_RE, TIMEOUT_BY_RE, _dict, _text, all_drives,
+                           clamp_x, clock_seconds, dicts, dir_of, down_text, elapsed, espn_box, first_competition,
+                           game_facts, goal_x, kick_facts, mm_ss, pat_of, penalty_of, resolve_team, score_pair,
+                           search_x, short, split_body, spot_x, teams_of, text_x, x_from_yardline, x_from_yl100,
+                           yl100_from_x)
+
+log = logging.getLogger(__name__)
 
 SCRIMMAGE = ("play", "penalty", "kneel", "spike", "other", "punt", "fg", "fg_miss")   # downs the offense snapped
 OFFENSIVE_PLAYS = ("play", "kneel", "spike", "other", "fg", "fg_miss")                 # ESPN's offensivePlays
@@ -28,32 +37,33 @@ ADMIN_WHAT = (("official timeout", "official_timeout"), ("timeout", "timeout"), 
               ("two-point", "pat"), ("conversion", "pat"))
 FIELD = {"units": "yd", "orientation": "caller_left", "x_min": -10, "x_max": 110, "width": 53.333,
          "goal_lines": [0, 100], "posts_x": [-10, 110], "hash_y": [23.583, 29.75]}
+# What a row may carry from ESPN (G1-6, G1-12): text is capped, numbers must be numbers.
+PLAY_TEXT_MAX, TYPE_MAX, CLOCK_MAX, WALL_MAX, RESULT_MAX, SCORE_MAX = 400, 40, 8, 40, 40, 999
 
 
 # ---------------------------------------------------------------- B2-B6: one applied ESPN play as a row
 def context(summary, caller, applied=()):
     """Per-game facts every row needs. Reads team names and ids, and win probability of applied plays only (E5)."""
-    comps = (((summary.get("header") or {}).get("competitions") or [{}])[0]).get("competitors") or []
+    comps = dicts(first_competition(summary).get("competitors"))
     ids, teams, home = {}, [], None
-    drives = summary.get("drives") or {}
-    groups = [(c.get("team") or {}, c.get("homeAway")) for c in comps] + \
-        [(d.get("team") or {}, None) for d in list(drives.get("previous") or []) + [drives.get("current") or {}]]
+    groups = [(_dict(c.get("team")), c.get("homeAway")) for c in comps] + \
+        [(_dict(d.get("team")), None) for d in all_drives(summary)]
     for t, side in groups:
-        abbr = t.get("abbreviation")
-        if not abbr:
+        abbr, tid = t.get("abbreviation"), t.get("id")
+        if not (isinstance(abbr, str) and ABBR_RE.fullmatch(abbr)):
             continue
         if abbr not in teams:
             teams.append(abbr)
-        if t.get("id") is not None:
-            ids.setdefault(str(t["id"]), abbr)
+        if isinstance(tid, (str, int)) and not isinstance(tid, bool):
+            ids.setdefault(str(tid), abbr)
         if side == "home":
             home = abbr
     if caller not in teams:
         teams.append(caller)
     home = home or caller            # no header: take the caller as home, so x is ESPN's own yardLine
     wanted = set(applied)
-    wp = {str(w.get("playId")): w.get("homeWinPercentage") for w in summary.get("winprobability") or []
-          if str(w.get("playId")) in wanted and isinstance(w.get("homeWinPercentage"), (int, float))}
+    wp = {str(w.get("playId")): finite(w.get("homeWinPercentage")) for w in dicts(_dict(summary).get("winprobability"))
+          if str(w.get("playId")) in wanted and finite(w.get("homeWinPercentage")) is not None}
     return {"caller": caller, "teams": teams, "home": home, "caller_is_home": home == caller, "ids": ids, "wp": wp}
 
 
@@ -92,25 +102,27 @@ def admin_of(typ, text, ctx):
     return {"what": what, "by": resolve_team(m.group(1), ctx["teams"]) if m else None}
 
 
+DOWN_TEXT_MAX = 40                 # '3rd & Goal at TB 4' and the like
+
+
 def pre_of(st, x0, team, caller):
-    down, togo = st.get("down"), st.get("distance")
-    if not (isinstance(down, int) and 1 <= down <= 4):
-        down, togo = None, None
+    down = whole_in(st.get("down"), 1, 4)
+    togo = whole_in(st.get("distance"), 0, 99) if down else None
     yl = yl100_from_x(x0, team, caller)
     return {"down": down, "togo": togo, "yardline_100": yl, "goal_to_go": togo is not None and togo >= yl,
-            "text": st.get("downDistanceText")}
+            "text": short(st.get("downDistanceText"), DOWN_TEXT_MAX)}
 
 
 def post_of(en, ctx):
     """(post, x_next): the next snap after enforcement. Only an end spot with a down of 1 to 4 counts (A3)."""
-    down, yl = en.get("down"), en.get("yardLine")
-    if not (isinstance(down, int) and 1 <= down <= 4) or not isinstance(yl, int):
+    down, yl = whole_in(en.get("down"), 1, 4), whole_in(en.get("yardLine"), 0, 100)
+    if down is None or yl is None:
         return None, None
-    poss = ctx["ids"].get(str((en.get("team") or {}).get("id")))
+    poss = ctx["ids"].get(str(_dict(en.get("team")).get("id")))
     x = x_from_yardline(yl, ctx["caller_is_home"])
-    return ({"poss": poss, "down": down, "togo": en.get("distance"),
+    return ({"poss": poss, "down": down, "togo": whole_in(en.get("distance"), 0, 99),
              "yardline_100": yl100_from_x(x, poss, ctx["caller"]) if poss else None,
-             "text": en.get("downDistanceText")}, x)
+             "text": short(en.get("downDistanceText"), DOWN_TEXT_MAX)}, x)
 
 
 def same_series(pre, post):
@@ -214,23 +226,42 @@ def result_of(row, info, body, full, yards, td, ctx):
             "turnover_kind": tkind, "downs": downs, "safety": False, "nullified": nullified, "penalty": pen}
 
 
+_UNDRAWABLE = set()                 # play ids already logged as impossible to draw (one warning each)
+
+
+def build_row_safely(ctx, team, drive, p):
+    """build_row, or None when ESPN's play is malformed in a way nothing reads: the play is left out of the rows (so
+    `missing` lists it) and the server log says why, once per play."""
+    try:
+        return build_row(ctx, team, drive, p)
+    except Exception:
+        pid = row_id(p)
+        if pid not in _UNDRAWABLE and len(_UNDRAWABLE) < 10_000:
+            _UNDRAWABLE.add(pid)
+            log.warning("ESPN play %s can't be drawn; it is listed in the timeline's missing plays.", pid,
+                        exc_info=True)
+        return None
+
+
 def build_row(ctx, team, drive, p):
     """One applied ESPN play as a timeline row (B2), without seq and pred, and before finish_row adds the fields
     that need the previous row (scoring, safety, wp.delta)."""
     caller, info = ctx["caller"], classify(team, p)
     body, full = split_body(p.get("text"))
-    typ = (p.get("type") or {}).get("text") or ""
+    typ = _text(_dict(p.get("type")).get("text"), TYPE_MAX) or ""
     kind = kind_of(info, typ, full)
-    st, en = p.get("start") or {}, p.get("end") or {}
-    qtr, clock = (p.get("period") or {}).get("number"), (p.get("clock") or {}).get("displayValue")
-    x0 = x_from_yardline(st["yardLine"], ctx["caller_is_home"]) if isinstance(st.get("yardLine"), int) else None
-    row = {"id": row_id(p), "espn_seq": int(p.get("sequenceNumber") or 0), "src": "espn",
+    st, en = _dict(p.get("start")), _dict(p.get("end"))
+    qtr = whole_in(_dict(p.get("period")).get("number"), 1, 9)
+    clock = short(_dict(p.get("clock")).get("displayValue"), CLOCK_MAX)
+    yard_line = whole_in(st.get("yardLine"), 0, 100)
+    x0 = None if yard_line is None else x_from_yardline(yard_line, ctx["caller_is_home"])
+    row = {"id": row_id(p), "espn_seq": seq_number(p), "src": "espn",
            "drive": drive[0], "drive_id": drive[1], "team": team, "opp": other_team(ctx, team),
            "offense_is_caller": team == caller and kind in SCRIMMAGE, "kind": kind, "type": typ or None,
            "qtr": qtr, "clock": clock, "clock_s": clock_seconds(clock), "t": elapsed(qtr, clock_seconds(clock)),
-           "wall": p.get("wallclock"), "pre": None, "post": None, "geo": None, "call": None, "result": None,
-           "kick": None, "score": score_of(p, ctx), "scoring": None, "wp": wp_of(row_id(p), ctx),
-           "text": p.get("text") or ""}
+           "wall": short(p.get("wallclock"), WALL_MAX), "pre": None, "post": None, "geo": None, "call": None,
+           "result": None, "kick": None, "score": score_of(p, ctx), "scoring": None, "wp": wp_of(row_id(p), ctx),
+           "text": play_words(p.get("text"))}
     if kind == "admin":
         row["admin"] = admin_of(typ, full, ctx)
         if row["admin"]["what"] not in ("end_period", "end_half", "end_game", "other"):
@@ -254,10 +285,23 @@ def row_id(p):
     return str(p.get("id"))
 
 
+def seq_number(p):
+    """ESPN's sequenceNumber as an int (it comes as text); 0 when it isn't one."""
+    try:
+        return int(p.get("sequenceNumber") or 0)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def play_words(text):
+    """ESPN's play text as sent to the page: text only, at most PLAY_TEXT_MAX characters (G1-12)."""
+    return text[:PLAY_TEXT_MAX] if isinstance(text, str) else ""
+
+
 def score_of(p, ctx):
-    h, a = p.get("homeScore"), p.get("awayScore")
+    h, a = whole_in(p.get("homeScore"), 0, SCORE_MAX), whole_in(p.get("awayScore"), 0, SCORE_MAX)
     away = other_team(ctx, ctx["home"])
-    if not (isinstance(h, int) and isinstance(a, int)) or away is None:
+    if h is None or a is None or away is None:
         return None
     return {ctx["home"]: h, away: a}
 
@@ -301,10 +345,9 @@ def finish_row(r, prev_score, last_wp):
 def wp_start(summary):
     """ESPN's opening win probability: the one entry whose playId is no play (B6.7)."""
     ids = {row_id(p) for t, i, d, p in iter_drive_plays(summary)}
-    for w in summary.get("winprobability") or []:
+    for w in dicts(_dict(summary).get("winprobability")):
         if str(w.get("playId")) not in ids:
-            v = w.get("homeWinPercentage")
-            return v if isinstance(v, (int, float)) else None
+            return finite(w.get("homeWinPercentage"))
     return None
 
 
@@ -320,7 +363,7 @@ def build_timeline(summary, applied, log, caller, cache=None):
         r = cache.get(pid)
         if r is None and pid in plays:
             team, drive, p = plays[pid]
-            r = build_row(ctx, team, drive, p)
+            r = build_row_safely(ctx, team, drive, p)
         if r is not None:
             built.append((seq, r))
     wp0 = wp_start(summary)
@@ -358,9 +401,8 @@ def pred_of(r):
 
 # ---------------------------------------------------------------- C3: drives
 def espn_drives(summary):
-    drives = summary.get("drives") or {}
-    groups = list(drives.get("previous") or []) + [drives.get("current") or {}]
-    return {str(d.get("id")): d for d in groups if d.get("id") is not None}
+    return {str(d["id"]): d for d in all_drives(summary)
+            if isinstance(d.get("id"), (str, int)) and not isinstance(d.get("id"), bool)}
 
 
 def ends_possession(r, team):
@@ -435,14 +477,14 @@ def drive_of(idx, rs, later, ed, caller):
            "engine_drive": next((r["pred"]["engine_drive"] for r in rs if r.get("pred")), None)}
     if ended:                        # ESPN's drive totals are read only once the drive is over (E5)
         over = any(r["kind"] == "admin" and r["admin"]["what"] in ("end_half", "end_game") for r in rs)
-        end = ed.get("end") or {}
-        clock = (end.get("clock") or {}).get("displayValue")
-        out["end"] = {"qtr": (end.get("period") or {}).get("number") or rs[-1]["qtr"],
+        end = _dict(ed.get("end"))
+        clock = short(_dict(end.get("clock")).get("displayValue"), CLOCK_MAX)
+        out["end"] = {"qtr": whole_in(_dict(end.get("period")).get("number"), 1, 9) or rs[-1]["qtr"],
                       "clock": "0:00" if over or not clock else clock, "x": end_x}
-        out["time"] = (ed.get("timeElapsed") or {}).get("displayValue")
+        out["time"] = short(_dict(ed.get("timeElapsed")).get("displayValue"), CLOCK_MAX)
         out["time_s"] = mm_ss(out["time"])
-        out["result"] = ed.get("result") or derived_result(rs)
-        out["result_text"] = ed.get("displayResult") or out["result"]
+        out["result"] = _text(ed.get("result"), RESULT_MAX) or derived_result(rs)
+        out["result_text"] = _text(ed.get("displayResult"), RESULT_MAX) or out["result"]
     return out
 
 
@@ -604,53 +646,107 @@ def log_call(r):
             "air_band": list(est["band"]) if est else None, "yac": None, "align": r.get("align")}
 
 
+def is_flag(r):
+    """A foul typed with no play logged (v1.4, G1-4): a timeline row of kind 'penalty', never a snap."""
+    return r.get("kind") == "penalty"
+
+
+def enforced_spot(r):
+    """Where a hand-typed foul put the ball: (down, togo, yardline_100); None when the drive ended there. Only for
+    rows that have yardline_after: the others (ESPN's no-plays, games saved before v1.4) take the next row's spot."""
+    yl = r["yardline_after"]
+    return None if yl is None else (r.get("down_after"), r.get("togo_after"), yl)
+
+
 def log_pre_post(r, same, caller, opp):
     pre = {"down": r["down"], "togo": r["togo"], "yardline_100": r["yardline_100"],
            "goal_to_go": r["togo"] >= r["yardline_100"],
            "text": down_text(r["down"], r["togo"], r["yardline_100"], caller, opp)}
-    if not same:
+    if "yardline_after" in r:
+        nxt = enforced_spot(r)
+    else:
+        nxt = (same["down"], same["togo"], same["yardline_100"]) if same else None
+    if nxt is None:
         return pre, None
-    return pre, {"poss": caller, "down": same["down"], "togo": same["togo"], "yardline_100": same["yardline_100"],
-                 "text": down_text(same["down"], same["togo"], same["yardline_100"], caller, opp)}
+    down, togo, yl = nxt
+    return pre, {"poss": caller, "down": down, "togo": togo, "yardline_100": yl,
+                 "text": down_text(down, togo, yl, caller, opp)}
 
 
-def log_geo(r, same, call):
+def log_geo(r, post, call):
     """Manual geometry: x0 from yardline_100, x_end from the yards, the catch at the bucket median (approximate);
-    a pass's side is unknown, a run's side comes from its leaf."""
+    a pass's side is unknown, a run's side comes from its leaf. x_next is the next snap's spot (post): a foul's own
+    enforced spot when it has one."""
     x0 = 100 - r["yardline_100"]
+    x_next = 100 - post["yardline_100"] if post else None
+    if call is None:                              # a flag: the ball walks from the line to the enforced spot
+        return {"dir": 1, "x0": x0, "x_end": x0, "x_next": x_next, "x_catch": None, "lat": None, "gap": None,
+                "approx": []}
     passing = r.get("family") != "run" and r.get("leaf") != "rpo_run"
     return {"dir": 1, "x0": x0, "x_end": 100 if r.get("td") else clamp_x(x0 + (r.get("yards") or 0)),
-            "x_next": 100 - same["yardline_100"] if same else None,
-            "x_catch": x0 + call["air"] if call["air"] is not None else None,
+            "x_next": x_next, "x_catch": x0 + call["air"] if call["air"] is not None else None,
             "lat": None if passing else LEAF_SIDE.get(r.get("leaf")), "gap": None,
             "approx": (["x_catch"] if call["air"] is not None else []) + (["lat"] if passing else [])}
 
 
-def log_result(r, pre, post):
-    yards, td, nul = r.get("yards") or 0, bool(r.get("td")), bool(r.get("nullified"))
-    first = td or (not nul and yards >= r["togo"]) or bool(post and post["down"] == 1 and not same_series(pre, post))
+def foul_words(code):
+    """'false start', 'defensive holding', 'unnecessary roughness', 'penalty', 'offsetting penalties': the engine's
+    label for the code, lowercased, without its instructions and without 'on defense' or 'on offense' (the row says
+    whom it was on)."""
+    label = PENALTIES[code][0].split(",")[0] if code in PENALTIES else str(code)
+    for side in (" on defense", " on offense"):
+        label = label.removesuffix(side)
+    return label.lower()
+
+
+def log_penalty(r, game, x0):
+    """result.penalty of a logged row in ESPN's shape (B6.8) when the foul was typed by hand; the engine's code alone
+    for an ESPN no-play or a game saved before v1.4."""
+    code = r.get("penalty")
+    if not code:
+        return None
+    if "pen_on" not in r:
+        return {"code": code}
+    on = {"def": game["opponent"], "off": game["offense"]}.get(r["pen_on"])
+    return {"code": code, "foul": foul_words(code), "on": on, "yards": r.get("pen_yards"), "at_x": x0,
+            "no_play": bool(r.get("nullified")), "status": "offsetting" if code == "OFFSET" else "enforced",
+            "note": None}
+
+
+def log_result(r, pre, post, game):
+    flag, td, nul = is_flag(r), bool(r.get("td")), bool(r.get("nullified"))
+    yards = None if flag else r.get("yards") or 0
+    ended = "yardline_after" in r and r["yardline_after"] is None      # a loss of down on 4th ended the drive
+    chains = bool(post and post["down"] == 1 and not same_series(pre, post))
+    first = td or (not flag and not nul and yards >= r["togo"]) or chains
     by = None
     if first:
-        by = "penalty" if nul or r.get("penalty") else (
+        by = "penalty" if flag or nul or r.get("penalty") else (
             "pass" if r.get("dropback") and r.get("outcome") != "scramble" else "rush")
-    return {"yards": yards, "first_down": bool(first), "fd_by": by, "td": td, "turnover": bool(r.get("turnover")),
-            "turnover_kind": None, "downs": not first and not nul and r["down"] == 4 and not r.get("turnover"),
-            "safety": False, "nullified": nul, "penalty": {"code": r["penalty"]} if r.get("penalty") else None}
+    turnover = bool(r.get("turnover"))
+    return {"yards": yards, "first_down": bool(first), "fd_by": by, "td": td, "turnover": turnover,
+            "turnover_kind": r.get("turnover_kind") if turnover else None,
+            "downs": ended or (not flag and not first and not nul and r["down"] == 4 and not turnover),
+            "safety": False, "nullified": nul, "penalty": log_penalty(r, game, 100 - r["yardline_100"])}
 
 
-def log_row(r, same, nxt, sit, caller, opp):
-    """One logged snap as a row (D). same: the next row in the same drive; nxt: the next row at all."""
-    call = log_call(r)
+def log_row(r, same, nxt, sit, game):
+    """One logged snap, or a flag typed with no play, as a row (D). same: the next row in the same drive; nxt: the
+    next row at all."""
+    caller, opp = game["offense"], game["opponent"]
+    flag = is_flag(r)
+    call = None if flag else log_call(r)
     pre, post = log_pre_post(r, same, caller, opp)
     clock_s = clock_seconds(r.get("clock"))
     after = score_pair(nxt["score"], caller, opp) if nxt else {caller: sit["score_off"], opp: sit["score_opp"]}
     return {"seq": r["seq"], "id": f"log-{r['seq']}", "espn_seq": None, "src": "log", "drive": r["drive"],
-            "drive_id": None, "team": caller, "opp": opp, "offense_is_caller": True, "kind": "play", "type": None,
+            "drive_id": None, "team": caller, "opp": opp, "offense_is_caller": True,
+            "kind": "penalty" if flag else "play", "type": None,
             "qtr": r["qtr"], "clock": r.get("clock"), "clock_s": clock_s, "t": elapsed(r["qtr"], clock_s),
             "clock_est": bool(r.get("clock_est")), "wall": None, "pre": pre, "post": post,
-            "geo": log_geo(r, same, call), "call": call, "result": log_result(r, pre, post), "kick": None,
+            "geo": log_geo(r, post, call), "call": call, "result": log_result(r, pre, post, game), "kick": None,
             "score": after, "scoring": {"team": caller, "type": "TD", "pts": 7, "pat": None} if r.get("td") else None,
-            "wp": None, "text": r.get("feed_text") or r.get("name") or "", "pred": pred_of(r)}
+            "wp": None, "text": r.get("feed_text") or r.get("name") or "", "pred": None if flag else pred_of(r)}
 
 
 def log_rows(state, game):
@@ -659,7 +755,7 @@ def log_rows(state, game):
     for i, r in enumerate(log):
         nxt = log[i + 1] if i + 1 < len(log) else None
         same = nxt if nxt and nxt["drive"] == r["drive"] else None
-        rows.append(log_row(r, same, nxt, sit, game["offense"], game["opponent"]))
+        rows.append(log_row(r, same, nxt, sit, game))
     return rows
 
 
@@ -675,7 +771,8 @@ def log_drive(idx, rs, state, game, cut=()):
     end = {"qtr": last["qtr"], "clock": last["clock"], "x": 100 if res["td"] else geo["x0"]} if complete else None
     return {"idx": idx, "id": None, "team": game["offense"], "offense_is_caller": True,
             "start": {"qtr": rs[0]["qtr"], "clock": rs[0]["clock"], "x": rs[0]["geo"]["x0"]}, "end": end,
-            "plays": sum(1 for r in rs if not r["result"]["nullified"]), "yards": x_final - rs[0]["geo"]["x0"],
+            "plays": sum(1 for r in rs if r["kind"] == "play" and not r["result"]["nullified"]),
+            "yards": x_final - rs[0]["geo"]["x0"],
             "time": None, "time_s": None, "result": result, "result_text": result, "complete": complete,
             "seq": [rs[0]["seq"], last["seq"]], "engine_drive": idx}
 
@@ -732,7 +829,8 @@ def espn_part(summary, applied, log, game, order, *, upto, cache, skipped):
     ds = drives(rows, summary, caller)
     drawn, failed = {r["id"] for r in rows}, set(skipped)
     return {"rows": rows, "drives": ds, "box": box(rows, ds, order), "status": status(rows, caller, order),
-            "wp_start": wp_start(summary), "unlinked": [r["seq"] for r in log if not r.get("espn_id")],
+            "wp_start": wp_start(summary),
+            "unlinked": [r["seq"] for r in log if not r.get("espn_id") and not is_flag(r)],
             "skipped": [r["seq"] for r in rows if r["id"] in failed],
             "missing": [pid for pid in applied[:upto] if pid not in drawn]}
 

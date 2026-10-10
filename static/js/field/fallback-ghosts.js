@@ -10,12 +10,10 @@
  */
 import { LEAVES } from "../core/domain.js";
 import { mixHex } from "../theme/team-colors.js";
-import { FIELD } from "./coords.js";
-import { OBLIQUE, r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
+import { r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
 import { strokeStyle } from "./fallback-plays.js";
-import { PASS_LIFT, stepParts } from "./fallback-steps.js";
+import { stepParts, viewMetrics } from "./fallback-steps.js";
 import { isFiniteNum, ownValue } from "./grammar.js";
-import { LABEL_METRICS, labelMetrics } from "./play-label.js";
 import { SHADOW_COUNT, buildShadowPlays, shadowCandidates } from "./shadows.js";
 
 /** The hovered (or focused) play's shadow: lit, still dashed and see-through. */
@@ -35,17 +33,22 @@ const DASH = Object.freeze({ zone: [1.1, 0.8], outline: [1.1, 0.8], marker: [1.1
 const PLATE_DASH = "4 3";
 
 // ---------------------------------------------------------------- the request
-const snapOf = (sit) => (sit && typeof sit === "object" && sit.kind !== "kickoff" && isFiniteNum(sit.ballX)
-  && (sit.dir === 1 || sit.dir === -1) ? { ballX: sit.ballX, dir: sit.dir, poss: sit.poss ?? null, kind: "snap" } : null);
+/** The snap the shadows start at; its down when known (on 4th down they read "If he goes", shadows.js). */
+function snapOf(sit) {
+  if (!sit || typeof sit !== "object" || sit.kind === "kickoff" || !isFiniteNum(sit.ballX)) return null;
+  if (sit.dir !== 1 && sit.dir !== -1) return null;
+  const snap = { ballX: sit.ballX, dir: sit.dir, poss: sit.poss ?? null, kind: "snap" };
+  return isFiniteNum(sit.down) ? { ...snap, down: sit.down } : snap;
+}
 const pairOf = (e) => ({ leaf: e?.leaf, p: e?.p });
 
 /** A GhostSet (field/ghosts.js, what the conductor builds today): its shapes in his order, every play's odds from
- * leafZones; the live situation names the team with the ball when it is the same snap. */
+ * leafZones; the live situation names the team with the ball, and the down, when it is the same snap. */
 function fromGhostSet(set, live) {
   const same = live && live.ballX === set.ballX && live.dir === set.dir;
   return { key: typeof set.key === "string" ? set.key : null,
     source: { leaves: set.shapes.map(pairOf), all: (Array.isArray(set.leafZones) ? set.leafZones : []).map(pairOf) },
-    situation: { ballX: set.ballX, dir: set.dir, poss: same ? live.poss ?? null : null } };
+    situation: { ballX: set.ballX, dir: set.dir, poss: same ? live.poss ?? null : null, down: same ? live.down : null } };
 }
 
 /** ShadowPlays a caller built already (shadows.js): their plays, odds and names, from the snap they start at. */
@@ -93,19 +96,8 @@ export function shownLeaves(input) {
 }
 
 // ---------------------------------------------------------------- layout in this view
-/**
- * The 2D field as label metrics (play-label.labelMetrics): seen from straight above, the near sideline down the
- * screen, a height drawn as a lift (OBLIQUE yards for a kick, PASS_LIFT for a pass: the range a label must clear);
- * `labelPx` the tags' measured { charPx, linePx, padPx }.
- */
-export function viewMetrics(ctx, ballX, labelPx = null) {
-  const project = (p) => {
-    const q = ctx.pt(p.x, p.y, p.h ?? 0);
-    return { x: q.px, y: q.py };
-  };
-  const m = labelMetrics(project, { x: ballX, y: FIELD.CENTER_Y }, labelPx ?? {});
-  return m === LABEL_METRICS ? m : Object.freeze({ ...m, lifts: [OBLIQUE, PASS_LIFT] });
-}
+/** The 2D view as label metrics (fallback-steps.viewMetrics), here too for the shadows' callers. */
+export { viewMetrics };
 
 /**
  * The ShadowPlays for a request in this view: `hover` the play the prediction panel hovers or focuses, `avoid` what
@@ -118,9 +110,24 @@ export function shadowPlaysFor(input, ctx, { hover = null, avoid = [], labelPx =
 }
 
 // ---------------------------------------------------------------- drawing
-/** The shadows' colors: the caller's team ("team"), the field's paint ("neutral") or the look's own, with a darker
- * edge so a dashed line still reads on the turf. */
-export function shadowPaint(ctx, team = null) {
+/** Where each family sits on a world's ramp (look.world.plays.families; the 3D field reads the same, G3-1). */
+const RAMP_KEY = Object.freeze({ dropback: "pass", pa: "pass", screen: "pass", run: "run", rpo: "rpo" });
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/** The family's color with look.ghost.tint "family", else null (a family the ramp leaves out, or no ramp). */
+function rampColor(look, family) {
+  if (look.ghost.tint !== "family") return null;
+  const ramp = look.world?.plays?.families;
+  const color = ramp && typeof ramp === "object" ? ownValue(ramp, ownValue(RAMP_KEY, family)) : null;
+  return typeof color === "string" && HEX_RE.test(color) ? color.toLowerCase() : null;
+}
+
+/** The shadows' colors: with look.ghost.tint "family" the family's on the world's ramp (pass warm white, run amber,
+ * RPO gold under the lights); else the caller's team ("team"), the field's paint ("neutral") or the look's own; a
+ * darker edge so a dashed line still reads on the turf. */
+export function shadowPaint(ctx, team = null, family = null) {
+  const ramp = rampColor(ctx.look, family);
+  if (ramp) return { core: ramp, edge: mixHex(ramp, "#000000", EDGE_DARK) };
   const { fill, stroke } = ctx.look.ghost;
   if (fill === "team") {
     const edge = paintOf(ctx, team ?? ctx.paints.left).edge;
@@ -149,7 +156,7 @@ function opacityOf(shadow, anyHovered) {
 }
 
 function zoneOf(shadow, ctx, anyHovered) {
-  const paint = shadowPaint(ctx, shadow.drawing.team);
+  const paint = shadowPaint(ctx, shadow.drawing.team, shadow.family);
   const steps = shadow.drawing.steps;
   const kids = steps.flatMap((step) => stepParts(step, ctx, shadowStyle(ctx, step, paint)).map(partNode));
   return { key: shadow.leaf, leaf: shadow.leaf, rank: shadow.rank, dir: shadow.drawing.dir, hovered: shadow.hovered,
@@ -163,8 +170,9 @@ const showsLabels = (ctx) => ctx.look.ghost.labels && ctx.look.labels.renderer !
 /** A shadow's words on a dashed plate: what the model thinks, not what happened. Text stays fully legible. */
 function labelOf(shadow, ctx, anyHovered) {
   const at = ctx.pt(shadow.label.at.x, shadow.label.at.y);
-  const tag = tagNode({ at, text: shadow.label.text, size: tagSize(ctx, "s"), part: "shadow-label",
-    cls: `${ctx.look.labels.className} sc-ghost-label rank-${shadow.rank ?? 0} sc-fb-shadow-label` });
+  const cls = `${ctx.look.labels.className} sc-ghost-label rank-${shadow.rank ?? 0} sc-fb-shadow-label`
+    + ` family-${shadow.family}`;
+  const tag = tagNode({ at, text: shadow.label.text, size: tagSize(ctx, "s"), part: "shadow-label", cls });
   const [plate, text] = tag.children;
   const dashed = { ...plate, attrs: { ...plate.attrs, style: `${plate.attrs.style}; stroke-dasharray: ${PLATE_DASH}` } };
   return { key: shadow.leaf, leaf: shadow.leaf, rank: shadow.rank, opacity: anyHovered && !shadow.hovered ? LABEL_DIM : 1,

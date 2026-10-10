@@ -714,6 +714,30 @@ def test_an_unreadable_game_file_is_kept_aside_not_overwritten(make_feed):
         p.unlink()
 
 
+@pytest.mark.parametrize("planted, gid", [
+    ({"game": {"game_id": "2026_06_PHI_NYG"}, "log": [{"seq": 1}], "sit": {}}, "2026_06_PHI_NYG"),
+    ({"game": {"game_id": "../../etc/x y"}, "log": []}, "unknown"),           # never a path in a file name
+    ([1, 2, 3], "unknown"),                                                   # parses, but holds no game
+    ({"log": []}, "unknown"),
+], ids=["another-game", "unsafe-id", "a-list", "no-game"])
+def test_another_games_file_is_kept_aside_before_the_first_save(make_feed, planted, gid):
+    """G1-3: a game file for another matchup (every new GAME in config.py) used to be dropped silently, and the
+    first save wrote the new game over it. Now a byte-identical copy is kept first and the message names it."""
+    make_feed()
+    raw = json.dumps(planted).encode()
+    live.STATE_PATH.write_bytes(raw)
+    e = live.GameEngine()
+    kept = list(live.STATE_PATH.parent.glob(f"live_state.other-{gid}-*.json"))
+    assert len(kept) == 1 and kept[0].read_bytes() == raw
+    assert e.state["log"] == [] and kept[0].name in e.state["message"]
+    e.command("new D25")                                      # the first save: the new game, the copy untouched
+    assert json.loads(live.STATE_PATH.read_text())["game"]["game_id"] == TEST_GAME["game_id"]
+    assert kept[0].read_bytes() == raw
+    live.STATE_PATH.write_bytes(raw)
+    live.GameEngine()                                          # the same second again: a second copy, never over one
+    assert len(list(live.STATE_PATH.parent.glob(f"live_state.other-{gid}-*.json"))) == 2
+
+
 def test_setting_the_summary_knows_which_team_is_ours(make_feed, summary):
     """Watch mode applies plays one by one with apply_one: possession changes need the offense's ESPN id."""
     e, feed = make_feed()
@@ -749,3 +773,159 @@ def test_text_parsers_on_shapes_this_game_lacks():
     k, end = tt.kick_facts("punt", "DAL", "TB", "B.Anger punts 40 yards to TB 20, Center-T.Sieg. Z to TB 25 for 5 "
                            "yards (Blocked by Q).", "", 40, ctx)
     assert (k["blocked"], k["ret_end_x"], end) == (False, 75, 75)
+
+
+# ---------------------------------------------------------------- G1-6: a malformed poll never fails /api/timeline
+def first_drives(summary, n=4):
+    """The opening drives of the real game with their win probability: a summary the mutations below can afford to
+    rebuild hundreds of times."""
+    s = {k: summary[k] for k in ("header", "boxscore", "gameInfo", "winprobability")}
+    s["drives"] = {"previous": copy.deepcopy(summary["drives"]["previous"][:n])}
+    s["header"] = copy.deepcopy(summary["header"])
+    s["winprobability"] = copy.deepcopy(summary["winprobability"])
+    return s
+
+
+def spots_in(node, keep=lambda path: True, path=()):
+    """Every (container, key, path) in a JSON tree."""
+    items = node.items() if isinstance(node, dict) else enumerate(node) if isinstance(node, list) else ()
+    for k, v in items:
+        if keep(path + (k,)):
+            yield node, k, path + (k,)
+        yield from spots_in(v, keep, path + (k,))
+
+
+def test_a_malformed_summary_never_fails_the_timeline(make_feed, summary, caplog):
+    """G1-6: one null winprobability entry, one null drive, or a distance of '' used to raise inside
+    timeline.response, and /api/timeline answered 500 for the rest of the game. Now every single mutation of the
+    summary below answers; a row that can't be built is left out, listed in `missing`, and the log says why."""
+    import random
+    e, feed = make_feed()
+    small = first_drives(summary)
+    feed.apply(small)
+    applied = list(feed.applied)
+    assert len(applied) > 30
+    for known in ((small["winprobability"], 3), (small["drives"]["previous"], 1)):      # the reviewer's cases
+        container, key = known
+        old, container[key] = container[key], None
+        out = tl.response(small, applied, e.state, TEST_GAME, epoch="m", client_epoch="m", mode="live", cache={})
+        container[key] = old
+        assert out["n"] == len(applied)
+    play = small["drives"]["previous"][1]["plays"][2]
+    old, play["start"]["distance"] = play["start"]["distance"], ""
+    out = tl.response(small, applied, e.state, TEST_GAME, epoch="m", client_epoch="m", mode="live", cache={})
+    play["start"]["distance"] = old
+    assert out["rows"][[r["id"] for r in out["rows"]].index(str(play["id"]))]["pre"]["togo"] is None
+
+    rng = random.Random(1806)
+    values = [None, "", "x", -1, 0, 10 ** 12, 2.5, float("nan"), [], {}, [None], {"x": None}, True, "15:00"]
+    spots = list(spots_in(small))
+    for _ in range(600):
+        container, key, path = rng.choice(spots)
+        value = rng.choice(values)
+        where = f"{'.'.join(map(str, path))} = {value!r}"
+        old, container[key] = container[key], value
+        try:
+            out = tl.response(small, applied, e.state, TEST_GAME, epoch="m", client_epoch="m", mode="live",
+                              cache={})
+        except Exception as ex:                                     # pragma: no cover (the failure message)
+            pytest.fail(f"{where}: {type(ex).__name__}: {ex}")
+        finally:
+            container[key] = old
+        drawn = {r["id"] for r in out["rows"]}
+        assert set(out["missing"]) == {pid for pid in applied if pid not in drawn}, where
+        try:
+            json.dumps(out, allow_nan=False)                         # JSON the browser can parse: no NaN, no inf
+        except ValueError:                                           # pragma: no cover (the failure message)
+            pytest.fail(f"{where} put NaN or infinity in the answer")
+
+
+# ---------------------------------------------------------------- G1-4, G1-5: flags and interceptions typed by hand
+def manual_flags_game(e):
+    """A hand-typed drive with every kind of flag the evidence named: pre-snap with no play (X FS), a flag on a
+    picked play (DH), offsetting fouls on a picked play, a flag after a play that stands (X URD), and DPI after an
+    incompletion."""
+    e.command("new D25")                                                   # 1st & 10 at DAL 25
+    e.command("X FS")                                                      # 1  false start: 1st & 15 at DAL 20
+    e.record_play(None, 4, leaf="run_inside")                              # 2  run +4: 2nd & 11 at DAL 24
+    e.apply_penalty("DH", play={"leaf": "dropback_short"})                 # 3  no play, 5 yards, 1st & 10 at DAL 29
+    e.apply_penalty("OFFSET", play={"leaf": "run_inside"})                 # 4  no play, nothing moves
+    e.record_play(None, 0, leaf="dropback_deep", outcome="incomplete")     # 5  incomplete: 2nd & 10 at DAL 29
+    e.command("X DPI 30")                                                  # 6  DPI: 1st & 10 at TB 41
+    e.record_play(None, 6, leaf="run_ot_left")                             # 7  run +6: 2nd & 4 at TB 35
+    e.command("X URD")                                                     # 8  after the play: 15, 1st & 10 at TB 20
+
+
+def test_hand_typed_flags_are_rows_the_field_draws(make_feed):
+    """G1-4: a flag with no play logged nothing, so the field drew nothing and the next snap's line made the ball
+    jump on the play before it (a 0-yard pass marched 30 yards); an offsetting no-play marched to wherever the next
+    snap was. Now every flag is a penalty row in ESPN's shape, a no-play marches to its own enforced spot, and a
+    flag on a play names the foul, the team and the yards."""
+    e, feed = make_feed()
+    manual_flags_game(e)
+    out = build(feed, e, mode="manual")
+    rows = out["rows"]
+    assert [r["seq"] for r in rows] == list(range(1, 9)) and out["n"] == 8
+    assert [r["kind"] for r in rows] == ["penalty", "play", "play", "play", "play", "penalty", "play", "penalty"]
+    fs, run, dh, offset, inc, dpi, run2, urd = rows
+    assert (fs["geo"]["x0"], fs["geo"]["x_next"], fs["pred"], fs["call"]) == (25, 20, None, None)
+    assert fs["result"]["penalty"] == {"code": "FS", "foul": "false start", "on": "DAL", "yards": 5, "at_x": 25,
+                                       "no_play": True, "status": "enforced", "note": None}
+    assert (fs["pre"]["text"], fs["post"]["text"], fs["result"]["first_down"]) == \
+        ("1st & 10 at DAL 25", "1st & 15 at DAL 20", False)
+    assert (dh["result"]["nullified"], dh["geo"]["x0"], dh["geo"]["x_next"]) == (True, 24, 29)
+    assert dh["result"]["penalty"] == {"code": "DH", "foul": "defensive holding", "on": "TB", "yards": 5,
+                                       "at_x": 24, "no_play": True, "status": "enforced", "note": None}
+    assert dh["post"]["text"] == "1st & 10 at DAL 29" and dh["result"]["first_down"] and dh["pred"]["leaf"] == \
+        "dropback_short"
+    assert (offset["geo"]["x0"], offset["geo"]["x_next"], offset["result"]["penalty"]["status"]) == (29, 29, "offsetting")
+    assert offset["result"]["penalty"]["on"] is None and offset["result"]["penalty"]["foul"] == "offsetting penalties"
+    assert (inc["geo"]["x_end"], inc["geo"]["x_next"]) == (29, 29)            # the pass doesn't march: the flag does
+    assert (dpi["geo"]["x0"], dpi["geo"]["x_next"], dpi["result"]["penalty"]["yards"]) == (29, 59, 30)
+    assert dpi["result"]["first_down"] and dpi["result"]["fd_by"] == "penalty"
+    assert (run2["geo"]["x_end"], run2["geo"]["x_next"]) == (65, 65)
+    assert (urd["geo"]["x0"], urd["geo"]["x_next"], urd["result"]["penalty"]["foul"]) == (65, 80, "unnecessary roughness")
+    assert urd["result"]["nullified"] is False and urd["result"]["first_down"] is True
+    assert out["drives"][0]["plays"] == 3 and out["drives"][0]["yards"] == 55          # flags are not plays
+    assert out["box"]["DAL"]["penalties"] == {"n": 1, "yds": 5}
+    assert out["status"]["down_text"] == "1st & 10 at TB 20"
+
+
+def test_hand_typed_flags_stay_out_of_the_scoring_and_the_log_list(make_feed):
+    """The flag rows are timeline rows only: metrics, the play log the page lists, the archive and the CSV count
+    snaps; an undo takes a flag back like any action, and the next seq follows on."""
+    import csv
+    import io
+    e, feed = make_feed()
+    manual_flags_game(e)
+    assert e.metrics()["n"] == 5 and len(e.view()["log"]) == 5 and all(r.get("snap") for r in e.view()["log"])
+    assert len(list(csv.reader(io.StringIO(e.export_csv())))) == 1 + 5
+    con = __import__("duckdb").connect(str(live.DB_PATH))
+    try:
+        assert con.execute("SELECT count(*) FROM live_log WHERE game_id = ?", [TEST_GAME["game_id"]]).fetchone()[0] == 5
+    finally:
+        con.close()
+    e.undo()                                                               # takes X URD back
+    assert len(e.state["log"]) == 7 and e.state["sit"]["yardline_100"] == 35
+    e.command("X OH")
+    assert e.state["log"][-1]["seq"] == 8 and e.state["log"][-1]["kind"] == "penalty"
+    assert build(feed, e, mode="manual")["rows"][-1]["result"]["penalty"]["on"] == "DAL"
+
+
+def test_a_typed_interception_is_an_interception(make_feed):
+    """G1-5: shorthand I logged a turnover with no kind, so the field said 'fumble lost'. Grading stays pass versus
+    run (no family is invented); the row says int, and F says fumble."""
+    e, feed = make_feed()
+    e.command("new D25")
+    e.command("I")
+    e.command("new D40")
+    e.command("K 3 F")
+    pick, fumble = e.state["log"]
+    assert (pick["turnover_kind"], pick["family"], pick["leaf"], pick["dropback"]) == ("int", None, None, 1)
+    assert fumble["turnover_kind"] == "fumble"
+    out = build(feed, e, mode="manual")
+    assert [r["result"]["turnover_kind"] for r in out["rows"]] == ["int", "fumble"]
+    assert out["box"]["DAL"]["pass"]["int"] == 1 and out["box"]["DAL"]["fumbles_lost"] == 1
+    e.command("new D30")
+    e.command("P 0 INT")
+    assert e.state["log"][-1]["turnover_kind"] == "int"

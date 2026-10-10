@@ -64,3 +64,59 @@ test("without a document the boards stay dark and every call is a quiet no-op", 
   assert.equal(r.message("A"), null);
   r.dispose();
 });
+
+// ---------------------------------------------------------------- G3-6: the next call queued behind the play's words
+const call = (text = "NEXT CALL · INSIDE RUN (A/B GAP) 24%") => msg(text, { kind: "call" });
+const wait = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
+test("G3-6: the next call waits for the play's words to dwell, then steps in; the grade still joins the words", async () => {
+  let clock = 0;
+  const r = createRibbons(THREE, { doc: stubDoc(), instant: () => true, now: () => clock });
+  r.show("A", msg("DAL · INSIDE RUN (UP THE MIDDLE) · +4"));
+  clock = 10;
+  r.queue("A", call(), 60);
+  assert.equal(r.message("A").kind, "play", "the play's words first");
+  r.revise("A", msg("DAL · INSIDE RUN (UP THE MIDDLE) · +4 · TOP PICK"));
+  assert.equal(r.message("A").parts[0].text, "DAL · INSIDE RUN (UP THE MIDDLE) · +4 · TOP PICK", "the grade joins");
+  r.queue("A", call(), 60);
+  await wait(120);
+  assert.equal(r.message("A").kind, "call", "then the next call");
+  r.dispose();
+});
+
+test("G3-6: a call steps in at once over the idle board or after the dwell; the same call twice is one step", () => {
+  let clock = 0;
+  const doc = stubDoc();
+  const r = createRibbons(THREE, { doc, now: () => clock });
+  r.show("A", { kind: undefined, parts: [{ text: "SHADOW PLAY-CALLER", tone: "warm" }], logos: [], holdMs: 0 });
+  r.queue("A", call(), 2000);
+  assert.equal(r.message("A").kind, "call", "nothing to dwell on: at once");
+  for (let i = 0; i < 6; i += 1) r.update(83);
+  const drawn = doc.texts.length;
+  r.queue("A", call(), 2000);
+  assert.equal(doc.texts.length, drawn, "the same call again changes nothing");
+  r.show("A", msg("DAL · SHORT PASS LEFT · +8"));
+  clock = 5000;
+  r.queue("A", call(), 2000);
+  assert.equal(r.message("A").kind, "call", "the words have dwelt long enough already");
+  r.dispose();
+});
+
+test("G3-6: a held moment keeps its hold and the call follows it; a play that starts drops a call still queued", async () => {
+  const r = createRibbons(THREE, { doc: stubDoc(), instant: () => true, now: () => 0 });
+  r.show("A", msg("TOUCHDOWN COWBOYS", { kind: "td", holdMs: 40 }), msg("DAL · INSIDE RUN · TD"));
+  r.queue("A", call(), 2000);
+  r.revise("A", msg("DAL · INSIDE RUN · TD · TOP PICK"));
+  assert.equal(r.message("A").kind, "td", "the moment holds");
+  await wait(80);
+  assert.equal(r.message("A").kind, "call", "the call, not the words, follows the touchdown");
+  r.show("A", msg("DAL · SHORT PASS LEFT · +8"));
+  r.queue("A", call("NEXT CALL · SCREEN 31%"), 40);
+  r.drop("A");
+  await wait(80);
+  assert.equal(r.message("A").kind, "play", "dropped: the snap came first");
+  r.queue("A", call(), 0);
+  r.show("A", msg("DAL · SCREEN · +6"));
+  assert.equal(r.message("A").parts[0].text, "DAL · SCREEN · +6", "a play's words replace a call");
+  r.dispose();
+});

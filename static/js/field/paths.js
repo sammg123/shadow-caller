@@ -6,7 +6,8 @@
  * no dropback, no handoff mesh, no play-action fake, no ball behind the line. A Drawing is a list of steps in time
  * order (ui-architecture.md 2.4, v1.4):
  *   arc     a ball in the air: pass (line of scrimmage -> catch, target or interception spot), punt, kickoff, fg
- *   ground  a flat straight line on the turf: run, scramble, kneel, sack, yac, return, march, hold
+ *           (a field goal from the line of scrimmage to the posts, like every play: no hold behind the line)
+ *   ground  a flat straight line on the turf: run, scramble, kneel, sack, yac, return, march
  *   mark    catch (a small dot), incomplete (the X), int, td, turnover, flag, sack, safety, fg_good, fg_miss,
  *           touchback, fair_catch, downed, oob, muffed, blocked
  * Every step carries `ghosted` (the action of a no-play: drawn dimmed and dashed) and `approx` (drawn as an
@@ -23,11 +24,10 @@ import { deepFreeze } from "../core/domain.js";
 import { resultText } from "../model/format.js";
 import { FIELD, clampX, clampY, xAtYardline100, yFromLateral } from "./coords.js";
 import {
-  AIR_DEPTH_YD, AIR_FALLBACK_YD, AIR_UNKNOWN_YD, CROSSBAR_YD, END_LINE_INSET_YD, FG_CLEARANCE_YD, FG_HOLD_YD,
-  LABEL_GAP_YD, LABEL_LINE_YD, LATERAL_GAP, LATERAL_PASS, LATERAL_RUN_SIDE, arcApex, isFiniteNum, ownValue,
-  runLateralOfLeaf,
+  AIR_DEPTH_YD, AIR_FALLBACK_YD, AIR_UNKNOWN_YD, CROSSBAR_YD, END_LINE_INSET_YD, FG_CLEARANCE_YD, LABEL_GAP_YD,
+  LATERAL_GAP, LATERAL_PASS, LATERAL_RUN_SIDE, arcApex, isFiniteNum, ownValue, runLateralOfLeaf,
 } from "./grammar.js";
-import { labelFootprint, placeLabelText, playLabel } from "./play-label.js";
+import { labelFootprint, placeLabelText, playLabel, resolveLabelMetrics } from "./play-label.js";
 
 const C = FIELD.CENTER_Y;
 const EPS = 1e-9;
@@ -112,16 +112,17 @@ function sackAction(row, ghosted) {
     end, ghosted);
 }
 
-/** The catch (or interception) x: exact from the row, else estimated from the air yards or a fallback; an
- * estimated catch never lands past where the receiver went down. */
+/** The catch (or interception) x: exact from the row, else estimated from the air yards or a fallback. An estimated
+ * catch (a typed row's bucket median, `geo.approx`) never lands past where the receiver went down, so a short gain
+ * never draws its yards after the catch backward; ESPN's exact spot keeps a real loss after the catch. */
 function catchX(row, { capAtEnd }) {
   const { dir, x0 } = spots(row);
   const given = num(row.geo.x_catch);
-  if (given != null) return given;
   const air = num(row.call?.air) ?? ownValue(AIR_FALLBACK_YD, row.call?.leaf) ?? AIR_FALLBACK_YD.other;
+  const x = given ?? x0 + dir * air;
+  const guessed = given == null || estimated(row, "x_catch");
   const endX = carrierEndX(row);
-  const x = x0 + dir * air;
-  return capAtEnd && (endX - x) * dir < 0 ? endX : x;
+  return capAtEnd && guessed && (endX - x) * dir < 0 ? endX : x;
 }
 
 /** The throw, from the line of scrimmage, drawn solid even to an estimated spot: the label's depth word says so. */
@@ -167,11 +168,12 @@ const PLAY_ACTIONS = Object.freeze({
   complete: completeAction,
 });
 
+/** An interception is a pass whatever the row's play type says (a typed "I" row knows none). */
 function playShape(row) {
   const call = row.call ?? {};
+  if (row.result?.turnover_kind === "int") return "int";
   if (call.outcome === "sack" || call.outcome === "scramble") return call.outcome;
   if (call.family === "run" || call.leaf === "rpo_run" || !call.family) return "run";
-  if (row.result?.turnover_kind === "int") return "int";
   return call.outcome === "incomplete" ? "incomplete" : "complete";
 }
 
@@ -224,21 +226,19 @@ function kickAction(row, ghosted, role) {
   return { ...run, steps: [flight, ...marks, ...run.steps] };
 }
 
+/** A field goal starts on the line of scrimmage like every play (Sam, 2026-10-10): no hold drawn behind it, which
+ * read as a sack. The arc flies to the posts; the words keep the kick's true distance ("FG 41 yds · good"). */
 function fgAction(row, ghosted) {
   const k = row.kick ?? {};
-  const { dir, x0 } = spots(row);
+  const { dir } = spots(row);
   const kdir = kdirOf(k, dir);
-  const postX = num(k.post_x) ?? (kdir === 1 ? FIELD.POSTS_X[1] : FIELD.POSTS_X[0]);
-  const dist = num(k.dist);
-  const kickX = num(k.x_kick) ?? (dist == null ? x0 - kdir * FG_HOLD_YD : postX - kdir * dist);
-  const hold = pt(kickX);
-  const snap = ground("hold", pt(x0), hold, num(k.x_kick) == null && dist == null, ghosted);
-  if (k.blocked) return blockedFrom(row, [snap], hold, ghosted);
+  const los = lineOf(row);
+  if (k.blocked) return blockedFrom(row, [], los, ghosted);
   const good = typeof k.good === "boolean" ? k.good : row.kind === "fg";
-  const posts = pt(postX);
+  const posts = pt(num(k.post_x) ?? (kdir === 1 ? FIELD.POSTS_X[1] : FIELD.POSTS_X[0]));
   const endH = good ? CROSSBAR_YD + FG_CLEARANCE_YD : CROSSBAR_YD;
-  const kick = arc("fg", hold, posts, { endH, approx: !good, ghosted });
-  return { steps: [snap, kick, mark(good ? "fg_good" : "fg_miss", posts, ghosted)], end: hold, label: posts };
+  const kick = arc("fg", los, posts, { endH, approx: !good, ghosted });
+  return { steps: [kick, mark(good ? "fg_good" : "fg_miss", posts, ghosted)], end: los, label: posts };
 }
 
 const ACTIONS = Object.freeze({
@@ -275,30 +275,53 @@ function flagTail(row, action) {
 /** Kicks fly high over the center line: their words go toward the near sideline first, under the arc. */
 const KICKS = new Set(["kickoff", "punt", "fg", "fg_miss"]);
 const LABEL_TRIES = 3;
+/** The ball as the views draw it: a disc this round around its spot, so words never cover its edge either. */
+export const BALL_RADIUS_YD = 1.5;
+const BALL_RING = 16;
+
+/** The ball's disc as points a label must keep clear of: its spot and its rim. */
+function ballDisc(p) {
+  return [p, ...Array.from({ length: BALL_RING }, (_, i) => {
+    const a = (2 * Math.PI * i) / BALL_RING;
+    return { x: p.x + BALL_RADIUS_YD * Math.cos(a), y: p.y + BALL_RADIUS_YD * Math.sin(a) };
+  })];
+}
 
 /** Beside the end of the play: on its side (`side` -1 toward the near sideline, 1 the far one), then the other side,
- * then a line further out each way; never within LABEL_GAP_YD of the center line the next ball rests on. */
-function labelCandidates(anchor, side) {
-  return Array.from({ length: LABEL_TRIES }, (_, k) => LABEL_GAP_YD + k * LABEL_LINE_YD)
+ * then a line of the view further out each way; never within LABEL_GAP_YD of the center line the next ball rests on. */
+function labelCandidates(anchor, side, m) {
+  return Array.from({ length: LABEL_TRIES }, (_, k) => LABEL_GAP_YD + k * m.lineYd)
     .flatMap((gap) => [side, -side].map((s) => ({ x: anchor.x, y: anchor.y + s * gap })))
     .filter((p) => Math.abs(p.y - C) >= LABEL_GAP_YD - EPS);
 }
 
 /**
- * The words and where they go: beside the end of the play, outward from the center line (a kick toward the near
- * sideline), unless its own strokes, as the sideline cameras show them (labelFootprint: an arc rises up the
- * screen), or the ball would sit under them. `approx`: the spot the words describe is an estimate (ESPN's "short"
- * target, a loose ball's runback).
+ * Where the words go beside `anchor` (the end of the play) in the view `metrics` (the sideline cameras by default):
+ * outward from the center line (a kick toward the near sideline), unless its own strokes as the view shows them
+ * (labelFootprint: an arc rises up the screen) would sit under them. Never on a ball: with no spot clear of both, the
+ * first clear of the balls' discs wins.
  */
-function labelOf(row, action, tail, { steps, balls }) {
+function wordsAt(text, anchor, { kick, steps, balls, metrics }) {
+  const m = resolveLabelMetrics(metrics);
+  const side = kick || anchor.y < C - EPS ? -1 : 1;
+  const candidates = labelCandidates(anchor, side, m);
+  const discs = balls.filter(Boolean).flatMap(ballDisc);
+  return placeLabelText(text, candidates, { points: [...labelFootprint(steps, m), ...discs], metrics: m, strict: true })
+    ?? placeLabelText(text, candidates, { points: discs, metrics: m });
+}
+
+/**
+ * The words, where they go, and `approx`: the spot the words describe is an estimate (ESPN's "short" target, a loose
+ * ball's runback). `anchor` keeps the end of the play they sit beside, so a renderer can lay them out again in its own
+ * view (placePlayLabel).
+ */
+function labelOf(row, action, tail, { steps, balls, metrics }) {
   const text = playLabel(row);
   if (!text) return null;
   const anchor = tail.labelAt ?? action.label;
-  const side = KICKS.has(row.kind) || anchor.y < C - EPS ? -1 : 1;
-  const points = [...labelFootprint(steps), ...balls.filter(Boolean)];
-  const at = placeLabelText(text, labelCandidates(anchor, side), { points });
+  const at = wordsAt(text, anchor, { kick: KICKS.has(row.kind), steps, balls, metrics });
   const strokes = tail.labelAt ? [] : action.steps.filter((s) => s.t === "arc" || s.t === "ground");
-  return { text, at, approx: tail.labelAt ? false : action.estimate ?? Boolean(strokes.at(-1)?.approx) };
+  return { text, at, approx: tail.labelAt ? false : action.estimate ?? Boolean(strokes.at(-1)?.approx), anchor };
 }
 
 // ---------------------------------------------------------------- bounds
@@ -317,10 +340,14 @@ function boundsOf(steps, extras) {
 // ---------------------------------------------------------------- public API
 /**
  * A row as plain drawing data: { seq, id, kind, team, dir, offenseIsCaller, ghosted, steps, ballStart, ballEnd,
- * resultLabel: {at, text} | null, label: {text, at, approx} | null, bounds }. Admin rows (and rows with no spot)
- * have no steps and no labels. Never mutates the row; the result is deep-frozen.
+ * resultLabel: {at, text} | null, label: {text, at, approx, anchor} | null, bounds }. Admin rows (and rows with no
+ * spot) have no steps and no labels. `metrics` (play-label.labelMetrics) lays the words out in a renderer's own view
+ * (a phone's lines are deep: words 5 yards off the ball would sit on it); the sideline cameras' by default. Never
+ * mutates the row; the result is deep-frozen.
+ * @param {object} row  a timeline row (DC B3)
+ * @param {{ metrics?: object }} [opts]
  */
-export function buildDrawing(row) {
+export function buildDrawing(row, { metrics } = {}) {
   if (!row || typeof row !== "object") throw new TypeError("buildDrawing needs a timeline row");
   const head = {
     seq: row.seq, id: row.id, kind: row.kind, team: row.team, dir: spots(row).dir,
@@ -338,9 +365,25 @@ export function buildDrawing(row) {
   const ballEnd = spots(row).xNext == null ? null : pt(spots(row).xNext);
   const text = resultText(row);
   const resultLabel = text ? { at: tail.labelAt ?? action.label, text } : null;
-  const label = labelOf(row, action, tail, { steps, balls: [ballStart, ballEnd] });
+  const label = labelOf(row, action, tail, { steps, balls: [ballStart, ballEnd], metrics });
   return deepFreeze({ ...head, steps, ballStart, ballEnd, resultLabel, label,
     bounds: boundsOf(steps, [ballStart, ballEnd]) });
+}
+
+const isPt = (p) => isFiniteNum(p?.x) && isFiniteNum(p?.y);
+
+/**
+ * A built drawing's words laid out again in a renderer's view (play-label.labelMetrics): the same text beside the
+ * same end of the play, clear of its strokes as that view shows them and of the balls. Null when it has no words;
+ * its own label when that carries no anchor.
+ * @returns {Readonly<{text: string, at: {x: number, y: number}, approx: boolean, anchor: object}> | null}
+ */
+export function placePlayLabel(drawing, metrics) {
+  const label = drawing?.label ?? null;
+  if (!label?.text || !isPt(label.anchor)) return label;
+  const at = wordsAt(label.text, label.anchor, { kick: KICKS.has(drawing.kind), steps: drawing.steps ?? [],
+    balls: [drawing.ballStart, drawing.ballEnd], metrics });
+  return deepFreeze({ ...label, at });
 }
 
 function snapSituation(ballX, dir, poss, s) {

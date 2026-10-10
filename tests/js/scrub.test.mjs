@@ -67,7 +67,12 @@ test("the keys print the keyboard key that does the same thing (←, Esc) and na
   assert.equal(earlier.getAttribute("aria-keyshortcuts"), "ArrowLeft");
   assert.equal(live.querySelector(".sc-key-cap").textContent, "Esc");
   assert.equal(live.querySelector(".sc-key-name").textContent, "Live");
-  assert.equal(live.getAttribute("aria-label"), "Back to live", "the visible word is in the name (2.5.3)");
+  // G5-12 (WCAG 2.5.3, axe label-content-name-mismatch): the name is the visible word, the cap is aria-hidden, and
+  // the description says what the key does and which key does it
+  assert.equal(live.getAttribute("aria-label"), null, "named by its visible word");
+  assert.equal(live.getAttribute("title"), "Back to live (Esc)");
+  assert.equal(earlier.getAttribute("aria-label"), null);
+  assert.equal(earlier.getAttribute("title"), "Earlier play (Left)");
   assert.equal(live.getAttribute("aria-keyshortcuts"), "Escape");
   assert.ok(live.querySelector(".sc-lamp"), "a tally lamp beside the word");
 });
@@ -179,22 +184,17 @@ test("keys on the strip step through plays and drives with reviewAt, and never s
   assert.equal(calls.some(([name]) => ["review", "watchStep"].includes(name)), false);
 });
 
-test("keys on the strip: Esc leaves review, Space plays or pauses, 1 to 4 set the speed; others pass through", () => {
+test("keys on the strip: Space plays or pauses; Esc, 1 to 4 and every other key pass through to the page (G5-12)", () => {
   const { calls, track, render } = setup();
-  render(finalVm());
-  assert.equal(keydown(track, "Escape").prevented, false, "nothing to leave at the live edge");
   render(finalVm(12));
-  assert.equal(keydown(track, "Escape").prevented, true);
-  assert.deepEqual(calls.at(-1), ["exitReview"]);
   assert.equal(keydown(track, " ").prevented, true);
   assert.deepEqual(calls.at(-1), ["watchToggle"]);
-  keydown(track, "3");
-  assert.deepEqual(calls.at(-1), ["watchSpeed", 4]);
-  keydown(track, "4");
-  assert.deepEqual(calls.at(-1), ["watchSpeed", 10]);
   const n = calls.length;
-  assert.equal(keydown(track, "Tab").prevented, false);
-  assert.equal(keydown(track, "a").prevented, false);
+  // core/keymap.js runs these for a focused slider as anywhere else (Esc leaves review, 1 to 4 set the speed, B, G,
+  // V and the retag keys), so the strip must not run them a second time
+  for (const key of ["Escape", "3", "4", "b", "g", "v", "a", "Tab"]) {
+    assert.equal(keydown(track, key).prevented, false, key);
+  }
   track.dispatchEvent({ type: "keydown", key: "ArrowLeft", ctrlKey: true, preventDefault() {} });
   track.dispatchEvent({ type: "keydown", key: " ", repeat: true, preventDefault() {} });
   assert.equal(calls.length, n);

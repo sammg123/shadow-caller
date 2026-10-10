@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { LEAVES } from "../../static/js/core/domain.js";
+import { buildGhostSet, ghostInputFromPrediction } from "../../static/js/field/ghosts.js";
 import { LABEL_CHAR_YD, LABEL_LINE_YD, labelHalfSpanYd } from "../../static/js/field/grammar.js";
 import { buildDrawing, situationFromRow } from "../../static/js/field/paths.js";
 import { labelBox, labelFootprint } from "../../static/js/field/play-label.js";
+import { shadowInputOf } from "../../static/js/field/play-style.js";
 import {
   LEAF_NAMES, SHADOW_COUNT, SHADOW_STACK_LIFT, buildShadowPlays, shadowCandidates, shadowForLeaf,
 } from "../../static/js/field/shadows.js";
@@ -71,6 +73,18 @@ function previousDrawing(rows, i) {
   const prev = rows.slice(0, i).reverse().find((r) => r.kind !== "admin");
   return prev ? buildDrawing(prev) : null;
 }
+
+/** The shadows' words as one block in rank order: each line lower on the screen than the one before, never touching
+ * (labelBox in the view `metrics`: past the line of scrimmage a line takes more yards). */
+function stackedInOrder(shadows, metrics) {
+  const boxes = shadows.map((s) => labelBox(s.label, metrics));
+  return boxes.every((b, i) => i === 0 || b.v - boxes[i - 1].v >= b.hh + boxes[i - 1].hh - EPS);
+}
+
+/** A phone held upright: the Under the Lights wide camera at 390x844 as measured on the page (its pose before the
+ * 7th snap, 29 px plate lines): deep lines, deeper still past the line of scrimmage. */
+const PHONE = Object.freeze({ charYd: 0.82, lineYd: 8.96, padYd: 1.55, down: { x: 0, y: -1 }, lifts: [2.18],
+  grow: 0.0175, atV: -C });
 
 test("the first DAL snap: inside run, then play-action short, from his model's own top 3 (row pred)", () => {
   const shadows = buildShadowPlays(firstSnap().pred, situationFromRow(firstSnap()));
@@ -180,6 +194,94 @@ test("labels step around labels already on the field (the previous play's)", () 
   const [run, pa] = buildShadowPlays(firstSnap().pred, sit, { avoid: [previous] });
   for (const s of [run, pa]) assert.equal(overlaps(s.label, previous), false, s.leaf);
   assert.equal(overlaps(run.label, pa.label), false);
+});
+
+test("the words stack as one block, #1 on top: a blocker on #1's line moves both, never #2 above #1", () => {
+  const plain = buildShadowPlays(D25_PREDICTION, D25);
+  assert.ok(stackedInOrder(plain));
+  const chip = { text: "Miss", at: { x: 49, y: plain[0].label.at.y } };   // only on #1's line: #2's is free
+  const moved = buildShadowPlays(D25_PREDICTION, D25, { avoid: [chip] });
+  for (const s of moved) assert.equal(overlaps(s.label, chip), false, s.leaf);
+  assert.ok(moved[0].label.at.y > moved[1].label.at.y, `#1 (${moved[0].label.at.y}) above #2 (${moved[1].label.at.y})`);
+  assert.ok(stackedInOrder(moved), "on consecutive lines, apart");
+  near(moved[0].label.at.y - moved[1].label.at.y, LABEL_LINE_YD, "#2 right under #1");
+  const three = buildShadowPlays(D25_PREDICTION, D25, { avoid: [chip], hover: "screen" });
+  assert.deepEqual(three.map((s) => s.leaf), ["dropback_deep", "dropback_short", "screen"]);
+  assert.ok(stackedInOrder(three), "a hovered third play joins the bottom of the block");
+});
+
+test("a phone's deep lines: every Dallas snap stacks #1 over #2 with no overlap, past the line of scrimmage too", () => {
+  const rows = allRows();
+  let snaps = 0;
+  rows.forEach((row, i) => {
+    if (!row.pred?.dist) return;
+    const prev = previousDrawing(rows, i);
+    const shown = buildShadowPlays(row.pred, situationFromRow(row), { avoid: prev ? [prev] : [], metrics: PHONE });
+    assert.ok(stackedInOrder(shown, PHONE), `#${row.seq}: ${shown.map((s) => `${s.label.text} @ ${s.label.at.y}`)}`);
+    if (prev?.label) {
+      for (const s of shown) assert.equal(boxesMeet(s.label, prev.label, PHONE), false, `#${row.seq} ${s.label.text}`);
+    }
+    snaps += 1;
+  });
+  assert.equal(snaps, 59);
+  const high = buildShadowPlays(firstSnap().pred, situationFromRow(firstSnap()), { metrics: PHONE,
+    avoid: [{ text: "x".repeat(60), at: { x: 32, y: 10 } }, { text: "x".repeat(60), at: { x: 32, y: 4 } },
+      { text: "x".repeat(60), at: { x: 32, y: 16 } }] });
+  assert.ok(high.every((s) => s.label.at.y > C), "no room below: the block goes up past the line of scrimmage");
+  assert.ok(stackedInOrder(high, PHONE), "and there a line takes more yards, so the plates still never touch");
+});
+
+test("on 4th down he usually kicks: the shadows read 'If he goes' and draw quieter (35%, then 25%)", () => {
+  const fourth = { ...D25, down: 4, togo: 6 };
+  const shadows = buildShadowPlays(D25_PREDICTION, fourth);
+  assert.deepEqual(shadows.map((s) => s.label.text),
+    ["If he goes · 1 · Deep shot (20+) · 48%", "If he goes · 2 · Short (0–9 air yds) · 25%"]);
+  assert.deepEqual(shadows.map((s) => s.drawing.opacity), [0.35, 0.25]);
+  for (const s of shadows) for (const step of s.drawing.steps) assert.equal(step.opacity, s.drawing.opacity);
+  assert.ok(stackedInOrder(shadows), "the longer words still stack");
+  const hovered = buildShadowPlays(D25_PREDICTION, fourth, { hover: "screen" })[2];
+  assert.deepEqual([hovered.label.text, hovered.drawing.opacity], ["If he goes · 5 · Screen · 4.6%", 0.25]);
+  const one = shadowForLeaf("screen", 0.05, fourth, 5);
+  assert.deepEqual([one.label.text, one.drawing.opacity], ["If he goes · 5 · Screen · 5.0%", 0.25]);
+  for (const down of [1, 2, 3, null, undefined]) {
+    const plain = buildShadowPlays(D25_PREDICTION, { ...D25, down });
+    assert.deepEqual(plain.map((s) => s.drawing.opacity), [0.5, 0.35], `down ${down}`);
+    assert.equal(plain[0].label.text, "1 · Deep shot (20+) · 48%");
+  }
+  assert.notEqual(shadows[0].key, buildShadowPlays(D25_PREDICTION, D25)[0].key, "a new key, so a renderer redraws");
+});
+
+test("both engines hand the builder the snap's down: the 3D ghost layer's request says 4th down too", () => {
+  const fourth = { ...D25, down: 4, togo: 6 };
+  const set = buildGhostSet(ghostInputFromPrediction(D25_PREDICTION), fourth);
+  const input = shadowInputOf(set, { live: fourth, poss: "DAL" });
+  assert.deepEqual(buildShadowPlays(input.source, input.situation).map((s) => [s.label.text.slice(0, 15),
+    s.drawing.opacity]), [["If he goes · 1 ", 0.35], ["If he goes · 2 ", 0.25]]);
+  const other = shadowInputOf(set, { live: { ...fourth, ballX: 60 }, poss: "DAL" });
+  assert.equal(buildShadowPlays(other.source, other.situation)[0].drawing.opacity, 0.5, "another snap's down: not his");
+  const direct = shadowInputOf({ source: D25_PREDICTION, situation: fourth });
+  assert.equal(buildShadowPlays(direct.source, direct.situation)[0].drawing.opacity, 0.35, "a request of its own");
+});
+
+test("'If he goes' on every Dallas snap: the longer words still fit on the field, underneath, apart and in order", () => {
+  const rows = allRows();
+  rows.forEach((row, i) => {
+    if (!row.pred?.dist) return;
+    const prev = previousDrawing(rows, i);
+    for (const metrics of [undefined, PHONE]) {
+      const shown = buildShadowPlays(row.pred, { ...situationFromRow(row), down: 4 }, { avoid: prev ? [prev] : [],
+        metrics });
+      assert.ok(shown.every((s) => s.label.text.startsWith("If he goes · ")), `${row.seq}`);
+      assert.ok(stackedInOrder(shown, metrics), `#${row.seq} in order`);
+      for (const s of shown) {
+        const half = labelHalfSpanYd(s.label.text);
+        assert.ok(s.label.at.x - half >= -10 - EPS && s.label.at.x + half <= 110 + EPS, `#${row.seq} whole label`);
+      }
+    }
+  });
+  const go = rowBySeq(130);
+  assert.equal(situationFromRow(go).down, 4, "Dallas went for it on 4th and 3");
+  assert.match(buildShadowPlays(go.pred, situationFromRow(go))[0].label.text, /^If he goes · 1 · /);
 });
 
 test("percentages round exactly as the prediction panel shows them: the top line's pct, the list's pct1", () => {

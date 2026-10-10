@@ -1,10 +1,11 @@
 // Under the Lights: the stands' mesh and material (DESIGN.md "The bowl": dark low-poly rings in steel and haze tones;
-// owner W1). The rows, walls, fascia bodies and the four towers' steel share one vertex-colored, lit material, so the
-// whole stadium structure is one draw call. The bowl is never pitch black: its concourses and aisles glow faintly
+// owner W1). The rows, walls, fascia bodies, the four towers' steel and the plaza around it all (ground.js, G3-2)
+// share one vertex-colored, lit material, so the whole stadium structure is one draw call. The bowl is never pitch black: its concourses and aisles glow faintly
 // (a self-light of each part's own tone), so the tiers read from every camera, and the towers' spill lights them on
 // top; both fall with the stadium lights in the dip (setLevel). The haze is the bowl's own (haze.js).
 import { createBuilder } from "./builder.js";
 import { addStands } from "./bowl.js";
+import { addGround } from "./ground.js";
 import { bowlHaze } from "./haze.js";
 import { addTowerSteel } from "./towers.js";
 
@@ -42,6 +43,7 @@ export function createStands(THREE, frames, { day = false, lite = false } = {}) 
   const b = createBuilder();
   addStands(b, { day });
   addTowerSteel(b, frames);
+  addGround(b, { day });
   const base = day ? SELF_LIGHT.day : SELF_LIGHT.night;
   const { material, self } = lite ? liteMaterial(THREE, day) : standsMaterial(THREE, base);
   const mesh = new THREE.Mesh(b.build(THREE), material);

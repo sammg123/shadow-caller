@@ -4,7 +4,7 @@ import re
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import command, state, version, wait_idle, with_drive
+from ui_helpers import blur, command, full_timeline, state, version, wait_idle, with_drive
 from ui_helpers import CAMERAS, point_at  # v1.4 (W6): world-aware helpers
 
 pytestmark = pytest.mark.e2e
@@ -97,3 +97,34 @@ def test_field_reports_the_new_situation_after_a_play(upage, server, scene):
     expect(f).to_have_attribute("data-los", "71")
     expect(f).to_have_attribute("data-ltg", "65")
     expect(f).to_have_attribute("aria-label", "Ball on DAL 29. 2nd & 6. Line to gain DAL 35.")
+
+
+def verdict_words(pred):
+    """model/verdict.js verdictOf, in words: his rank for the play he ran (1, top 3 or not), else the play type."""
+    rank = (pred or {}).get("leaf_rank")
+    if isinstance(rank, int) and rank > 0:
+        return "Top pick" if rank == 1 else "In his top 3" if rank <= 3 else "Miss"
+    return "Top pick" if pred.get("fam_top") == pred.get("family") else "Miss"
+
+
+def test_a_logged_play_is_spoken_with_its_verdict_and_a_camera_change_on_the_status_line(upage, server):
+    """G2-6: assistive tech hears each newly drawn play once, with his verdict, in a polite log (nothing from before
+    the page loaded), and what V just did on the status line."""
+    base = server["base"]
+    with_drive(upage, base)
+    log = upage.locator('[data-testid="announcer-log"]')
+    status = upage.locator('[data-testid="announcer-status"]')
+    expect(log).to_have_attribute("role", "log")
+    expect(log).to_have_attribute("aria-live", "polite")
+    expect(status).to_have_attribute("role", "status")
+    wait_idle(upage)
+    expect(log.locator("p")).to_have_count(0)
+    command(base, "K 4")
+    row = full_timeline(base)["rows"][-1]
+    words = verdict_words(row["pred"])
+    spoken = log.locator("p")
+    expect(spoken).to_have_count(1)
+    expect(spoken.first).to_have_text(re.compile(r"^Q1 \d{1,2}:\d{2} DAL\. Inside run.*\+4\. " + re.escape(words) + r"\.$"))
+    blur(upage)
+    upage.keyboard.press("v")
+    expect(status).to_have_text(f"Camera: {CAMERAS[1][1]}")

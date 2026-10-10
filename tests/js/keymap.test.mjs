@@ -179,6 +179,45 @@ test("flag mode: every flag letter applies its code, B and G included (FI 1.6, #
   assert.deepEqual(intentOf("I", FLAG), { type: "applyFlag", code: "IG" });
 });
 
+test("G5-12: Escape closes an open drawer before it clears the pick; flag, scorecard and review come first", () => {
+  const booth = ctxOf({ boothOpen: true });
+  assert.deepEqual(strip(press("Escape", booth)), { intent: { type: "closeBooth" }, prevent: true }, "the pick survives");
+  for (const base of [FEED, PLAYING, PAUSED, DONE]) {
+    assert.deepEqual(intentOf("Escape", { ...base, boothOpen: true }), { type: "closeBooth" }, JSON.stringify(base));
+  }
+  assert.deepEqual(intentOf("Escape", { ...booth, flagOpen: true }), { type: "closeFlag" });
+  assert.deepEqual(intentOf("Escape", { ...booth, scorecardOpen: true }), { type: "closeScorecard" });
+  assert.deepEqual(intentOf("Escape", { ...booth, reviewing: true }), { type: "exitReview" });
+  assert.deepEqual(intentOf("Escape", booth, { target: "yards" }), { type: "closeBooth" });
+  assert.deepEqual(strip(press("Escape", booth, { repeat: true })), PREVENT_ONLY, "a held Esc closes once");
+  assert.deepEqual(intentOf("Escape", NORMAL), { type: "clearPick" }, "closed: as before");
+});
+
+test("G5-13: Escape dismisses an error toast first (it is the topmost layer); flag mode keeps its own Escape", () => {
+  const err = ctxOf({ toastErr: true, boothOpen: true, scorecardOpen: true, reviewing: true });
+  assert.deepEqual(strip(press("Escape", err)), { intent: { type: "dismissToast" }, prevent: true });
+  for (const base of [FEED, PLAYING, PAUSED]) assert.deepEqual(intentOf("Escape", { ...base, toastErr: true }), { type: "dismissToast" });
+  assert.deepEqual(intentOf("Escape", { ...FLAG, toastErr: true }), { type: "closeFlag" });
+  assert.deepEqual(strip(press("Escape", err, { repeat: true })), PREVENT_ONLY);
+  assert.deepEqual(intentOf("Escape", ctxOf({ toastErr: false })), { type: "clearPick" });
+});
+
+test("G5-12: on the replay slider only its own keys stay local; B, G, V, retags, digits and Esc work as anywhere", () => {
+  for (const k of ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown", " "]) {
+    for (const ctx of [PLAYING, PAUSED, NORMAL]) {
+      assert.deepEqual(strip(press(k, ctx, { target: "slider" })), NOTHING, `${k}: ui/scrub.js handles it`);
+    }
+  }
+  assert.deepEqual(intentOf("B", PAUSED, { target: "slider" }), { type: "toggleBooth" });
+  assert.deepEqual(intentOf("G", PAUSED, { target: "slider" }), { type: "toggleScorecard" });
+  assert.deepEqual(intentOf("V", PAUSED, { target: "slider" }), { type: "cycleCamera" });
+  assert.deepEqual(intentOf("A", PLAYING, { target: "slider" }), { type: "retag", key: "A", pauseFirst: true });
+  assert.deepEqual(intentOf("3", PLAYING, { target: "slider" }), { type: "watchSpeed", speed: 4 });
+  assert.deepEqual(intentOf("Escape", ctxOf({ watchState: "paused", reviewing: true }), { target: "slider" }),
+    { type: "exitReview" });
+  assert.deepEqual(strip(press("B", PAUSED, { target: "text" })), NOTHING, "a text box still keeps every key");
+});
+
 test("flag mode: Escape and X close and keep the pick (#66)", () => {
   assert.deepEqual(strip(press("Escape", FLAG)), { intent: { type: "closeFlag" }, prevent: true });
   assert.deepEqual(strip(press("x", FLAG)), { intent: { type: "closeFlag" }, prevent: true });
@@ -236,9 +275,12 @@ test("keyContext reads the store: freshest feed and watch, flag, scorecard, revi
     view: { flag: { open: true }, scorecardOpen: true, review: { seq: 12 } },
   };
   assert.deepEqual(keyContext(state), { feedOn: true, watchState: "paused", flagOpen: true, scorecardOpen: true,
-    reviewing: true, driveActive: true });
+    reviewing: true, driveActive: true, boothOpen: false, toastErr: false });
+  assert.equal(keyContext({ ...state, view: { ...state.view, toast: { id: 1, text: "x", err: true } } }).toastErr, true);
+  assert.equal(keyContext({ ...state, view: { ...state.view, booth: { open: true, auto: false } } }).boothOpen, true);
   assert.deepEqual(keyContext({ server: null, version: null, view: { flag: { open: false }, scorecardOpen: false, review: { seq: null } } }),
-    { feedOn: false, watchState: "idle", flagOpen: false, scorecardOpen: false, reviewing: false, driveActive: false });
+    { feedOn: false, watchState: "idle", flagOpen: false, scorecardOpen: false, reviewing: false, driveActive: false,
+      boothOpen: false, toastErr: false });
 });
 
 test("keys inside specific inputs follow FI 1.8 (component-owned, shared here)", () => {

@@ -6,7 +6,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  AMBIENT_EVENT, AMBIENT_KEY, BOOTH_COPY, DIP_KEY, dipFor, dipInLiveGames, mountBooth, setDipInLiveGames, shouldDipNow,
+  AMBIENT_EVENT, AMBIENT_KEY, BOOTH_COPY, DIP_KEY, ROW_CUT_RATIO, dipFor, dipInLiveGames, mountBooth, setDipInLiveGames,
+  shouldDipNow,
 } from "../../static/js/theme/worlds/under-the-lights/booth.js";
 import { arrange } from "../../static/js/theme/worlds/under-the-lights/arrange.js";
 import { REGION_NAMES } from "../../static/js/theme/registry.js";
@@ -303,4 +304,110 @@ test("the booth copy is plain words, set in caps by CSS", () => {
     assert.ok(text.length > 2 && text === text.trim(), key);
   }
   assert.ok(Object.isFrozen(BOOTH_COPY));
+});
+
+test("G5-8: #app[data-desk-focus] follows keyboard focus in a desk input, so no #app-wide :has() has to watch it", () => {
+  const { doc, app, regions } = stadium();
+  arrange(app, regions);
+  const desk = app.querySelector(".uls-desk");
+  assert.ok(desk, "arrange hung the desk");
+  const yards = doc.createElement("input");
+  const button = doc.createElement("button");
+  regions.entry.appendChild(yards);
+  regions.entry.appendChild(button);
+  // focusin and focusout bubble to the desk (the fake DOM delivers to the node it is given, so deliver it there)
+  const fire = (node, type, relatedTarget = null) => desk.dispatchEvent({ type, target: node, relatedTarget });
+  fire(button, "focusin");
+  assert.equal(app.getAttribute("data-desk-focus"), null, "a key is not a typing box");
+  fire(yards, "focusin");
+  assert.equal(app.getAttribute("data-desk-focus"), "true");
+  fire(yards, "focusout", button);
+  assert.equal(app.getAttribute("data-desk-focus"), null, "focus moved to a key");
+  fire(yards, "focusin");
+  fire(yards, "focusout", null);
+  assert.equal(app.getAttribute("data-desk-focus"), null, "focus left the page's controls");
+});
+
+test("G5-2: a keypad row the desk's foot cuts is marked data-cut (whole rows only); the rows can arrive after the booth", () => {
+  const ios = [];
+  const mos = [];
+  const win = { ...fakeWindow(), addEventListener() {}, removeEventListener() {},
+    getComputedStyle: () => ({ getPropertyValue: () => "" }),
+    IntersectionObserver: class {
+      constructor(fn, opts) { this.fn = fn; this.opts = opts; this.seen = []; ios.push(this); }
+      observe(node) { this.seen.push(node); }
+      disconnect() { this.off = true; }
+    },
+    MutationObserver: class {
+      constructor(fn) { this.fn = fn; mos.push(this); }
+      observe(target, opts) { this.target = target; this.opts = opts; }
+      disconnect() { this.off = true; }
+    } };
+  const { doc, app, regions } = stadium({ win });
+  arrange(app, regions);
+  const io = ios.at(-1);
+  const desk = app.querySelector(".uls-desk");
+  assert.equal(io.opts.root, desk);
+  assert.ok(io.opts.threshold.includes(ROW_CUT_RATIO));
+  assert.equal(io.seen.length, 0, "the entry pad hasn't mounted yet");
+  const waiting = mos.find((m) => m.target === desk);
+  assert.ok(waiting && waiting.opts.subtree, "the booth waits for the keypad");
+  const rows = ["run", "pass", "rpo", "result"].map((id) => {
+    const row = doc.createElement("div");
+    row.setAttribute("class", "sc-keyrow");
+    row.setAttribute("data-row", id);
+    regions.entry.appendChild(row);
+    return row;
+  });
+  waiting.fn([]);
+  assert.deepEqual(io.seen, rows, "each row is watched once the pad is there");
+  assert.equal(waiting.off, true, "and the wait ends");
+  io.fn([{ target: rows[0], isIntersecting: true, intersectionRatio: 1 },
+    { target: rows[2], isIntersecting: true, intersectionRatio: 0.15 },
+    { target: rows[3], isIntersecting: false, intersectionRatio: 0 }]);
+  assert.deepEqual(rows.map((r) => r.getAttribute("data-cut")), [null, null, "true", null]);
+  io.fn([{ target: rows[2], isIntersecting: true, intersectionRatio: 1 }]);
+  assert.equal(rows[2].getAttribute("data-cut"), null, "scrolled in whole: shown");
+});
+
+test("G5-9: B and G move focus into what they open and give it back on close; X keeps Yards; racks are groups only open", () => {
+  const win = { ...fakeWindow(), addEventListener() {}, removeEventListener() {},
+    getComputedStyle: () => ({ getPropertyValue: () => "" }) };
+  const { doc, app, regions } = stadium({ win });
+  const feedBtn = doc.createElement("button");
+  feedBtn.setAttribute("id", "feedBtn");
+  regions.feed.appendChild(feedBtn);
+  const yards = doc.createElement("input");
+  yards.setAttribute("id", "yards");
+  regions.entry.appendChild(yards);
+  arrange(app, regions);
+  const panels = win.observers.find((o) => o.target === app && o.opts.attributeFilter.includes("data-scorecard-open")
+    && !o.opts.attributeFilter.includes("data-mode"));   // not W3's insets watcher, which watches the mode too
+  assert.ok(panels, "the booth watches the drawer and the stat board on #app");
+  const racks = [...app.querySelectorAll(".uls-rack")];
+  assert.ok(racks.every((r) => r.getAttribute("role") === null && r.getAttribute("aria-labelledby") === null),
+    "closed: no empty groups in the accessibility tree (and no label without a role)");
+  const flip = (attrs) => {
+    for (const [name, value] of Object.entries(attrs)) app.setAttribute(name, value);
+    panels.fn([]);
+  };
+  yards.focus();
+  flip({ "data-mode": "normal", "data-booth-open": "true" });
+  const focused = (node, why) => assert.ok(doc.activeElement === node, `${why}: focus is on ${doc.activeElement?.localName}#${doc.activeElement?.id}`);
+  focused(feedBtn, "B: the drawer's first control");
+  assert.ok(racks.every((r) => r.getAttribute("role") === "group"
+    && r.getAttribute("aria-labelledby") === r.querySelector(".uls-plate").getAttribute("id")));
+  flip({ "data-booth-open": "false" });
+  focused(yards, "closed: back where B was pressed");
+  flip({ "data-mode": "flag", "data-booth-open": "true" });
+  focused(yards, "X opens the drawer to FLAGS, and Yards keeps focus for the penalty yards");
+  flip({ "data-mode": "normal", "data-booth-open": "false" });
+  const board = app.querySelector(".uls-statboard");
+  flip({ "data-scorecard-open": "true" });
+  assert.deepEqual([board.getAttribute("role"), board.getAttribute("tabindex"), board.getAttribute("aria-label")],
+    ["region", "-1", "Scorecard"]);
+  focused(board, "G: the stat board itself, so its region is read and scrolls by keys");
+  flip({ "data-scorecard-open": "false" });
+  focused(yards, "G again: back to Yards");
+  assert.deepEqual([board.getAttribute("role"), board.getAttribute("tabindex")], [null, null]);
 });

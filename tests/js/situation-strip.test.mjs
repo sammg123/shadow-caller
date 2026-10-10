@@ -33,10 +33,13 @@ test("mount creates every strip hook of 5.1", async () => {
   assert.equal(byId("iSide").getAttribute("type"), "button");
 });
 
-test("a fresh game shows Q1 15:00, 0 and 0, 1st & 10, DAL 25; est. and the end row are hidden (#4, #5)", async () => {
+test("a fresh game shows Q1 15:00, 0 and 0, 1st & 10, Ball on blank with 25 as its placeholder; est. and the end row are hidden (#4, #5, G5-3)", async () => {
   const { doc, root, byId, component } = await setup();
   inDoc(doc, () => component.update(vmOf(fresh())));
-  assert.deepEqual(FIELDS.map((id) => byId(id).value), ["1", "15:00", "0", "0", "1", "10", "25"]);
+  assert.deepEqual(FIELDS.map((id) => byId(id).value), ["1", "15:00", "0", "0", "1", "10", ""]);
+  assert.equal(byId("iYard").getAttribute("placeholder"), "25", "off the field: where a drive usually starts");
+  assert.deepEqual(FIELDS.filter((id) => id !== "iYard").map((id) => byId(id).getAttribute("placeholder")),
+    [null, null, null, null, null, null]);
   assert.equal(byId("sideTxt").textContent, "DAL");
   assert.equal(hasClass(byId("iSide"), "opp"), false);
   assert.equal(byId("iSide").getAttribute("data-side"), "own");
@@ -54,7 +57,7 @@ test("a fresh game shows Q1 15:00, 0 and 0, 1st & 10, DAL 25; est. and the end r
 test("with a drive: drive info, the end-of-drive keys, To go G and the opponent's side (#17, #18)", async () => {
   const { doc, root, byId, component } = await setup();
   inDoc(doc, () => component.update(vmOf(drive())));
-  assert.equal(byId("driveInfo").textContent, "Drive 1, snap 1 of the game");
+  assert.equal(byId("driveInfo").textContent, "Drive 1 · snap 1");
   assert.equal(byId("driveInfo").getAttribute("data-cue"), "false");
   assert.equal(byId("endRow").hidden, false);
   const ends = [...root.querySelectorAll("[data-end]")];
@@ -280,7 +283,7 @@ test("a render never overwrites the field being typed in (#25, FI 4.3)", async (
 
 test("the side chip flips the side with the typed number, then focuses and selects Ball on (#12, #18)", async () => {
   const { doc, byId, component, named } = await setup();
-  inDoc(doc, () => component.update(vmOf(fresh())));
+  inDoc(doc, () => component.update(vmOf(drive())));
   const yard = byId("iYard");
   let selects = 0;
   yard.select = () => { selects += 1; };
@@ -289,6 +292,16 @@ test("the side chip flips the side with the typed number, then focuses and selec
   assert.deepEqual(named("flipSide"), [["25"]]);
   assert.equal(doc.activeElement, yard);
   assert.ok(selects >= 1);
+  assert.equal(yard.getAttribute("placeholder"), null, "during a drive Ball on shows the spot, no placeholder");
+  inDoc(doc, () => {
+    yard.blur();                                   // a render never writes the field being typed in (#25)
+    component.update(vmOf(fresh()));
+  });
+  inDoc(doc, () => fire(byId("iSide"), "click"));
+  await inDoc(doc, () => settle());
+  assert.deepEqual(named("flipSide")[1], [""], "off the field the box is blank: actions use the placeholder's 25");
+  assert.equal(doc.activeElement, yard);
+  assert.equal(yard.value, "25", "the number just sent fills the box, selected, before the next render (#25)");
 });
 
 test("the end-of-drive keys call endDrive (#86, #87)", async () => {
@@ -316,4 +329,37 @@ test("scores are named by team for screen readers (G13); empty before the first 
   inDoc(doc, () => component.update(vmOf(state.final())));
   assert.equal(byId("iOff").getAttribute("aria-label"), "DAL score");
   component.destroy();
+});
+
+test("G5-13: the refused field points at the error line (aria-describedby), which says Invalid and why", async () => {
+  const { doc, byId, component } = await setup();
+  const line = byId("stripError");
+  assert.ok(line, "#stripError");
+  inDoc(doc, () => component.update(vmOf(fresh())));
+  assert.equal(line.hidden, true);
+  inDoc(doc, () => component.update(vmOf(fresh(), { stripRejected: { iClock: "zz" },
+    stripErrors: { iClock: "Clock like 8:41 or 841, got 'zz'" } })));
+  assert.equal(line.hidden, false);
+  assert.equal(line.textContent, "Invalid Clock like 8:41 or 841, got 'zz'");
+  assert.equal(line.querySelector(".sc-strip-error-tag").textContent, "Invalid");
+  assert.equal(byId("iClock").getAttribute("aria-describedby"), "stripError");
+  assert.equal(byId("iClock").getAttribute("aria-invalid"), "true");
+  assert.deepEqual(FIELDS.filter((id) => byId(id).hasAttribute("aria-describedby")), ["iClock"]);
+  inDoc(doc, () => component.update(vmOf(fresh())));
+  assert.equal(line.hidden, true);
+  assert.equal(byId("iClock").getAttribute("aria-describedby"), null);
+});
+
+test("G5-16: read-only (Watch this game): the fields show the game but take no typing and no Tab, the chip is off", async () => {
+  const { doc, byId, component } = await setup();
+  inDoc(doc, () => component.update({ ...vmOf(drive()), readOnly: true, endRowHidden: true }));
+  for (const id of FIELDS) {
+    assert.equal(byId(id).hasAttribute("readonly"), true, id);
+    assert.equal(byId(id).getAttribute("tabindex"), "-1", id);
+  }
+  assert.equal(byId("iSide").hasAttribute("disabled"), true);
+  assert.equal(byId("endRow").hidden, true);
+  inDoc(doc, () => component.update(vmOf(drive())));
+  for (const id of FIELDS) assert.deepEqual([byId(id).hasAttribute("readonly"), byId(id).getAttribute("tabindex")], [false, null], id);
+  assert.equal(byId("iSide").hasAttribute("disabled"), false);
 });

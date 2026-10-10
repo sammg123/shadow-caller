@@ -7,6 +7,8 @@ __pycache__/
 data/live_state.json
 data/live_state.*
 data/live_state.backup-*.json
+data/.live_state.*
+data/.feed_seen.*
 data/watch_session.json*
 data/feed_seen.json*
 data/shadow.duckdb*

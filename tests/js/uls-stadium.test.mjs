@@ -12,7 +12,7 @@ const { props, passes, STADIUM } = await import("../../static/js/theme/worlds/un
 const { RINGS, deckRanges, seating, standsGeometry } = await import("../../static/js/theme/worlds/under-the-lights/stadium/bowl.js");
 const { crowdArrays } = await import("../../static/js/theme/worlds/under-the-lights/stadium/crowd.js");
 const { bowlHaze, hazeDepthGlsl } = await import("../../static/js/theme/worlds/under-the-lights/stadium/haze.js");
-const { lensCenter } = await import("../../static/js/theme/worlds/under-the-lights/shaders/grade.js");
+const { lensCenter, lensGain } = await import("../../static/js/theme/worlds/under-the-lights/shaders/grade.js");
 const { slideTo, sunDirection } = await import("../../static/js/theme/worlds/under-the-lights/stadium/air.js");
 
 const TL = loadTimeline();
@@ -74,6 +74,69 @@ test("the bowl: a full lower bowl, a horseshoe upper deck that leaves the home s
   assert.equal(tiers.length, 3);
   assert.equal(tiers[0].rows, RINGS.lower.homeRows);
   assert.ok(RINGS.lower.a > 60 && RINGS.lower.b > 26.667, "the first row stands back from the field");
+});
+
+// ---------------------------------------------------------------- G3-2: what the cameras see below the near sideline
+const { createBuilder, linearRgb } = await import("../../static/js/theme/worlds/under-the-lights/stadium/builder.js");
+const { GROUND, addGround } = await import("../../static/js/theme/worlds/under-the-lights/stadium/ground.js");
+const { FACADE, homeBackRing } = await import("../../static/js/theme/worlds/under-the-lights/stadium/bowl.js");
+
+const lum = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+function vertices(geometry) {
+  const p = geometry.attributes.position.array;
+  const c = geometry.attributes.color.array;
+  return Array.from({ length: p.length / 3 }, (_, i) => ({ x: p[i * 3], y: p[i * 3 + 1], z: p[i * 3 + 2],
+    l: lum(c[i * 3], c[i * 3 + 1], c[i * 3 + 2]) }));
+}
+
+test("G3-2: a hazed plaza rings the stadium: bowl-haze concrete, lit by the concourse near the stands, to the horizon", () => {
+  const vs = vertices(addGround(createBuilder()).build(THREE));
+  const [a, b] = homeBackRing();
+  assert.ok(vs.every((v) => v.y > 0.05 && v.y < 0.5), "a hair over the turf (no z-fighting), never a wall");
+  assert.ok(Math.min(...vs.map((v) => (v.x / a) ** 4 + (v.z / b) ** 4)) >= 0.99, "it starts at the home stand's back");
+  assert.ok(Math.max(...vs.map((v) => v.z)) > b + GROUND.reach - 1, `it reaches ${GROUND.reach} yd out`);
+  assert.ok(GROUND.reach >= 150, "past where any camera's frame meets the ground (the wide camera's is 109 yd out)");
+  const ground = vs.filter((v) => Math.abs(v.y - GROUND.y) < 1e-6);
+  const near = ground.filter((v) => v.z > b && v.z < b + 6 && Math.abs(v.x) < 30).map((v) => v.l);
+  const far = ground.filter((v) => v.z > b + 90).map((v) => v.l);
+  assert.ok(Math.min(...near) > Math.max(...far), "brighter at the concourse than out in the lots");
+  const haze = lum(...linearRgb("#26314c"));
+  assert.ok(far.every((l) => Math.abs(l - haze) < haze * 0.6), "bowl-haze out there");
+  const tones = new Set(vs.filter((v) => v.z > b + 20 && v.z < b + 60).map((v) => v.l.toFixed(4)));
+  assert.ok(tones.size >= 3, "seams and lamp pools: never one flat color");
+  const mean = (list) => list.reduce((s, v) => s + v.l, 0) / list.length;
+  const daylit = vertices(addGround(createBuilder(), { day: true }).build(THREE));
+  assert.ok(daylit.length < vs.length, "the same plaza by day, its lamp pools off");
+  assert.ok(mean(daylit) > mean(vs) * 2, "concrete in the sun, not the night's haze");
+});
+
+test("G3-2: the home stand's back is a facade (ribs proud of the wall, a lit concourse band), all one draw call", () => {
+  const vs = vertices(standsGeometry(THREE));
+  const [a, b] = homeBackRing();
+  const onHome = (v) => v.z > b - 2 && Math.abs(v.x) < 40 && v.y > 0.5;
+  const out = (v) => (v.x / a) ** 4 + (v.z / b) ** 4;          // 1 on the wall, more out from it
+  const ribs = vs.filter((v) => onHome(v) && out(v) > (1 + (FACADE.rib.proud * 0.5) / a) ** 4);
+  assert.ok(ribs.length >= 8 * 4, `ribs stand proud of the wall (${ribs.length} vertices)`);
+  const back = lum(...linearRgb("#1a2131"));
+  assert.ok(ribs.every((v) => v.l > back * 1.5), "lighter steel than the wall");
+  const band = vs.filter((v) => onHome(v) && v.y >= FACADE.band[0] - 1e-6 && v.y <= FACADE.band[1] + 1e-6
+    && v.l > back * 2);
+  assert.ok(band.length >= 16, "a lit concourse band across it");
+  const p = props(ctxOf(night));
+  assert.equal(drawables(p.object).length, 5, "still five draw calls for the whole stadium");
+  const tris = drawables(p.object).filter((o) => o.isMesh).reduce((s, o) => s + triangles(o), 0);
+  assert.ok(tris < 120000, `${tris} triangles`);
+  p.dispose();
+});
+
+test("G3-2: the lens falls off toward the top and the corners, never the bottom edge (the plaza keeps its light)", () => {
+  const center = { x: 0.34, y: 0.55 };
+  const at = (x, y) => lensGain({ x, y }, { center, aspect: 1.6 });
+  assert.ok(at(0.34, 0) > 0.98, `the bottom edge under the free area's middle: ${at(0.34, 0)}`);
+  assert.ok(at(0.34, 1) < 0.95, `the top edge falls off: ${at(0.34, 1)}`);
+  assert.ok(at(0, 0) < at(0.34, 0) && at(0, 1) < at(0.34, 1), "the corners fall off");
+  assert.ok(at(0.34, 1) < at(0.34, 0), "the top more than the bottom");
+  assert.equal(at(center.x, center.y), 1, "nothing at the optical center");
 });
 
 test("the crowd is seeded (the same game draws the same crowd) and wears both teams' colors", () => {

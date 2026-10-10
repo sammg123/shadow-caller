@@ -29,6 +29,12 @@ def expect_chosen(page, name, hint=None):
         expect(chosen(page)).to_have_text(re.compile(r"^\s*" + re.escape(name) + r"\s*" + re.escape(hint) + r"\s*$"))
 
 
+def expect_yards_empty(page):
+    """G5-4: Yards is empty with 0 as its placeholder (an empty box logs 0 yards)."""
+    expect(page.locator("#yards")).to_have_value("")
+    expect(page.locator("#yards")).to_have_attribute("placeholder", "0")
+
+
 def expect_lit(page, key):
     """Only `key` among the play keys looks selected (.on and aria-pressed, 5.1)."""
     lit = page.locator(".key[data-k].on")
@@ -99,7 +105,7 @@ def test_42_incomplete_names_and_yards_zero(upage, server):
     expect(upage.locator("#yards")).to_have_value("7")
     keys(upage, "i")
     expect_chosen(upage, "Short (0–9 air yds), incomplete")
-    expect(upage.locator("#yards")).to_have_value("0")
+    expect_yards_empty(upage)
     for key, name in (("j", "Dropback pass, incomplete"), ("o", "RPO, thrown, incomplete")):
         keys(upage, "Escape", key, "i")
         expect_chosen(upage, name)
@@ -152,7 +158,8 @@ def test_46_t_and_f_toggle_touchdown_and_turnover(upage, server):
 
 
 def test_47_escape_clears_pick_yards_and_boxes(upage, server):
-    """#47: Esc clears the pick ("Pick the play"), sets Yards to 0, unticks both boxes; focus stays."""
+    """#47: Esc clears the pick ("Pick the play"), empties Yards (placeholder 0, G5-4), unticks both boxes; focus
+    stays."""
     with_drive(upage, server["base"])
     keys(upage, "p")
     upage.keyboard.type("7")
@@ -160,7 +167,7 @@ def test_47_escape_clears_pick_yards_and_boxes(upage, server):
     expect(upage.locator("#fTD")).to_be_checked()
     keys(upage, "Escape")
     expect(chosen(upage)).to_have_text("Pick the play")
-    expect(upage.locator("#yards")).to_have_value("0")
+    expect_yards_empty(upage)
     expect(upage.locator("#fTD")).not_to_be_checked()
     expect(upage.locator("#fTO")).not_to_be_checked()
     expect(upage.locator("#yards")).to_be_focused()
@@ -205,7 +212,7 @@ def test_50_alt_or_ctrl_p_does_not_pick(upage, server):
 
 def test_51_k_3_enter_logs_the_exact_payload(upage, server):
     """#51: K, Yards 3, Enter sends {"yards":3,"td":false,"turnover":false,"leaf":"run_inside"}, toasts the message,
-    clears the pick, and leaves Yards focused showing 0."""
+    clears the pick, and leaves Yards focused and empty, its placeholder 0 (G5-4)."""
     base = server["base"]
     with_drive(upage, base)
     sent = record_requests(upage, "/api/play")
@@ -216,7 +223,7 @@ def test_51_k_3_enter_logs_the_exact_payload(upage, server):
     assert [r["body"] for r in sent] == [{"yards": 3, "td": False, "turnover": False, "leaf": "run_inside"}]
     assert state(base)["message"] == "Logged."
     expect(chosen(upage)).to_have_text("Pick the play")
-    expect(upage.locator("#yards")).to_have_value("0")
+    expect_yards_empty(upage)
     expect(upage.locator("#yards")).to_be_focused()
 
 
@@ -336,7 +343,7 @@ def test_59_log_play_disabled_until_drive_and_pick(upage, server):
     expect(log_btn).to_be_disabled()
     keys(upage, "Escape")
     command(base, "new D25")
-    expect(upage.locator("#driveInfo")).to_have_text(re.compile(r"^Drive \d+, snap 1 of the game$"))
+    expect(upage.locator("#driveInfo")).to_have_text(re.compile(r"^Drive \d+ · snap 1$"))
     expect(log_btn).to_be_disabled()
     keys(upage, "k")
     expect(log_btn).to_be_enabled()
@@ -407,3 +414,35 @@ def test_g5_enter_on_a_focused_button_activates_it_and_never_logs(upage, server)
     until(upage, lambda: len(undos) == 2, what="Enter to click Undo again")
     quiet(upage)
     assert plays == []
+
+
+def _press_left_edge(page, sel):
+    """A person's click at the left edge of a right-aligned box: press, a human pause, release (a release that comes
+    after the focus's deferred select used to collapse the selection to a caret before the 0)."""
+    box = page.locator(sel).bounding_box()
+    page.mouse.move(box["x"] + 3, box["y"] + box["height"] / 2)
+    page.mouse.down()
+    page.wait_for_timeout(120)
+    page.mouse.up()
+
+
+@pytest.mark.parametrize("before", ["", "12"], ids=["empty", "typed"])
+def test_g5_4_clicking_the_left_edge_of_yards_and_typing_4_logs_4(upage, server, before):
+    """G5-4: K, then a click at the left edge of Yards (empty, or holding 12 typed earlier) and 4 logs +4, never +40 or
+    +412: the box starts empty (placeholder 0) and the click that focuses it keeps the whole value selected."""
+    base = server["base"]
+    with_drive(upage, base)
+    keys(upage, "k")
+    expect_yards_empty(upage)
+    if before:
+        upage.keyboard.type(before)
+        upage.locator("#yards").evaluate("e => e.blur()")
+    _press_left_edge(upage, "#yards")
+    expect(upage.locator("#yards")).to_be_focused()
+    upage.keyboard.type("4")
+    expect(upage.locator("#yards")).to_have_value("4")
+    keys(upage, "Enter")
+    expect_toast(upage, "Logged.")
+    assert state(base)["log"][0]["yards"] == 4
+    until(upage, lambda: len(log_table(upage)) == 1, what="one log row")
+    assert log_table(upage)[0][COL["Yds"]] == "4"

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { ACTION_COPY, TOAST_MS, createActions } from "../../static/js/core/actions.js";
+import { ACTION_COPY, TOAST_ERROR_MS, TOAST_MS, createActions } from "../../static/js/core/actions.js";
 import { ApiError } from "../../static/js/core/api.js";
 import { initialState, reducer } from "../../static/js/core/reducer.js";
 import { createStore } from "../../static/js/core/store.js";
@@ -11,9 +11,10 @@ const TL = loadTimeline();
 const settle = async (turns = 6) => { for (let i = 0; i < turns; i += 1) await new Promise((r) => setImmediate(r)); };
 
 function fakeForm() {
-  const f = { yards: "0", td: false, to: false, autoFirst: false, focused: 0 };
+  const f = { yards: "0", td: false, to: false, autoFirst: false, focused: 0, transport: 0 };
   return {
     f,
+    focusTransport: () => { f.transport += 1; },
     readYards: () => f.yards, writeYards: (v) => { f.yards = v; },
     readTD: () => f.td, writeTD: (b) => { f.td = b; }, readTO: () => f.to, writeTO: (b) => { f.to = b; },
     readAutoFirst: () => f.autoFirst, writeAutoFirst: (b) => { f.autoFirst = b; },
@@ -83,7 +84,7 @@ test("logPlay sends the FI 2.4 body, applies the state, toasts and clears the pi
   assert.equal(ctx.store.getState().server.version, 2);
   assert.deepEqual(toastOf(ctx), { id: 1, text: "Logged.", err: false });
   assert.equal(ctx.view().pick.k, null);
-  assert.equal(ctx.form.f.yards, "0");
+  assert.equal(ctx.form.f.yards, "", "G5-4: Yards is emptied (its placeholder reads 0), so the next digit stands alone");
   assert.ok(ctx.form.f.focused >= 2, "tap and log both focus Yards");
   assert.deepEqual(ctx.store.getState().req, { seq: 1, lastActionApplied: 1, inflightActions: 0 });
   assert.deepEqual(ctx.kicks, [{ origin: "action" }]);
@@ -187,8 +188,20 @@ test("commitStrip: a plain save is silent; a rejected value keeps its text and t
   assert.deepEqual(bad.view().stripRejected, {}, "a restore clears the invalid style");
 });
 
+test("G5-3: off the field after a field goal from TB 5, a bare 25 starts the drive at DAL 25; the chip picks TB 25", async () => {
+  const afterFg = { drive_active: false, drive_n: 6, sit: { ...stateBody().sit, yardline_100: 5, togo: 5 } };
+  const ctx = setup({ state: afterFg });
+  await ctx.actions.commitStrip("iYard", "25", true);
+  await ctx.actions.commitStrip("iYard", "t25", true);
+  await ctx.actions.flipSide("");
+  assert.deepEqual(ctx.api.posts.map((p) => p.body), [{ spot: "DAL 25" }, { spot: "T 25" }, { spot: "TB 25" }]);
+  const inDrive = setup({ state: { ...afterFg, drive_active: true } });
+  await inDrive.actions.commitStrip("iYard", "8", true);
+  assert.deepEqual(inDrive.api.posts[0].body, { spot: "TB 8" }, "during a drive the chip follows the served spot");
+});
+
 test("flipSide mirrors the spot and remembers the 50 (#18, #19)", async () => {
-  const ctx = setup({ state: { sit: { ...stateBody().sit, yardline_100: 50 } } });
+  const ctx = setup({ state: { ...DRIVE, sit: { ...stateBody().sit, yardline_100: 50 } } });
   await ctx.actions.flipSide("50");
   assert.deepEqual(ctx.api.posts[0].body, { spot: "TB 50" });
   assert.equal(ctx.view().sideAtFifty, "TB");
@@ -212,7 +225,8 @@ test("endDrive, runShorthand, undo and undoRefused", async () => {
 test("reset asks first; with the feed on it turns the feed off before resetting (#89, #105)", async () => {
   const declined = setup({ confirm: false });
   await declined.actions.reset();
-  assert.deepEqual([declined.confirms, declined.api.posts], [["Clear every snap logged for this game?"], []]);
+  assert.deepEqual([declined.confirms, declined.api.posts], [[ACTION_COPY.confirmReset(false)], []]);
+  assert.match(declined.confirms[0], /^Clear every snap logged for this game\?/);
   const live = setup({ state: { feed: { on: true, state: "live", event_id: "401872980" } } });
   await live.actions.reset();
   assert.match(live.confirms[0], /^Clear every snap logged for this game\? .*feed/);
@@ -251,6 +265,24 @@ test("watchStart confirms, stops a finished session first and starts at the chos
   const noId = setup({ state: { feed: { on: false, state: "off", event_id: null } } });
   await noId.actions.watchStart("");
   assert.deepEqual([noId.api.posts.length, toastOf(noId).err], [0, true]);
+});
+
+test("G5-7: a watch that started closes the booth and hands focus to the transport; one that didn't changes nothing", async () => {
+  const ok = setup({ state: { feed: { on: false, state: "off", event_id: "401872980" } },
+    replies: { "/api/watch/start": { status: 200, body: stateBody({ watch: { state: "playing" } }) } } });
+  ok.actions.toggleBooth();
+  await ok.actions.watchStart("");
+  assert.deepEqual(ok.view().booth, { open: false, auto: false }, "the drawer no longer covers the field's left edge");
+  assert.equal(ok.form.f.transport, 1, "Pause takes focus once the transport shows it (ui/watch-transport.js)");
+  const refused = setup({ state: { feed: { on: false, state: "off", event_id: "401872980" } },
+    replies: { "/api/watch/start": { status: 409, body: stateBody({ error: "A watch is already running." }) } } });
+  refused.actions.toggleBooth();
+  await refused.actions.watchStart("");
+  assert.deepEqual([refused.view().booth.open, refused.form.f.transport], [true, 0]);
+  const declined = setup({ confirm: false, state: { feed: { on: false, state: "off", event_id: "401872980" } } });
+  declined.actions.toggleBooth();
+  await declined.actions.watchStart("");
+  assert.deepEqual([declined.view().booth.open, declined.form.f.transport, declined.api.posts.length], [true, 0, 0]);
 });
 
 test("watch transport: Space toggles, speeds post only in a session, stop restores (3.8)", async () => {
@@ -347,7 +379,7 @@ test("cycleCamera wraps through the engine's modes and persists the choice", () 
   assert.equal(none.view().camera, null);
 });
 
-test("a toast hides after 2.6 s unless a newer one replaced it (FI 4.5)", () => {
+test("a toast hides after its time (2.6 s, an error 8 s) unless a newer one replaced it (FI 4.5, G5-13)", () => {
   const ctx = setup();
   ctx.actions.undoRefused();
   ctx.actions.undoRefused();
@@ -357,14 +389,58 @@ test("a toast hides after 2.6 s unless a newer one replaced it (FI 4.5)", () => 
   first.fn();
   assert.equal(toastOf(ctx).id, 2, "the older timer leaves the newer toast");
   ctx.timers.fire(TOAST_MS);
+  assert.equal(toastOf(ctx)?.id, 2, "an error outlasts an info toast");
+  ctx.timers.fire(TOAST_ERROR_MS);
   assert.equal(toastOf(ctx), null);
+});
+
+test("G5-13: an error toast holds 8 s; the pointer or focus on it holds it, leaving restarts it, Dismiss ends it", () => {
+  const ctx = setup();
+  assert.equal(TOAST_ERROR_MS, 8000);
+  ctx.actions.undoRefused();
+  const { id } = toastOf(ctx);
+  ctx.timers.fire(TOAST_MS);
+  assert.equal(toastOf(ctx)?.id, id, "an error is still up after 2.6 s");
+  ctx.actions.holdToast(id);
+  assert.equal(ctx.timers.pending.size, 0, "held: no timer");
+  ctx.timers.fire(TOAST_ERROR_MS);
+  assert.equal(toastOf(ctx)?.id, id);
+  ctx.actions.releaseToast(id);
+  ctx.actions.releaseToast(id);
+  assert.equal(ctx.timers.pending.size, 1, "released once: one fresh 8 s");
+  ctx.timers.fire(TOAST_ERROR_MS);
+  assert.equal(toastOf(ctx), null);
+  ctx.actions.undoRefused();
+  ctx.actions.dismissToast();
+  assert.equal(toastOf(ctx), null, "Dismiss (or Esc) ends it at once");
+  ctx.actions.dismissToast(99);
+  ctx.actions.holdToast(99);
+  ctx.actions.releaseToast(99);
+  assert.equal(toastOf(ctx), null, "an old id changes nothing");
+});
+
+test("G5-13: a rejected strip value keeps the server's words for the line beside the strip", async () => {
+  const bad = setup({ replies: { "/api/situation": { status: 400, body: stateBody({ error: "Clock like 8:41 or 841, got 'zz'" }) } } });
+  await bad.actions.commitStrip("iClock", "zz", true);
+  assert.deepEqual(bad.view().stripRejected, { iClock: "zz" });
+  assert.deepEqual(bad.view().stripErrors, { iClock: "Clock like 8:41 or 841, got 'zz'" });
+  await bad.actions.commitStrip("iClock", "", true);
+  assert.deepEqual([bad.view().stripRejected, bad.view().stripErrors], [{}, {}]);
+});
+
+test("G5-4: an empty Yards box logs 0 yards", async () => {
+  const ctx = setup({ state: DRIVE, replies: { "/api/play": { status: 200, body: stateBody({ ...DRIVE, message: "Logged." }) } } });
+  ctx.actions.tap("K");
+  ctx.form.f.yards = "";
+  await ctx.actions.logPlay();
+  assert.deepEqual(ctx.api.posts[0].body, { yards: 0, td: false, turnover: false, leaf: "run_inside" });
 });
 
 test("pick and box helpers drive the store and the form (FI 1.3)", () => {
   const ctx = setup({ state: DRIVE });
   ctx.actions.tap("P");
   ctx.actions.outcome("incomplete");
-  assert.deepEqual([ctx.view().pick.out, ctx.form.f.yards], ["incomplete", "0"]);
+  assert.deepEqual([ctx.view().pick.out, ctx.form.f.yards], ["incomplete", ""], "G5-4: an incompletion is 0 yards");
   ctx.actions.toggleTD();
   ctx.actions.toggleTO();
   assert.deepEqual([ctx.form.f.td, ctx.form.f.to], [true, true]);
@@ -372,7 +448,21 @@ test("pick and box helpers drive the store and the form (FI 1.3)", () => {
   assert.deepEqual(ctx.view().pick, { k: "J", i: 1, out: null });
   ctx.form.f.yards = "7";
   ctx.actions.clearPick();
-  assert.deepEqual([ctx.view().pick.k, ctx.form.f.yards, ctx.form.f.td, ctx.form.f.to], [null, "0", false, false]);
+  assert.deepEqual([ctx.view().pick.k, ctx.form.f.yards, ctx.form.f.td, ctx.form.f.to], [null, "", false, false]);
+});
+
+test("G5-12: closeBooth closes the drawer however it was opened, and changes nothing when it is closed", () => {
+  const ctx = setup({ state: DRIVE, boothHoldsFlags: () => true });
+  const before = ctx.store.getState();
+  ctx.actions.closeBooth();
+  assert.equal(ctx.store.getState(), before, "closed: the state is the same object");
+  ctx.actions.toggleBooth();
+  ctx.actions.closeBooth();
+  assert.deepEqual(ctx.view().booth, { open: false, auto: false });
+  ctx.actions.openFlag();
+  assert.deepEqual(ctx.view().booth, { open: true, auto: true });
+  ctx.actions.closeBooth();
+  assert.deepEqual(ctx.view().booth, { open: false, auto: false });
 });
 
 test("view toggles, hover, ambient and Retry now", () => {

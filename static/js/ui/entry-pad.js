@@ -17,6 +17,7 @@ const OUTCOME_OF = Object.freeze({ I: "incomplete", S: "sack", C: "scramble" });
 const TONE_OF = Object.freeze({ J: "run", K: "run", L: "run", P: "pass", A: "pass", N: "pass", O: "rpo" });
 const FLAG_KEY = "X";
 const YARDS_MAX_CHARS = 4;          // "-99" to "109": the longest gain or loss a field allows
+const YARDS_PLACEHOLDER = "0";      // what an empty Yards box logs
 const EMPTY_VM = Object.freeze({ mode: "manual", manualHidden: false, dim: true, chosen: null, keysOn: {}, outOn: {},
   logDisabled: true, hint: "", flagOpen: false });
 
@@ -37,10 +38,12 @@ function buildChosen() {
 
 function buildLine(copy, onLog) {
   const chosen = buildChosen();
+  // G5-4: empty, with 0 as its placeholder (an empty box logs 0 yards), so a click left of a "0" and a digit can never
+  // make "40"; focus selects whatever is there (input-kit selectOnFocus keeps it selected through the click).
   const yards = el("input", { id: "yards", cls: "sc-yards-input", attrs: { type: "text", inputmode: "numeric",
     autocomplete: "off", spellcheck: "false", enterkeyhint: "done", maxlength: YARDS_MAX_CHARS,
-    size: YARDS_MAX_CHARS } });
-  yards.value = "0";
+    size: YARDS_MAX_CHARS, placeholder: YARDS_PLACEHOLDER } });
+  yards.value = "";
   const yardsField = el("label", { cls: "sc-yards" }, [el("span", { cls: "sc-yards-label", text: copy.yards }), yards]);
   const td = checkField("fTD", copy.td, copy.tdKey);
   const to = checkField("fTO", copy.turnover, copy.turnoverKey);
@@ -116,7 +119,7 @@ function formOf(line) {
     readYards: () => String(line.yards.value ?? ""),
     writeYards: (value) => {
       line.yards.value = String(value ?? "");
-      if (isFocused(line.yards)) selectAll(line.yards);   // after a log the next digit replaces the 0
+      if (isFocused(line.yards)) selectAll(line.yards);   // after a log the next digit replaces what was there
     },
     readTD: () => Boolean(line.td.checked),
     writeTD: (on) => { line.td.checked = Boolean(on); },

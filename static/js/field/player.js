@@ -6,8 +6,12 @@
 // no-play draws dimmed and dashed under its flag. When the last step lands, the play's words go up beside its end
 // ("Deep pass left · +21"). The play on display stays until the next one draws: dimmed once the next call is up
 // (look.lastPlay), then handed to residue.js (look.residue). The facade (scene.js) owns timing and the resting ball.
+// G7-1: the boot warm-up (one mesh per program kind) stays for the layer's life, hidden once drawn, and every play's
+// materials go to the program keeper (dispose.keepPrograms), so no play compiles or relinks a shader; the next play is
+// built before the last one is retired; every glyph mask is drawn and uploaded at boot (and shared with residue).
 //   createPlayer(stage) -> { start(drawing, plan, row) -> job, placeAll(items), review(item), relabel(rows),
-//     verdict(v), clear(), dispose(), and for the other action layers: lastDrawing(), dimLast(), isLive() }
+//     verdict(v), clear(), dispose(), and for the other action layers: lastDrawing(), dimLast(), isLive(), glyphs }
+import { keepPrograms, releasePrograms } from "./dispose.js";
 import {
   buildArt, drawingOrNull, fieldLabel, playEnv, removeLabel, setLabelOpacity, setLabelVisible, toggleLabelClass,
   warmUpPrograms,
@@ -26,6 +30,7 @@ function entryOf(p, drawing, row) {
   const art = buildArt(playParts(drawing, row, p.stage.look, playEnv(p.stage)), { glyphs: p.glyphs });
   art.group.visible = p.st.live;
   p.stage.roots.plays.add(art.group);
+  keepPrograms(p.stage, art.group);
   return { seq: row?.seq ?? drawing.seq ?? null, row, drawing, drive: row?.drive ?? null, art, label: null,
     dimmed: false };
 }
@@ -94,8 +99,8 @@ function makeJob(p, entry, plan) {
 
 function start(p, drawing, plan, row) {
   finishJob(p);
-  retire(p, row?.drive ?? null);
   const entry = entryOf(p, drawing, row);
+  retire(p, row?.drive ?? null);
   p.st.last = entry;
   p.flight.start(drawing, plan, { teams: carriersOf(row ?? {}, drawing), env: playEnv(p.stage) });
   p.stage.lines.setBallVisible(false);
@@ -143,14 +148,11 @@ function dimLast(p) {
   p.stage.requestRender();
 }
 
-/** The boot warm-up's meshes leave once a few frames have drawn (compiled) them. */
+/** The boot warm-up's meshes hide once a few frames have drawn (compiled) them; they stay until the layer goes. */
 const WARM_FRAMES = 3;
 
 function tick(p, dtMs) {
-  if (p.warm && (p.warm.frames += 1) > WARM_FRAMES) {
-    p.warm.dispose();
-    p.warm = null;
-  }
+  if (p.warm.group.visible && (p.warm.frames += 1) > WARM_FRAMES) p.warm.group.visible = false;
   const d = p.st.dim;
   if (!d) return false;
   d.t += Math.max(0, dtMs);
@@ -210,12 +212,34 @@ function clear(p) {
   p.stage.requestRender();
 }
 
+/**
+ * Every glyph mask drawn and uploaded at boot (renderer.initTexture), not at a play's first X or TD: the shapes now,
+ * the words (INT, TD) once the display font is in.
+ */
+function prewarmGlyphs(p) {
+  const upload = (textures) => {
+    for (const tex of p.disposed ? [] : textures) {
+      try {
+        p.stage.renderer?.initTexture?.(tex);
+      } catch (err) {
+        p.stage.emit?.("warning", err);
+        return;
+      }
+    }
+  };
+  upload(p.glyphs.prewarm());
+  p.glyphs.prewarmWords().then(upload, (err) => p.stage.emit?.("warning", err));
+}
+
 /** The player layer (scene.js LAYER_FACTORIES). */
 export function createPlayer(stage) {
   const maxAnisotropy = stage.renderer?.capabilities?.getMaxAnisotropy?.() ?? 4;
   const p = { stage, glyphs: createGlyphs({ doc: stage.doc ?? null, maxAnisotropy }), flight: createFlight(stage),
-    st: { last: null, job: null, live: true, dim: null }, warm: { ...warmUpPrograms(), frames: 0 } };
+    st: { last: null, job: null, live: true, dim: null }, warm: { ...warmUpPrograms(), frames: 0 },
+    disposed: false };
   stage.roots.plays.add(p.warm.group);
+  keepPrograms(stage, p.warm.group);
+  prewarmGlyphs(p);
   const stopTick = stage.keepAlive((dt) => tick(p, dt));
   return {
     start: (drawing, plan, row) => start(p, drawing, plan, row),
@@ -230,12 +254,13 @@ export function createPlayer(stage) {
     verdict: (v) => verdict(p, v),
     clear: () => clear(p),
     dispose() {
+      p.disposed = true;
       clear(p);
       stopTick?.();
-      p.warm?.dispose();
-      p.warm = null;
+      p.warm.dispose();
       p.flight.dispose();
       p.glyphs.dispose();
+      releasePrograms(stage);          // the engine's end (the player goes last, layers.js): the kept programs too
     },
     lastDrawing: () => p.st.last?.drawing ?? null,
     dimLast: () => dimLast(p),

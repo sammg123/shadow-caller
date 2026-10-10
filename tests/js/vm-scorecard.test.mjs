@@ -29,7 +29,7 @@ test("the replayed game reproduces every FI 3.7 value", () => {
   assert.deepEqual(kpis(vm, "leaf"), [
     ["32 of 59", "Top pick was right", ""],
     ["47 of 59", "Actual play in his top 3 (league 48)", ""],
-    ["1.62", "His model, log loss", "worse"],
+    ["1.62", "His model, log loss", ""],
     ["1.62", "League, log loss", ""],
   ]);
   assert.deepEqual(kpis(vm, "family"), [
@@ -38,7 +38,7 @@ test("the replayed game reproduces every FI 3.7 value", () => {
   ]);
   assert.deepEqual(kpis(vm, "passrun"), [
     ["0.421", "His model, log loss (league 0.424)", "better"],
-    ["85%", "Called right (league 81%)", ""],
+    ["85%", "Run or pass called right (league 81%)", ""],
     ["1 of 2", "Tilts that came true", ""],
     ["75%", "Pass rate tonight", ""],
   ]);
@@ -69,11 +69,11 @@ test("expanded follows the G toggle", () => {
 test("SHADOW vs LEAGUE pairs: only what the scorecard computes, in the directions' order", () => {
   const pairs = comparisonPairs(state.final().metrics);
   assert.deepEqual(pairs.map((p) => [p.id, p.label, p.shadow.text, p.league.text, p.better, p.leader]), [
-    ["called_right", "Called right", "85%", "81%", "higher", "shadow"],
-    ["top3", "Actual play in his top 3", "47", "48", "higher", "league"],
+    ["called_right", "Run/pass right", "85%", "81%", "higher", "shadow"],
+    ["top3", "Play in top 3", "47", "48", "higher", "league"],
     ["passrun_logloss", "Pass vs run log loss", "0.421", "0.424", "lower", "shadow"],
     ["family_logloss", "Play type log loss", "0.72", "0.69", "lower", "league"],
-    ["leaf_logloss", "Specific play log loss", "1.62", "1.62", "lower", "league"],
+    ["leaf_logloss", "Specific play log loss", "1.62", "1.62", "lower", "even"],
   ]);
   assert.deepEqual(pairs.map((p) => p.basis), ["59 snaps", "59 snaps", "59 snaps", "59 snaps", "59 snaps"]);
   assert.deepEqual([pairs[2].shadow.brief, pairs[2].league.brief], [".421", ".424"]);
@@ -95,6 +95,37 @@ test("a tie is even, not a win", () => {
   const m = state.final().metrics;
   const [calledRight] = comparisonPairs({ ...m, acc_league: m.acc_model });
   assert.equal(calledRight.leader, "even");
+});
+
+// v1.5 (G4-3): the leader and the log loss tone follow what the screen shows: 1.62 v 1.62 lights no lamp and no red
+test("a tie on screen is even and untoned, whatever the unrounded values say (G4-3)", () => {
+  const m = state.final().metrics;
+  const g = m.granular;
+  assert.ok(g.leaf_logloss > g.leaf_logloss_league, "the fixture's specific-play log loss is a hidden loss");
+  const leaf = comparisonPairs(m).find((p) => p.id === "leaf_logloss");
+  assert.deepEqual([leaf.shadow.text, leaf.league.text, leaf.leader], ["1.62", "1.62", "even"]);
+  const close = comparisonPairs({ ...m, acc_model: 0.8474, acc_league: 0.8471 })[0];
+  assert.deepEqual([close.shadow.text, close.league.text, close.leader], ["85%", "85%", "even"]);
+  const apart = comparisonPairs({ ...m, acc_model: 0.851, acc_league: 0.842 })[0];
+  assert.deepEqual([apart.shadow.text, apart.league.text, apart.leader], ["85%", "84%", "shadow"]);
+  const vm = scorecardVm(makePv({ presented: state.final() }));
+  assert.equal(kpis(vm, "leaf")[2][2], "", "his 1.62 against the league's 1.62 is not red");
+  assert.equal(kpis(vm, "family")[1][2], "worse");
+  assert.equal(kpis(vm, "passrun")[0][2], "better");
+});
+
+test("the basis is said once when every pair counts the same snaps, and in the singular for one (G4-3)", () => {
+  const vm = scorecardVm(makePv({ presented: state.final() }));
+  assert.deepEqual([vm.basisLine, vm.basisShared], ["his model v league baseline · 59 snaps", true]);
+  const m = state.final().metrics;
+  const one = comparisonPairs({ ...m, n: 1, granular: { ...m.granular, leaf_n: 1, fam_n: 1 } });
+  assert.deepEqual(one.map((p) => p.basis), ["1 snap", "1 snap", "1 snap", "1 snap", "1 snap"]);
+  const mixed = scorecardVm(makePv({ presented: patch(state.final(),
+    { metrics: { ...m, granular: { ...m.granular, leaf_n: 58 } } }) }));
+  assert.deepEqual([mixed.basisLine, mixed.basisShared], ["his model v league baseline", false],
+    "pairs that count different snaps keep their own counts");
+  const empty = scorecardVm(makePv({ presented: patch(state.final(), { metrics: { n: 0 } }) }));
+  assert.deepEqual([empty.basisLine, empty.basisShared], ["", false]);
 });
 
 test("the scorecard carries the same pairs and is deep-frozen", () => {

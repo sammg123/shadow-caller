@@ -41,13 +41,17 @@ test("the replayed game: three groups with their counts and every FI 3.7 value (
   assert.equal(one(root, ".sc-card-empty").hidden, true);
 }));
 
-test("log loss is styled better below the league and worse otherwise (#111)", () => inDoc((doc) => {
-  const { root, card } = setup(doc);
-  card.update(vmOf());
-  const toned = all(root, ".sc-kpi-value").filter((v) => v.hasAttribute("data-tone"));
-  assert.deepEqual(toned.map((v) => [text(v), v.getAttribute("data-tone"), v.getAttribute("class").includes(v.getAttribute("data-tone"))]),
-    [["1.62", "worse", true], ["0.72", "worse", true], ["0.421", "better", true]]);
-}));
+test("log loss is styled better below the league and worse otherwise; a tie on screen is neither (#111, G4-3)",
+  () => inDoc((doc) => {
+    const { root, card } = setup(doc);
+    card.update(vmOf());
+    const toned = all(root, ".sc-kpi-value").filter((v) => v.hasAttribute("data-tone"));
+    assert.deepEqual(toned.map((v) => [text(v), v.getAttribute("data-tone"),
+      v.getAttribute("class").includes(v.getAttribute("data-tone"))]), [["0.72", "worse", true], ["0.421", "better", true]]);
+    const leafLoss = all(group(root, "leaf"), ".sc-kpi-value")[2];
+    assert.deepEqual([text(leafLoss), leafLoss.getAttribute("class").includes("worse")], ["1.62", false],
+      "his 1.62 against the league's 1.62 is not red");
+  }));
 
 test("only the groups with snaps appear (#110)", () => inDoc((doc) => {
   const { root, card } = setup(doc);
@@ -63,7 +67,8 @@ test("SHADOW v LEAGUE: only computed pairs, each with both sides and a lamp on t
   assert.equal(text(one(one(root, ".sc-card-pairs"), ".sc-card-sub")), "Shadow v League");
   assert.deepEqual(all(root, ".sc-card-pair").map((p) => [p.getAttribute("data-pair"), p.getAttribute("data-leader")]), [
     ["called_right", "shadow"], ["top3", "league"], ["passrun_logloss", "shadow"], ["family_logloss", "league"],
-    ["leaf_logloss", "league"]]);
+    ["leaf_logloss", "even"]]);
+  assert.deepEqual(all(root, ".sc-card-plabel").slice(0, 2).map(text), ["Run/pass right", "Play in top 3"]);
   const calledRight = pair(root, "called_right");
   assert.deepEqual([side(calledRight, "shadow"), side(calledRight, "league")], ["85%", "81%"]);
   assert.equal(one(calledRight, '[data-side="shadow"]').getAttribute("data-lead"), "true");
@@ -73,6 +78,22 @@ test("SHADOW v LEAGUE: only computed pairs, each with both sides and a lamp on t
   assert.deepEqual([side(passRun, "shadow"), text(one(one(passRun, '[data-side="shadow"]'), ".sc-card-brief"))], ["0.421", ".421"]);
   assert.equal(one(one(passRun, '[data-side="league"]'), ".sc-card-full").getAttribute("data-ghost"), "8.888");
   assert.equal(text(one(calledRight, ".sc-card-basis")), "59 snaps");
+}));
+
+// v1.5 (G4-3): the snap count is said once, under SHADOW v LEAGUE, when every pair counts the same snaps
+test("the basis line sits under the plate and the pairs say whether they share it (G4-3)", () => inDoc((doc) => {
+  const { root, card } = setup(doc);
+  card.update(vmOf());
+  const pairs = one(root, ".sc-card-pairs");
+  const line = one(pairs, ".sc-card-basisline");
+  assert.equal(text(line), "his model v league baseline · 59 snaps");
+  assert.equal(pairs.getAttribute("data-basis-shared"), "true");
+  assert.equal(line.parentNode, one(pairs, ".sc-card-plate"), "the line sits on the plate, under its caption");
+  assert.equal(text(one(one(pairs, ".sc-card-plate"), ".sc-card-sub")), "Shadow v League");
+  const m = state.final().metrics;
+  card.update(vmOf(patch(state.final(), { metrics: { ...m, granular: { ...m.granular, leaf_n: 58 } } })));
+  assert.deepEqual([pairs.getAttribute("data-basis-shared"), text(line)], ["false", "his model v league baseline"]);
+  assert.equal(text(one(pair(root, "top3"), ".sc-card-basis")), "58 snaps", "each pair keeps its own count");
 }));
 
 test("a tie lights no lamp; the G toggle marks the scorecard expanded; destroy removes it", () => inDoc((doc) => {

@@ -21,7 +21,7 @@
 :where(:root[data-world="under-the-lights"]) .sc-pf-row[data-caller="true"] { --sc-pf-tone: var(--sc-ink); }
 
 /* The ribbon's one line: the button becomes a row of words, paged by --sc-page-x (0 until the pager moves it). */
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-btn {
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-btn {
   display: flex;
   align-items: center;
   gap: 0 var(--sc-space-3);
@@ -37,22 +37,22 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-btn > * {
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-btn > * {
   flex: none;
   translate: var(--sc-page-x, 0px) 0;
 }
 /* A paged message shows whole words only: the face is cut after the page's last whole word (--sc-page-cut) and
    before its first (the words shifted off to the left never show in the padding). */
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-row[data-pages] .sc-pf-btn {
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-row[data-pages] .sc-pf-btn {
   clip-path: inset(0 max(0px, calc(100% - var(--sc-page-cut, 100%) - var(--sc-space-2) - 2px)) 0
     calc(var(--sc-space-2) - 1px));
 }
 /* Each page steps in from the right like a new message (two names, so every page replays it). */
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible)))
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"]))
   .sc-pf-row[data-page-phase="a"] .sc-pf-btn > * {
   animation: uls-page-a var(--uls-step-ms) var(--uls-step) both;
 }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible)))
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"]))
   .sc-pf-row[data-page-phase="b"] .sc-pf-btn > * {
   animation: uls-page-b var(--uls-step-ms) var(--uls-step) both;
 }
@@ -70,7 +70,7 @@
 :where(:root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon) .sc-pf-row[data-page-phase] .sc-pf-btn > * {
   animation: none;
 }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) :is(.sc-pf-meta, .sc-pf-call) {
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) :is(.sc-pf-meta, .sc-pf-call) {
   display: flex;
   flex-wrap: nowrap;
   align-items: center;
@@ -78,17 +78,24 @@
   font: inherit;
 }
 /* Order on the ribbon: the facts first (time, team, result, verdict), so the first page always says how it went. */
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-meta { order: 1; }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-result {
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-meta { order: 1; }
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-result {
   order: 2;
   align-self: center;
 }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-call { order: 3; }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible))) .sc-pf-text {
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-call { order: 3; }
+/* G5-10: the face says the play in the field's words (one page); ESPN's whole text stays the button's name, visually
+   hidden here, and shows in the unrolled replay board and on the desk's LAST PLAY. */
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-face {
+  display: block;
   order: 4;
+  color: var(--sc-ink);
   font: inherit;
 }
-:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, :has(:focus-visible)))
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"])) .sc-pf-text {
+  position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+:where(#app[data-layout="uls"] .uls-ribbon #rg-plays:not(:hover, [data-open="true"]))
   :is(.sc-pf-sit, .sc-pf-callname, .sc-pf-retagged) {
   display: none;
 }

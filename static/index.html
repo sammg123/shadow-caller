@@ -14,7 +14,7 @@ docs/design/direction-contract.md, verbatim:
 
 **FORM.** Under the Lights, 5th on the resonance-ordered list; seed 748f193a; its own staging, adopting only the altitude idea of dealt staging spatial-navigation-tooling-by-zoom: blimp game, wide drive, tight snap.
 -->
-<html lang="en" data-world="neutral" data-motion="full" data-ambient="room" data-scene="webgl">
+<html lang="en" data-world="under-the-lights" data-motion="full" data-ambient="room" data-scene="webgl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -24,7 +24,9 @@ docs/design/direction-contract.md, verbatim:
 <script type="importmap">{"imports": {"three": "/static/vendor/three/build/three.module.min.js",
                                       "three/addons/": "/static/vendor/three/addons/"}}</script>
 <!-- Order (ui-architecture.md 1.1): base, layout, every component, then the active world (swapped by theme/apply.js).
-     main.js comes after the stylesheets, so it starts with the neutral tokens already applied. -->
+     The page ships in the default world, Under the Lights (G2-8): its tokens, its lamp and its boot board, so the first
+     frame is the night sky with the loading board lit, before any script runs; main.js then loads the whole world (or
+     ?world=neutral) and swaps these out. -->
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/layout.css">
 <link rel="stylesheet" href="/static/css/components/masthead.css">
@@ -50,7 +52,11 @@ docs/design/direction-contract.md, verbatim:
 <link rel="stylesheet" href="/static/css/components/scorecard.css">
 <link rel="stylesheet" href="/static/css/components/tendencies.css">
 <link rel="stylesheet" href="/static/css/components/play-log.css">
-<link rel="stylesheet" id="world-css" data-world-css="neutral" href="/static/css/worlds/neutral/tokens.css">
+<link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-text/big-shoulders-text-latin.woff2">
+<link rel="stylesheet" id="world-css" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/tokens.css">
+<link rel="stylesheet" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/components/masthead.css">
+<link rel="stylesheet" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/components/boot-screen.css">
 <script type="module" src="/static/js/main.js"></script>
 </head>
 <body>
@@ -78,11 +84,14 @@ docs/design/direction-contract.md, verbatim:
 </div>
 <div id="rg-conn" data-region="conn"></div>
 <div id="rg-boot" data-region="boot">
-  <!-- Shown until main.js mounts the boot screen; if the scripts never start, the last line appears after 12 s. -->
-  <div class="sc-boot-static" data-boot-static="true" role="status" aria-live="polite">
-    <p class="sc-boot-static-title">Shadow Play-Caller</p>
-    <p class="sc-boot-static-text">Loading the game…</p>
-    <p class="sc-boot-static-stuck">This is taking too long. Check the Terminal running bash start.sh, then refresh this page.</p>
+  <!-- Shown until main.js mounts the boot screen, dressed as that screen's board (the same classes, so the world's skin
+       lights it from the first frame); if the scripts never start, the last line appears after 12 s. -->
+  <div class="sc-boot sc-boot-static" data-boot-static="true" data-phase="loading" role="status" aria-live="polite">
+    <div class="sc-boot-board">
+      <p class="sc-boot-plate"><span class="sc-lamp" aria-hidden="true"></span><span class="sc-boot-static-title">Shadow Play-Caller</span></p>
+      <p class="sc-boot-heading sc-boot-static-text">Loading the game…</p>
+      <p class="sc-boot-text sc-boot-static-stuck">This is taking too long. Check the Terminal running bash start.sh, then refresh this page.</p>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
