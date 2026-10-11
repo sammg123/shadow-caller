@@ -26,10 +26,9 @@ function fakeEngine(kind = "webgl") {
     setGameFrame: record("setGameFrame"), showSituation: record("showSituation"), showGhosts: record("showGhosts"),
     clearGhosts: record("clearGhosts"), highlightGhost: record("highlightGhost"), markVerdict: record("markVerdict"),
     setCamera: record("setCamera"), resize() {}, setVisible() {}, setReducedMotion() {}, debugState: () => ({}), dispose() {},
-    cameraModes: () => [{ id: "sideline", label: "Sideline" }],
+    cameraModes: () => [{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }],
     drawRowsInstant: (rows) => calls.push(["drawRowsInstant", rows.map((r) => r.seq)]),
     refreshLabels: (rows) => calls.push(["refreshLabels", rows.map((r) => r.seq)]),
-    showReview: (row, ghosts) => calls.push(["showReview", row ? row.seq : null, ghosts]),
     finishNow() { calls.push(["finishNow"]); for (const p of plays.splice(0)) p.resolve(); },
     playRow(row, opts) {
       calls.push(["playRow", row.seq, opts]);
@@ -185,25 +184,58 @@ test("the presented drive shows the situation and the ghosts of the next call, o
   assert.equal(ctx.attrs["data-poss"], "DAL");
 });
 
-test("review shows a past row with its own ghosts; the live edge comes back after", () => {
+test("a state from another epoch never puts its call or its situation over a rebuilt game", async () => {
+  // A seek made elsewhere rebuilds the game (a new epoch): its timeline can arrive before its state. The call still
+  // presented belongs to the old game: drawn over the new one, it would dim the newest play into a LAST plate that
+  // never shows (play-drawing.md 4b).
+  const drive = loadState("drive_d25");
+  const ctx = setup();
+  resetTo(ctx, [], drive.timeline?.epoch ?? EPOCH);
+  ctx.store.dispatch({ type: "state/loaded", body: drive, origin: "poll", reqSeq: 0, now: 1000 });
+  const last = (name) => ctx.engine.calls.filter((c) => c[0] === name).at(-1)?.[1];
+  assert.ok(last("showGhosts"), "the call is up");
+  resetTo(ctx, TL.rows(1, 15), "rebuilt-elsewhere");
+  await settle();
+  assert.equal(ctx.store.getState().anim.drawnThrough, 15);
+  assert.equal(last("showGhosts"), null, "no call from the old game over the rebuilt one");
+  assert.equal(last("showSituation"), null, "nor its lines");
+  assert.equal(ctx.attrs["data-phase"], "idle");
+  const own = { ...structuredClone(drive), timeline: { ...drive.timeline, epoch: "rebuilt-elsewhere", n: 15 } };
+  ctx.store.dispatch({ type: "state/loaded", body: own, origin: "poll", reqSeq: 0, now: 1001 });
+  assert.deepEqual(last("showGhosts")?.shapes.map((s) => s.leaf), drive.prediction.top.map((t) => t.key),
+    "its own state brings its call");
+  assert.equal(last("showSituation")?.poss, "DAL");
+});
+
+test("restructure-v2.md 5: after a jump the field snaps to where it landed, without replaying a play", async () => {
   const ctx = setup();
   resetTo(ctx, TL.rows(1, 15));
-  ctx.store.dispatch({ type: "review/set", seq: 2 });
-  const shown = ctx.engine.calls.find((c) => c[0] === "showReview");
-  assert.equal(shown[1], 2);
-  assert.deepEqual(shown[2].shapes.map((s) => s.leaf), ["run_inside", "pa_short", "dropback_short"], "DC B2 top 3");
-  ctx.store.dispatch({ type: "review/set", seq: null });
-  assert.deepEqual(ctx.engine.calls.at(-1).slice(0, 3), ["showReview", null, null]);
-  assert.equal(ctx.attrs["data-phase"], "idle");
+  ctx.store.dispatch({ type: "anim/jump", epoch: EPOCH, n: 18 });
+  appendRows(ctx, TL.rows(16, 18), 15);
+  await settle();
+  const plays = ctx.engine.calls.filter((c) => c[0] === "playRow");
+  assert.deepEqual(plays.map((c) => [c[1], c[2].durationMs]), [[16, 0], [17, 0], [18, 0]], "each drawn at once");
+  assert.equal(ctx.store.getState().anim.drawnThrough, 18);
+  assert.ok(!ctx.engine.calls.some((c) => c[0] === "markVerdict"), "a jump grades nothing on the field");
+});
+
+test("a jump while a play is drawing finishes it now", async () => {
+  const ctx = setup();
+  resetTo(ctx, stubRows(1, 1));
+  appendRows(ctx, TL.rows(2, 2), 1);
+  await settle();
+  assert.equal(ctx.store.getState().anim.playing?.seq, 2);
+  ctx.store.dispatch({ type: "anim/jump", epoch: "e-seek", n: 40 });
+  assert.ok(ctx.names().includes("finishNow"), "the engine is hurried");
 });
 
 test("hover highlights a ghost and the camera follows the view", () => {
   const ctx = setup();
   ctx.store.dispatch({ type: "hover/leaf", leaf: "pa_short" });
   ctx.store.dispatch({ type: "hover/leaf", leaf: null });
-  ctx.store.dispatch({ type: "camera/set", id: "endzone" });
+  ctx.store.dispatch({ type: "camera/set", id: "blimp" });
   const picked = ctx.engine.calls.filter((c) => ["highlightGhost", "setCamera"].includes(c[0]));
-  assert.deepEqual(picked, [["highlightGhost", "pa_short"], ["highlightGhost", null], ["setCamera", "endzone"]]);
+  assert.deepEqual(picked, [["highlightGhost", "pa_short"], ["highlightGhost", null], ["setCamera", "blimp"]]);
 });
 
 test("a retag relabels the drawn rows it changed, never re-draws them (DC B7)", () => {
@@ -311,20 +343,6 @@ test("G2-3: Watch at 4x and up keeps the beat to 600 ms; 2x keeps the look's", a
     assert.equal(ctx.attrs["data-phase"], "presnap", `${speed}x: the next call at ${beat} ms`);
     assert.equal(ghostsShown(ctx).length, before + 2, `${speed}x`);
   }
-});
-
-test("G2-3: reviewing during the beat leaves the live call alone; back at live it is up", async () => {
-  const ctx = setup({ look: { motion: { verdictMs: 900 } } });
-  await callerSnapDrawing(ctx);
-  ctx.engine.plays.shift().resolve();
-  await settle();
-  ctx.store.dispatch({ type: "review/set", seq: 2 });
-  const before = ghostsShown(ctx).length;
-  ctx.timers.advance(900);
-  ctx.timers.runDue();
-  assert.equal(ghostsShown(ctx).length, before, "a review holds the field");
-  ctx.store.dispatch({ type: "review/set", seq: null });
-  assert.deepEqual(leavesOf(ghostsShown(ctx).at(-1)), NEXT_CALL.top.map((t) => t.key));
 });
 
 test("G2-7: the verdict's words use the timeline's own leaf names", async () => {
@@ -518,11 +536,23 @@ test("appAttrs mirrors the store onto #app (2.7 attribute hooks)", () => {
   const store = createStore(reducer, initialState());
   store.dispatch({ type: "state/loaded", body: stateBody({ feed: { on: true, state: "live" }, timeline: pointer(0) }),
     origin: "poll", reqSeq: 0, now: 0 });
-  store.dispatch({ type: "booth/toggle" });
+  store.dispatch({ type: "settings/toggle" });
   const a = appAttrs(store.getState(), { phase: "other", poss: "TB" });
-  assert.deepEqual(a, { "data-mode": "feed", "data-phase": "other", "data-poss": "TB", "data-booth-open": "true",
-    "data-scorecard-open": "false", "data-conn": "online", "data-boot": "ready", "data-watch-state": "idle", "data-source": "espn" });
+  assert.deepEqual(a, { "data-mode": "feed", "data-phase": "other", "data-poss": "TB", "data-settings-open": "true",
+    "data-conn": "online", "data-boot": "ready", "data-watch-state": "idle", "data-source": "espn", "data-playback": "" });
   assert.deepEqual(Object.keys(a), [...APP_ATTRS]);
+});
+
+test("the page counts as booted once the game is open: data-boot says opening while /api/open runs", () => {
+  const store = createStore(reducer, initialState());
+  store.dispatch({ type: "state/loaded", body: stateBody({ timeline: pointer(0) }), origin: "poll", reqSeq: 0, now: 0 });
+  store.dispatch({ type: "playback/start", kind: "open" });
+  const opening = appAttrs(store.getState(), { phase: "idle", poss: "" });
+  assert.deepEqual([opening["data-boot"], opening["data-playback"]], ["opening", "open"]);
+  store.dispatch({ type: "playback/end" });
+  store.dispatch({ type: "playback/start", kind: "seek", target: 9 });
+  const seeking = appAttrs(store.getState(), { phase: "idle", poss: "" });
+  assert.deepEqual([seeking["data-boot"], seeking["data-playback"]], ["ready", "seek"]);
 });
 
 /** A conductor whose clock and timers follow the browser's WebIDL rule; `injected: false` leaves the defaults. */

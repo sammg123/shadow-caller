@@ -1,8 +1,9 @@
 // Drive chart (ui-architecture.md 2.6, 5.4; owner A8). Renders drivesVm: one row per drive, oldest first, each a
 // bar on the 100-yard scale with the caller's own goal on the left, as on the field (DC A2): where the drive started,
 // where it ended (a mark at the end), its team, ESPN's result and its summary. Each drive is a button that shows its
-// first drawn play on the field (actions.reviewAt); the drive holding the reviewed play is pressed, and pressing it
-// again goes back to live. Bars are SVG geometry with non-scaling strokes, so they stretch with the row.
+// first drawn play (actions.reviewAt: on the GameCast the game jumps there, restructure-v2.md 5; the Model Report
+// points it at his first call in its table). Bars are SVG geometry with non-scaling strokes, so they stretch with the
+// row.
 // G5-9: #rg-drives[data-open="true"] while keyboard focus is inside the chart (a world that shows one drive unrolls
 // it then, so Tab walks every drive); Escape rolls it up and keeps focus on the drive it still shows.
 import { el, openWhileKeyboardInside, reconcile, setAttr, setData, setHidden, setText, svgEl } from "./dom.js";
@@ -26,9 +27,7 @@ const finite = (v) => typeof v === "number" && Number.isFinite(v);
 
 function onDrivePress(li, actions) {
   const item = PARTS.get(li)?.item;
-  if (!item) return;
-  if (item.reviewing) actions.exitReview();
-  else if (item.firstSeq !== null) actions.reviewAt(item.firstSeq);
+  if (item && item.firstSeq !== null) actions.reviewAt(item.firstSeq);
 }
 
 function track() {
@@ -80,15 +79,14 @@ function updateGeometry(p, item) {
 function updateDrive(li, item, copy) {
   const p = PARTS.get(li);
   PARTS.set(li, { ...p, item });                // the click handler reads the newest item
-  for (const key of ["idx", "team", "caller", "dir", "complete", "current", "reviewing"]) setData(li, key, item[key]);
+  for (const key of ["idx", "team", "caller", "dir", "complete", "current"]) setData(li, key, item[key]);
   setData(li, "result", item.complete ? item.result : null);
   setText(p.team, item.team);
   setText(p.result, item.complete ? item.resultText : copy.now);
   setText(p.summary, item.summary);
   updateGeometry(p, item);
-  setAttr(p.btn, "disabled", item.firstSeq === null && !item.reviewing);
-  setAttr(p.btn, "aria-pressed", item.reviewing ? "true" : "false");
-  setAttr(p.btn, "title", item.reviewing ? copy.reviewing : copy.review);
+  setAttr(p.btn, "disabled", item.firstSeq === null);
+  setAttr(p.btn, "title", copy.review);
 }
 
 /**

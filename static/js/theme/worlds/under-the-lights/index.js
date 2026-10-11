@@ -12,15 +12,14 @@ const ID = "under-the-lights";
 const CSS = (name) => `/static/css/worlds/${ID}/${name}.css`;
 const FONT = (path) => `/static/fonts/${ID}/${path}`;
 // v1.4 (W2): the HUD component skins under components/, after W3's sheets; masthead first (the shared keys and lamps).
-// v1.5 (G4-1): "board", the video board's other faces (off the field, his night so far, FINAL), after the call's skin.
-const W2_SKINS = Object.freeze(["masthead", "prediction", "board", "scoreboard", "scorecard", "play-feed", "drive-chart",
-  "win-prob", "situation-strip", "feed-bar", "toast", "conn-banner", "boot-screen", "review-banner", "field-host",
-  "box-score", "tendencies", "play-log"]);
-/** W4: the booth (drawer racks, lamp switches) and the desk's skins (entry pad, flag panel, last play, shorthand). */
-const W4_BOOTH = Object.freeze(["booth", "components/entry-pad", "components/flag-panel", "components/last-play",
-  "components/shorthand"]);
-/** v1.4 (W5): the Watch this game transport and the replay scrub on the desk. */
-const W5_DECK = Object.freeze(["components/watch-transport", "components/scrub"]);
+// v1.5 (G4-1): "board", the video board's other faces, after the call's skin. restructure-v2.md 1: only what the
+// GameCast shows (the Model Report links the boards it reuses itself: static/js/report/world.js).
+const W2_SKINS = Object.freeze(["masthead", "prediction", "board", "scoreboard", "play-feed", "drive-chart", "win-prob",
+  "toast", "conn-banner", "boot-screen", "field-host"]);
+/** The settings menu's lamp switches (booth.css) and the board's previous play (last-play.css). */
+const W4_BOOTH = Object.freeze(["booth", "components/last-play"]);
+/** restructure-v2.md 2: the top bar's playback and its progress bar. */
+const W5_DECK = Object.freeze(["components/watch-transport"]);
 
 // DESIGN.md colors (frontmatter), lowercase as the look schema writes hex.
 const NIGHT_SKY = "#0d1424";
@@ -108,7 +107,6 @@ export const world = Object.freeze({
   ...(w1.props ? { props: w1.props } : {}),
   ...(w1.moments ? { moments: w1.moments } : {}),
   ...(w1.passes ? { passes: w1.passes } : {}),
-  booth: Object.freeze({ holds: Object.freeze(["feed", "situation", "flags"]) }),
   ambient: "dark",
   hudInsets: () => readHudInsets(globalThis.document),
 });

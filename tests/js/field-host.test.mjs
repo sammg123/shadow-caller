@@ -12,7 +12,7 @@ function fakeEngine(kind = "webgl", over = {}) {
   const handlers = new Map();
   const calls = [];
   let ds = { kind, ready: false, frames: 0, animState: "idle", playingSeq: null, ghosts: [], highlight: null,
-    camera: kind === "2d" ? "top" : "wide", situation: null, drawCalls: 0, triangles: 0, geometries: 0, textures: 0,
+    camera: kind === "2d" ? "blimp" : "wide", situation: null, drawCalls: 0, triangles: 0, geometries: 0, textures: 0,
     dpr: 1, ...over };
   return {
     kind,
@@ -56,18 +56,16 @@ const data = (node, name) => node.getAttribute(`data-${name}`);
 
 test("fieldHostVm is fieldVm plus the store facts the #field hooks report (5.3)", () => {
   const pv = makePv({ presented: { ...state.drive(), timeline: { n: 104, epoch: "e7", source: "espn", mode: "replay" } },
-    anim: { drawnThrough: 104, queue: [{ seq: 105 }, { seq: 106 }], playing: { seq: 105 }, rebuilding: false },
-    view: { review: { seq: 40 } } });
+    anim: { drawnThrough: 104, queue: [{ seq: 105 }, { seq: 106 }], playing: { seq: 105 }, rebuilding: false } });
   const vm = fieldHostVm(pv);
   assert.equal(vm.ariaLabel, "Ball on DAL 25. 1st & 10. Line to gain DAL 35.");
   assert.deepEqual(vm.facts, { driveActive: true, los: 75, ltg: 65, poss: "DAL", ballX: 25, ltgX: 35 });
   assert.deepEqual(vm.anim, { drawnSeq: 104, queue: 2, playingSeq: 105, rebuilding: false });
-  assert.equal(vm.reviewSeq, 40);
+  assert.equal("reviewSeq" in vm, false, "there is no client review mode");
   assert.equal(vm.epoch, "e7");
   assert.ok(Object.isFrozen(vm));
   const bare = fieldHostVm(makePv());
   assert.deepEqual(bare.anim, { drawnSeq: 0, queue: 0, playingSeq: null, rebuilding: false });
-  assert.equal(bare.reviewSeq, null);
   assert.equal(bare.epoch, null);
 });
 
@@ -104,7 +102,7 @@ test("#27: off the field, no drive, no lines, and the label says so", () => {
   assert.equal(host.getAttribute("aria-label"), "DAL off the field.");
 });
 
-test("the animation hooks follow the store: drawn seq, queue, playing seq, review seq, epoch", () => {
+test("the animation hooks follow the store: drawn seq, queue, playing seq, epoch", () => {
   const { host, render } = setup();
   render({ presented: { ...state.final(), timeline: { n: 3, epoch: "e1" } },
     anim: { drawnThrough: 2, queue: [{ seq: 3 }], playing: null } });
@@ -113,9 +111,6 @@ test("the animation hooks follow the store: drawn seq, queue, playing seq, revie
   assert.equal(host.hasAttribute("data-playing-seq"), false);
   assert.equal(data(host, "epoch"), "e1");
   assert.equal(data(host, "anim-state"), "playing", "rows still queued: not idle");
-  render({ presented: state.final(), anim: { drawnThrough: 3, queue: [], playing: null }, view: { review: { seq: 2 } } });
-  assert.equal(data(host, "anim-state"), "reviewing");
-  assert.equal(data(host, "review-seq"), "2");
   render({ presented: state.final(), anim: { drawnThrough: 3, queue: [], playing: null } });
   assert.equal(data(host, "anim-state"), "idle");
   assert.equal(host.hasAttribute("data-review-seq"), false);
@@ -162,7 +157,7 @@ test("a swapped engine is re-subscribed and sized; the old one is let go (6.2)",
   assert.equal(first.listening("frame"), 0, "the old engine's events are ignored");
   assert.equal(second.listening("frame"), 1);
   assert.equal(data(host, "scene"), "2d");
-  assert.equal(data(host, "camera"), "top");
+  assert.equal(data(host, "camera"), "blimp");
   assert.deepEqual(second.calls.filter((c) => c[0] === "resize"), [["resize", 960, 540]]);
   first.set({ frames: 99 });
   first.emit("frame");

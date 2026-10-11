@@ -1,23 +1,10 @@
-// Play feed (DC B, C1): every drawn row, both teams, newest first and grouped by drive, with the result word, the
-// call and its verdict on caller snaps, and the retag keys on the row a retag would edit (G19).
+// Play feed (DC B, C1): every drawn row, both teams, newest first and grouped by drive, with the result word, and the
+// call and its verdict on caller snaps. Read only (restructure-v2.md 1): the top LED ticker shows the newest play.
 import { LABEL_SEP, playLabel } from "../field/play-label.js";
 import { PLAYS } from "./copy.js";
 import { freezeDeep, qtrText, resultText } from "./format.js";
 import { verdictOf, verdictText } from "./verdict.js";
 import { driveResultText, driveSummary } from "./vm-drives.js";
-import { retagButtons, retagTarget } from "./vm-last-play.js";
-
-/** The timeline id of a log row: its ESPN play id, or "log-<seq>" for a typed snap (DC B7, D). */
-function timelineIdOf(logRow) {
-  if (!logRow) return null;
-  return logRow.espn_id ? String(logRow.espn_id) : `log-${logRow.seq}`;
-}
-
-/** The client review cursor (view.review.seq), or null at the live edge. */
-function reviewSeqOf(pv) {
-  const seq = pv && pv.view && pv.view.review ? pv.view.review.seq : null;
-  return Number.isInteger(seq) ? seq : null;
-}
 
 // G5-10: the ribbon's face, one page (about 60 characters) in the field's own words: what the play was (the label the
 // field draws, play-drawing.md 3, its yards left to the row's result word) and who had the ball, as ESPN names him.
@@ -46,7 +33,7 @@ export function faceOf(row) {
   return player ? `${what}${LABEL_SEP}${player}` : what;
 }
 
-function playRow(row, retagId, reviewSeq) {
+function playRow(row) {
   const pred = row.pred || null;
   const verdict = verdictOf(pred).key;
   return {
@@ -66,9 +53,6 @@ function playRow(row, retagId, reviewSeq) {
     nullified: Boolean(row.result && row.result.nullified),
     retagged: Boolean(pred && pred.retagged),
     scoring: Boolean(row.scoring),
-    retag: pred && retagId !== null && row.id === retagId ? retagButtons(pred) : null,
-    reviewable: row.kind !== "admin",           // v1.2 (A8): admin rows draw nothing (core/review.js drawableSeqs)
-    reviewing: row.seq === reviewSeq,
     face: faceOf(row),
   };
 }
@@ -92,23 +76,18 @@ function groupsOf(rows, drives) {
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, rows: {seq, id, kind, team, caller, drive, time, situation, text, result, call,
- *   verdict, verdictText, nullified, retagged, scoring, retag, reviewable, reviewing, face}[] (newest first), groups: {idx,
- *   team, caller, resultText, summary, complete, rows}[], retagSeq, unlinkedNote, reviewSeq}
+ *   verdict, verdictText, nullified, retagged, scoring, face}[] (newest first), groups: {idx, team, caller, resultText,
+ *   summary, complete, rows}[], unlinkedNote}
  */
 export function playsVm(pv) {
   const tl = pv && pv.tl;
   const source = (tl && Array.isArray(tl.rows) ? tl.rows : []).filter((row) => row && Number.isInteger(row.seq));
-  const retagId = timelineIdOf(retagTarget(pv && pv.presented && pv.presented.log));
-  const reviewSeq = reviewSeqOf(pv);
-  const rows = [...source].sort((a, b) => b.seq - a.seq).map((row) => playRow(row, retagId, reviewSeq));
-  const retagRow = rows.find((row) => row.retag);
+  const rows = [...source].sort((a, b) => b.seq - a.seq).map(playRow);
   const unlinked = tl && Array.isArray(tl.unlinked) ? tl.unlinked.length : 0;
   return freezeDeep({
     heading: PLAYS.heading,
     rows,
     groups: groupsOf(rows, (tl && Array.isArray(tl.drives) ? tl.drives : []).filter(Boolean)),
-    retagSeq: retagRow ? retagRow.seq : null,
     unlinkedNote: unlinked ? PLAYS.unlinked(unlinked) : "",
-    reviewSeq,
   });
 }

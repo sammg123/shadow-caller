@@ -1,5 +1,5 @@
 // Test harness for the A8 game surfaces (ui/{scoreboard, play-feed, drive-chart, win-prob, box-score, scorecard,
-// tendencies, play-log}.js): a fake document, a root region like index.html's, a ctx whose actions record every call,
+// tendencies}.js): a fake document, a root region like index.html's, a ctx whose actions record every call,
 // and view models built from the real TB at DAL captures (tests/fixtures), exactly as the scheduler would build them.
 import * as Copy from "../../static/js/model/copy.js";
 import { createDocument, withDocument } from "./fake-dom.mjs";

@@ -5,7 +5,7 @@ engine's animated frames stay inside the frame budget. GPU renders: Playwright's
 with SwiftShader (the engine's low tier), so this file launches the new headless mode (`channel="chromium"`) and skips
 where there is no GPU, like the golden screenshots."""
 import pytest
-from ui_helpers import BOOT_TIMEOUT_MS, EVENT, api_post, app_url, feed_off, stop_watch, wait_ready
+from ui_helpers import BOOT_TIMEOUT_MS, api_post, app_url, feed_off, seek_game, stop_watch, wait_ready
 
 pytestmark = pytest.mark.e2e
 
@@ -63,6 +63,12 @@ def open_on_gpu(gpu_browser, base):
     return page
 
 
+def play_from_where_it_is(base, speed):
+    """The game the page opened (paused, restructure-v2.md 9) plays on at `speed`, as the Play key does."""
+    api_post(base, "/api/watch/speed", {"speed": speed})
+    api_post(base, "/api/watch/resume")
+
+
 def programs(page):
     return page.evaluate("window.__shadowDebug().programs")
 
@@ -95,7 +101,7 @@ def test_plays_after_boot_compile_and_delete_no_shader_program(gpu_browser, watc
     try:
         before = programs(page)
         page.evaluate("() => { window.__gpu.on = true; }")
-        api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 1})
+        play_from_where_it_is(base, 1)
         page.wait_for_function(f"Number(document.getElementById('field').dataset.drawnSeq) >= {PLAYS}",
                                timeout=120_000)
         page.wait_for_timeout(500)
@@ -116,11 +122,11 @@ def test_animated_frames_stay_inside_the_frame_budget(gpu_browser, server):
         pytest.skip(f"this machine draws a blank page every {pace:.1f} ms: too busy to measure a {SLOW_MS} ms budget")
     base = server["base"]
     stop_watch(base)
-    feed_off(base)
+    seek_game(base, FROM_SEQ)
     page = open_on_gpu(gpu_browser, base)
     try:
         page.evaluate("() => { window.__gpu.on = true; }")
-        api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 4, "from_seq": FROM_SEQ})
+        play_from_where_it_is(base, 4)
         page.wait_for_timeout(WINDOW_S * 1000)
         spy = page.evaluate("() => { window.__gpu.on = false; return window.__gpu; }")
         frames = spy["frames"]

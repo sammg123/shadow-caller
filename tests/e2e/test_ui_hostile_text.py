@@ -3,7 +3,7 @@ text, never parsed as HTML, on both worlds and on the 2D field. A summary is ESP
 reach the band, the scoreboard and the field's labels. The server caps their length (tests/test_backend_gaps.py);
 here the page must never build a node from them, and must still show the words, markup and all."""
 import pytest
-from ui_helpers import app_url, ensure_finished, wait_idle, wait_ready, TOTAL_ROWS
+from ui_helpers import TOTAL_ROWS, app_url, game_at_end, wait_idle, wait_ready
 
 pytestmark = pytest.mark.e2e
 
@@ -33,7 +33,7 @@ def hostile(body):
 @pytest.mark.parametrize("scene", sorted(SCENES))
 def test_espn_words_are_text_never_markup(ui_pages, server, world, scene):
     base = server["base"]
-    ensure_finished(base)
+    game_at_end(base)
     page = ui_pages()
 
     def inject(route):

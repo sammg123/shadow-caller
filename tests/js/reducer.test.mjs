@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { initialState, reducer } from "../../static/js/core/reducer.js";
-import { EMPTY_PICK } from "../../static/js/core/selection.js";
 import { deepFreeze, loadTimeline, stateBody, stubRows, timelineBody } from "./fixtures.mjs";
 
 const TL = loadTimeline();
@@ -20,17 +19,15 @@ function booted(over = {}) {
   return run(rebuilt, loaded(body({ timeline: pointer(15), ...over })));
 }
 
-test("initialState has the 2.1 shape and is frozen", () => {
+test("initialState has the 2.1 shape and is frozen; the view holds no user input (restructure-v2.md 1)", () => {
   const s = initialState();
-  assert.ok(Object.isFrozen(s) && Object.isFrozen(s.view.pick));
+  assert.ok(Object.isFrozen(s) && Object.isFrozen(s.view.playback));
   assert.deepEqual(s.boot, { phase: "loading", attempts: 0, error: null });
   assert.deepEqual(s.conn, { failures: 0, lastOkAt: null, retryAt: null, lastError: null });
   assert.deepEqual(s.prefs, { motion: "full", world: "neutral", ambient: "room", scene: "auto", watchSpeed: 4 });
   assert.deepEqual(s.req, { seq: 0, lastActionApplied: 0, inflightActions: 0 });
-  assert.equal(s.view.pick, EMPTY_PICK);
-  assert.deepEqual(s.view.flag, { open: false, gen: 0 });
-  assert.deepEqual(s.view.booth, { open: false, auto: false });
-  assert.deepEqual(s.view.review, { seq: null });
+  assert.deepEqual(s.view, { camera: null, hoverLeaf: null, toast: null, settingsOpen: false,
+    playback: { kind: null, target: null } });
   assert.equal(initialState({ prefs: { motion: "reduced", world: "x" } }).prefs.motion, "reduced");
   assert.equal(initialState({ prefs: { motion: "sideways" } }).prefs.motion, "full", "bad prefs fall back");
 });
@@ -78,50 +75,10 @@ test("bodies that are not a state are ignored", () => {
   assert.equal(reducer(s, { type: "version/loaded", body: "x", now: 1 }), s);
 });
 
-test("G7: a presented state with no drive closes the flag panel and an auto-opened booth", () => {
-  const open = run(booted({ drive_active: true }), { type: "flag/open", autoBooth: true });
-  assert.deepEqual([open.view.flag.open, open.view.booth.open, open.view.booth.auto], [true, true, true]);
-  const kept = run(open, loaded(body({ timeline: pointer(15), drive_active: true, version: 2 })));
-  assert.equal(kept.view.flag.open, true);
-  const closed = run(open, loaded(body({ timeline: pointer(15), drive_active: false, version: 3 })));
-  assert.equal(closed.view.flag.open, false);
-  assert.deepEqual(closed.view.booth, { open: false, auto: false });
-});
-
-test("G12: a new message from a poll goes to the background line, never at boot or during an action", () => {
+test("a poll's new message changes nothing on screen: the page has no background line any more", () => {
   const s = booted({ message: "Logged." });
   const bg = run(s, loaded(body({ timeline: pointer(15), version: 2, message: "No play: defensive offside on TB." }), { now: 7 }));
-  assert.deepEqual(bg.view.bgMessage, { text: "No play: defensive offside on TB.", at: 7 });
-  assert.equal(run(s, loaded(body({ timeline: pointer(15), version: 2, message: "Logged." }))).view.bgMessage, null);
-  const busy = run(s, { type: "req/action-start", reqSeq: 1 }, loaded(body({ timeline: pointer(15), version: 2, message: "X" }), { reqSeq: 1 }));
-  assert.equal(busy.view.bgMessage, null);
-  assert.equal(booted().view.bgMessage, null, "the first state is not news");
-});
-
-test("G12 under decision 2: a poll's message waits until its play is drawn, then shows once", () => {
-  const s = booted({ message: "Logged." });
-  const queued = run(s, tlLoaded(timelineBody(TL.body, { rows: stubRows(16, 16), since: 15, reset: false })));
-  const turnover = "Turnover. Waiting for the next Dallas drive.";
-  const news = run(queued, loaded(body({ timeline: pointer(16), version: 2, message: turnover }), { now: 7 }));
-  assert.equal(news.presented.message, "Logged.", "row 16 is not drawn yet");
-  assert.equal(news.view.bgMessage, null, "nothing on screen runs ahead of the ball");
-  const { token } = news.anim;
-  const drawn = run(news, { type: "anim/started", seq: 16, token, durationMs: 400, now: 8 },
-    { type: "anim/done", seq: 16, token, now: 9 });
-  assert.equal(drawn.presented.message, turnover);
-  assert.deepEqual(drawn.view.bgMessage, { text: turnover, at: 9 });
-  const again = run(drawn, loaded(body({ timeline: pointer(16), version: 3, message: turnover }), { now: 10 }));
-  assert.deepEqual(again.view.bgMessage, { text: turnover, at: 9 }, "the same message is not news twice");
-});
-
-test("G12: the lag valve reveals a waiting message with the state it came with", () => {
-  const s = booted({ message: "Logged." });
-  const queued = run(s, tlLoaded(timelineBody(TL.body, { rows: stubRows(16, 16), since: 15, reset: false })));
-  const news = run(queued, loaded(body({ timeline: pointer(16), version: 2, message: "First down." }), { now: 1000 }));
-  assert.equal(news.view.bgMessage, null);
-  const late = run(news, { type: "tick", now: 5000 });
-  assert.equal(late.presented.version, 2);
-  assert.deepEqual(late.view.bgMessage, { text: "First down.", at: 5000 });
+  assert.equal(bg.view, s.view);
 });
 
 test("version/loaded stores the body; state/loaded refreshes its feed and watch", () => {
@@ -135,12 +92,30 @@ test("version/loaded stores the body; state/loaded refreshes its feed and watch"
   assert.equal(after.version.timeline_n, 15);
 });
 
-test("timeline/loaded with a reset rebuilds without animation and leaves review", () => {
-  const s = run(booted(), { type: "review/set", seq: 7 });
+test("timeline/loaded with a reset rebuilds without animation", () => {
+  const s = booted();
   const out = run(s, tlLoaded(timelineBody(TL.body, { rows: TL.rows(1, 15), epoch: "new-epoch" })));
   assert.equal(out.timeline.epoch, "new-epoch");
   assert.deepEqual([out.anim.token, out.anim.rebuilding, out.anim.drawnThrough], [s.anim.token + 1, true, 15]);
-  assert.deepEqual(out.view.review, { seq: null });
+  assert.equal(out.view, s.view);
+});
+
+test("restructure-v2.md 5: after a jump the rows up to where it landed draw instantly, later ones animate", () => {
+  const s = booted();
+  const jumped = run(s, { type: "anim/jump", epoch: EPOCH, n: 17 });
+  assert.deepEqual(jumped.anim.jump, { epoch: EPOCH, n: 17 });
+  const out = run(jumped, tlLoaded(timelineBody(TL.body, { rows: stubRows(16, 19), since: 15, reset: false })));
+  assert.deepEqual(out.anim.queue.map((q) => [q.seq, q.instant]), [[16, true], [17, true], [18, false], [19, false]]);
+  const otherGame = run(s, { type: "anim/jump", epoch: "another-epoch", n: 17 },
+    tlLoaded(timelineBody(TL.body, { rows: stubRows(16, 16), since: 15, reset: false })));
+  assert.equal(otherGame.anim.queue[0].instant, false, "a jump to another game leaves this one's rows alone");
+});
+
+test("anim/jump ignores a malformed landing", () => {
+  const s = booted();
+  for (const bad of [{ epoch: "", n: 3 }, { epoch: EPOCH, n: -1 }, { epoch: EPOCH, n: 1.5 }, { n: 3 }]) {
+    assert.equal(run(s, { type: "anim/jump", ...bad }), s, JSON.stringify(bad));
+  }
 });
 
 test("timeline/loaded appends queue the new rows; a gap only marks needsFull", () => {
@@ -219,49 +194,23 @@ test("snapshots below the drawn row are pruned as rows land", () => {
   assert.deepEqual(drawn.timeline.snapshots.map((x) => x.n), [17]);
 });
 
-test("pick events follow selection.js and the served keys", () => {
+test("view: camera, hover, the settings menu and the playback request in flight", () => {
   const s = booted();
-  const p = run(s, { type: "pick/tap", key: "P" }, { type: "pick/tap", key: "P" }, { type: "pick/outcome", out: "incomplete" });
-  assert.deepEqual(p.view.pick, { k: "P", i: 1, out: "incomplete" });
-  assert.deepEqual(run(s, { type: "pick/leaf", leaf: "run_edge_left" }).view.pick, { k: "J", i: 1, out: null });
-  assert.equal(run(s, { type: "pick/leaf", leaf: "nope" }), s);
-  assert.equal(run(p, { type: "pick/clear" }).view.pick, EMPTY_PICK);
-  assert.equal(run(s, { type: "pick/clear" }), s, "already empty: same state");
-});
-
-test("flag/open bumps gen (G6); a manual booth survives flag/close", () => {
-  const s = booted({ drive_active: true });
-  const o = run(s, { type: "flag/open" }, { type: "flag/close" }, { type: "flag/open" });
-  assert.deepEqual(o.view.flag, { open: true, gen: 2 });
-  assert.deepEqual(o.view.booth, { open: false, auto: false }, "no booth unless the world asks");
-  const manual = run(s, { type: "booth/toggle" }, { type: "flag/open", autoBooth: true }, { type: "flag/close" });
-  assert.deepEqual(manual.view.booth, { open: true, auto: false });
-  const autoThenB = run(s, { type: "flag/open", autoBooth: true }, { type: "booth/toggle" });
-  assert.deepEqual(autoThenB.view.booth, { open: false, auto: false });
-});
-
-test("view flags: scorecard, camera, review, hover", () => {
-  const s = booted();
-  const v = run(s, { type: "scorecard/toggle" }, { type: "camera/set", id: "endzone" }, { type: "review/set", seq: 9 },
-    { type: "hover/leaf", leaf: "pa_short" });
-  assert.equal(v.view.scorecardOpen, true);
-  assert.equal(v.view.camera, "endzone");
-  assert.deepEqual(v.view.review, { seq: 9 });
+  const v = run(s, { type: "camera/set", id: "blimp" }, { type: "hover/leaf", leaf: "pa_short" }, { type: "settings/toggle" },
+    { type: "playback/start", kind: "seek", target: 40 });
+  assert.equal(v.view.camera, "blimp");
   assert.equal(v.view.hoverLeaf, "pa_short");
-  const c = run(v, { type: "scorecard/close" }, { type: "review/set", seq: null }, { type: "hover/leaf", leaf: null });
-  assert.deepEqual([c.view.scorecardOpen, c.view.review.seq, c.view.hoverLeaf], [false, null, null]);
-  assert.equal(run(c, { type: "scorecard/close" }), c);
-  assert.equal(run(c, { type: "review/set", seq: "9" }), c, "a bad seq is ignored");
-});
-
-test("strip memory: the 50 side and rejected text (FI 4.4, 5.5)", () => {
-  const s = run(booted(), { type: "side/fifty", team: "TB" }, { type: "strip/rejected", field: "iClock", text: "16:00" });
-  assert.equal(s.view.sideAtFifty, "TB");
-  assert.deepEqual(s.view.stripRejected, { iClock: "16:00" });
-  const c = run(s, { type: "strip/clear", field: "iClock" });
-  assert.deepEqual(c.view.stripRejected, {});
-  assert.equal(run(c, { type: "strip/clear", field: "iClock" }), c);
-  assert.equal(run(c, { type: "strip/rejected", field: "__proto__", text: "x" }), c, "only the seven strip fields");
+  assert.equal(v.view.settingsOpen, true);
+  assert.deepEqual(v.view.playback, { kind: "seek", target: 40 });
+  const c = run(v, { type: "settings/close" }, { type: "hover/leaf", leaf: null }, { type: "playback/end" });
+  assert.deepEqual([c.view.settingsOpen, c.view.hoverLeaf, c.view.playback], [false, null, { kind: null, target: null }]);
+  assert.equal(run(c, { type: "settings/close" }), c);
+  assert.equal(run(c, { type: "playback/end" }), c);
+  assert.equal(run(v, { type: "settings/toggle" }).view.settingsOpen, false);
+  for (const bad of [{ kind: "nope" }, { kind: "seek", target: -2 }, { kind: "seek", target: "4" }]) {
+    assert.equal(run(c, { type: "playback/start", ...bad }), c, JSON.stringify(bad));
+  }
+  assert.deepEqual(run(c, { type: "playback/start", kind: "back" }).view.playback, { kind: "back", target: null });
 });
 
 test("toast/hide only hides the toast it was scheduled for (FI 4.5)", () => {
@@ -269,8 +218,6 @@ test("toast/hide only hides the toast it was scheduled for (FI 4.5)", () => {
   assert.deepEqual(s.view.toast, { id: 2, text: "Nope", err: true });
   assert.equal(run(s, { type: "toast/hide", id: 1 }), s);
   assert.equal(run(s, { type: "toast/hide", id: 2 }).view.toast, null);
-  assert.deepEqual(run(s, { type: "bg/message", text: "Drive 3 started (ESPN).", now: 4 }).view.bgMessage,
-    { text: "Drive 3 started (ESPN).", at: 4 });
 });
 
 test("req events count in-flight actions and remember the newest applied", () => {

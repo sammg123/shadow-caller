@@ -1,5 +1,6 @@
 // Win probability (DC B6.7): ESPN's value after each drawn play, on the caller's side, in ESPN order, with score
-// and turnover markers and a tick where each drive starts. Hand-entered games have none (DC D).
+// and turnover markers and a tick where each drive starts. At kickoff no play is applied, so the server's timeline
+// isn't ESPN's yet (DC D) and has no opening value: the slot says the line appears after the first play.
 import { WP } from "./copy.js";
 import { freezeDeep, pct, resultText } from "./format.js";
 import { sourceOf, teamsOf } from "./vm-scoreboard.js";

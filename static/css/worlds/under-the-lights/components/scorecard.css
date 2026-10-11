@@ -1,13 +1,11 @@
-/* Under the Lights: SHADOW v LEAGUE, the scoreboard band's second row, and tonight's scorecard on the stat board (G)
-   (ui/scorecard.js; DESIGN.md Components "Scoreboard band and SHADOW v LEAGUE" and "Stat board (G)"; owner W2).
-   On the band (layout.css shows the plate and exactly three pairs: called right, actual play in his top 3, pass vs
-   run log loss): a steel plate "SHADOW V LEAGUE", then each pair as a painted caption over two LED windows in amber
-   segments (Doto, over their unlit 8s), a small "v" between them and an amber leader lamp beside the side that leads
-   (both unlit when even). Only pairs the scorecard computes exist (no league top-pick or tilt count, ever). On the
-   stat board the same pairs and the FI groups read as LED rows with their labels.
-   v1.5 (G4-3): the plate carries the basis once ("HIS MODEL V LEAGUE BASELINE · 59 SNAPS"), the leader's value
-   stays lit while the trailing one dims, and the full values stay in the accessibility tree (visually hidden) while
-   the screen shows the brief ones. v1.5 (G4-8): on the stat board the pairs stand two to a row. */
+/* Under the Lights: tonight's scorecard, SHADOW v LEAGUE and the FI groups, on the Model Report (ui/scorecard.js at
+   full size, data-expanded; restructure-v2.md 6: the band's SHADOW V LEAGUE row and the stat board left the GameCast;
+   DESIGN.md Components "Scoreboard band and SHADOW v LEAGUE" and "Stat board (G)"; owner W2). Each pair is a painted
+   caption over two LED windows in amber segments (Doto, over their unlit 8s), a small "v" between them and an amber
+   leader lamp beside the side that leads (both unlit when even). Only pairs the scorecard computes exist (no league
+   top-pick or tilt count, ever). v1.5 (G4-3): the plate carries the basis once ("HIS MODEL V LEAGUE BASELINE · 59
+   SNAPS"), the leader's value stays lit while the trailing one dims, and the full values stay in the accessibility tree
+   (visually hidden) while the screen shows the brief ones. v1.5 (G4-8): the pairs stand two to a row. */
 
 /* ---------------------------------------------------------------- shared: the pair */
 :where(:root[data-world="under-the-lights"]) .sc-scorecard { color: inherit; }
@@ -97,41 +95,6 @@
   animation: uls-blink var(--uls-blink-ms) linear 1;
 }
 
-/* ---------------------------------------------------------------- the band's row two */
-/* The plate: painted steel with white caps, the model's own scoreboard, and under its caption the basis, once. */
-:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-plate {
-  flex: none;
-  align-content: center;
-  gap: 4px;
-  min-height: calc(var(--uls-size-caption) + var(--uls-size-led-readout) * 0.8 + 9px);
-  padding: 0 var(--sc-space-3);
-  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
-  border-radius: var(--sc-radius-m);
-  background: var(--uls-steel);
-  color: var(--uls-caption-white);
-}
-:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-plate > .sc-card-sub {
-  color: var(--uls-caption-white);
-  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
-  letter-spacing: var(--uls-tracking-caption);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-basisline {
-  color: var(--sc-ink-muted);
-  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairs {
-  flex-wrap: nowrap;
-  gap: var(--sc-space-5);
-}
-:where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairlist {
-  flex-wrap: nowrap;
-  gap: var(--sc-space-2) var(--sc-space-6);
-}
 /* Before the first logged snap: one LED tag says so, in dim caps. */
 :where(:root[data-world="under-the-lights"]) .sc-card-empty {
   justify-self: start;
@@ -144,12 +107,7 @@
   text-transform: uppercase;
 }
 
-/* ---------------------------------------------------------------- the stat board (G): tonight's scorecard */
-:where(#app[data-layout="uls"][data-scorecard-open="true"]) .sc-scorecard {
-  gap: var(--sc-space-4);
-  padding: 0;
-  color: var(--sc-ink);
-}
+/* ---------------------------------------------------------------- full size (the Model Report): tonight's scorecard */
 :where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-sub {
   color: var(--sc-ink-muted);
   font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);
@@ -171,7 +129,7 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sc-space-4) var(--sc-space-5);
 }
-/* On the stat board the snap count rides on the caption's line, so a pair is only as wide as its two readouts. */
+/* At full size the snap count rides on the caption's line, so a pair is only as wide as its two readouts. */
 :where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pair {
   grid-template-areas: "label label label basis" "shadow vs league .";
 }
@@ -224,16 +182,4 @@
 }
 :where(:root[data-world="under-the-lights"][data-motion="reduced"]) .sc-card-side[data-lead="true"] .sc-card-lamp {
   animation: none;
-}
-
-/* ---------------------------------------------------------------- the phone: each pair on its own line */
-@media (max-width: 760px) {
-  :where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairs {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  :where(#app[data-layout="uls"]:not([data-scorecard-open="true"])) .sc-card-pairlist {
-    flex-direction: column;
-    align-items: flex-start;
-  }
 }

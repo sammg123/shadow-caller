@@ -63,7 +63,7 @@ const isBox = (b) => Boolean(b) && [b.x0, b.x1, b.y0, b.y1].every(isFiniteNum) &
 /**
  * Where the field sits in a host of `width` by `height` px: inside the free area the HUD leaves (`insets` in px;
  * ignored when they would leave less than 40% of either side), at true proportions: the whole field with its apron,
- * centered, or (`frame`, a field box { x0, x1, y0, y1 } in yards: the Drive view) that box as large as the free area
+ * centered, or (`frame`, a field box { x0, x1, y0, y1 } in yards: the Wide view) that box as large as the free area
  * holds it, centered on it. `px` is one yard in pixels; `rect` is the coords.toPlane rect of x -10 to 110 and y 0 to
  * 53.333 (larger than the host when framed); `view` the box shown, null for the whole field.
  */
@@ -85,8 +85,8 @@ export function layoutPlane({ width, height, insets, frame = null } = {}) {
   return deepFreeze({ width: w, height: h, free, px, rect, view });
 }
 
-// ---------------------------------------------------------------- the Drive view (camera "drive")
-/** Before a snap the Drive view frames (yards): `back` behind the line of scrimmage, `ahead` past it (and the line to
+// ---------------------------------------------------------------- the Wide view (camera "wide": the drive)
+/** Before a snap the Wide view frames (yards): `back` behind the line of scrimmage, `ahead` past it (and the line to
  * gain), each shadow's stroke with its arc's lift, room `below` the lowest one for its words, a `margin`, at least
  * the min spans, kept on the field and its apron. */
 export const DRIVE_FRAME = deepFreeze({ back: 4, ahead: 16, margin: 2, minSpanX: 28, minSpanY: 20, below: 9 });
@@ -100,7 +100,7 @@ function fitRange(lo, hi, min, floor, ceil) {
 }
 
 /**
- * The Drive view's box before a snap: the line of scrimmage with room behind it and ahead of it, the line to gain,
+ * The Wide view's box before a snap: the line of scrimmage with room behind it and ahead of it, the line to gain,
  * and every stroke given ({ from, to, apex? }: a shadow's; an arc is drawn bowing up the screen by its apex), with
  * room below the lowest for the words underneath. Null without a snap (no ball, a kickoff): the whole field then.
  */
@@ -148,7 +148,7 @@ export function lerpBox(a, b, u) {
 }
 
 /** The viewBox that shows, over a drawing made in `top` (the whole field), what `view` shows: the static field zooms
- * with the Drive view without being drawn again; a point lands on the same screen spot in both. */
+ * with the Wide view without being drawn again; a point lands on the same screen spot in both. */
 export function viewBoxFor(top, view) {
   const k = top.px / view.px;
   const x = top.rect.x - view.rect.x * k;
@@ -424,7 +424,7 @@ function lineNode(ctx, x, spec, part) {
 function downTag(ctx, sit) {
   const text = downDistance(sit.down, sit.togo, sit.goalToGo ? sit.togo : null);
   if (!text) return [];
-  const top = Math.min(W, ctx.layout.view?.y1 ?? W);          // the Drive view: inside the box it shows
+  const top = Math.min(W, ctx.layout.view?.y1 ?? W);          // the Wide view: inside the box it shows
   const at = ctx.pt(sit.ballX - sit.dir * 0.8, top - 2.6);
   return [tagNode({ at, text, anchor: sit.dir === 1 ? "end" : "start", size: tagSize(ctx, "xs"), part: "down-tag" })];
 }

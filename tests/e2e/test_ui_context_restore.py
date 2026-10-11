@@ -12,7 +12,7 @@ import re
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import ACTION_TIMEOUT_MS, BOOT_TIMEOUT_MS, TOAST_LOG_JS, expect_toast, state, with_drive
+from ui_helpers import ACTION_TIMEOUT_MS, BOOT_TIMEOUT_MS, TOAST_LOG_JS, expect_toast, load, seek_game, state
 
 pytestmark = pytest.mark.e2e
 
@@ -29,6 +29,7 @@ BUGS = '[data-testid="notices"] [data-notice^="bug:"]'
 CANVAS = 'canvas[data-testid="field-canvas"]'
 SVG = 'svg[data-testid="field-svg"]'
 CYCLES = 2                     # lose and restore twice: the restored field can pause and come back again
+PRESNAP_IDX = 1                # the kickoff applied: the first Dallas snap is next, his top 2 up as shadow plays
 
 
 @pytest.fixture(scope="module")
@@ -60,7 +61,8 @@ def test_a_lost_context_holds_the_game_in_2d_then_comes_back_to_3d(gpu_page, ser
     3D field is back, ready, with the same shadows, and nothing is left of the 2D field or its error. Twice."""
     base = server["base"]
     page = gpu_page
-    with_drive(page, base)
+    seek_game(base, PRESNAP_IDX)
+    load(page, base)
     field = page.locator("#field")
     expect(field).to_have_attribute("data-scene", "webgl")
     expect(field).to_have_attribute("data-scene-ready", "true", timeout=BOOT_TIMEOUT_MS)

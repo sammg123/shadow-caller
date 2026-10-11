@@ -15,6 +15,7 @@
 //   createPlayer(stage) -> { start(drawing, plan, row) -> job, placeAll(items), review(item), relabel(rows),
 //     verdict(v), clear(), dispose(), and for the other action layers: lastDrawing(), dimLast(), lastPlate(),
 //     isLive(), glyphs }
+import { rowVerdictText } from "../model/vm-field.js";
 import { keepPrograms, releasePrograms } from "./dispose.js";
 import {
   buildArt, drawingOrNull, fieldLabel, playEnv, removeLabel, setLabelOpacity, setLabelVisible, toggleLabelClass,
@@ -134,10 +135,14 @@ function placeAll(p, items) {
   p.stage.requestRender();
 }
 
-/** 4b: the LAST plate's words: its tag, the play's own words, and the verdict's (the live chip's) when graded. */
+/**
+ * 4b: the LAST plate's words: its tag, the play's own words, and the verdict's when graded: the live chip's, or, for a
+ * play drawn at once (a jump, a step: no chip goes up), the same words from its row (the server's leaf names are the
+ * engine's, LEAF_NAMES).
+ */
 function lastWords(p, entry) {
   const chip = layerOf(p.stage, "overlays")?.chip?.("live");
-  const sub = chip && chip.seq === entry.seq && typeof chip.text === "string" ? chip.text : "";
+  const sub = chip && chip.seq === entry.seq && typeof chip.text === "string" ? chip.text : rowVerdictText(entry.row);
   return { tag: LAST_TAG, body: entry.drawing.label?.text ?? "", sub };
 }
 

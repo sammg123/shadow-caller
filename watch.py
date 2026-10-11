@@ -12,10 +12,12 @@ Threading (E2). LOCK is app.LOCK, the RLock every engine mutation takes; cv guar
   4. The thread is a daemon, so a server restart ends it, but the restore point is also in SESSION_FILE: the
      session comes back as 'error' and Stop can still put the game back (data contract E2.7 said idle; that
      stranded the real game in a backup nothing pointed at).
-Pacing (E3): seconds before each row at 1x, divided by the speed, times SHADOW_WATCH_SCALE (config.WATCH_SCALE).
-A caller snap never comes sooner than its CALLER_FLOOR_S after the row before it (6 s below 4x, 4.8 s at 4x, 3.6 s
-above), so the next call and its shadow plays stay on the field long enough to read (v1.4, G1-1). The watch object
-names the pace of the row it waits on (next_kind), so the page can leave that time to the call.
+  5. Playback (restructure-v2 sections 5 and 9): seek rebuilds the game from kickoff and applies its first n plays at
+     once under one LOCK block (the live feed stopped and its poll in flight dropped first), then the session holds
+     there with its thread waiting. A session's first rebuild backs the game up like start; later ones keep its
+     restore point. back and forward move by plays the field draws; Go Live ends the session keeping the game.
+Pacing (E3) is playback.pace_plan and playback.delay_s, times SHADOW_WATCH_SCALE (config.WATCH_SCALE). The watch
+object names the pace of the row it waits on (next_kind), so the page can leave that time to the call.
 """
 import json
 import logging
@@ -29,35 +31,25 @@ from datetime import datetime
 
 import espn_feed
 import live
-import timeline
+import playback
 from config import GAME
-from timeline_text import split_body
+from playback import delay_s, pace_plan
+from watch_session import BACKUP_NAMES, SESSION_FILE, drop_session, load_session, save_session, session_path
 
 log = logging.getLogger(__name__)
 
 ACTIVE = ("playing", "paused")                       # the thread is applying plays, or will on resume
 SESSION = ("playing", "paused", "done", "error")     # a watched game is on screen and can still be put back
-# E3, seconds before a row at 1x. TB at DAL: 60 caller snaps, 78 opponent snaps, 18 kicks, 23 + 4 admin = 857 s.
-PACE = {"caller_snap": 7.0, "snap": 4.0, "kick": 5.0, "admin": 1.0, "admin_end": 3.0}
-# The least time before a caller snap, in seconds at that speed (before SHADOW_WATCH_SCALE): the play before it (1 to
-# 1.7 s), what the page keeps for the next call (anim-queue.js CALL_RESERVE_MS: the verdict's beat, 1.5 s below 4x
-# and 0.6 s from 4x, the call's fade-in, then 2 s of it fully lit up to 4x and 1 s above) and the page's poll.
-# TB at DAL runs 9.6 minutes at 2x, 6.6 at 4x and 4.3 at 10x (14:17 at 1x, as before).
-CALLER_FLOOR_S = {"slow": 6.0, "demo": 4.8, "fast": 3.6}
-DEMO_SPEED = 4.0                                     # below it the slow floor, above it the fast one
-SNAP_KINDS = ("play", "penalty", "kneel", "spike", "other")
-END_ADMIN = ("end_period", "end_half", "end_game")
 SPEED_MIN, SPEED_MAX, DEFAULT_SPEED = 0.5, 10.0, 4.0
 EVENT_ID_RE = re.compile(r"[0-9]{6,12}")             # ASCII digits: the id ends up in file names and URLs
-START_KEYS, SPEED_KEYS, STOP_KEYS = ("event_id", "speed", "from_seq"), ("speed",), ("restore",)
+START_KEYS, SPEED_KEYS, STOP_KEYS, SEEK_KEYS = ("event_id", "speed", "from_seq"), ("speed",), ("restore",), ("idx",)
 MAX_SAME_SECOND = 99                                 # backups made in one second are named -2 to -99
 KEEP_BACKUPS = 20                                    # of each file: older backups go (prune_backups)
 BACKUP_STAMP_RE = re.compile(r"\.backup-([0-9]{8}-[0-9]{6})(?:-([0-9]{1,2}))?(?:\.json)?$")
 MAX_SKIPS_IN_A_ROW = 3                               # plays the feed couldn't apply, in a row, before a watch gives up
-SESSION_FILE = "watch_session.json"                  # next to live_state.json while there is a game to put back
-BACKUP_NAMES = {"state": re.compile(r"live_state\.backup-[0-9-]{1,40}\.json"),    # what SESSION_FILE may name
-                "seen": re.compile(r"feed_seen\.json\.backup-[0-9-]{1,40}")}
-RESTARTED = "The app restarted during a watch, so the watched game is still loaded. Stop puts your game back."
+# restructure-v2 sections 2 and 5: the page's top bar has Reset and Go Live (no Stop), and both rebuild from an error
+RESTARTED = ("The app restarted during a watch, so the watched game is still loaded. Reset takes it back to kickoff, "
+             "Go Live to the latest play.")
 
 
 class WatchError(Exception):
@@ -66,37 +58,6 @@ class WatchError(Exception):
     def __init__(self, message, status=409):
         super().__init__(message)
         self.status = status
-
-
-# ---------------------------------------------------------------- E3: pacing
-def pace_of(team, p, caller):
-    """(pace, seconds before this row at 1x) for one ESPN play; pace is a PACE key."""
-    info = espn_feed.classify(team, p)
-    typ = (p.get("type") or {}).get("text") or ""
-    kind = timeline.kind_of(info, typ, split_body(p.get("text"))[1])
-    if kind in SNAP_KINDS:
-        pace = "caller_snap" if team == caller else "snap"
-    elif kind in timeline.KICKS:
-        pace = "kick"
-    else:
-        what = next((w for key, w in timeline.ADMIN_WHAT if key in typ.lower()), "other")
-        pace = "admin_end" if what in END_ADMIN else "admin"
-    return pace, PACE[pace]
-
-
-def pace_plan(plays, caller):
-    """[(pace, seconds at 1x)] for (team, play) pairs, in apply order."""
-    return [pace_of(team, p, caller) for team, p in plays]
-
-
-def delay_s(pace, seconds, speed):
-    """Seconds before a row at `speed`, before SHADOW_WATCH_SCALE: its pace divided by the speed, and never under the
-    caller-snap floor before a caller snap."""
-    wait = seconds / speed
-    if pace != "caller_snap":
-        return wait
-    band = "demo" if speed == DEMO_SPEED else "slow" if speed < DEMO_SPEED else "fast"
-    return max(wait, CALLER_FLOOR_S[band])
 
 
 # ---------------------------------------------------------------- E1: request bodies (validated at the HTTP boundary)
@@ -161,9 +122,25 @@ def parse_stop(raw):
     return restore
 
 
+def parse_seek(raw):
+    """POST /api/watch/seek's idx, the plays to show: a whole number from 0 (the top is checked in seek())."""
+    d = body_of(raw, SEEK_KEYS)
+    if "idx" not in d:
+        raise WatchError("Send idx, the number of plays to show (0 is kickoff).", 400)
+    idx = d["idx"]
+    if isinstance(idx, bool) or not isinstance(idx, int) or idx < 0:
+        raise WatchError("idx must be a whole number of plays, 0 or more.", 400)
+    return idx
+
+
 def parse_empty(raw):
-    """pause, resume and step take no fields."""
+    """pause, resume, step, back, forward, open and Go Live take no fields."""
     body_of(raw)
+
+
+def where(n, total):
+    """The game's message after a rebuild: where it stands."""
+    return "At kickoff." if n == 0 else f"After play {n} of {total}."
 
 
 # ---------------------------------------------------------------- files
@@ -282,57 +259,6 @@ def check_backups(files):
             raise WatchError(f"The backup {path.name} isn't a saved {GAME['game_id']} game.")
 
 
-# ---------------------------------------------------------------- the session file (survives a restart)
-def session_path():
-    """Read at call time, like the backups: tests sandbox live.STATE_PATH."""
-    return live.STATE_PATH.with_name(SESSION_FILE)
-
-
-def save_session(restore, watching, started_at):
-    """What stop(restore=True) needs after a restart, written whole (temp file, then os.replace)."""
-    path = session_path()
-    tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(json.dumps({"game_id": GAME["game_id"], "watching": watching, "started_at": started_at,
-                               "event_id": restore["event_id"], "feed_was_on": restore["feed_was_on"],
-                               "backup": {k: (p.name if p else None) for k, p in restore["files"].items()}}))
-    os.replace(tmp, path)
-
-
-def drop_session():
-    try:
-        session_path().unlink(missing_ok=True)
-    except OSError as ex:                          # a stale file would offer an old game back after a restart
-        log.error("Couldn't remove %s (%s): delete it by hand before restarting the app.", SESSION_FILE, ex)
-
-
-def load_session():
-    """(restore, saved fields) of a session a restart cut short, or None. A file that can't be read, belongs to
-    another game or names anything but this app's backups is left alone."""
-    path = session_path()
-    try:
-        saved = json.loads(path.read_text())
-    except FileNotFoundError:
-        return None
-    except (OSError, ValueError) as ex:
-        log.warning("Couldn't read %s (%s): a watch cut short by a restart can't be undone from the app.", path.name, ex)
-        return None
-    if not isinstance(saved, dict) or saved.get("game_id") != GAME["game_id"]:
-        return None
-    names = saved.get("backup") if isinstance(saved.get("backup"), dict) else {}
-    homes = {"state": live.STATE_PATH, "seen": espn_feed.SEEN_PATH}
-    files = {}
-    for key, pattern in BACKUP_NAMES.items():
-        name = names.get(key)
-        if name is not None and not (isinstance(name, str) and pattern.fullmatch(name)):
-            log.warning("%s names %r as a backup; ignoring the file.", path.name, str(name)[:60])
-            return None
-        files[key] = homes[key].with_name(name) if name else None
-    event_id = saved.get("event_id")
-    restore = {"files": files, "feed_was_on": saved.get("feed_was_on") is True, "summary": None, "status": None,
-               "event_id": event_id if isinstance(event_id, str) and espn_feed.EVENT_RE.fullmatch(event_id) else None}
-    return restore, saved
-
-
 # ---------------------------------------------------------------- E2: the session
 class Watch:
     """Replays a saved or finished ESPN game into the engine, one play per tick."""
@@ -348,6 +274,8 @@ class Watch:
         self._due = self._due_idx = self._left = None   # monotonic deadline of play _due_idx; seconds left if paused
         self.skipped = self._in_a_row = 0         # plays the feed couldn't apply this session; how many just now
         self._restore = None                      # what stop(restore=True) puts back
+        self.summary = None                       # the session's game: seek, back and forward rebuild from it
+        self._map = None                          # (a summary, its playback.PlayMap): worked out once per summary
         self._thread = None
         self._reload_session()
 
@@ -385,11 +313,36 @@ class Watch:
                 raise WatchError(f"A watch is already {self.state}. Stop it before starting another.")
             return self._restore if self.state in ("done", "error") else None
 
-    def snapshot(self):
-        """The watch object of /api/state and GET /api/watch (E1)."""
+    def in_session(self):
+        """A session (playing, paused, done or error) owns the screen."""
         with self.cv:
+            return self.state in SESSION
+
+    def snapshot(self):
+        """The watch object of /api/state and GET /api/watch (E1), with the progress bar's marks and the status of the
+        game on screen (restructure-v2 section 9): the session's, or the live feed's after Go Live."""
+        with self.cv:
+            pm = self._play_map(self.feed.summary)
             return {**self._brief(), "ff_until": self.ff_until, "started_at": self.started_at,
-                    "feed_was_on": self.feed_was_on, "backup": dict(self.backup) if self.backup else None}
+                    "feed_was_on": self.feed_was_on, "backup": dict(self.backup) if self.backup else None,
+                    "marks": [m._asdict() for m in pm.marks] if pm else [],
+                    "game": pm.game._asdict() if pm and pm.game else None}
+
+    def session_game(self):
+        """(event, summary) of the session's game, which seek, back and forward rebuild: (its event, None) when a
+        restart left it unloaded, (None, None) with no session. The caller loads what is missing, outside LOCK."""
+        with self.cv:
+            return (self.event_id, self.summary) if self.state in SESSION else (None, None)
+
+    def _play_map(self, summary):
+        """playback.play_map of summary, worked out once per summary object (each live poll brings a new one; a whole
+        game takes about 5 ms). None when there is no summary."""
+        if summary is None:
+            return None
+        with self.cv:
+            if self._map is None or self._map[0] is not summary:
+                self._map = (summary, playback.play_map(summary, GAME["offense"]))
+            return self._map[1]
 
     def brief(self):
         """The small watch object of /api/version (E4), polled every 250 ms while playing."""
@@ -463,29 +416,37 @@ class Watch:
             carried = self.check_can_start()
             started_at = datetime.now().isoformat(timespec="seconds")
             restore = self._backup_and_reset(event_id, summary, speed, carried, started_at)
-            with self.cv:
-                self.token += 1
-                self.state, self.error, self.event_id, self.speed = "playing", None, event_id, float(speed)
-                self.queue, self.plan, self.idx, self.ff_until = queue, plan, 0, from_seq
-                self._due = self._due_idx = self._left = None
-                self.skipped = self._in_a_row = 0
-                self.started_at = started_at
-                self.feed_was_on, self._restore = restore["feed_was_on"], restore
-                self.backup = {k: (p.name if p else None) for k, p in restore["files"].items()}
-                token = self.token
-                self.cv.notify_all()              # an older session's thread, if still waiting, sees it is over
+            self._open_session("playing", (event_id, summary, queue, plan), restore, started_at, float(speed),
+                               at=0, ff_until=from_seq)
+
+    def _open_session(self, state, game, restore, started_at, speed, at, ff_until):
+        """Under LOCK, the game just reset and its first `at` plays applied: the session's fields for `game` (event,
+        summary, queue, plan), then its thread, waiting while paused (none once done: nothing is left to play)."""
+        event_id, summary, queue, plan = game
+        with self.cv:
+            self.token += 1
+            self.state, self.error, self.event_id, self.speed = state, None, event_id, speed
+            self.queue, self.plan, self.idx, self.ff_until, self.summary = queue, plan, at, ff_until, summary
+            self._due = self._due_idx = self._left = None
+            self.skipped, self._in_a_row = len(self.feed.skipped_ids), 0
+            self.started_at = started_at
+            self.feed_was_on, self._restore = restore["feed_was_on"], restore
+            self.backup = {k: (p.name if p else None) for k, p in restore["files"].items()}
+            token = self.token
+            self.cv.notify_all()                  # an older session's thread, if still waiting, sees it is over
+        if state != "done":
             self._thread = threading.Thread(target=self._run, args=(token,), name=f"watch-{token}", daemon=True)
             self._thread.start()
 
     @staticmethod
-    def _check_game(event_id, summary, queue, from_seq):
+    def _check_game(event_id, summary, queue, n, what="from_seq"):
         caller = GAME["offense"]
         if not queue:
             raise WatchError(f"ESPN game {event_id} has no plays yet.", 400)
         if espn_feed.team_id(summary, caller) is None:
             raise WatchError(f"ESPN game {event_id} isn't a {caller} game, so there are no calls to predict.", 400)
-        if from_seq > len(queue):
-            raise WatchError(f"from_seq {from_seq} is past the end: this game has {len(queue)} plays.", 400)
+        if n > len(queue):
+            raise WatchError(f"{what} {n} is past the end: this game has {len(queue)} plays.", 400)
 
     def _backup_and_reset(self, event_id, summary, speed, carried, started_at):
         """Under LOCK: back up (or keep the restore point `carried` from the session on screen) and note it in the
@@ -565,7 +526,8 @@ class Watch:
             if self._in_a_row >= MAX_SKIPS_IN_A_ROW:
                 self.state = "error"
                 self.error = (f"{self._in_a_row} plays in a row couldn't be applied, so the watch stopped (last: "
-                              f"{self.feed.status.get('skipped')}). Your game is backed up; Stop puts it back.")
+                              f"{self.feed.status.get('skipped')}). Your game is backed up. Reset or Go Live tries "
+                              "again.")
             elif self.idx >= len(self.queue):
                 self._finish()
             self.cv.notify_all()
@@ -648,8 +610,9 @@ class Watch:
             self._end_session()
 
     def _end_session(self):
-        """Nothing left to put back: drop the restore point (and the old summary it holds) and the session file."""
-        self._restore = None
+        """Nothing left to put back: drop the restore point (and the old summary it holds), the session's game and the
+        session file."""
+        self._restore = self.summary = None
         drop_session()
 
     def _put_back(self):
@@ -681,3 +644,124 @@ class Watch:
         _resync_archive(engine)
         if r["feed_was_on"]:
             feed.start(r["event_id"])
+
+    # ------------------------------------------------ playback: seek, back, forward, Go Live (LOCK, then cv)
+    def seek(self, n, event_id, summary):
+        """Rebuild the game from kickoff with its first n plays applied at once, then hold there: paused, or done when
+        n is the total (restructure-v2 section 9). From any state. WatchError(400) for a game it can't play or n past
+        the end. Paused or done at n of this game already: nothing changes."""
+        queue = espn_feed.iter_plays(summary)
+        self._check_game(event_id, summary, queue, n, "idx")
+        plan = pace_plan(queue, GAME["offense"])
+        with self.lock:
+            with self.cv:
+                if self.state in ("paused", "done") and (self.event_id, self.idx, len(self.queue)) == \
+                        (event_id, n, len(queue)):
+                    return
+            restore, started_at, speed = self._rebuild(event_id, summary, queue[:n], where(n, len(queue)))
+            self._open_session("done" if n == len(queue) else "paused", (event_id, summary, queue, plan), restore,
+                               started_at, speed, at=n, ff_until=n)
+
+    def back(self, event_id, summary):
+        """One drawn play back: a rebuild to just after the drawn play before the newest one on screen (kickoff when
+        there is none), paused. From any state: with no session, the game on screen counts. 409 at kickoff."""
+        with self.lock:
+            pm, k = self._on_screen(event_id, summary)
+            if k == 0:
+                raise WatchError("Already at kickoff.")
+            self.seek(playback.back_target(pm.drawn, k), event_id, summary)
+
+    def forward(self, event_id, summary):
+        """One drawn play forward: plays up to and including the next one that draws, then paused (done at the end).
+        A playing or paused session on this game moves on from where it stands, as step does; anything else is a
+        rebuild that lands there. 409 at the last play (live, the newest one)."""
+        with self.lock:
+            pm, k = self._on_screen(event_id, summary)
+            if k >= len(pm.ids):
+                raise WatchError("Already at the last play.")
+            target = playback.forward_target(pm.drawn, k)
+            if not self._step_to(summary, target):
+                self.seek(target, event_id, summary)
+
+    def go_live(self, event_id, summary):
+        """Under the caller's LOCK block, which turns the live feed on next: the game in progress on screen with every
+        ESPN play so far, and no session (restructure-v2 section 9). This game's plays on screen stay and the rest
+        follow them; anything else is rebuilt from kickoff first (backed up like start, or keeping a session's
+        restore point). The session ends keeping the game: nothing to put back."""
+        queue = espn_feed.iter_plays(summary)
+        message = f"Live: ESPN game {event_id}, every play so far is in."
+        with self.lock:
+            k = self._on_screen(event_id, summary)[1]
+            self._rebuild(event_id, summary, queue[k:], message, on_top=k > 0)
+            with self.cv:
+                self.token += 1
+                self.state, self.error, self.event_id = "stopped", None, event_id
+                self.queue, self.idx, self._due, self._left = queue, len(queue), None, None
+                self.cv.notify_all()
+            self._end_session()
+
+    def _on_screen(self, event_id, summary):
+        """Under LOCK: the game's play map, and how many of its plays are on screen (none of another event's)."""
+        pm = self._play_map(summary)
+        return pm, playback.position(self.feed.applied, pm.ids) if self.feed.event_id == event_id else 0
+
+    def _step_to(self, summary, target):
+        """Under LOCK: a playing or paused session on summary pauses and applies its plays up to target, one at a time
+        as step does. False when there is no such session."""
+        with self.cv:
+            if self.state not in ACTIVE or self.summary is not summary:
+                return False
+            self.state, self._due, self._left = "paused", None, None
+            self.cv.notify_all()
+        for i in range(self.idx, target):
+            self._apply(i)
+            if self.state != "paused":            # the end, a run of skips, or a resume meanwhile
+                break
+        return True
+
+    def _rebuild(self, event_id, summary, plays, message, on_top=False):
+        """Under LOCK: the session's thread stops, the game is reset (backed up first, unless a session's restore point
+        is kept: a burst of seeks never prunes the real game's backup away) and `plays` are applied at once; on_top,
+        they follow the plays on screen instead, with no reset. Returns (restore, started_at, speed). One that fails
+        part way leaves an error session keeping the restore point."""
+        with self.cv:
+            carried = self._restore if self.state in SESSION else None
+            speed = self.speed or DEFAULT_SPEED
+            started_at = (carried and self.started_at) or datetime.now().isoformat(timespec="seconds")
+            self.token += 1                       # a running thread applies nothing more: it re-reads it under LOCK
+            self.cv.notify_all()
+        try:
+            if on_top:
+                restore, self.feed.summary = carried, summary
+            else:
+                restore = self._backup_and_reset(event_id, summary, speed, carried, started_at)
+            self._apply_at_once(plays, message)
+        except Exception as ex:
+            self._rebuild_failed(event_id, carried, ex)
+            raise
+        return restore, started_at, speed
+
+    def _rebuild_failed(self, event_id, carried, ex):
+        """An error session keeping the restore point it had, or the one the session file names by now. With neither,
+        the first backup failed and nothing changed."""
+        restore = carried or (load_session() or (None,))[0]
+        if restore is None:
+            return
+        with self.cv:
+            self.state, self.error, self.event_id = "error", f"Couldn't rebuild the game: {ex}", event_id
+            self._restore, self._due, self._left = restore, None, None
+            self.backup = {k: (p.name if p else None) for k, p in restore["files"].items()}
+            self.cv.notify_all()
+
+    def _apply_at_once(self, plays, message):
+        """Under LOCK: plays applied with no pacing, the game file saved once at the end rather than about twice a play
+        (150 plays take about 0.6 s, not 1.1), the applied ids with the last play, and `message` on screen."""
+        engine, last = self.engine, len(plays) - 1
+        engine._batching = True                   # GameEngine.command's switch: _save and _checkpoint wait for it
+        try:
+            for i, (team, p) in enumerate(plays):
+                self.feed.apply_one(team, p, save=i == last)
+            engine.state["message"] = message
+        finally:
+            engine._batching = False
+        engine._save()

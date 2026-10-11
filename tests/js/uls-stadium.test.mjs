@@ -40,7 +40,7 @@ test("the night stadium: stands and tower steel, crowd, LED ribbons, lamp banks 
   assert.equal(p.object.getObjectByName("uls-tower-lamps").count, 4 * 36, "4 banks of 9 x 4 lamps");
   assert.ok(p.object.getObjectByName("uls-crowd").geometry.attributes.position.count > 25000);
   assert.ok(p.object.getObjectByName("uls-tower-lamps").material.color.r > 1.05, "the lamps bloom");
-  assert.equal(typeof p.object.userData.uls.choreo.play, "function");
+  assert.equal(p.object.userData.uls.choreo, undefined, "restructure-v2.md 4: no camera choreography in the stadium");
   assert.equal(p.update(16), false, "nothing moves at rest: 0 frames (6.1)");
   p.dispose();
   assert.equal(p.object.parent, null);

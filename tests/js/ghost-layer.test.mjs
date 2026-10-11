@@ -4,7 +4,7 @@
 // top 2), faded at the snap, laid out again when the view changes; the previous play turns steel with its LAST plate.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { D25, actionStage, artsUnder, row, stripsUnder } from "./action-stage.mjs";
+import { D25, TL, actionStage, artsUnder, row, stripsUnder } from "./action-stage.mjs";
 
 const { buildGhostSet } = await import("../../static/js/field/ghosts.js");
 const { buildDrawing } = await import("../../static/js/field/paths.js");
@@ -12,6 +12,7 @@ const { fitPlan, planDrawing } = await import("../../static/js/field/timing.js")
 const { ALL } = await import("../../static/js/field/play-strip.js");
 const { PLAY_LOOK } = await import("../../static/js/field/play-style.js");
 const { shadowOpacity } = await import("../../static/js/field/shadow-style.js");
+const { verdictChipText } = await import("../../static/js/model/vm-field.js");
 
 const INPUT = Object.freeze({
   leaves: [{ leaf: "run_inside", p: 0.273 }, { leaf: "pa_short", p: 0.158 }, { leaf: "dropback_short", p: 0.14 }],
@@ -121,6 +122,35 @@ test("the previous play dims when the call goes up (and not while a past play is
   const [live] = artsUnder(fresh.stage.roots.plays).filter((a) => a.visible);
   const liveCore = stripsUnder(live).find((m) => m.material.uniforms.uInner.value === 0 && m.renderOrder > 8);
   near(liveCore.material.uniforms.uOpacity.value, liveCore.material.userData.opacity);
+});
+
+/** The LAST plate's words ({ tag, body, sub }) once his next call is up, after `draw` put a play on display. */
+async function lastPlateAfter(draw) {
+  const { stage, L } = await setup({ reduced: true });
+  draw(L, stage);
+  L.ghosts.show(SET);
+  return { ...stage.labels.byClass("sc-play-label")[0].words };
+}
+/** A jump or a step: the play drawn at once (scene.js placeAll), so no verdict is marked and no chip goes up. */
+const atOnce = (seq) => (L) => L.player.placeAll([{ row: row(seq), drawing: buildDrawing(row(seq)) }]);
+/** What the conductor's markVerdict gives a graded play's chip: what was graded, in the timeline's own leaf names. */
+const chipWords = (seq) => verdictChipText(row(seq).pred, TL.meta.leaf_names);
+
+test("4b: a play drawn at once (a jump, a step) keeps its verdict on its LAST plate, in its chip's words", async () => {
+  assert.deepEqual(await lastPlateAfter(atOnce(126)),
+    { tag: "LAST", body: "Short pass left · +11", sub: "Top pick · 19%" });
+  assert.deepEqual(await lastPlateAfter(atOnce(151)),
+    { tag: "LAST", body: "Short pass left · +15", sub: "Miss · #4 Intermediate · 10%" });
+  const watched = await lastPlateAfter((L, stage) => {        // drawn, landed, then graded (scene.js markVerdict)
+    const drawing = buildDrawing(row(151));
+    L.player.start(drawing, fitPlan(planDrawing(drawing, stage.look.motion), 2000), row(151)).finish();
+    L.player.verdict({ seq: 151, key: "miss" });
+    L.overlays.retext("live", 151, chipWords(151));
+  });
+  assert.equal(watched.sub, chipWords(151), "the chip's words when it went up");
+  assert.equal((await lastPlateAfter(atOnce(151))).sub, watched.sub, "the same words either way");
+  assert.equal((await lastPlateAfter(atOnce(15))).sub, "", "a TB play has no verdict");
+  assert.equal((await lastPlateAfter(atOnce(43))).sub, "", "nor his punt: no call to grade");
 });
 
 test("hover: a play outside the top 2 gets its shadow, lit; the others step back; leaving restores them", async () => {

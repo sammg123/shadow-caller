@@ -7,7 +7,7 @@
  * incompletion an arc and an X, a run a straight line on the turf) with its words on the field, his top 2 plays as
  * dashed, translucent shadow plays before his snap (field/shadows.js), the situation, residue per look, and the
  * active look's colors and styles, so it reads as the same world seen from straight above. Two cameras (V): the
- * Drive view by default (the snap and his shadows large enough to read, each play taken in whole), and Top.
+ * Wide view by default (the snap and his shadows large enough to read, each play taken in whole), and Blimp.
  *
  * DOM side. Animation runs only while a play draws (render on demand: no frames while idle). Every public call is
  * guarded: a failure is reported (opts.onError, else globalThis.reportError) and emitted as "error", and playRow
@@ -26,8 +26,8 @@ import {
 import { createSurface, measureHost } from "./fallback-svg.js";
 import { clarityOf } from "./fallback-words.js";
 
-/** The 2D field's cameras: the Drive view (the default: the snap, his shadows and each play large enough to read) and
- * the whole field from straight above (Top). */
+/** The 2D field's cameras: the Wide view (the default: the snap, his shadows and each play large enough to read) and
+ * the whole field from straight above (Blimp). */
 export { CAMERA_MODES };
 const EVENTS = new Set(["ready", "anim", "camera", "frame", "error", "contextlost", "contextrestored"]);
 const READY_FALLBACK_MS = 120;

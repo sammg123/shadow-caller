@@ -1,6 +1,6 @@
 /* Tonight's scorecard (ui/scorecard.js; owner A8). Structure and token references only; a world skins it in
    css/worlds/<id>/components/scorecard.css. Hooks a world styles against:
-     .sc-scorecard[data-expanded][data-empty]   data-expanded follows G (the full stat board)
+     .sc-scorecard[data-expanded][data-empty]   data-expanded: the full size the Model Report shows it at
      .sc-card-pair[data-pair="called_right|top3|passrun_logloss|family_logloss|leaf_logloss"]
                   [data-leader="shadow|league|even"][data-better="higher|lower"]
      .sc-card-side[data-side="shadow|league"][data-lead]  each side: caption, .sc-card-full ("0.421") and
@@ -128,7 +128,7 @@
 .sc-kpi-value.better { color: var(--sc-good); }
 .sc-kpi-value.worse { color: var(--sc-bad); }
 
-/* A wide region (the rail under the main column, or a world's stat board): pairs in columns, values in a row. */
+/* A wide region (the Model Report's boards): pairs in columns, values in a row. */
 @container sc-scorecard (min-width: 40rem) {
   .sc-card-pairlist { grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); column-gap: var(--sc-space-5); }
   .sc-card-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }

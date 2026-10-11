@@ -62,7 +62,7 @@
   color: var(--sc-ink-muted);
   font: var(--sc-weight-strong) var(--sc-size-xs) / 1.15 var(--sc-font-text);
 }
-/* The stat board and the phone show the chart at height; the ribbon fits it to its 40 / 56 px (layout.css). */
+/* The Model Report and the phone show the chart at height; the ribbon fits it to its 40 / 56 px (layout.css). */
 :where(:root[data-world="under-the-lights"]) .sc-winprob > .sc-panel-title {
   color: var(--sc-ink-muted);
   font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);

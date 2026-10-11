@@ -1,12 +1,13 @@
-// theme/worlds/under-the-lights/arrange.js (owner W3; DESIGN.md Layout; ui-architecture.md 2.7, 9.4, v1.4).
-// arrange() hangs the regions in the stadium's fixtures (ribbon, drawer, bowl, video board, desk, lower ribbon,
-// scoreboard band, stat board), whole regions only, in the order Tab walks them; hudInsets() reads the HUD insets the
-// camera keeps the play out from under, and the watcher announces when they change.
+// theme/worlds/under-the-lights/arrange.js (DESIGN.md Layout; restructure-v2.md 1 and 2; ui-architecture.md 2.7, 9.4;
+// owner: home frame). arrange() hangs the regions in the stadium's fixtures (the two-row top bar, its settings menu,
+// the bowl, the video board, the lower ribbon, the scoreboard band), whole regions only, in the order Tab walks them;
+// hudInsets() reads the HUD insets the camera keeps the play out from under, and the watcher announces when they
+// change.
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  HUD_SCALE_PROP, INSET_EVENT, LAYOUT_ID, PLAN, SAFE_PROPS, applyHudScale, arrange, hudInsets, hudScale, readHudInsets,
-  regionOrder, watchInsets,
+  HUD_SCALE_PROP, INSET_EVENT, LAYOUT_ID, PLAN, SAFE_PROPS, SETTINGS_ID, applyHudScale, arrange, hudInsets, hudScale,
+  readHudInsets, regionOrder, watchInsets,
 } from "../../static/js/theme/worlds/under-the-lights/arrange.js";
 import { REGION_NAMES } from "../../static/js/theme/registry.js";
 import { createDocument } from "./fake-dom.mjs";
@@ -20,7 +21,7 @@ function shell() {
   const regions = {};
   for (const name of REGION_NAMES) {
     const node = doc.createElement(name === "masthead" ? "header" : "section");
-    node.setAttribute("id", name === "entry" ? "entry" : `rg-${name}`);
+    node.setAttribute("id", `rg-${name}`);
     node.setAttribute("data-region", name);
     app.appendChild(node);
     regions[name] = node;
@@ -54,17 +55,15 @@ test("the plan places every region exactly once", () => {
   assert.ok(Object.isFrozen(PLAN));
 });
 
-test("Tab walks the stadium top to bottom: ribbon, drawer, bowl, board, desk, lower ribbon, band, stat board", () => {
-  assert.deepEqual(regionOrder(PLAN), ["plays", "masthead", "feed", "situation", "flags", "field", "call",
-    "transport", "entry", "drives", "wp", "scoreboard", "score", "tendencies", "box", "log"]);
+test("Tab walks the stadium top to bottom: the top bar, the bowl, the board, the lower ribbon, the band", () => {
+  assert.deepEqual(regionOrder(PLAN), ["masthead", "plays", "field", "call", "drives", "wp", "scoreboard"]);
 });
 
 test("arrange wraps the regions in the fixtures, in plan order, and marks the layout", () => {
   const { app, regions } = shell();
   arrange(app, regions);
   assert.equal(app.getAttribute("data-layout"), LAYOUT_ID);
-  assert.deepEqual(childClasses(app), ["uls-ribbon", "uls-drawer", "rg-field", "uls-board", "uls-desk", "uls-lower",
-    "uls-band", "uls-statboard"]);
+  assert.deepEqual(childClasses(app), ["uls-ribbon", "uls-settings", "rg-field", "uls-board", "uls-lower", "uls-band"]);
   assert.deepEqual(regionsInOrder(app), regionOrder(PLAN));
   for (const [name, node] of Object.entries(regions)) assert.ok(node.isConnected, `${name} stays on the page`);
 });
@@ -80,23 +79,29 @@ test("regions keep their ids and attributes; nothing is renamed or removed", () 
   assert.ok(doc.getElementById("field").isConnected);
 });
 
-test("the drawer holds the feed, situation, flags and settings racks under painted plates", () => {
+test("the top bar's settings menu: a named group right after the bar, holding no region, that the booth fills", () => {
   const { app, regions } = shell();
   arrange(app, regions);
-  const drawer = app.querySelector(".uls-drawer");
-  const racks = [...drawer.children];
-  assert.deepEqual(racks.map((r) => r.getAttribute("data-rack")), ["feed", "situation", "flags", "settings"]);
-  for (const rack of racks) {
-    const plate = rack.querySelector(".uls-plate");
-    assert.ok(plate, `${rack.getAttribute("data-rack")} has a plate`);
-    assert.equal(rack.getAttribute("role"), "group");
-    assert.equal(rack.getAttribute("aria-labelledby"), plate.getAttribute("id"));
-    assert.ok(plate.textContent.length > 2);
+  const menu = app.querySelector("[data-settings-menu]");
+  assert.equal(menu, app.querySelector(".uls-settings"));
+  assert.equal(menu.getAttribute("id"), SETTINGS_ID);
+  assert.equal(menu.getAttribute("role"), "group");
+  assert.equal(menu.getAttribute("aria-label"), "Settings");
+  const fixtures = [...app.children];
+  assert.equal(fixtures[fixtures.indexOf(menu) - 1], app.querySelector(".uls-ribbon"),
+    "Tab reaches it straight after the top bar that holds its key");
+  assert.equal(menu.querySelectorAll("[data-region]").length, 0);
+  assert.equal(menu.querySelectorAll("input").length, 2, "the booth's two switches (booth.js)");
+});
+
+test("restructure-v2.md 1: the drawer, the desk and the stat board are gone; the ribbon holds the top bar", () => {
+  const { app, regions } = shell();
+  arrange(app, regions);
+  for (const gone of [".uls-drawer", ".uls-desk", ".uls-statboard", ".uls-plate", ".uls-rack"]) {
+    assert.equal(app.querySelector(gone), null, gone);
   }
-  assert.equal(drawer.querySelector('[data-rack="feed"]').contains(regions.feed), true);
-  assert.equal(drawer.querySelector('[data-rack="flags"]').contains(regions.flags), true);
-  const settings = drawer.querySelector('[data-rack="settings"]');
-  assert.ok(settings.querySelector(".uls-rack-body"), "an empty body the booth can fill");
+  const ribbon = app.querySelector(".uls-ribbon");
+  assert.deepEqual([...ribbon.children].map((n) => n.getAttribute("data-region")), ["masthead", "plays"]);
 });
 
 test("arrange is idempotent: a second call reuses the fixtures and moves nothing twice", () => {
@@ -106,17 +111,17 @@ test("arrange is idempotent: a second call reuses the fixtures and moves nothing
   arrange(app, regions);
   assert.deepEqual(childClasses(app), first);
   assert.equal(app.querySelectorAll(".uls-ribbon").length, 1);
-  assert.equal(app.querySelectorAll(".uls-plate").length, 4);
+  assert.equal(app.querySelectorAll("[data-settings-menu]").length, 1);
   assert.deepEqual(regionsInOrder(app), regionOrder(PLAN));
 });
 
 test("a missing region is skipped; the rest still hang in order", () => {
   const { app, regions } = shell();
-  const { plays, flags, ...rest } = regions;
+  const { plays, wp, ...rest } = regions;
   plays.remove();
-  flags.remove();
+  wp.remove();
   arrange(app, rest);
-  assert.deepEqual(regionsInOrder(app), regionOrder(PLAN).filter((n) => n !== "plays" && n !== "flags"));
+  assert.deepEqual(regionsInOrder(app), regionOrder(PLAN).filter((n) => n !== "plays" && n !== "wp"));
 });
 
 test("arrange runs without a window (node, the fake DOM): no watcher, no throw", () => {
@@ -168,7 +173,7 @@ function fakeWindow(styleOf) {
   };
 }
 
-test("the watcher announces new insets once per change (mode, drawer, scorecard, resize) on #app", () => {
+test("the watcher announces new insets once per change on #app; a resize is the only cause now", () => {
   const { doc, app, regions } = shell();
   let style = { "--sc-field-safe-top": "44px", "--sc-field-safe-right": "456px", "--sc-field-safe-bottom": "184px" };
   const win = fakeWindow(() => style);
@@ -176,13 +181,12 @@ test("the watcher announces new insets once per change (mode, drawer, scorecard,
   arrange(app, regions);
   const seen = [];
   app.addEventListener(INSET_EVENT, (e) => seen.push(e.detail));
-  const mo = win.observers[0];
-  assert.equal(mo.target, app);
-  assert.deepEqual([...mo.opts.attributeFilter].sort(), ["data-booth-open", "data-mode", "data-scorecard-open"]);
-  mo.fn([]);
+  assert.equal(win.observers.some((o) => o.target === app && o.opts.attributeFilter.includes("data-mode")), false,
+    "no drawer, strip or stat board moves the HUD: #app's attributes are not watched for it");
+  win.listeners.get("resize")();
   assert.deepEqual(seen, [], "unchanged insets say nothing");
   style = { ...style, "--sc-field-safe-top": "96px" };
-  mo.fn([]);
+  win.listeners.get("resize")();
   assert.deepEqual(seen, [{ top: 96, right: 456, bottom: 184, left: 0 }]);
   win.listeners.get("resize")();
   assert.equal(seen.length, 1, "a resize with the same insets says nothing");
@@ -199,7 +203,6 @@ test("watchInsets can be stopped, and a style that throws reads as zeros", () =>
   const watcher = watchInsets(app);
   assert.deepEqual(watcher.current(), { top: 0, right: 0, bottom: 0, left: 0 });
   watcher.stop();
-  assert.equal(win.observers[0].off, true);
   assert.equal(win.listeners.has("resize"), false);
   assert.equal(watchInsets(createDocument().body), null, "no window, no watcher");
 });

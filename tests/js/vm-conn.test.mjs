@@ -36,3 +36,13 @@ test("boot screens: loading, failed with a countdown, restart (#119, #120)", asy
   assert.deepEqual([ready.phase, ready.hidden], ["ready", true]);
   assert.ok(isDeepFrozen(restart));
 });
+
+test("restructure-v2.md 9: once the first state is in, the page opens the game; the board says loading until then", async () => {
+  const { bootPhase, bootVm } = await load();
+  const opening = bootVm(makePv({ view: { playback: { kind: "open", target: null } } }));
+  assert.deepEqual([opening.phase, opening.hidden, opening.heading], ["loading", false, "Loading the game…"]);
+  assert.equal(bootPhase({ phase: "ready" }, { kind: "open" }), "opening");
+  assert.equal(bootPhase({ phase: "ready" }, { kind: "seek" }), "ready", "only the open holds the page");
+  assert.equal(bootPhase({ phase: "failed" }, { kind: "open" }), "failed");
+  assert.equal(bootPhase(null, null), "loading");
+});

@@ -1,14 +1,16 @@
 // Store <-> engine bridge (ui-architecture.md 3.4, 3.5, 6.2; owner A1). DOM side: it writes the #app attribute
 // hooks; everything else goes through the Engine interface (2.5). On each store change it compares slices by
 // identity and: rebuilds after an epoch change, plays the queue one row at a time (token-checked), hurries the
-// engine when the lag valve fires, shows the presented situation and ghosts, replays reviewed rows, relabels rows
-// whose pred a retag changed, marks verdicts, and swaps in the 2D fallback when the engine fails. The clock and the
-// timers are called bare: browsers throw "Illegal invocation" when setTimeout runs as a method of another object.
+// engine when the lag valve or a jump fires (restructure-v2.md 5: the field snaps to where a jump landed), shows the
+// presented situation and ghosts, relabels rows whose pred changed, marks verdicts, and swaps in the 2D fallback when
+// the engine fails. The clock and the timers are called bare: browsers throw "Illegal invocation" when setTimeout
+// runs as a method of another object.
 // The functions below share one context `c`; `c.rt` holds the conductor's own runtime bookkeeping.
-import { buildGhostSet, ghostInputFromPred } from "../field/ghosts.js";
-import { buildDrawing, situationFromRow } from "../field/paths.js";
+import { buildGhostSet } from "../field/ghosts.js";
+import { buildDrawing } from "../field/paths.js";
 import { normalDurationMs } from "../field/timing.js";
 import { verdictOf } from "../model/verdict.js";
+import { bootPhase } from "../model/vm-conn.js";
 import { fieldVm, verdictChipText } from "../model/vm-field.js";
 import { nextJob } from "./anim-queue.js";
 import { keyContext, modeOf } from "./keymap.js";
@@ -16,9 +18,10 @@ import { presentedView } from "./present.js";
 import { connState } from "./sync-plan.js";
 import { rowBySeq } from "./timeline-cache.js";
 
-/** The #app attributes the conductor owns (2.7). <html> attributes belong to theme/apply.js. */
-export const APP_ATTRS = Object.freeze(["data-mode", "data-phase", "data-poss", "data-booth-open", "data-scorecard-open",
-  "data-conn", "data-boot", "data-watch-state", "data-source"]);
+/** The #app attributes the conductor owns (2.7). <html> attributes belong to theme/apply.js. data-playback is the
+ * playback request in flight (open, seek, back, forward, golive, toggle; empty when none). */
+export const APP_ATTRS = Object.freeze(["data-mode", "data-phase", "data-poss", "data-settings-open", "data-conn",
+  "data-boot", "data-watch-state", "data-source", "data-playback"]);
 const DEFAULT_VERDICT_MS = 1500;
 /** G2-3: Watch this game at 4x and up holds the verdict's beat to 600 ms (the next play's reserve assumes <= 800). */
 const FAST_WATCH_SPEED = 4;
@@ -34,10 +37,11 @@ export function appAttrs(state, { phase, poss }) {
   const ctx = keyContext(state);
   return {
     "data-mode": modeOf(ctx), "data-phase": phase, "data-poss": poss ?? "",
-    "data-booth-open": String(Boolean(state.view.booth.open)),
-    "data-scorecard-open": String(Boolean(state.view.scorecardOpen)),
-    "data-conn": connState(state.conn), "data-boot": state.boot.phase, "data-watch-state": ctx.watchState,
+    "data-settings-open": String(Boolean(state.view.settingsOpen)),
+    "data-conn": connState(state.conn), "data-boot": bootPhase(state.boot, state.view.playback),
+    "data-watch-state": ctx.watchState,
     "data-source": state.timeline.source ?? state.presented?.timeline?.source ?? state.server?.timeline?.source ?? "",
+    "data-playback": state.view.playback.kind ?? "",
   };
 }
 
@@ -118,11 +122,11 @@ function beatMs(c, state) {
   return fast ? Math.min(c.verdictMs, FAST_WATCH_VERDICT_MS) : c.verdictMs;
 }
 
-/** The beat is over: the next call's shadows go up (unless a review holds the field), and the phase moves on. */
+/** The beat is over: the next call's shadows go up, and the phase moves on. */
 function endBeat(c) {
   c.rt.verdictTimer = null;
   const state = c.store.getState();
-  if (state.view.review.seq === null) showLive(c, state);
+  showLive(c, state);
   writeApp(c, state);
 }
 
@@ -170,14 +174,26 @@ function hurry(c, state) {
   c.rt.hurried = key;
 }
 
-// ---------------------------------------------------------------- situation, ghosts, review (3.5)
+// ---------------------------------------------------------------- situation and ghosts (3.5)
+/** The presented state is another epoch's than the plays on the field: a game rebuilt elsewhere (a seek), whose
+ * timeline came before its state. An old server without a timeline pointer, or nothing drawn yet, is never stale. */
+function presentedIsStale(state) {
+  const pointer = state.presented?.timeline;
+  const drawn = state.timeline.epoch;
+  return Boolean(drawn && pointer && typeof pointer.epoch === "string" && pointer.epoch !== drawn);
+}
+
 /**
  * The presented situation and the next call's shadows, each sent once per change. During the verdict's beat (G2-3)
  * the field holds no shadows: the graded play and its chip have it to themselves, then endBeat brings the call up.
+ * A presented state from another epoch shows neither: its call over the rebuilt game would dim the newest play into
+ * a LAST plate (play-drawing.md 4b) that never shows; the state that matches brings them a moment later.
  */
 function showLive(c, state) {
-  const fv = fieldVm(presentedView(state, c.now()));
-  const { situation, ghostInput } = fv;
+  const stale = presentedIsStale(state);
+  const fv = stale ? null : fieldVm(presentedView(state, c.now()));
+  const situation = fv?.situation ?? null;
+  const ghostInput = fv?.ghostInput ?? null;
   const beat = c.now() < c.rt.verdictUntil;
   c.rt.scene = { situation, ghostInput };
   const shown = c.rt.shown ?? { sit: null, ghosts: null };
@@ -188,15 +204,6 @@ function showLive(c, state) {
   if (ghosts !== shown.ghosts) {
     call(c, "showGhosts", ghostInput && situation && !beat ? buildGhostSet(ghostInput, situation) : null);
   }
-}
-
-function showReviewed(c, state) {
-  const row = rowBySeq(state.timeline, state.view.review.seq);
-  if (!row) return;
-  const sit = situationFromRow(row);
-  const meta = state.timeline.meta;
-  const input = row.pred ? ghostInputFromPred(row.pred, meta?.leaves, meta?.families) : null;
-  call(c, "showReview", row, input && sit ? buildGhostSet(input, sit) : null);
 }
 
 function relabel(c, state, prev) {
@@ -211,10 +218,6 @@ function relabel(c, state, prev) {
 
 function viewChanges(c, state, prev) {
   const { view } = state;
-  if (view.review !== prev.view.review) {
-    if (view.review.seq === null) call(c, "showReview", null, null);
-    else showReviewed(c, state);
-  }
   if (view.hoverLeaf !== prev.view.hoverLeaf) call(c, "highlightGhost", view.hoverLeaf);
   if (view.camera !== prev.view.camera && view.camera) call(c, "setCamera", view.camera);
 }
@@ -248,15 +251,14 @@ function update(c, state, prev) {
   play(c, state);
   relabel(c, state, prev);
   viewChanges(c, state, prev);
-  if (state.view.review.seq === null && liveInputsChanged(c, state, prev)) showLive(c, state);
+  if (liveInputsChanged(c, state, prev)) showLive(c, state);
   writeApp(c, state);
 }
 
 /** The live scene depends only on these; ticks and connection events leave it alone. */
 function liveInputsChanged(c, state, prev) {
   return state === prev || c.rt.shown === null || state.presented !== prev.presented
-    || state.timeline !== prev.timeline || state.anim.drawnThrough !== prev.anim.drawnThrough
-    || state.view.review !== prev.view.review;
+    || state.timeline !== prev.timeline || state.anim.drawnThrough !== prev.anim.drawnThrough;
 }
 
 // ---------------------------------------------------------------- engine lifecycle (6.1, 6.2; G2-4, G2-9)
@@ -337,8 +339,7 @@ function swapEngine(c, next) {
   drawFrame(c, state, Math.max(drawnThrough, playing?.seq ?? 0));
   if (playing) c.dispatch({ type: "anim/done", seq: playing.seq, token, now: c.now() });
   const after = c.store.getState();
-  if (after.view.review.seq !== null) showReviewed(c, after);
-  else showLive(c, after);
+  showLive(c, after);
   if (after.view.hoverLeaf) call(c, "highlightGhost", after.view.hoverLeaf);
 }
 

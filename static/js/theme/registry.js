@@ -12,9 +12,8 @@ export class WorldError extends Error {
   }
 }
 
-/** RegionName (5.2): the regions a world's arrange receives and its booth may hold. */
-export const REGION_NAMES = Object.freeze(["masthead", "feed", "scoreboard", "situation", "field", "transport", "call",
-  "entry", "flags", "plays", "drives", "wp", "score", "box", "tendencies", "log"]);
+/** RegionName (5.2): the regions a world's arrange receives (restructure-v2.md 1: the GameCast and the prediction). */
+export const REGION_NAMES = Object.freeze(["masthead", "plays", "scoreboard", "field", "call", "drives", "wp"]);
 
 const CSS_PATH = (id) => new RegExp(`^/static/css/worlds/${id}/[A-Za-z0-9_-][A-Za-z0-9_./-]*\\.css$`);
 const FONT_PATH = (id) => new RegExp(`^/static/fonts/${id}/[A-Za-z0-9_-][A-Za-z0-9_./-]*\\.(woff2|woff|ttf|otf)$`);
@@ -24,7 +23,7 @@ const cleanPath = (p) => typeof p === "string" && !p.includes("..") && !p.includ
 /** Neutral without its module (no arrange): the last resort when theme/worlds/neutral/index.js won't load. */
 export const BUILTIN_NEUTRAL = Object.freeze({
   id: "neutral", label: "Neutral", look: Object.freeze({}), css: Object.freeze(["/static/css/worlds/neutral/tokens.css"]),
-  fonts: Object.freeze([]), booth: Object.freeze({ holds: Object.freeze([]) }), ambient: null,
+  fonts: Object.freeze([]), ambient: null,
 });
 
 function pathProblems(list, name, re, what) {
@@ -43,14 +42,7 @@ function hookProblems(world) {
   });
   const ambient = world.ambient === undefined || ["room", "dark"].includes(world.ambient) ? []
     : ["ambient must be \"room\" or \"dark\""];
-  return [...fns, ...groups, ...boothProblems(world.booth), ...ambient];
-}
-
-/** booth (v1.2, optional): { holds: RegionName[] }, the regions the world shows in its booth (B). */
-function boothProblems(booth) {
-  if (booth === undefined) return [];
-  if (!isObj(booth) || !Array.isArray(booth.holds)) return ["booth must be { holds: [region names] }"];
-  return booth.holds.filter((r) => !REGION_NAMES.includes(r)).map((r) => `booth.holds: "${r}" is not a region`);
+  return [...fns, ...groups, ...ambient];
 }
 
 /** Validate a WorldModule for `id`; returns a frozen, normalized copy or throws a WorldError listing problems. */
@@ -69,7 +61,6 @@ export function checkWorld(world, id) {
     id, label: world.label, look: world.look, css: Object.freeze([...world.css]),
     fonts: Object.freeze([...(world.fonts ?? [])]), arrange: world.arrange, props: world.props,
     moments: world.moments, passes: world.passes,
-    booth: Object.freeze({ holds: Object.freeze([...(world.booth?.holds ?? [])]) }),
     ambient: world.ambient ?? null,
   });
 }

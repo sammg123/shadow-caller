@@ -7,17 +7,18 @@ docs/design/play-drawing.md (Sam's binding direction, 2026-10-09):
   4. before each Dallas snap his top 2 are up as shadow plays with "1 · Inside run (A/B gap) · 28%" underneath, a
      hovered play outside them joins, the opponent's snaps get none, and the snap takes them away.
 
-Plus the scoreboard band against the server, zero console errors through a replay and a whole watched game, and the
-golden screenshots (ui-architecture 7.3, uls_scenes.py). Every test sets its own server state (FI 6.1) on the
-scaled-pace watch sandbox and leaves no session running."""
+Plus the scoreboard band against the server, zero console errors through a whole game played from the top bar, and
+the golden screenshots (ui-architecture 7.3, uls_scenes.py). Every test sets its own server state (FI 6.1) on the
+scaled-pace watch sandbox and leaves no session running; the page opens its game on load and leaves a session where
+it is (restructure-v2.md 9)."""
 import json
 import os
 import re
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import (BOOT_TIMEOUT_MS, TOTAL_ROWS, answer_dialogs, api_get, blur, full_timeline, pct,
-                        reset_game, state, stop_watch, wait_idle, wait_ready)
+from ui_helpers import (BOOT_TIMEOUT_MS, TOTAL_ROWS, api_get, blur, full_timeline, pct, reset_game, seek_game, state,
+                        stop_watch, wait_idle, wait_ready)
 from uls_scenes import (ACTUAL_DIR, MAX_CHANGED, PRESNAP_IDX, SIZES, STATES, changed_ratio, freeze, golden_path,
                         open_page, replayed, run, scene, step_frames, watch_paused_at)
 
@@ -38,7 +39,6 @@ LABELS = {                      # play-drawing.md 3, its own examples, on their 
     181: "Kneel · −1",
 }
 SCENES = {"webgl": "", "2d": "scene=2d"}
-BAND_PAIRS = ["called_right", "top3", "passrun_logloss"]   # DESIGN.md: exactly these three on the band
 WATCH_DONE_MS = 240_000
 BALL_SLACK_YD = 0.25            # the ball's sampled spot, against the line of scrimmage
 FIRST_REACH_YD = 1.0            # a play's first frame (16 ms in) is this close to its line of scrimmage
@@ -84,8 +84,8 @@ def no_errors(page):
 
 # ---------------------------------------------------------------- the default world
 def test_boots_into_under_the_lights_unless_neutral_is_asked_for(ui_pages, wsrv):
-    """2.7 + v1.2: no ?world= opens Under the Lights (its layout, its fonts, the wide camera, no notice); ?world=neutral
-    still opens neutral."""
+    """2.7 + v1.2: no ?world= opens Under the Lights (its layout, its fonts, the Wide camera, no notice);
+    ?world=neutral still opens neutral, on its own Wide camera (restructure-v2.md 4)."""
     base = wsrv["base"]
     reset_game(base)
     page = ui_pages()
@@ -103,7 +103,7 @@ def test_boots_into_under_the_lights_unless_neutral_is_asked_for(ui_pages, wsrv)
     wait_ready(page)
     expect(page.locator("html")).to_have_attribute("data-world", "neutral")
     expect(page.locator("#app")).not_to_have_attribute("data-layout", "uls")
-    expect(page.locator(FIELD)).to_have_attribute("data-camera", "sideline", timeout=BOOT_TIMEOUT_MS)
+    expect(page.locator(FIELD)).to_have_attribute("data-camera", "wide", timeout=BOOT_TIMEOUT_MS)
     no_errors(page)
 
 
@@ -196,19 +196,23 @@ def test_the_opponents_snaps_get_no_shadow_plays(ui_pages, wsrv):
 # ---------------------------------------------------------------- play-drawing.md 3: the words on the field
 @pytest.mark.parametrize("scene_id", sorted(SCENES))
 def test_every_drawn_play_carries_its_words(ui_pages, wsrv, scene_id):
-    """play-drawing.md 3: each of its own examples, reviewed from the play ribbon (Enter on a play), is on the field in
-    those exact words, on both engines."""
+    """play-drawing.md 3: each of its own examples, the game jumped to just after it (a seek: the field snaps to the
+    play just run, restructure-v2.md 9), is on the field in those exact words, on both engines (the 2D field in its
+    whole-field view, Blimp: its Wide view frames the next snap at rest)."""
     base = wsrv["base"]
-    replayed(base)
+    seek_game(base, min(LABELS))
     page = ui_pages()
     open_uls(page, base, SCENES[scene_id])
-    wait_idle(page, TOTAL_ROWS)
     field = page.locator(FIELD)
-    page.locator("#rg-plays").hover()                    # the ribbon unrolls; focus inside keeps it unrolled
+    if scene_id == "2d":
+        blur(page)
+        page.keyboard.press("v")
+        expect(field).to_have_attribute("data-camera", "blimp")
+    count = page.locator('[data-testid="progress-count"]')
     for seq, words in LABELS.items():
-        page.locator(f'#rg-plays [data-testid="play-row"][data-seq="{seq}"] button').focus()
-        page.keyboard.press("Enter")
-        expect(field).to_have_attribute("data-review-seq", str(seq))
+        seek_game(base, seq)
+        expect(count).to_have_text(re.compile(rf"^{seq} / \d+$"), timeout=20_000)
+        wait_idle(page, seq)
         on_screen(field, words)
     no_errors(page)
 
@@ -224,7 +228,7 @@ def allowed_back(row):
 
 def test_every_snap_starts_on_the_line_of_scrimmage(browser, wsrv):
     """play-drawing.md 1 and 4, in motion, frame by frame on the page clock: Dallas's first drive stepped play by play
-    (Right on a paused watch). Each ball leaves from its line of scrimmage, no frame has it behind the line unless the
+    (uls_scenes.step_play: the server steps the paused watch and the page draws the play in motion). Each ball leaves from its line of scrimmage, no frame has it behind the line unless the
     play itself went back, and his shadows are off the field while his snap is in the air."""
     base = wsrv["base"]
     watch_paused_at(base, PRESNAP_IDX)
@@ -252,14 +256,10 @@ def test_every_snap_starts_on_the_line_of_scrimmage(browser, wsrv):
 
 
 # ---------------------------------------------------------------- the scoreboard band
-def band_pair(page, pair_id):
-    return page.locator(f'#rg-score [data-pair="{pair_id}"]')
-
-
 def test_scoreboard_band_matches_the_server(ui_pages, wsrv):
-    """DESIGN.md scoreboard band: the scores against /api/state, the quarter, clock, down and ball on against the
-    timeline's status (an ESPN game's band shows ESPN's clock, or during his drive the engine's, G4-9), and row two's
-    three SHADOW V LEAGUE pairs against /api/state metrics, mid-game and final. Its paint is the offense's color
+    """DESIGN.md scoreboard band, one row (restructure-v2.md 1: SHADOW V LEAGUE moved to the Model Report): the scores
+    against /api/state, the quarter, clock, down and ball on against the timeline's status (an ESPN game's band shows
+    ESPN's clock, or during his drive the engine's, G4-9), mid-game and final. Its paint is the offense's color
     mid-game and neutral scoreboard steel once the game is final (G2-5: nobody has the ball)."""
     base = wsrv["base"]
     page = ui_pages()
@@ -293,7 +293,7 @@ def expect_band_paint(page, tl):
 
 
 def expect_band(page, s, status):
-    sit, m, g = s["sit"], s["metrics"], s["metrics"]["granular"]
+    sit = s["sit"]
     board = page.locator('[data-testid="scoreboard"]')
     expect(board.locator('[data-testid="team-score"][data-team="DAL"]')).to_have_text(str(sit["score_off"]))
     expect(board.locator('[data-testid="team-score"][data-team="TB"]')).to_have_text(str(sit["score_opp"]))
@@ -303,17 +303,7 @@ def expect_band(page, s, status):
     if status["state"] != "post":
         expect(board.locator('[data-fact="down"]')).to_contain_text(down)
         expect(board.locator('[data-fact="ball"]')).to_contain_text(spot)
-    shown = page.locator("#rg-score [data-pair]").evaluate_all(
-        "els => els.filter(e => e.getClientRects().length > 0).map(e => e.dataset.pair)")
-    assert shown == BAND_PAIRS, shown
-    want = {"called_right": (pct(m["acc_model"]), pct(m["acc_league"]), "higher"),
-            "top3": (str(g["leaf_top3"]), str(g["leaf_top3_league"]), "higher"),
-            "passrun_logloss": (f"{m['logloss_model']:.3f}", f"{m['logloss_league']:.3f}", "lower")}
-    for pair_id, (mine, league, better) in want.items():
-        pair = band_pair(page, pair_id)
-        expect(pair.locator('[data-side="shadow"]')).to_contain_text(mine)
-        expect(pair.locator('[data-side="league"]')).to_contain_text(league)
-        expect(pair).to_have_attribute("data-leader", leader(mine, league, better))
+    assert page.locator("#rg-score").count() == 0, "no SHADOW V LEAGUE row on the GameCast"
 
 
 def band_clock(s, status):
@@ -325,32 +315,19 @@ def band_clock(s, status):
     return sit["clock_str"] if live and sit.get("clock_str") else status["clock"]
 
 
-def leader(mine, league, better):
-    a, b = float(mine.rstrip("%")), float(league.rstrip("%"))
-    if a == b:
-        return "even"
-    return "shadow" if (a > b) == (better == "higher") else "league"
-
-
 # ---------------------------------------------------------------- a whole game, no console errors
-def test_replay_and_a_whole_watched_game_raise_no_console_errors(ui_pages, wsrv):
-    """Replay this game, then Watch this game to the end at 10x, from the drawer, with motion on: no page error, no
-    console error, no failed request."""
+def test_a_whole_game_played_from_the_top_bar_raises_no_console_errors(ui_pages, wsrv):
+    """The page opens the game at kickoff; 10x (4) and Play run it to the end with motion on: no page error, no
+    console error, no failed request, and every play drawn."""
     base = wsrv["base"]
     reset_game(base)
     page = ui_pages(reduced_motion=False)
     open_uls(page, base)
-    answer_dialogs(page, accept=True)
-    blur(page)
-    page.keyboard.press("b")
-    expect(page.locator("#app")).to_have_attribute("data-booth-open", "true")
-    page.locator("#replayBtn").click()
-    wait_idle(page, TOTAL_ROWS, timeout=120_000)
-    page.locator('[data-watch="start"]:visible').first.click()
-    expect(page.locator("#app")).to_have_attribute("data-watch-state", "playing")
     blur(page)
     page.keyboard.press("4")
-    expect(page.locator('[data-testid="watch"]')).to_have_attribute("data-watch-state", "done", timeout=WATCH_DONE_MS)
+    page.locator('[data-transport="play"]').click()
+    expect(page.locator("#app")).to_have_attribute("data-watch-state", "playing")
+    expect(page.locator("#app")).to_have_attribute("data-watch-state", "done", timeout=WATCH_DONE_MS)
     wait_idle(page, TOTAL_ROWS, timeout=60_000)
     assert api_get(base, "/api/watch")["idx"] == TOTAL_ROWS
     no_errors(page)

@@ -125,7 +125,7 @@ test("every row carries data-result from its word: the first DAL snap is an inco
     assert.equal(rows.filter((r) => r.getAttribute("data-kind") === "admin" && r.hasAttribute("data-result")).length, 0);
   }));
 
-test("leaving an unrolled feed measures the newest play again, once the pointer or focus has gone", () => inDoc((doc) => {
+test("leaving an unrolled feed measures the newest play again, once the pointer has gone", () => inDoc((doc) => {
   const root = regionRoot(doc, { id: "rg-plays" });
   const { ctx } = fakeCtx();
   const timers = fakeTimers();
@@ -140,8 +140,6 @@ test("leaving an unrolled feed measures the newest play again, once the pointer 
   assert.equal(newest.getAttribute("data-pages"), null, "not while the event is still being handled");
   timers.run();
   assert.equal(newest.getAttribute("data-pages"), "2");
-  root.dispatchEvent({ type: "focusout" });
-  timers.run();
   assert.equal(newest.getAttribute("data-page"), "0", "a settle starts the message over");
   feed.destroy();
   root.dispatchEvent({ type: "pointerleave" });
@@ -187,7 +185,7 @@ test("G5-10: under reduced motion the newest play never pages (one page, cut at 
   feed.destroy();
 }));
 
-test("G5-10: paging holds while the feed is unrolled (pointer or keyboard) and starts over once it rolls back up", () => inDoc((doc) => {
+test("G5-10: paging holds while the feed is unrolled under the pointer and starts over once it rolls back up", () => inDoc((doc) => {
   const root = regionRoot(doc, { id: "rg-plays" });
   const { ctx } = fakeCtx();
   const timers = fakeTimers();

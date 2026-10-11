@@ -1,5 +1,5 @@
 // ui/play-feed.js (ui-architecture 2.6, 5.4; owner A8): every play, both teams, newest first, grouped by drive;
-// the caller's snaps carry the call and its verdict; a row is a button that shows its play on the field.
+// the caller's snaps carry the call and its verdict. Read only: the top LED ticker (restructure-v2.md 1).
 import assert from "node:assert/strict";
 import test from "node:test";
 import { playsVm } from "../../static/js/model/vm-plays.js";
@@ -46,27 +46,14 @@ test("the first DAL snap: every 5.4 hook, its words, its call and the verdict", 
   assert.equal(one(row(root, 17), ".sc-pf-call").hidden, true, "opponent snaps carry no call");
 }));
 
-test("rows are buttons that show their play on the field; admin rows draw nothing and are not buttons", () => inDoc((doc) => {
+test("rows are read only: nothing to press, nothing in the tab order (restructure-v2.md 1)", () => inDoc((doc) => {
   const { root, feed, calls } = setup(doc);
   feed.update(vmOf());
-  const btn = one(row(root, 104), "button");
-  assert.deepEqual([btn.getAttribute("type"), btn.getAttribute("aria-pressed")], ["button", "false"]);
-  click(btn);
-  assert.deepEqual(calls, [["reviewAt", 104]]);
-  assert.equal(row(root, 13).querySelector("button"), null, "a timeout");
+  assert.equal(root.querySelector("button"), null);
+  assert.equal(root.querySelector("[tabindex]"), null);
+  click(one(row(root, 104), ".sc-pf-btn"));
+  assert.deepEqual(calls, []);
   assert.equal(data(row(root, 13), "kind"), "admin");
-}));
-
-test("the reviewed row is pressed; clicking it again goes back to live", () => inDoc((doc) => {
-  const { root, feed, calls } = setup(doc);
-  feed.update(vmOf(183, { view: { review: { seq: 104 } } }));
-  const r = row(root, 104);
-  assert.deepEqual([data(r, "reviewing"), one(r, "button").getAttribute("aria-pressed")], ["true", "true"]);
-  assert.equal(all(root, '[data-reviewing="true"]').length, 1);
-  click(one(r, "button"));
-  assert.deepEqual(calls, [["exitReview"]]);
-  feed.update(vmOf());
-  assert.equal(one(r, "button").getAttribute("aria-pressed"), "false");
 }));
 
 test("rows group by drive, newest drive first, each headed by its team, result and summary", () => inDoc((doc) => {
@@ -101,15 +88,12 @@ test("nullified snaps say No play; scoring rows are marked; the newest row is ma
   assert.deepEqual(all(root, '[data-newest="true"]').map((r) => data(r, "seq")), ["183"]);
 }));
 
-test("new plays keep the rows already shown, and a focused row keeps focus (G18)", () => inDoc((doc) => {
+test("new plays keep the rows already shown", () => inDoc((doc) => {
   const { root, feed } = setup(doc);
   feed.update(vmOf(104));
   const kept = row(root, 50);
-  const btn = one(kept, "button");
-  btn.focus();
   feed.update(vmOf(183));
   assert.equal(row(root, 50), kept);
-  assert.equal(doc.activeElement, btn);
   assert.equal(all(root, '[data-testid="play-row"]').length, 183);
 }));
 
@@ -148,7 +132,7 @@ test("a hand-entered row already reads as the call, so the call name is not repe
   assert.equal(one(row(root, 3), ".sc-pf-callname").hidden, false);
 }));
 
-test("G5-10: each row carries the field's words as its ribbon face (decoration: ESPN's text names the button)", () => inDoc((doc) => {
+test("G5-10: each row carries the field's words as its ribbon face (decoration: ESPN's text stays for assistive tech)", () => inDoc((doc) => {
   const { root, feed } = setup(doc);
   feed.update(vmOf());
   const face = one(row(root, 3), ".sc-pf-face");
@@ -167,42 +151,3 @@ test("G5-10: a re-render writes only rows that changed: the same game twice writ
   assert.ok(doc.writes - before < 80, `a new play writes the new row, the old newest and its group only (${doc.writes - before} writes)`);
 }));
 
-test("G5-9: keyboard focus inside the feed opens it (data-open) until focus leaves the feed or Escape", () => inDoc((doc) => {
-  const timers = { pending: [], setTimeout(fn) { this.pending.push(fn); return this.pending.length; },
-    clearTimeout() {}, flush() { const fns = this.pending.splice(0); fns.forEach((f) => f()); } };
-  const root = regionRoot(doc, { id: "rg-plays" });
-  const { ctx } = fakeCtx();
-  const feed = mount(root, { ...ctx, timers, measureRibbon: () => null });
-  feed.update(vmOf(20));
-  const first = one(row(root, 20), ".sc-pf-btn");
-  const second = one(row(root, 19), ".sc-pf-btn");
-  const outside = doc.createElement("button");
-  doc.body.appendChild(outside);
-  const focusin = (node) => { node.focus(); root.dispatchEvent({ type: "focusin", target: node }); };
-  const focusout = (node, relatedTarget) => root.dispatchEvent({ type: "focusout", target: node, relatedTarget });
-  first.matches = () => false;                         // a mouse click is not :focus-visible
-  focusin(first);
-  assert.equal(root.getAttribute("data-open"), null, "the pointer opens it by hover, not by focus");
-  first.matches = (sel) => sel === ":focus-visible";
-  focusin(first);
-  assert.equal(root.getAttribute("data-open"), "true");
-  focusout(first, second);
-  focusin(second);
-  assert.equal(root.getAttribute("data-open"), "true", "Tab within the feed keeps it open");
-  focusout(second, null);
-  assert.equal(root.getAttribute("data-open"), "true", "the next focus is unknown yet: checked on the next frame");
-  timers.flush();
-  assert.equal(root.getAttribute("data-open"), "true", "focus is still inside");
-  focusout(second, outside);
-  outside.focus();
-  assert.equal(root.getAttribute("data-open"), null, "focus left the feed");
-  focusin(second);
-  first.focus = function focusAndAnnounce() {              // a browser fires focusin for a programmatic focus too
-    doc.activeElement = this;
-    root.dispatchEvent({ type: "focusin", target: this });
-  };
-  root.dispatchEvent({ type: "keydown", key: "Escape", target: second });
-  assert.equal(root.getAttribute("data-open"), null, "and Escape's own refocus doesn't open it again");
-  assert.equal(doc.activeElement, first, "Escape rolls it up and keeps focus on the play the ribbon still shows");
-  feed.destroy();
-}));

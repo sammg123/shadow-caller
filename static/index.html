@@ -30,28 +30,17 @@ docs/design/direction-contract.md, verbatim:
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/layout.css">
 <link rel="stylesheet" href="/static/css/components/masthead.css">
-<link rel="stylesheet" href="/static/css/components/feed-bar.css">
 <link rel="stylesheet" href="/static/css/components/watch-transport.css">
-<link rel="stylesheet" href="/static/css/components/scrub.css">
 <link rel="stylesheet" href="/static/css/components/field-host.css">
-<link rel="stylesheet" href="/static/css/components/review-banner.css">
 <link rel="stylesheet" href="/static/css/components/toast.css">
 <link rel="stylesheet" href="/static/css/components/conn-banner.css">
 <link rel="stylesheet" href="/static/css/components/boot-screen.css">
-<link rel="stylesheet" href="/static/css/components/situation-strip.css">
-<link rel="stylesheet" href="/static/css/components/entry-pad.css">
-<link rel="stylesheet" href="/static/css/components/flag-panel.css">
-<link rel="stylesheet" href="/static/css/components/shorthand.css">
 <link rel="stylesheet" href="/static/css/components/last-play.css">
 <link rel="stylesheet" href="/static/css/components/prediction.css">
 <link rel="stylesheet" href="/static/css/components/scoreboard.css">
 <link rel="stylesheet" href="/static/css/components/play-feed.css">
 <link rel="stylesheet" href="/static/css/components/drive-chart.css">
 <link rel="stylesheet" href="/static/css/components/win-prob.css">
-<link rel="stylesheet" href="/static/css/components/box-score.css">
-<link rel="stylesheet" href="/static/css/components/scorecard.css">
-<link rel="stylesheet" href="/static/css/components/tendencies.css">
-<link rel="stylesheet" href="/static/css/components/play-log.css">
 <link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-text/big-shoulders-text-latin.woff2">
 <link rel="stylesheet" id="world-css" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/tokens.css">
@@ -62,25 +51,16 @@ docs/design/direction-contract.md, verbatim:
 <body>
 <a class="sc-skip" href="#rg-call">Skip to the next call</a>
 
+<!-- restructure-v2.md 1 and 2: the GameCast and the prediction. The top bar (#rg-masthead) holds the nameplate, the
+     current game, the playback and the view keys; the page takes no user input into the game. -->
 <div id="app" class="sc-app" data-mode="normal" data-phase="idle" data-boot="loading" data-conn="online">
   <header  id="rg-masthead"   data-region="masthead"></header>
-  <section id="rg-feed"       data-region="feed"></section>
-  <section id="rg-scoreboard" data-region="scoreboard"></section>
-  <section id="rg-situation"  data-region="situation"></section>
-  <section id="rg-field"      data-region="field"></section>
-  <section id="rg-transport"  data-region="transport"></section>
-  <section id="rg-call"       data-region="call" tabindex="-1"><div id="heroArea"></div></section>
-  <section id="entry"         data-region="entry">
-    <div id="lastPlay" hidden></div><div id="manualEntry"></div><div class="short" data-mount="shorthand"></div><p id="entryHint"></p>
-  </section>
-  <section id="rg-flags"      data-region="flags"><div id="flagPanel" hidden></div></section>
   <section id="rg-plays"      data-region="plays"></section>
+  <section id="rg-scoreboard" data-region="scoreboard"></section>
+  <section id="rg-field"      data-region="field"></section>
+  <section id="rg-call"       data-region="call" tabindex="-1"><div id="heroArea"></div></section>
   <section id="rg-drives"     data-region="drives"></section>
   <section id="rg-wp"         data-region="wp"></section>
-  <section id="rg-score"      data-region="score"><div id="kpiArea"></div></section>
-  <section id="rg-box"        data-region="box"></section>
-  <section id="rg-tendencies" data-region="tendencies"></section>
-  <section id="rg-log"        data-region="log"><div id="logArea"></div></section>
 </div>
 <div id="rg-conn" data-region="conn"></div>
 <div id="rg-boot" data-region="boot">

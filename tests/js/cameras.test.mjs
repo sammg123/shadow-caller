@@ -121,6 +121,29 @@ test("a ball-following mode tracks rig.follow(ball); shot() overrides the mode w
   assert.equal(rig.shot("nope"), false);
 });
 
+test("restructure-v2.md 4: Wide follows the ball sideways while a play runs, never closer, then settles back", async () => {
+  const look = await lookWith({ cameras: { modes: [
+    { id: "wide", label: "Wide", rig: "sideline", fov: 20, height: 38, back: 82, follow: "pan", cut: false },
+    { id: "blimp", label: "Blimp", rig: "blimp", fov: 30, height: 300, back: 140, follow: "none", cut: false },
+  ], default: "wide" } });
+  const rig = createCameraRig(look);
+  rig.setView({ width: 1440, height: 900 });
+  rig.view({ situation: DAL25 }, { instant: true });
+  const rest = rig.pose();
+  rig.follow({ x: 95, y: 26.667, h: 0 });
+  settle(rig);
+  const panned = rig.pose();
+  const s = screenOf(rig, { x: 95, y: 26.667 }, 1440, 900);
+  assert.ok(s.px > 0 && s.px < 1440, `the ball stays on screen: ${s.px}`);
+  assert.ok(panned.target.x > rest.target.x + 20, "the camera slid along the field");
+  assert.ok(Math.abs(panned.fov - rest.fov) < 1e-6, "no zoom");
+  const dist = (p) => Math.hypot(p.position.x - p.target.x, p.position.y - p.target.y, p.position.z - p.target.z);
+  assert.ok(Math.abs(dist(panned) - dist(rest)) < 0.5, "no push-in");
+  rig.follow(null);
+  settle(rig);
+  assert.ok(Math.abs(rig.pose().target.x - rest.target.x) < 0.5, "the play is down: back to the situation's frame");
+});
+
 // G2-2: a reviewed play is framed whole, its line of scrimmage and its end, in the free part of the canvas
 const { buildDrawing, situationFromRow } = await import("../../static/js/field/paths.js");
 const { loadJson } = await import("./fixtures.mjs");

@@ -1,5 +1,6 @@
-// The one keydown listener (ui-architecture.md section 4; FI 1.1; G4, G5; owner A2). DOM side: it classifies the
-// event target, asks the pure keymap what to do, prevents the default when told, and runs the intent on `actions`.
+// The one keydown listener (ui-architecture.md section 4; restructure-v2.md 2; G4, G5; owner A2). DOM side: it
+// classifies the event target, asks the pure keymap what to do, prevents the default when told, and runs the intent on
+// `actions`.
 import { own } from "./domain.js";
 import { keyContext, normalizeKey, resolveKey } from "./keymap.js";
 
@@ -14,13 +15,12 @@ function attr(node, name) {
 
 /**
  * Target class of a keydown (4.x table). Inputs are text unless they are buttons, checkboxes or radios (G4); an
- * unknown input type counts as text, because browsers treat it as one. `#yards` has its own class, and so does a
- * slider (G5-12: the replay scrub keeps only its own keys; keymap.js passes the rest on).
- * @returns {"text" | "yards" | "slider" | "activatable" | "other"}
+ * unknown input type counts as text, because browsers treat it as one. A slider has its own class (the top bar's
+ * progress bar keeps only its own keys; keymap.js passes the rest on).
+ * @returns {"text" | "slider" | "activatable" | "other"}
  */
 export function classifyTarget(node) {
   if (!node || typeof node.tagName !== "string") return "other";
-  if (node.id === "yards") return "yards";
   const tag = node.tagName.toLowerCase();
   const role = attr(node, "role");
   if (role === "slider" || (tag === "input" && attr(node, "type") === "range")) return "slider";
@@ -33,28 +33,14 @@ export function classifyTarget(node) {
 }
 
 const RUN = Object.freeze({
-  tap: (a, i) => a.tap(i.key),
-  outcome: (a, i) => a.outcome(i.out),
-  toggleTD: (a) => a.toggleTD(),
-  toggleTO: (a) => a.toggleTO(),
-  openFlag: (a) => a.openFlag(),
-  closeFlag: (a) => a.closeFlag(),
-  applyFlag: (a, i) => a.applyFlag(i.code),
-  undo: (a) => a.undo(),
-  undoRefused: (a) => a.undoRefused(),
-  clearPick: (a) => a.clearPick(),
-  logPlay: (a) => a.logPlay(),
-  retag: (a, i) => a.retag(i.key, { pauseFirst: i.pauseFirst }),
+  togglePlay: (a) => a.togglePlay(),
+  stepBack: (a) => a.stepBack(),
+  stepForward: (a) => a.stepForward(),
+  setSpeed: (a, i) => a.setSpeed(i.speed),
   cycleCamera: (a) => a.cycleCamera(),
-  toggleBooth: (a) => a.toggleBooth(),
-  closeBooth: (a) => a.closeBooth(),
+  goLive: (a) => a.goLive(),
+  closeSettings: (a) => a.closeSettings(),
   dismissToast: (a) => a.dismissToast(),
-  toggleScorecard: (a) => a.toggleScorecard(),
-  closeScorecard: (a) => a.closeScorecard(),
-  watchToggle: (a) => a.watchToggle(),
-  watchSpeed: (a, i) => a.watchSpeed(i.speed),
-  review: (a, i) => a.review(i.delta, { repeat: i.repeat }),
-  exitReview: (a) => a.exitReview(),
 });
 
 function reportError(err) {
@@ -78,9 +64,12 @@ export function runIntent(actions, intent, onError = reportError) {
   return true;
 }
 
-/** Attach the listener to `doc`; returns detach. `onError` sees any error an action throws (default: reportError). */
+/** Attach the listener to `doc`; returns detach. `onError` sees any error an action throws (default: reportError). A
+ * keydown a component already handled (defaultPrevented: the focused progress bar's own keys, Escape rolling up an
+ * unrolled list) is not the page's. */
 export function attachKeyboard(doc, { store, actions, onError = reportError }) {
   function onKeyDown(e) {
+    if (e.defaultPrevented) return;   // a component already handled it (the progress bar, a list rolling up on Escape)
     const input = {
       key: normalizeKey(e.key),
       repeat: Boolean(e.repeat),

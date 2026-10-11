@@ -1,110 +1,72 @@
-"""New features (ui-architecture 4.3, 3.9, 6.1, 6.2, 7.2): the shared keys V, B, G, Space and digits outside a watch;
-the connection banner (G11); render on demand, the draw budget, no leak across rebuilds; the 2D fallback after a lost
-WebGL context."""
+"""The keys and the offline behaviours (ui-architecture 4.3, 6.1, 6.2, 7.2; restructure-v2.md 2): the old entry, booth
+and scorecard keys do nothing now; 1 to 4 set the speed; a focused key takes its own Space; render on demand, the draw
+budget and no leak across a rebuild; the 2D fallback after a lost WebGL context (the connection banner is
+test_ui_chrome.py's). The saved game is watched to a moment first (the page's open on load leaves a session where it
+is)."""
 import re
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import (EVENT, TOTAL_ROWS, api_post, blur, ensure_finished, finished, fresh, load, quiet,
-                        record_requests, reset_game, command, until, version, wait_idle, with_drive)
-from ui_helpers import CAMERAS  # v1.4 (W6): world-aware helpers
+from ui_helpers import (TOTAL_ROWS, api_get, blur, finished, full_timeline, load, quiet, record_requests, seek_game,
+                        until, version, wait_idle)
 
 pytestmark = pytest.mark.e2e
 
-NEUTRAL_CAMERAS = CAMERAS      # v1.4 (W6): the world's modes in V order (NEUTRAL_LOOK's on neutral)
 DRAW_CALL_BUDGET = 150          # 6.1
 TRIANGLE_BUDGET = 300_000       # 6.1
 LEAK_SLACK = 2                  # 6.1: geometries and textures within +2 across a rebuild
+PRESNAP_IDX = 1                 # the kickoff applied: Dallas's first snap, 1st & 10 at DAL 30, is next
+OLD_KEYS = ("b", "g", "x", "u", "k", "p", "j", "e", "Enter", "Backspace")
+SPEED_KEYS = {"1": 1, "2": 2, "3": 4, "4": 10}
 
 
-def test_v_cycles_the_camera_modes(upage, server):
-    """4.3: V cycles the look's camera modes in order and wraps; #field and the camera control both say which."""
-    with_drive(upage, server["base"])
-    control = upage.locator('[data-testid="camera-mode"]')
-    for i in range(len(NEUTRAL_CAMERAS) + 1):
-        mode, label = NEUTRAL_CAMERAS[i % len(NEUTRAL_CAMERAS)]
-        expect(upage.locator("#field")).to_have_attribute("data-camera", mode)
-        expect(control).to_have_attribute("data-camera", mode)
-        expect(control).to_contain_text(label)
-        blur(upage)
-        upage.keyboard.press("v")
+def at(page, base, idx, query=""):
+    seek_game(base, idx)
+    load(page, base, query)
 
 
-def test_b_toggles_the_booth(upage, server):
-    """4.3: B toggles the booth: [data-testid="booth-toggle"] aria-expanded and #app[data-booth-open]."""
-    with_drive(upage, server["base"])
-    toggle = upage.locator('[data-testid="booth-toggle"]')
-    expect(toggle).to_have_attribute("aria-expanded", "false")
-    for open_ in ("true", "false"):
-        blur(upage)
-        upage.keyboard.press("b")
-        expect(toggle).to_have_attribute("aria-expanded", open_)
-        expect(upage.locator("#app")).to_have_attribute("data-booth-open", open_)
-
-
-def test_g_toggles_the_scorecard_and_escape_closes_it(upage, server):
-    """4.3: G toggles the full scorecard; Escape closes it first (4.4 Escape layering) and keeps the pick."""
-    with_drive(upage, server["base"])
-    toggle = upage.locator('[data-testid="scorecard-toggle"]')
-    expect(toggle).to_have_attribute("aria-expanded", "false")
-    upage.keyboard.press("p")
-    blur(upage)
-    upage.keyboard.press("g")
-    expect(toggle).to_have_attribute("aria-expanded", "true")
-    expect(upage.locator("#app")).to_have_attribute("data-scorecard-open", "true")
-    upage.keyboard.press("Escape")
-    expect(toggle).to_have_attribute("aria-expanded", "false")
-    expect(upage.locator("#app")).to_have_attribute("data-scorecard-open", "false")
-    expect(upage.locator("#chosen")).to_contain_text("Short (0–9 air yds)")
-    upage.keyboard.press("g")
-    expect(toggle).to_have_attribute("aria-expanded", "true")
-    upage.keyboard.press("g")
-    expect(toggle).to_have_attribute("aria-expanded", "false")
-
-
-def test_digits_in_yards_stay_digits_outside_a_watch(upage, server):
-    """4.4: with no watch session, digits typed in Yards stay digits and never post a speed."""
-    with_drive(upage, server["base"])
-    speeds = record_requests(upage, "/api/watch/", "POST")
-    upage.keyboard.press("k")
-    upage.keyboard.type("1234")
-    expect(upage.locator("#yards")).to_have_value("1234")
-    blur(upage)
-    upage.keyboard.press("2")
-    quiet(upage)
-    assert speeds == []
-
-
-def test_space_on_a_focused_button_clicks_it(upage, server):
-    """4.4: a focused button gets its native Space (no watch session): Space on Undo sends /api/undo."""
-    fresh(upage, server["base"])
-    undos = record_requests(upage, "/api/undo")
-    upage.locator("#undoBtn").focus()
-    upage.keyboard.press("Space")
-    until(upage, lambda: len(undos) == 1, what="Space to click Undo")
-
-
-def test_connection_banner_retrying_offline_then_online(upage, server):
-    """3.9, G11: failed /api/version polls give retrying, then offline with Retry now; the last state stays on
-    screen; the next success clears it."""
+def test_the_old_keys_do_nothing_now(upage, server):
+    """restructure-v2.md 1 and 2: B, G, X, U and the entry keys open nothing and send nothing."""
     base = server["base"]
-    fresh(upage, base)
-    label = upage.locator("#gameLabel").inner_text()
-    upage.route("**/api/version", lambda route: route.abort())
+    at(upage, base, PRESNAP_IDX)
+    sent = record_requests(upage, "/api/", "POST")
+    blur(upage)
+    for k in OLD_KEYS:
+        upage.keyboard.press(k)
+    quiet(upage)
+    assert sent == [], sent
     app = upage.locator("#app")
-    expect(app).to_have_attribute("data-conn", "retrying")
-    banner = upage.locator('[data-testid="conn"]')
-    expect(banner).to_contain_text("Reconnecting…")
-    expect(app).to_have_attribute("data-conn", "offline", timeout=10_000)
-    expect(banner).to_have_attribute("data-conn", "offline")
-    expect(banner).to_contain_text(re.compile(r"Can't reach the app server\. Retrying (in \d+ s|now)\."))
-    retry = upage.locator('[data-testid="conn-retry"]')
-    expect(retry).to_have_text("Retry now")
-    expect(upage.locator("#gameLabel")).to_have_text(label)
-    upage.unroute("**/api/version")
-    retry.click()
-    expect(app).to_have_attribute("data-conn", "online")
-    expect(banner).not_to_contain_text("Can't reach")
+    for attr in ("data-booth-open", "data-scorecard-open", "data-review"):
+        assert app.get_attribute(attr) is None, attr
+    assert api_get(base, "/api/watch")["idx"] == PRESNAP_IDX
+    assert upage.errors == [], upage.errors
+
+
+def test_digits_set_the_speed(upage, server):
+    """1 to 4 are 1x, 2x, 4x and 10x: the key shows pressed and the server plays at that speed."""
+    base = server["base"]
+    at(upage, base, PRESNAP_IDX)
+    speeds = record_requests(upage, "/api/watch/speed")
+    blur(upage)
+    for key, speed in SPEED_KEYS.items():
+        upage.keyboard.press(key)
+        expect(upage.locator(f'[data-testid="transport"] [data-speed="{speed}"]')).to_have_attribute(
+            "aria-pressed", "true")
+        until(upage, lambda s=speed: api_get(base, "/api/watch")["speed"] == s, what=f"the server at {speed}x")
+    assert [r["body"] for r in speeds] == [{"speed": s} for s in SPEED_KEYS.values()], speeds
+
+
+def test_space_on_a_focused_key_clicks_it(upage, server):
+    """4.4: a focused key gets its native Space: Space on Forward runs one play on and never plays the game."""
+    base = server["base"]
+    at(upage, base, PRESNAP_IDX)
+    sent = record_requests(upage, "/api/watch/")
+    upage.locator('[data-transport="forward"]').focus()
+    upage.keyboard.press("Space")
+    until(upage, lambda: len(sent) == 1, what="Space to click Forward")
+    quiet(upage)
+    assert [r["path"] for r in sent] == ["/api/watch/forward"], sent
+    assert api_get(base, "/api/watch")["state"] == "paused"
 
 
 def debug_state(page):
@@ -113,9 +75,9 @@ def debug_state(page):
 
 def test_render_on_demand_idle_frames_stay_flat(upage, server):
     """6.1: with nothing changing, #field[data-frames] does not move over 2 s."""
-    with_drive(upage, server["base"])
+    at(upage, server["base"], PRESNAP_IDX)
     expect(upage.locator("#field")).to_have_attribute("data-scene-ready", "true", timeout=15_000)
-    wait_idle(upage)
+    wait_idle(upage, PRESNAP_IDX)
     upage.wait_for_timeout(500)
     before = upage.locator("#field").get_attribute("data-frames")
     assert before is not None and int(before) >= 1, f"#field[data-frames] is {before!r}"
@@ -123,14 +85,21 @@ def test_render_on_demand_idle_frames_stay_flat(upage, server):
     assert upage.locator("#field").get_attribute("data-frames") == before
 
 
+def last_dallas_presnap(base):
+    """The play count before Dallas's last snap of the game: the most residue with his top 2 up."""
+    finished_rows = full_timeline(base)["rows"]
+    last = max(r["seq"] for r in finished_rows if r["offense_is_caller"] and r["kind"] == "play")
+    return last - 1
+
+
 def test_draw_budget_with_ghosts_and_a_whole_game(upage, server):
-    """6.1 with ?debug=1: draw calls at most 150 and triangles at most 300k, with a drive's ghosts after a whole game's
-    residue."""
+    """6.1 with ?debug=1: draw calls at most 150 and triangles at most 300k, with his top 2 up after nearly a whole
+    game's residue."""
     base = server["base"]
-    ensure_finished(base)
-    command(base, "new D25")
-    load(upage, base, "debug=1")
-    wait_idle(upage, TOTAL_ROWS)
+    finished(upage, base)
+    idx = last_dallas_presnap(base)
+    at(upage, base, idx, "debug=1")
+    wait_idle(upage, idx)
     expect(upage.locator("#field")).to_have_attribute("data-ghosts", re.compile(r"\S"))
     upage.wait_for_timeout(500)
     dbg = debug_state(upage)
@@ -140,16 +109,19 @@ def test_draw_budget_with_ghosts_and_a_whole_game(upage, server):
 
 
 def test_no_geometry_or_texture_leak_across_a_rebuild(upage, server):
-    """6.1 leak check: a whole game drawn, then a new epoch (another replay) drawn again: geometries and textures
-    within +2 of the first."""
+    """6.1 leak check: a whole game drawn, then a new epoch (Reset rebuilds the game at kickoff) and the whole game
+    drawn again (Go Live): geometries and textures within +2 of the first."""
     base = server["base"]
     finished(upage, base, "debug=1")
     wait_idle(upage, TOTAL_ROWS)
     upage.wait_for_timeout(500)
     first = debug_state(upage)
     epoch = version(base)["epoch"]
-    api_post(base, "/api/feed/replay", {"event_id": EVENT})
+    upage.locator('[data-testid="transport"] [data-transport="reset"]').click()
     expect(upage.locator("#field")).not_to_have_attribute("data-epoch", epoch, timeout=30_000)
+    upage.locator('[data-testid="transport"] [data-transport="live"]').click()
+    expect(upage.locator('[data-testid="progress-count"]')).to_have_text(f"{TOTAL_ROWS} / {TOTAL_ROWS}",
+                                                                         timeout=30_000)
     wait_idle(upage, TOTAL_ROWS, timeout=30_000)
     upage.wait_for_timeout(500)
     second = debug_state(upage)
@@ -161,9 +133,7 @@ def test_lost_webgl_context_falls_back_to_the_2d_field(upage, server):
     """6.2: a lost WebGL context swaps in the 2D fallback (data-scene 2d, data-scene-error, the SVG) and the same
     hooks keep reporting the situation."""
     base = server["base"]
-    reset_game(base)
-    command(base, "new D25")
-    load(upage, base)
+    at(upage, base, PRESNAP_IDX)
     f = upage.locator("#field")
     expect(f).to_have_attribute("data-scene", "webgl")
     expect(f).to_have_attribute("data-scene-ready", "true", timeout=15_000)
@@ -174,5 +144,5 @@ def test_lost_webgl_context_falls_back_to_the_2d_field(upage, server):
     expect(f).to_have_attribute("data-scene", "2d", timeout=10_000)
     expect(f).to_have_attribute("data-scene-error", re.compile(r"\S"))
     expect(f.locator('svg[data-testid="field-svg"]')).to_have_count(1)
-    expect(f).to_have_attribute("data-los", "75")
-    expect(f).to_have_attribute("data-ltg", "65")
+    expect(f).to_have_attribute("data-los", "70")
+    expect(f).to_have_attribute("data-ltg", "60")

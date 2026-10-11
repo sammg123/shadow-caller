@@ -8,7 +8,9 @@
  *
  * Camera modes use the look's shape (ui-architecture.md 2.7): { id, label, rig, fov, height, back, yaw?, follow,
  * cut }. height and back set the elevation angle and the nominal distance; the fitted distance never comes closer
- * than 0.6x nominal and, past 3x, the lens widens instead, up to 70 degrees.
+ * than 0.6x nominal and, past 3x, the lens widens instead, up to 70 degrees. follow: "ball" frames the ball tight,
+ * "pan" slides the mode's own frame sideways with the ball (restructure-v2.md 4: Wide follows the ball sideways,
+ * never closer), "drive" frames the play being drawn, "none" holds the situation.
  */
 import { deepFreeze } from "../core/domain.js";
 import { FIELD } from "./coords.js";
@@ -29,6 +31,7 @@ const FOLLOW_RADIUS = 16;          // a following camera keeps 16 yd around the 
 const FOLLOW_LOS_REACH = 28;       // and the line of scrimmage while the ball is within 28 yd of it
 const FOLLOW_SPAN_Y = 30;
 const LOS_CUSHION = 4;
+const PAN_EDGE_YD = 6;             // a panning camera keeps the ball this far inside its frame
 const DRAWING_MARGIN = 4;
 const DRAWING_MIN_SPAN = 24;
 const DRIVE_MIN_SPAN = 30;
@@ -52,13 +55,12 @@ export const RIGS = deepFreeze({
   blimp: { pitch: 65, yaw: 0, behind: false, fov: 20, distance: 220, spanYMax: null },
 });
 
-/** Camera modes in the look's shape: broadcast and high (sideline), end zone behind the offense, overhead, tight. */
+/** Camera modes in the look's shape: broadcast and high (sideline), end zone behind the offense, overhead. */
 export const CAMERA_PRESETS = deepFreeze([
   { id: "broadcast", label: "Broadcast", rig: "sideline", fov: 24, height: 32, back: 75, follow: "none", cut: false },
   { id: "high", label: "High", rig: "sideline", fov: 30, height: 70, back: 55, follow: "none", cut: false },
   { id: "endzone", label: "End zone", rig: "endzone", fov: 40, height: 14, back: 30, follow: "none", cut: false },
   { id: "overhead", label: "Overhead", rig: "overhead", fov: 30, height: 100, back: 0, follow: "none", cut: true },
-  { id: "tight", label: "Tight", rig: "sideline", fov: 20, height: 12, back: 34, follow: "ball", cut: false },
 ]);
 
 // ---------------------------------------------------------------- frames
@@ -152,6 +154,20 @@ export function frameBall(ball, sit, { radius = FOLLOW_RADIUS } = {}) {
   const los = nearLos ? [sit.ballX - dir * LOS_CUSHION] : [];
   return boxFrame({ xs: [ball.x - radius, ball.x + radius, ...los], ys: [ball.y], dir, minSpanX: 2 * radius,
     spanY: FOLLOW_SPAN_Y, margin: 2, maxH: isFiniteNum(ball.h) ? Math.max(0, ball.h) : 0 });
+}
+
+/**
+ * A panning frame (restructure-v2.md 4: Wide follows the ball sideways): `frame` slid along the field just far enough
+ * that the ball stays `edge` yards inside it, never past the end lines. Its size, its depth and its arc height stay,
+ * so the camera never pushes in or rises; the frame itself when the ball is inside or there is no ball.
+ */
+export function panFrame(frame, ball, { edge = PAN_EDGE_YD } = {}) {
+  if (!frame?.center || !ball || !isFiniteNum(ball.x)) return frame;
+  const half = frame.spanX / 2;
+  const reach = Math.max(0, half - edge);
+  const kept = Math.min(Math.max(frame.center.x, ball.x - reach), ball.x + reach);
+  const x = Math.min(Math.max(kept, FIELD.X_MIN + half), FIELD.X_MAX - half);
+  return x === frame.center.x ? frame : { ...frame, center: { ...frame.center, x } };
 }
 
 /** The frame preset a camera mode wants: ball-following modes frame tight, the blimp frames the whole field. */

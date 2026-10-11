@@ -20,6 +20,16 @@ test("the neutral world loads from the real map and validates", async () => {
   assert.equal(neutral.label, "Neutral");
   assert.deepEqual(neutral.css, ["/static/css/worlds/neutral/tokens.css"]);
   assert.equal(typeof neutral.arrange, "function");
+  assert.equal(neutral.booth, undefined, "restructure-v2.md 1: no world has a control-room drawer");
+});
+
+test("restructure-v2.md 4: each world ships two cameras, Wide (the default) and Blimp", async () => {
+  for (const id of Object.keys(WORLDS)) {
+    const loaded = await createRegistry().loadWorld(id);
+    const cameras = loaded.look.cameras;
+    assert.deepEqual(cameras.modes.map((m) => [m.id, m.label]), [["wide", "Wide"], ["blimp", "Blimp"]], id);
+    assert.equal(cameras.default, "wide", id);
+  }
 });
 
 test("loadWorld rejects ids outside the map (nothing is imported from a user-supplied path)", async () => {
@@ -27,13 +37,6 @@ test("loadWorld rejects ids outside the map (nothing is imported from a user-sup
   for (const id of ["../../evil", "__proto__", "toString", "", "nope"]) {
     await assert.rejects(reg.loadWorld(id), WorldError);
   }
-});
-
-test("a world may name the regions its booth holds; the default is none", async () => {
-  const reg = createRegistry({ a: async () => ({ default: world("a", { booth: { holds: ["entry", "flags"] } }) }),
-    b: async () => ({ default: world("b") }) });
-  assert.deepEqual((await reg.loadWorld("a")).booth.holds, ["entry", "flags"]);
-  assert.deepEqual((await reg.loadWorld("b")).booth.holds, []);
 });
 
 test("a world may set its default room lights (ambient); none means the app default", async () => {
@@ -56,15 +59,14 @@ test("checkWorld lists every problem with a world module", () => {
   assert.throws(() => checkWorld(world("x", { id: "y" }), "x"), /id must be "x"/);
   const bad = world("x", {
     label: "", look: [], css: ["/static/css/worlds/other/tokens.css", "/static/css/worlds/x/../neutral/a.css", "https://cdn/x.css"],
-    fonts: ["/static/fonts/x/a.exe"], arrange: "nope", moments: { snap: 3 }, passes: { led: null },
-    booth: { holds: ["flags", "drawer"] }, ambient: "dim",
+    fonts: ["/static/fonts/x/a.exe"], arrange: "nope", moments: { snap: 3 }, passes: { led: null }, ambient: "dim",
   });
   assert.throws(() => checkWorld(bad, "x"), (err) => {
     assert.ok(err instanceof WorldError);
     for (const want of ["label must be a non-empty string", "look must be an object", "css[0] must be a .css file under",
       "css[1] must be a .css file under", "css[2] must be a .css file under", "fonts[0] must be a font file under",
       "arrange must be a function", "moments.snap must be a function", "passes.led must be a function",
-      "booth.holds: \"drawer\" is not a region", "ambient must be \"room\" or \"dark\""]) {
+      "ambient must be \"room\" or \"dark\""]) {
       assert.ok(err.problems.some((p) => p.includes(want)), `${want}: ${err.problems}`);
     }
     return true;
@@ -113,8 +115,7 @@ test("the neutral arrange puts the regions in a main column and a rail, keeping 
   const doc = globalThis.document;
   const app = doc.createElement("div");
   doc.body.appendChild(app);
-  const names = ["masthead", "feed", "scoreboard", "situation", "field", "transport", "call", "entry", "flags", "plays",
-    "drives", "wp", "score", "box", "tendencies", "log"];
+  const names = ["masthead", "scoreboard", "field", "call", "plays", "drives", "wp"];
   const regions = Object.fromEntries(names.map((n) => {
     const node = doc.createElement("section");
     node.setAttribute("data-region", n);
@@ -126,7 +127,7 @@ test("the neutral arrange puts the regions in a main column and a rail, keeping 
   neutral.arrange(app, regions);
   assert.equal(app.getAttribute("data-layout"), "neutral");
   const order = (node) => [...node.children].map((c) => c.getAttribute("data-region") ?? c.getAttribute("class"));
-  assert.deepEqual(order(app), ["masthead", "feed", "scoreboard", "sc-col sc-col-main", "sc-col sc-col-rail"]);
-  assert.deepEqual(order(app.children[3]), ["situation", "field", "transport", "call", "entry", "flags", "log"]);
-  assert.deepEqual(order(app.children[4]), ["score", "tendencies", "wp", "drives", "box", "plays"]);
+  assert.deepEqual(order(app), ["masthead", "scoreboard", "sc-col sc-col-main", "sc-col sc-col-rail"]);
+  assert.deepEqual(order(app.children[2]), ["field", "call"]);
+  assert.deepEqual(order(app.children[3]), ["wp", "drives", "plays"]);
 }));

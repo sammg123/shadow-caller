@@ -420,6 +420,19 @@ test("v1.4 (W1): every animated play calls the world's play moment at its start 
   assert.deepEqual(calls, [], "instant draws are not plays the world animates");
 });
 
+test("restructure-v2.md 5: rows drawn at once (a jump) go to the world's placed moment, so its boards catch up", async () => {
+  const calls = [];
+  const world = { moments: { placed: (ctx, rows) => calls.push(rows.map((r) => r.seq)) } };
+  const { engine } = await setup({ world });
+  engine.drawRowsInstant([row(1), row(2), null, { seq: "x" }]);
+  await engine.playRow(row(81), { durationMs: 0, token: 3 });
+  engine.drawRowsInstant([]);
+  assert.deepEqual(calls, [[1, 2], [81], []], "the rows on the field, oldest first; none at kickoff");
+  const reduced = await setup({ world, reducedMotion: true });
+  reduced.engine.drawRowsInstant([row(1)]);
+  assert.equal(calls.length, 3, "never under reduced motion, like every moment");
+});
+
 // ---------------------------------------------------------------- G2-4, G2-9: failures that must not vanish or latch
 test("G2-4: a lost context is watched on the canvas, so a disposed engine still says when the browser restores it", async () => {
   const clock = {};

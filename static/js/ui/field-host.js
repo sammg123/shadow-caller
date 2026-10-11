@@ -10,7 +10,7 @@
 import { el, setAttr, setData, setText } from "./dom.js";
 
 const ENGINE_EVENTS = Object.freeze(["ready", "anim", "camera", "frame", "contextlost", "contextrestored"]);
-const ANIM_STATES = Object.freeze(["idle", "playing", "rebuilding", "reviewing"]);
+const ANIM_STATES = Object.freeze(["idle", "playing", "rebuilding"]);
 const SCENE_KINDS = Object.freeze(["webgl", "2d"]);
 
 const finiteOrNull = (x) => (typeof x === "number" && Number.isFinite(x) ? x : null);
@@ -21,23 +21,21 @@ function report(err) {
 
 /**
  * What #field[data-anim-state] says (pure): the store's queue first (a row is queued, playing or the scene is
- * rebuilding), then the engine's own drawing (it may still be finishing a move), then review, else idle.
+ * rebuilding), then the engine's own drawing (it may still be finishing a move), else idle.
  * @param {{ playingSeq: number | null, queue: number, rebuilding: boolean } | null} anim
- * @param {number | null} reviewSeq
  * @param {string | null} engineState  debugState().animState
  */
-export function animStateOf(anim, reviewSeq, engineState) {
+export function animStateOf(anim, engineState) {
   if (anim?.rebuilding) return "rebuilding";
   const playing = anim?.playingSeq !== null && anim?.playingSeq !== undefined;
   if (playing || anim?.queue > 0) return "playing";
-  if (ANIM_STATES.includes(engineState) && engineState !== "idle") return engineState;
-  return reviewSeq === null || reviewSeq === undefined ? "idle" : "reviewing";
+  return ANIM_STATES.includes(engineState) ? engineState : "idle";
 }
 
-// The functions below share one context `c` = { host, legend, ctx, label, engine, offs, anim, reviewSeq,
-// engineState, debugFailed }.
+// The functions below share one context `c` = { host, legend, ctx, label, engine, offs, anim, engineState,
+// debugFailed }.
 function renderAnimState(c) {
-  setData(c.host, "animState", animStateOf(c.anim, c.reviewSeq, c.engineState));
+  setData(c.host, "animState", animStateOf(c.anim, c.engineState));
 }
 
 /** The engine's debugState, or null. A throw is reported once per engine: it runs on every frame event. */
@@ -119,16 +117,14 @@ function renderFacts(c, vm) {
   if (typeof vm.legend === "string" && vm.legend) setText(c.legend, vm.legend);
 }
 
-/** The store's animation bookkeeping (fieldHostVm): drawn seq, queue, playing seq, reviewed seq, epoch. */
+/** The store's animation bookkeeping (fieldHostVm): drawn seq, queue, playing seq, epoch. */
 function renderStore(c, vm) {
   const a = vm.anim ?? {};
   c.anim = { playingSeq: finiteOrNull(a.playingSeq), queue: finiteOrNull(a.queue) ?? 0,
     rebuilding: Boolean(a.rebuilding) };
-  c.reviewSeq = finiteOrNull(vm.reviewSeq);
   setData(c.host, "drawnSeq", finiteOrNull(a.drawnSeq) ?? 0);
   setData(c.host, "queue", c.anim.queue);
   setData(c.host, "playingSeq", c.anim.playingSeq);
-  setData(c.host, "reviewSeq", c.reviewSeq);
   setData(c.host, "epoch", typeof vm.epoch === "string" && vm.epoch !== "" ? vm.epoch : null);
 }
 
@@ -143,11 +139,6 @@ function observeSize(c) {
   return observer;
 }
 
-/**
- * @param {HTMLElement} root  #rg-field (the review banner appends its own banner here too)
- * @param {{ engine: () => object | null, copy: object }} ctx
- * @returns {{ update(vm: ReturnType<import("../shell/bindings.js").fieldHostVm>): void, destroy(): void }}
- */
 /** 4b: the style key: the previous play's solid steel stroke, then his #1 and #2 as dashed lines in their colours. */
 function styleKey(words) {
   const item = (role, text) => el("span", { cls: ["sc-field-key-item", `is-${role}`], data: { role } },
@@ -157,6 +148,11 @@ function styleKey(words) {
       item("next-2", words?.next2 ?? "Next 2")]);
 }
 
+/**
+ * @param {HTMLElement} root  #rg-field
+ * @param {{ engine: () => object | null, copy: object }} ctx
+ * @returns {{ update(vm: ReturnType<import("../shell/bindings.js").fieldHostVm>): void, destroy(): void }}
+ */
 export function mount(root, ctx) {
   const label = ctx.copy.FIELD.label;
   const legend = el("p", { cls: "sc-field-legend", data: { testid: "field-legend" }, text: ctx.copy.FIELD.legend });
@@ -165,8 +161,7 @@ export function mount(root, ctx) {
     data: { sceneReady: false, animState: "idle", drawnSeq: 0, queue: 0, ghosts: "", ghostHighlight: "" } },
   [legend, key]);
   root.appendChild(host);
-  const c = { host, legend, ctx, label, engine: null, offs: [], anim: null, reviewSeq: null, engineState: null,
-    debugFailed: null };
+  const c = { host, legend, ctx, label, engine: null, offs: [], anim: null, engineState: null, debugFailed: null };
   const observer = observeSize(c);
   const doc = root.ownerDocument;
   const onVisibility = () => engineCall(c, "setVisible", !doc.hidden);

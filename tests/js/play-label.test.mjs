@@ -17,6 +17,7 @@ import { buildShadowPlays } from "../../static/js/field/shadows.js";
 import { safeView } from "../../static/js/field/stage-math.js";
 import { resolveLook } from "../../static/js/theme/look-schema.js";
 import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
+import NEUTRAL_WORLD from "../../static/js/theme/worlds/neutral/index.js";
 import { look as ULS_PARTIAL } from "../../static/js/theme/worlds/under-the-lights/look.js";
 import { allRows, frozenCopy, manualRow, rowBySeq } from "./field-rows.mjs";
 
@@ -349,13 +350,14 @@ test("placeLabelText: the first candidate clear of labels and strokes, whole on 
 
 // ---------------------------------------------------------------- the cameras the product ships (G6-9)
 const ULS_LOOK = resolveLook(ULS_PARTIAL);
+const NEUTRAL_SHIPPED = resolveLook(NEUTRAL_WORLD.look);
 /**
  * What each world's 3D field renders at a window size, measured on the page (2026-10-10): the canvas (the whole
  * window under the lights, a band on the neutral page and on a phone), the HUD insets its camera keeps the play clear
  * of (cameras.js safeView), and the words' plate in px (the world's label CSS).
  */
 const SHIPPED = Object.freeze({
-  neutral: { look: NEUTRAL_LOOK, sizes: {
+  neutral: { look: NEUTRAL_SHIPPED, sizes: {
     "1440x900": { canvas: [992, 558], insets: {}, px: { charPx: 6.8, linePx: 27, padPx: 14 } },
     "1920x1080": { canvas: [1144, 644], insets: {}, px: { charPx: 7.0, linePx: 27.7, padPx: 14 } },
     "390x844": { canvas: [358, 201], insets: {}, px: { charPx: 5.9, linePx: 24.4, padPx: 14 } } } },
@@ -367,22 +369,18 @@ const SHIPPED = Object.freeze({
 });
 
 /**
- * How many plays (of 156 with words) each shipped camera may get wrong today, measured 2026-10-10: `words` the play's
- * words (laid out for the default cameras, as both engines draw them now) over its own play or a ball. The default
- * cameras at desktop sizes get none; a phone's deep lines and the end zone's sideways text are known gaps (the words
- * laid out in each camera's own view, paths.placePlayLabel, close every one but the end zone's). Only fewer is
- * allowed: a look.js camera edit that breaks a layout fails here. (Before a Dallas snap the words are placed in screen
- * space, 4b: SCREEN_BUDGET.)
+ * How many plays (of 156 with words) each shipped camera may get wrong today, measured 2026-10-10 on the two cameras
+ * each world ships (restructure-v2.md 4: Wide and Blimp): `words` the play's words (laid out for the default cameras,
+ * as both engines draw them now) over its own play or a ball. Under the lights the default camera at desktop sizes
+ * gets none; a phone's deep lines are a known gap (the words laid out in each camera's own view,
+ * paths.placePlayLabel, close every one). Only fewer is allowed: a camera edit in a world's look that breaks a layout
+ * fails here. (Before a Dallas snap the words are placed in screen space, 4b: SCREEN_BUDGET.)
  */
 const BUDGET = Object.freeze({
-  "neutral sideline 1440x900": { words: 24 }, "neutral sideline 390x844": { words: 156 },
-  "neutral endzone 1440x900": { words: 135 }, "neutral endzone 1920x1080": { words: 119 },
-  "neutral endzone 390x844": { words: 156 },
-  "neutral overhead 1440x900": { words: 8 }, "neutral overhead 1920x1080": { words: 8 },
-  "neutral overhead 390x844": { words: 123 },
+  "neutral wide 1440x900": { words: 24 }, "neutral wide 390x844": { words: 156 },
+  "neutral blimp 1440x900": { words: 8 }, "neutral blimp 1920x1080": { words: 8 },
+  "neutral blimp 390x844": { words: 156 },
   "under-the-lights wide 390x844": { words: 138 },
-  "under-the-lights tight 1440x900": { words: 20 }, "under-the-lights tight 1920x1080": { words: 20 },
-  "under-the-lights tight 390x844": { words: 138 },
   "under-the-lights blimp 1440x900": { words: 8 }, "under-the-lights blimp 1920x1080": { words: 8 },
   "under-the-lights blimp 390x844": { words: 156 },
 });
@@ -447,11 +445,9 @@ test("every shipped camera at 1440x900, 1920x1080 and 390x844: a play's words of
       checked += 1;
     }
     assert.ok(drawn <= (BUDGET[id]?.words ?? 0), `${id}: ${drawn} plays' words on their own play or the ball`);
-    if (mode.rig !== "endzone") {
-      assert.ok(laid <= (id === "under-the-lights tight 390x844" ? 2 : 0), `${id}: laid out in its view, ${laid} still are`);
-    }
+    assert.equal(laid, 0, `${id}: laid out in its view, ${laid} still are`);
   }
-  assert.equal(checked, 156 * 18);
+  assert.equal(checked, 156 * 12, "two worlds, two cameras each (restructure-v2.md 4), three sizes");
 });
 
 /** Each pre-snap plate's size from its words in a world's plate (px), a verdict line under the LAST plate. */
@@ -462,9 +458,8 @@ const platePx = (px, words) => ({ w: [words.tag, words.body].filter(Boolean).joi
  * field holds two 200 px plates and the strokes with little room to spare), measured 2026-10-10 with the shadows in
  * the lanes the previous play leaves them and 4 px kept around the ball; every desktop camera has none. Only fewer is
  * allowed. */
-const SCREEN_BUDGET = Object.freeze({ "neutral sideline 390x844": 52, "neutral endzone 390x844": 58,
-  "neutral overhead 390x844": 59, "under-the-lights wide 390x844": 32, "under-the-lights tight 390x844": 23,
-  "under-the-lights blimp 390x844": 37 });
+const SCREEN_BUDGET = Object.freeze({ "neutral wide 390x844": 52, "neutral blimp 390x844": 47,
+  "under-the-lights wide 390x844": 32, "under-the-lights blimp 390x844": 37 });
 
 test("every shipped camera, every size, every Dallas snap: 4b's plates in screen space never meet each other", () => {
   const rows = allRows();

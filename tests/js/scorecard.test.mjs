@@ -96,10 +96,11 @@ test("the basis line sits under the plate and the pairs say whether they share i
   assert.equal(text(one(pair(root, "top3"), ".sc-card-basis")), "58 snaps", "each pair keeps its own count");
 }));
 
-test("a tie lights no lamp; the G toggle marks the scorecard expanded; destroy removes it", () => inDoc((doc) => {
+test("a tie lights no lamp; the Model Report's full size marks the scorecard expanded; destroy removes it",
+  () => inDoc((doc) => {
   const { root, card } = setup(doc);
   const m = state.final().metrics;
-  card.update(vmOf(patch(state.final(), { metrics: { ...m, acc_league: m.acc_model } }), { scorecardOpen: true }));
+  card.update({ ...vmOf(patch(state.final(), { metrics: { ...m, acc_league: m.acc_model } })), expanded: true });
   const even = pair(root, "called_right");
   assert.equal(even.getAttribute("data-leader"), "even");
   assert.deepEqual(all(even, ".sc-card-side").map((s) => s.getAttribute("data-lead")), ["false", "false"]);

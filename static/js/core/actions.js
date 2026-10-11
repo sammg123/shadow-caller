@@ -1,68 +1,37 @@
-// Intents to requests (ui-architecture.md 2.8 and 3.3; FI 2.2; G6, G9, G13, G21; owner A2).
+// Intents to requests (ui-architecture.md 2.8 and 3.3; restructure-v2.md 2, 5 and 9; G13; owner A2).
 // The only caller of api.post. POSTs go one at a time (FIFO); each response that carries a state is applied with
-// origin "action", then a tick is kicked so the rows it made animate (at most 800 ms; a watch step's play is ESPN's,
-// so its tick is a poll's and the play draws at its own pace, v1.4). Failed requests become red
-// toasts and never throw; only a request that got no answer says "Nothing was saved" (#121), so a bug after a
-// successful POST surfaces as itself instead. The clock and the timers are called bare (browsers throw "Illegal
-// invocation" otherwise). Every action below takes the context `c` that createActions builds.
-import { CONFIRMS, TOASTS } from "../model/copy.js";
+// origin "action", then a tick is kicked. Failed requests become red toasts and never throw; a bug after a successful
+// POST surfaces as itself. The clock and the timers are called bare (browsers throw "Illegal invocation" otherwise).
+// The page never sends user input into the game (restructure-v2.md 1): it opens the game, plays, pauses, seeks, steps
+// and goes live. Those that move the game (open, seek, back, forward, Go Live) are jumps: the field snaps to the row
+// the server landed on (anim/jump). They and play/pause share one lane, so a burst of presses never stacks requests:
+// while one is in flight the newest press waits for it and any press already waiting is dropped. Every action below
+// takes the context `c` that createActions builds.
+import { TOASTS } from "../model/copy.js";
+import { placeOf } from "../model/vm-transport.js";
 import { ROUTES } from "./api.js";
 import { isPlainObject, isStateBody } from "./domain.js";
-import { drawableSeqs, stepReview } from "./review.js";
-import { canLog, flagPayload, pickLeaf as findLeaf, playPayload } from "./selection.js";
-import { commit, sideSwitch, stripValues } from "./strip.js";
 
 export const TOAST_MS = 2600;
 /** G5-13: an error stays up until it has been read: 8 s, held while the pointer or focus is on it, or until Dismiss
  * (or Esc). An info toast is gone in 2.6 s (FI 4.5). */
 export const TOAST_ERROR_MS = 8000;
-const DRIVE_ENDS = Object.freeze(["punt", "fg", "fg_miss", "half"]);
 const WATCH_SPEEDS = Object.freeze([1, 2, 4, 10]);
-const WATCH_SESSION = Object.freeze(["playing", "paused"]);
+const SESSION = Object.freeze(["playing", "paused", "done", "error"]);
+const HELD = Object.freeze(["paused", "done"]);
 const AMBIENTS = Object.freeze(["room", "dark"]);
 const QUIET = Object.freeze({ toastOn: "errors" });
-/** v1.4 (W6): a watch step applies ESPN's next play, not one he typed: its tick is a poll's, so the play draws at its own
- * pace (anim-queue's 800 ms cap is for his own rows). */
-const STEP = Object.freeze({ toastOn: "errors", origin: "poll" });
+const JUMP = Object.freeze({ toastOn: "errors", jump: true });
 
-/** Toast and confirm text: model/copy.js (A3) is the source; the two lines it does not carry yet are local. */
+/** Toast text: model/copy.js is the source. */
 export const ACTION_COPY = Object.freeze({
   offline: TOASTS.networkFail,
-  serverError: "The app server refused that.",
-  noDrive: TOASTS.noDrive,
-  undoOff: TOASTS.undoRefused,
-  noWatchId: "Enter the ESPN event id to watch.",
-  todaysGame: CONFIRMS.todaysGame,
-  confirmReset: (feedOn) => (feedOn ? CONFIRMS.resetFeedOn : CONFIRMS.reset),
-  confirmReplay: CONFIRMS.replay,
-  confirmWatch: CONFIRMS.watchStart,
-  confirmStop: CONFIRMS.watchStop,
+  serverError: TOASTS.serverError,
 });
 
 const errorText = (err) => (err && typeof err.message === "string" ? err.message : String(err));
-const trimmed = (v) => String(v ?? "").trim();
 
-/** Form access that never throws: a missing or broken component reads as an empty, unticked form. */
-function safeForm(getForm) {
-  const call = (name, fallback, ...args) => {
-    try {
-      const fn = getForm()?.[name];
-      return typeof fn === "function" ? fn(...args) : fallback;
-    } catch {
-      return fallback;
-    }
-  };
-  return {
-    yards: () => String(call("readYards", "0") ?? "0"), setYards: (v) => call("writeYards", undefined, v),
-    td: () => Boolean(call("readTD", false)), setTD: (b) => call("writeTD", undefined, b),
-    to: () => Boolean(call("readTO", false)), setTO: (b) => call("writeTO", undefined, b),
-    autoFirst: () => Boolean(call("readAutoFirst", false)), setAutoFirst: (b) => call("writeAutoFirst", undefined, b),
-    focusYards: () => call("focusYards", undefined),
-    focusTransport: () => call("focusTransport", undefined),
-  };
-}
-
-// ---------------------------------------------------------------- toasts, confirms, the POST queue
+// ---------------------------------------------------------------- toasts and the POST queue
 /** The toast's clock: show(message, err) and, for the toast now up (by id), hold, release and dismiss. A replaced
  * toast's timer may still fire: toast/hide carries the id, so it never hides a newer toast. */
 function makeToaster(dispatch, setTimer, clearTimer) {
@@ -94,11 +63,20 @@ function makeToaster(dispatch, setTimer, clearTimer) {
   });
 }
 
-function respond(c, { status, body }, reqSeq, toastOn) {
-  if (isStateBody(body)) c.dispatch({ type: "state/loaded", body, origin: "action", reqSeq, now: c.now() });
+/** The row a jump landed on (the state's timeline pointer), or null when the body doesn't say. */
+function landingOf(body) {
+  const p = isPlainObject(body) ? body.timeline : null;
+  return isPlainObject(p) && typeof p.epoch === "string" && Number.isInteger(p.n) ? { epoch: p.epoch, n: p.n } : null;
+}
+
+function respond(c, { status, body }, reqSeq, opts) {
   const error = isPlainObject(body) && typeof body.error === "string" && body.error !== "" ? body.error : null;
-  if (status === 200 && !error) {
-    if (toastOn === "message") c.toast(body.message);
+  const ok = status === 200 && !error;
+  const landing = ok && opts.jump ? landingOf(body) : null;
+  if (landing) c.dispatch({ type: "anim/jump", ...landing });
+  if (isStateBody(body)) c.dispatch({ type: "state/loaded", body, origin: "action", reqSeq, now: c.now() });
+  if (ok) {
+    if (opts.toastOn === "message") c.toast(body.message);
     return { ok: true, status, body };
   }
   c.toast(error ?? c.text.serverError, true);
@@ -107,7 +85,7 @@ function respond(c, { status, body }, reqSeq, toastOn) {
 
 const NOT_SENT = Object.freeze({ ok: false, status: null, body: null });
 
-/** The POST itself: the only failure that may say "Nothing was saved" (#121). Resolves the reply, or null. */
+/** The POST itself: the only failure that says the server can't be reached. Resolves the reply, or null. */
 async function postOnce(c, path, body) {
   try {
     return await c.api.post(path, body);
@@ -118,211 +96,114 @@ async function postOnce(c, path, body) {
   }
 }
 
-async function perform(c, path, body, toastOn, origin) {
+async function perform(c, path, body, opts) {
   c.q.reqSeq = Math.max(c.q.reqSeq, c.st().req.seq) + 1;
   const reqSeq = c.q.reqSeq;
   c.dispatch({ type: "req/action-start", reqSeq });
   try {
     const reply = await postOnce(c, path, body);
-    return reply ? respond(c, reply, reqSeq, toastOn) : NOT_SENT;
+    return reply ? respond(c, reply, reqSeq, opts) : NOT_SENT;
   } finally {
     c.dispatch({ type: "req/action-end", reqSeq });
-    c.sync?.kick({ origin });
+    c.sync?.kick({ origin: "action" });
   }
 }
 
-/** Queue one POST behind the others. toastOn: "message" (default), or "errors" to keep successes quiet. */
-function send(c, path, body, { toastOn = "message", entry = false, origin = "action" } = {}) {
-  if (entry) c.q.entryBusy += 1;
-  const run = c.q.tail.then(() => perform(c, path, body, toastOn, origin));
+/** Queue one POST behind the others. opts: toastOn "message" or "errors" (successes stay quiet); jump: true for a
+ * request that moves the game (the field snaps to where it landed). */
+function send(c, path, body, opts = QUIET) {
+  const run = c.q.tail.then(() => perform(c, path, body, opts));
   c.q.tail = run.catch(() => {});
-  return run.finally(() => { if (entry) c.q.entryBusy -= 1; });
+  return run;
 }
 
-async function confirm(c, question) {
-  try {
-    return Boolean(await c.dialogs?.confirmAction(question));
-  } catch {
-    return false;
-  }
-}
-
-// ---------------------------------------------------------------- reads
-const keys = (c) => c.st().server?.keys ?? null;
-const shown = (c) => c.st().presented ?? c.st().server;
-const watchState = (c) => c.st().version?.watch?.state ?? c.st().server?.watch?.state ?? "idle";
+// ---------------------------------------------------------------- reads (the freshest watch and feed)
+const watchOf = (c) => c.st().version?.watch ?? c.st().server?.watch ?? null;
+const gameOf = (c) => c.st().version?.watch?.game ?? c.st().server?.watch?.game ?? null;
 const feedOn = (c) => Boolean(c.st().version?.feed?.on ?? c.st().server?.feed?.on);
-const feedEventId = (c) => c.st().server?.feed?.event_id ?? null;
+const NOWHERE = Object.freeze({ idx: null, total: null });
 
-function offenseName(c) {
-  const s = c.st();
-  const offense = s.server?.game?.offense ?? "";
-  return s.timeline.teams?.[offense]?.location ?? offense;
+/** Where the game is: a watched game's state and its place (ESPN plays applied of the total), or the live feed. */
+function position(c) {
+  const w = watchOf(c);
+  const session = SESSION.includes(w?.state);
+  return { state: session ? w.state : null, live: !session && feedOn(c), ...(session ? placeOf(w) : NOWHERE),
+    final: gameOf(c)?.status !== "in" };
 }
 
-// ---------------------------------------------------------------- manual entry and flags (FI 1.3 to 1.6, G6)
-/** Yards after a log, a clear or an incompletion: empty, its placeholder reads 0 (an empty box logs 0), so a click
- * anywhere in the box and a digit never extend a 0 into "40" (G5-4). */
-const NO_YARDS = "";
+/** An error session (the app restarted mid-watch, a rebuild that failed) is never taken to be at either end: Reset,
+ * Go Live and the steps rebuild from it, and the server answers where it really is (a 409 at an end). */
+const settled = (p) => p.state !== null && p.state !== "error";
+const atKickoff = (p) => settled(p) && p.idx === 0;
+const atEnd = (p) => settled(p) && p.idx !== null && p.total !== null && p.idx >= p.total;
+/** Go Live has nothing to do: the feed is already followed, or a finished game already shows its final state. */
+const isLive = (p) => p.live || (atEnd(p) && p.final);
 
-function clearPick(c) {
-  c.dispatch({ type: "pick/clear" });
-  c.f.setYards(NO_YARDS);
-  c.f.setTD(false);
-  c.f.setTO(false);
-}
-
-function openFlag(c) {
-  if (!c.st().server?.drive_active) {
-    c.toast(c.text.noDrive(offenseName(c)), true);
-    return;
+// ---------------------------------------------------------------- the playback lane
+/** Run `job` now, or (one already in flight) make it the next one, dropping any press that was waiting. */
+function enter(c, kind, run, target = null) {
+  const job = { kind, run, target };
+  c.dispatch({ type: "playback/start", kind, target });
+  if (c.lane.running) {
+    c.lane.next = job;
+    return c.lane.running;
   }
-  c.dispatch({ type: "flag/open", autoBooth: Boolean(c.boothHoldsFlags()) });
-  c.f.focusYards();
+  c.lane.running = drain(c, job);
+  return c.lane.running;
 }
 
-async function logPlay(c) {
-  const s = c.st();
-  if (c.q.entryBusy > 0 || !canLog(s.view.pick, keys(c), s.server?.drive_active)) return;
-  const pickAtSend = s.view.pick;
-  const body = playPayload(pickAtSend, keys(c), { yards: c.f.yards(), td: c.f.td(), turnover: c.f.to() });
-  const res = await send(c, ROUTES.play, body, { entry: true });
-  if (!res.ok || c.st().view.pick !== pickAtSend) return;
-  clearPick(c);
-  c.f.focusYards();
-}
-
-async function applyFlag(c, code) {
-  const s = c.st();
-  if (c.q.entryBusy > 0 || !keys(c)) return;
-  const pickAtSend = s.view.pick;
-  const genAtSend = s.view.flag.gen;
-  const body = flagPayload(code, pickAtSend, keys(c), { yards: c.f.yards(), autoFirst: c.f.autoFirst() });
-  const res = await send(c, ROUTES.penalty, body, { entry: true });
-  if (!res.ok) return;
-  if (c.st().view.flag.gen === genAtSend) c.dispatch({ type: "flag/close" });
-  if (c.st().view.pick === pickAtSend) clearPick(c);
-  c.f.setAutoFirst(false);
-  c.f.focusYards();
-}
-
-// ---------------------------------------------------------------- situation strip (FI 2.3, G1 to G3)
-async function saveSituation(c, body) {
-  const wasActive = Boolean(c.st().server?.drive_active);
-  const res = await send(c, ROUTES.situation, body, QUIET);
-  if (res.ok && !wasActive && res.body.drive_active) c.toast(res.body.message);
-  return res;
-}
-
-/** The side chip's team as the strip shows it: with no drive (G5-3) the offense's own side, so a bare number in
- * Ball on starts the next drive on its side, not where the last snap was. */
-/** The server's words for a refused request ("" when it never answered), for the line beside the strip (G5-13). */
-const serverError = (res) => (isPlainObject(res.body) && typeof res.body.error === "string" ? res.body.error : "");
-
-const chipTeamOf = (c, p) => stripValues(p.sit, p.game, c.st().view.sideAtFifty,
-  { driveActive: Boolean(p.drive_active) }).side.team;
-
-async function commitStrip(c, fieldId, raw, edited) {
-  const p = shown(c);
-  if (!p) return { sent: false, ok: false };
-  const { body } = commit(fieldId, raw, { edited, chipTeam: chipTeamOf(c, p) });
-  if (!body) {
-    c.dispatch({ type: "strip/clear", field: fieldId });
-    return { sent: false, ok: false };
+async function drain(c, first) {
+  try {
+    for (let job = first; job; job = c.lane.next) {
+      c.lane.next = null;
+      c.dispatch({ type: "playback/start", kind: job.kind, target: job.target });
+      await job.run();
+    }
+  } finally {
+    c.lane.next = null;
+    c.lane.running = null;
+    c.dispatch({ type: "playback/end" });
   }
-  const res = await saveSituation(c, body);
-  if (res.ok) c.dispatch({ type: "strip/clear", field: fieldId });
-  else c.dispatch({ type: "strip/rejected", field: fieldId, text: String(raw ?? ""), error: serverError(res) });
-  return { sent: true, ok: res.ok };
 }
 
-async function flipSide(c, yardText) {
-  const p = shown(c);
-  if (!p) return { ok: false };
-  const { body, sideAtFifty } = sideSwitch({ chipTeam: chipTeamOf(c, p), yardText, sit: p.sit, game: p.game,
-    driveActive: Boolean(p.drive_active) });
-  if (sideAtFifty) c.dispatch({ type: "side/fifty", team: sideAtFifty });
-  return { ok: (await saveSituation(c, body)).ok };
+/** A jump's request, sent when its turn in the lane comes, if `allowed` still holds then. */
+const jumpRun = (c, path, body, allowed) => () => (allowed(position(c)) ? send(c, path, body, JUMP) : null);
+
+/** A seek to where a paused or done game already is changes nothing (watch.seek's own no-op); from playing it still
+ * holds the game there, and from an error it rebuilds it. */
+function seek(c, idx) {
+  const fits = (p) => Number.isInteger(idx) && idx >= 0 && (p.total === null || idx <= p.total)
+    && !(idx === p.idx && HELD.includes(p.state));
+  if (!fits(position(c))) return Promise.resolve();
+  return enter(c, "seek", jumpRun(c, ROUTES.seek, { idx }, fits), idx);
 }
 
-// ---------------------------------------------------------------- game controls (FI 2.2, G9, G21)
-async function runShorthand(c, raw) {
-  const t = trimmed(raw);
-  if (!t) return { ok: false };
-  return { ok: (await send(c, ROUTES.command, { text: t })).ok };
+function togglePlay(c) {
+  return enter(c, "toggle", () => {
+    const { state } = position(c);
+    if (state === "playing") return send(c, ROUTES.pause, {}, QUIET);
+    return state === "paused" ? send(c, ROUTES.resume, {}, QUIET) : null;
+  });
 }
 
-async function reset(c) {
-  const wasOn = feedOn(c);
-  if (!(await confirm(c, c.text.confirmReset(wasOn)))) return;
-  if (wasOn && !(await send(c, ROUTES.feed, { on: false, event_id: null }, QUIET)).ok) return;
-  await send(c, ROUTES.reset, {});
-}
-
-async function retag(c, key, { pauseFirst = false } = {}) {
-  if (pauseFirst && !(await send(c, ROUTES.watchPause, {}, QUIET)).ok) return;
-  await send(c, ROUTES.retag, { key });
-}
-
-async function replay(c, eventId) {
-  const id = trimmed(eventId);
-  if (!(await confirm(c, c.text.confirmReplay(id || feedEventId(c) || c.text.todaysGame)))) return;
-  await send(c, ROUTES.replay, { event_id: id || null });
-}
-
-// ---------------------------------------------------------------- Watch this game (3.8) and review
-async function watchStart(c, eventId) {
-  const id = trimmed(eventId) || feedEventId(c) || c.st().version?.watch?.event_id || "";
-  if (!id) {
-    c.toast(c.text.noWatchId, true);
-    return;
-  }
-  if (!(await confirm(c, c.text.confirmWatch(id)))) return;
-  if (watchState(c) === "done" && !(await send(c, ROUTES.watchStop, { restore: true }, QUIET)).ok) return;
-  const res = await send(c, ROUTES.watchStart, { event_id: String(id), speed: c.st().prefs.watchSpeed, from_seq: 0 },
-    QUIET);
-  if (!res.ok) return;
-  // G5-7: the game plays on the field: the drawer that started it steps away, and the keyboard lands on Pause
-  c.dispatch({ type: "booth/close" });
-  c.f.focusTransport();
-}
-
-async function watchToggle(c) {
-  const ws = watchState(c);
-  if (ws === "playing") await send(c, ROUTES.watchPause, {}, QUIET);
-  else if (ws === "paused") await send(c, ROUTES.watchResume, {}, QUIET);
-}
-
-async function watchSpeed(c, speed) {
-  if (!WATCH_SPEEDS.includes(speed)) return;
-  c.dispatch({ type: "prefs/set", key: "watchSpeed", value: speed });
-  if (WATCH_SESSION.includes(watchState(c))) await send(c, ROUTES.watchSpeed, { speed }, QUIET);
-}
-
-async function watchStop(c) {
-  if (await confirm(c, c.text.confirmStop)) await send(c, ROUTES.watchStop, { restore: true }, QUIET);
-}
-
-async function review(c, delta, { repeat = false } = {}) {
-  const s = c.st();
-  const { reviewSeq, effect } = stepReview({ reviewSeq: s.view.review.seq, rows: s.timeline.rows,
-    drawnThrough: s.anim.drawnThrough, watchState: watchState(c) }, delta);
-  if (reviewSeq !== s.view.review.seq) c.dispatch({ type: "review/set", seq: reviewSeq });
-  if (repeat || !effect) return;
-  if (effect === "pause-then-step" && !(await send(c, ROUTES.watchPause, {}, QUIET)).ok) return;
-  await send(c, ROUTES.watchStep, {}, STEP);
-}
-
-/** v1.2 (A8): jump the review cursor to one drawn play (play feed, drive chart); null returns to the live edge.
- * A row that is not drawn yet, or draws nothing (admin), changes nothing. Client only: the server is never stepped. */
-function reviewAt(c, seq) {
-  if (seq === null) {
-    c.dispatch({ type: "review/set", seq: null });
-    return;
-  }
-  const s = c.st();
-  if (!Number.isInteger(seq) || !drawableSeqs(s.timeline.rows, s.anim.drawnThrough).includes(seq)) return;
-  c.dispatch({ type: "review/set", seq });
+function playbackActions(c) {
+  return {
+    open: () => enter(c, "open", jumpRun(c, ROUTES.open, {}, () => true)),
+    togglePlay: () => togglePlay(c),
+    stepBack: () => enter(c, "back", jumpRun(c, ROUTES.back, {}, (p) => !atKickoff(p))),
+    stepForward: () => enter(c, "forward", jumpRun(c, ROUTES.forward, {}, (p) => !p.live && !atEnd(p))),
+    seek: (idx) => seek(c, idx),
+    reset: () => seek(c, 0),
+    // the drive chart's drive keys (ui/drive-chart.js): a timeline row's seq counts the ESPN plays applied up to it,
+    // which is the watch's idx, so the game jumps to just after that play
+    reviewAt: (seq) => seek(c, seq),
+    goLive: () => enter(c, "golive", jumpRun(c, ROUTES.golive, {}, (p) => !isLive(p))),
+    async setSpeed(speed) {
+      if (!WATCH_SPEEDS.includes(speed)) return;
+      c.dispatch({ type: "prefs/set", key: "watchSpeed", value: speed });
+      await send(c, ROUTES.speed, { speed }, QUIET);
+    },
+  };
 }
 
 // ---------------------------------------------------------------- view
@@ -332,6 +213,7 @@ function setCamera(c, id) {
   c.persist("sc:camera", id);
 }
 
+/** V: the next of the engine's camera modes (Wide and Blimp, restructure-v2.md 4). */
 function cycleCamera(c) {
   const ids = (c.cameraModes() ?? []).map((m) => m?.id).filter((id) => typeof id === "string" && id !== "");
   if (ids.length === 0) return;
@@ -345,74 +227,29 @@ function setAmbient(c, value) {
   c.persist("sc:ambient", value);
 }
 
-function entryActions(c) {
+function viewActions(c) {
   return {
-    tap(key) { if (keys(c)) { c.dispatch({ type: "pick/tap", key }); c.f.focusYards(); } },
-    outcome(out) {
-      c.dispatch({ type: "pick/outcome", out });
-      if (c.st().view.pick.out === "incomplete") c.f.setYards(NO_YARDS);
-      c.f.focusYards();
-    },
-    pickLeaf(leaf) { if (findLeaf(keys(c), leaf)) { c.dispatch({ type: "pick/leaf", leaf }); c.f.focusYards(); } },
-    clearPick: () => clearPick(c),
-    toggleTD: () => c.f.setTD(!c.f.td()),
-    toggleTO: () => c.f.setTO(!c.f.to()),
-    logPlay: () => logPlay(c),
-    openFlag: () => openFlag(c),
-    closeFlag: () => c.dispatch({ type: "flag/close" }),
-    toggleFlag() { if (c.st().view.flag.open) c.dispatch({ type: "flag/close" }); else openFlag(c); },
-    applyFlag: (code) => applyFlag(c, code),
-  };
-}
-
-function controlActions(c) {
-  return {
-    commitStrip: (fieldId, raw, edited) => commitStrip(c, fieldId, raw, edited),
-    flipSide: (yardText) => flipSide(c, yardText),
-    async endDrive(kind) { if (DRIVE_ENDS.includes(kind)) await send(c, ROUTES.drive, { end: kind }); },
-    runShorthand: (text) => runShorthand(c, text),
-    async undo() { await send(c, ROUTES.undo, {}); },
-    undoRefused: () => c.toast(c.text.undoOff, true),
-    reset: () => reset(c),
-    retag: (key, opts) => retag(c, key, opts),
-    async feedToggle(eventId) { await send(c, ROUTES.feed, { on: !feedOn(c), event_id: trimmed(eventId) || null }); },
-    replay: (eventId) => replay(c, eventId),
-  };
-}
-
-function watchAndViewActions(c) {
-  return {
-    watchStart: (eventId) => watchStart(c, eventId),
-    watchToggle: () => watchToggle(c),
-    async watchStep() { await send(c, ROUTES.watchStep, {}, STEP); },
-    watchSpeed: (speed) => watchSpeed(c, speed),
-    watchStop: () => watchStop(c),
     cycleCamera: () => cycleCamera(c),
     setCamera: (id) => setCamera(c, id),
-    toggleBooth: () => c.dispatch({ type: "booth/toggle" }),
-    closeBooth: () => c.dispatch({ type: "booth/close" }),
-    toggleScorecard: () => c.dispatch({ type: "scorecard/toggle" }),
-    closeScorecard: () => c.dispatch({ type: "scorecard/close" }),
-    review: (delta, opts) => review(c, delta, opts),
-    reviewAt: (seq) => reviewAt(c, seq),
-    exitReview: () => c.dispatch({ type: "review/set", seq: null }),
+    toggleSettings: () => c.dispatch({ type: "settings/toggle" }),
+    closeSettings: () => c.dispatch({ type: "settings/close" }),
+    setAmbient: (value) => setAmbient(c, value),
     hoverLeaf: (leaf) => c.dispatch({ type: "hover/leaf", leaf: leaf ?? null }),
     retryNow: () => c.sync?.kick(),
     holdToast: (id) => c.toast.hold(id),
     releaseToast: (id) => c.toast.release(id),
     dismissToast: (id) => c.toast.dismiss(id),
-    setAmbient: (value) => setAmbient(c, value),
   };
 }
 
 /**
- * @param {{ store: object, api: object, sync: { kick: Function } | null, form: object | null, dialogs: object,
- *   now: () => number, timers?: { setTimeout: Function, clearTimeout?: Function }, copy?: typeof ACTION_COPY,
- *   cameraModes?: () => { id: string }[], defaultCamera?: () => string | null, boothHoldsFlags?: () => boolean,
+ * @param {{ store: object, api: object, sync: { kick: Function } | null, now: () => number,
+ *   timers?: { setTimeout: Function, clearTimeout?: Function }, copy?: typeof ACTION_COPY,
+ *   cameraModes?: () => { id: string }[], defaultCamera?: () => string | null,
  *   persist?: (key: string, value: string) => void }} deps   now: epoch milliseconds (Date.now)
  */
-export function createActions({ store, api, sync, form, dialogs, now, timers = globalThis, copy = ACTION_COPY,
-  cameraModes = () => [], defaultCamera = () => null, boothHoldsFlags = () => false, persist = () => {} }) {
+export function createActions({ store, api, sync, now, timers = globalThis, copy = ACTION_COPY,
+  cameraModes = () => [], defaultCamera = () => null, persist = () => {} }) {
   const setT = timers?.setTimeout;
   const clearT = typeof timers?.clearTimeout === "function" ? timers.clearTimeout : () => {};
   if (typeof now !== "function" || typeof setT !== "function") {
@@ -420,11 +257,12 @@ export function createActions({ store, api, sync, form, dialogs, now, timers = g
   }
   const dispatch = (event) => store.dispatch(event);
   const c = {
-    st: () => store.getState(), dispatch, api, sync, dialogs, now: () => now(), text: { ...ACTION_COPY, ...copy },
-    f: safeForm(() => form), toast: makeToaster(dispatch, (fn, ms) => setT(fn, ms), (id) => clearT(id)),
-    cameraModes: () => cameraModes(), defaultCamera: () => defaultCamera(), boothHoldsFlags: () => boothHoldsFlags(),
+    st: () => store.getState(), dispatch, api, sync, now: () => now(), text: { ...ACTION_COPY, ...copy },
+    toast: makeToaster(dispatch, (fn, ms) => setT(fn, ms), (id) => clearT(id)),
+    cameraModes: () => cameraModes(), defaultCamera: () => defaultCamera(),
     persist: (key, value) => persist(key, value),   // injected functions are called bare, like the clock
-    q: { tail: Promise.resolve(), reqSeq: 0, entryBusy: 0 },   // the POST queue's own bookkeeping
+    q: { tail: Promise.resolve(), reqSeq: 0 },      // the POST queue's own bookkeeping
+    lane: { running: null, next: null },            // the playback lane: the request in flight, the press waiting
   };
-  return { ...entryActions(c), ...controlActions(c), ...watchAndViewActions(c) };
+  return { ...playbackActions(c), ...viewActions(c) };
 }

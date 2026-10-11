@@ -103,6 +103,17 @@ export function verdictChipText(pred, leafNames = null) {
 }
 
 /**
+ * play-drawing.md 4b: the verdict line of a row's LAST plate, the words the conductor gives a graded play's chip
+ * (core/conductor.js markVerdict: a caller snap with a pred), for a play drawn at once (a jump, a step, Reset, Go
+ * Live), which gets no chip. "" for a play nobody graded: the other team's, his punts and kicks.
+ * @param {object | null} row  a timeline row
+ * @param {Record<string, string> | null} [leafNames]  as verdictChipText
+ */
+export function rowVerdictText(row, leafNames = null) {
+  return row?.offense_is_caller && row.pred ? verdictChipText(row.pred, leafNames) : "";
+}
+
+/**
  * @param {object} pv  presented view
  * @returns {object} frozen {situation, ghostInput, facts: {driveActive, los, ltg, poss, ballX, ltgX}, ariaLabel, legend}
  */

@@ -45,16 +45,14 @@ test("bars run from start to end on the 100-yard scale; a 0-yard drive still sho
   assert.equal(text(one(drive(root, 1), ".sc-dc-summary")), "9 plays, 70 yds, 4:09");
 }));
 
-test("a drive is a button that shows its first play; the reviewed drive is pressed and goes back to live", () => inDoc((doc) => {
+test("a drive is a button that shows its first play (on the GameCast the game jumps there); never a toggle", () => inDoc((doc) => {
   const { root, chart, calls } = setup(doc);
   chart.update(vmOf());
-  click(one(drive(root, 2), "button"));
+  const btn = one(drive(root, 2), "button");
+  click(btn);
   assert.deepEqual(calls, [["reviewAt", 14]]);
-  chart.update(vmOf({ view: { review: { seq: 104 } } }));
-  const reviewed = drive(root, 12);
-  assert.deepEqual([data(reviewed, "reviewing"), one(reviewed, "button").getAttribute("aria-pressed")], ["true", "true"]);
-  click(one(reviewed, "button"));
-  assert.deepEqual(calls.at(-1), ["exitReview"]);
+  assert.equal(btn.hasAttribute("aria-pressed"), false);
+  assert.equal(btn.getAttribute("title"), "Show this drive's first play on the field");
 }));
 
 test("a drive still going is marked current and says Now; one with nothing drawn yet can't be shown", () => inDoc((doc) => {
@@ -74,7 +72,7 @@ test("updates keep the drive nodes; before any drive an empty line; destroy remo
   assert.equal(one(root, ".sc-dc-empty").hidden, false);
   chart.update(vmOf());
   const kept = drive(root, 3);
-  chart.update(vmOf({ view: { review: { seq: 40 } } }));
+  chart.update(vmOf());
   assert.equal(drive(root, 3), kept);
   assert.equal(one(root, ".sc-dc-empty").hidden, true);
   chart.destroy();

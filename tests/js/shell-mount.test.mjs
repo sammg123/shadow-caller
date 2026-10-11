@@ -1,7 +1,7 @@
 // shell/notices.js and shell/mount.js (ui-architecture.md 9.1; owner A0): defensive mounting with visible notices.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createFormHub, fallbackBoot, fallbackToast, loadModules, mountComponents } from "../../static/js/shell/mount.js";
+import { fallbackBoot, fallbackToast, loadModules, mountComponents } from "../../static/js/shell/mount.js";
 import { createNotices } from "../../static/js/shell/notices.js";
 import { createDocument, withDocument } from "./fake-dom.mjs";
 
@@ -19,7 +19,7 @@ const spec = (name, root, load, extra = {}) => Object.freeze({ name, region: nam
   select: (pv) => pv, deps: () => [], ...extra });
 
 const okModule = (calls) => async () => ({ mount: (root, ctx) => { calls.push([root.id, Boolean(ctx.actions)]);
-  return { update() {}, destroy() {}, readYards: () => "7", focusYards: () => calls.push(["focus"]) }; } });
+  return { update() {}, destroy() {} }; } });
 
 test("loadModules starts every import at once and keeps the table order", async () => {
   const order = [];
@@ -30,20 +30,15 @@ test("loadModules starts every import at once and keeps the table order", async 
   assert.deepEqual(order, ["b", "a"], "imports run in parallel");
 });
 
-test("mountComponents mounts in order, binds each component and registers Form providers", () => withDocument(page(), async () => {
+test("mountComponents mounts in order and binds each component", () => withDocument(page(), async () => {
   const doc = globalThis.document;
   const calls = [];
   const specs = [spec("masthead", "#rg-masthead", okModule(calls)), spec("feed", "#rg-feed", okModule(calls))];
-  const hub = createFormHub();
   const { bindings, failed } = mountComponents(specs, await loadModules(specs),
-    { doc, ctx: { actions: {} }, notices: createNotices(doc), formHub: hub });
+    { doc, ctx: { actions: {} }, notices: createNotices(doc) });
   assert.deepEqual(calls, [["rg-masthead", true], ["rg-feed", true]]);
   assert.deepEqual(bindings.map((b) => b.name), ["masthead", "feed"]);
   assert.deepEqual(failed, []);
-  assert.equal(hub.form.readYards(), "7");
-  hub.form.focusYards();
-  assert.deepEqual(calls.at(-1), ["focus"]);
-  assert.equal(hub.form.focusTransport(), undefined, "G5-7: no transport mounted: a no-op");
 }));
 
 test("a module that fails to load, has no mount, or throws in mount leaves a visible notice; boot goes on", () => withDocument(page(), async () => {
@@ -57,7 +52,7 @@ test("a module that fails to load, has no mount, or throws in mount leaves a vis
   ];
   const notices = createNotices(doc);
   const { bindings, failed } = mountComponents(specs, await loadModules(specs),
-    { doc, ctx: { actions: {} }, notices, formHub: createFormHub() });
+    { doc, ctx: { actions: {} }, notices });
   assert.deepEqual(failed, ["masthead", "feed", "toast", "gone"]);
   const inline = [...doc.querySelectorAll("[data-testid=\"region-notice\"]")];
   assert.deepEqual(inline.map((n) => n.getAttribute("data-region")), ["masthead", "feed"]);
@@ -69,16 +64,6 @@ test("a module that fails to load, has no mount, or throws in mount leaves a vis
   assert.equal(bindings[0].name, "toast");
 }));
 
-test("the form hub reads empty values and ignores writes when nobody provides them", () => {
-  const hub = createFormHub();
-  assert.equal(hub.form.readYards(), "");
-  assert.equal(hub.form.readTD(), false);
-  assert.equal(hub.form.readAutoFirst(), false);
-  hub.form.writeYards("3");
-  hub.register({ form: { readAutoFirst: () => true } });
-  assert.equal(hub.form.readAutoFirst(), true, "methods may sit under .form");
-});
-
 test("notices: one entry per id, replaced in place, dismissable, errors toned", () => withDocument(page(), () => {
   const doc = globalThis.document;
   const notices = createNotices(doc);
@@ -87,10 +72,10 @@ test("notices: one entry per id, replaced in place, dismissable, errors toned", 
   const tray = doc.getElementById("sc-notices");
   assert.equal(tray.children.length, 1);
   assert.match(tray.textContent, /again/);
-  notices.componentError({ name: "play-log", label: "Play log" }, new Error("bad row"));
-  const err = tray.querySelector("[data-notice=\"error:play-log\"]");
+  notices.componentError({ name: "play-feed", label: "Play feed" }, new Error("bad row"));
+  const err = tray.querySelector("[data-notice=\"error:play-feed\"]");
   assert.equal(err.getAttribute("data-tone"), "error");
-  assert.match(err.textContent, /Play log hit a problem: bad row/);
+  assert.match(err.textContent, /Play feed hit a problem: bad row/);
   tray.querySelector("[data-notice=\"world\"]").querySelector("button").dispatchEvent({ type: "click" });
   assert.equal(notices.has("world"), false);
   for (let i = 0; i < 6; i += 1) notices.bug(new Error(`bug ${i}`));
@@ -132,6 +117,6 @@ test("a component that removes part of the shell is named in a notice", () => wi
   } }));
   const notices = createNotices(doc);
   mountComponents([greedy], await loadModules([greedy]),
-    { doc, ctx: { actions: {} }, notices, formHub: createFormHub(), shellIds: ["rg-masthead", "rg-feed", "toast"] });
+    { doc, ctx: { actions: {} }, notices, shellIds: ["rg-masthead", "rg-feed", "toast"] });
   assert.match(doc.getElementById("sc-notices").textContent, /The feed hit a problem: it removed #rg-masthead from the page/);
 }));

@@ -13,8 +13,7 @@ const JS_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..", "stati
 /** Pure modules from ui-architecture.md 1.1. `core/api.js` is pure* (no DOM; it calls the injected fetch). */
 const PURE = Object.freeze([
   ...["api", "store", "reducer", "reduce-server", "reduce-timeline", "reduce-anim", "reduce-conn", "reduce-view",
-    "timeline-cache", "sync-plan", "present", "anim-queue", "domain", "keymap", "selection", "strip", "flags", "review"]
-    .map((m) => `core/${m}.js`),
+    "timeline-cache", "sync-plan", "present", "anim-queue", "domain", "keymap"].map((m) => `core/${m}.js`),
   ...["coords", "grammar", "paths", "ghosts", "timing", "camera-plan"].map((m) => `field/${m}.js`),
   // v1.4 (play-drawing.md): the play's words on the field and the shadow plays before a snap
   ...["play-label", "shadows"].map((m) => `field/${m}.js`),
@@ -84,7 +83,7 @@ const firstHit = (src, rules) => rules.find(([re]) => re.test(src));
 
 test("the scan sees the modules it is meant to police", () => {
   const paths = FILES.map((f) => f.path);
-  for (const must of ["core/store.js", "core/sync.js", "model/vm-feed.js", "field/paths.js"]) assert.ok(paths.includes(must), must);
+  for (const must of ["core/store.js", "core/sync.js", "model/vm-transport.js", "field/paths.js"]) assert.ok(paths.includes(must), must);
   assert.ok(PURE.filter((p) => existsSync(join(JS_ROOT, p))).length >= 20, "most pure modules exist");
 });
 

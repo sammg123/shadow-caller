@@ -1,142 +1,117 @@
-/* Under the Lights: the Watch this game transport (ui/watch-transport.js; DESIGN.md Components "Watch transport" and
-   "Control desk"; owner W5). It hangs at the top of the desk while a game plays back (layout.css shows #rg-transport
-   in watch mode only), control-room hardware on the desk's steel, four rows with the replay scrub (scrub.css):
-     1. the desk's message board naming the mode (the scrub's readout; on a phone, a painted plate) and the play
-        counter in an LED window, "104/183" in Doto: amber segments over their unlit 888/888 (The Ticking Number Rule);
-     2. the keys: Space plays or pauses, → steps, Stop;
-     3. the four speeds 1x 2x 4x 10x, exactly one lit;
-     4. the scrub: ←, the game as an LED strip, LIVE.
-   While the game plays, the pause key's window is lit amber; paused, the play key's window is unlit. An error is its
-   words beside a tally-red lamp. The keys and lamps are the world's (masthead.css, W2): this file lays them out and
-   lights the transport's own. Four rows of keys fit the desk above the retag keys W4 bolts to its foot. */
-
-:root[data-world="under-the-lights"] {
-  /* The counter's LED window: seven Doto cells (Doto is 0.6 em a cell) and the window's padding. The scrub's board
-     takes the rest of the first row, so both read this one width. */
-  --uls-deck-count-w: calc(var(--uls-size-led-readout) * 4.2 + 2 * var(--sc-space-2));
-  /* Between the deck's rows: tight. The desk is 296 px tall at 1440 and 298 at 1920 while its keys grow from 40 to
-     48 px, so the TV's rows sit closer to keep four rows above the retag keys (DESIGN.md: no spare space). */
-  --uls-deck-gap: 6px;
-}
-@media (min-width: 1600px) {
-  :root[data-world="under-the-lights"] { --uls-deck-gap: 4px; }
-}
+/* Under the Lights: the top bar's playback row (ui/watch-transport.js, ui/progress-bar.js; restructure-v2.md 2;
+   DESIGN.md Components "Watch transport", "Keys, lamps and LED inputs"; owner: home frame). Painted steel across the
+   whole width under the upper LED ribbon (layout.css places it), control-room hardware: step back, Play or Pause,
+   step forward and the four speeds as raised keys, the progress bar as an LED strip with the game's drives on it, the
+   count beside it, then Reset and Go Live. Every key prints its keyboard key (Left, Space, Right, 1 to 4, Esc) on its
+   cap, because Sam drives it from the keyboard and Conor learns it by watching. While the game plays, Play's window is
+   lit amber; Go Live's lamp is lit tally red while the page is at the live edge. Flat hardware: no glow, no shadow,
+   no tween. The keys and lamps are the world's (masthead.css): this file lays them out and lights the row's own. */
 
 :where(:root[data-world="under-the-lights"]) .sc-transport {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-areas: "plate count" "keys keys" "speeds speeds" "error error";
+  display: flex;
   align-items: center;
-  gap: var(--uls-deck-gap);
+  gap: var(--sc-space-3);
   min-width: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
-  background: none;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-steel);
   color: var(--sc-ink);
 }
-
-/* The plate: painted steel, the transport's name in caption caps. It is the group's own label (aria-label), so the
-   words are said once: the plate's text is decoration for assistive tech. On the stadium's desk the scrub's LED
-   board takes this place and names the mode itself (scrub.css), so the plate is a phone's. */
-:where(:root[data-world="under-the-lights"]) .sc-transport::before {
-  content: attr(aria-label) / "";
-  grid-area: plate;
-  display: flex;
-  align-items: center;
-  align-self: stretch;
-  min-width: 0;
-  padding: 0 var(--sc-space-3);
-  overflow: hidden;
-  border-top: 1px solid var(--uls-steel-edge);
-  border-radius: var(--sc-radius-m);
-  background: var(--uls-steel-raised);
-  color: var(--uls-caption-white);
-  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
-  letter-spacing: var(--uls-tracking-plate);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-/* The counter: an LED window, amber digits over their unlit 8s; a hidden copy of the ghost sets the window's width, so
-   a digit never shifts the cell. The spaces in "104 / 183" close up, as a board would set it; a game is 150 to 200
-   plays, so three digits a side. */
-:where(:root[data-world="under-the-lights"]) .sc-transport-progress {
-  grid-area: count;
-  position: relative;
-  z-index: 0;
-  display: inline-grid;
-  justify-items: end;
-  align-content: start;
-  width: var(--uls-deck-count-w);
-  min-height: var(--uls-size-led-readout);
-  margin: 0;
-  padding: 0 var(--sc-space-2);
-  background: var(--uls-led-face);
-  color: var(--uls-segment-lit);
-  font-family: var(--uls-led-num, var(--uls-led-font));
-  font-size: var(--uls-size-led-readout);
-  font-weight: var(--sc-weight-display);
-  font-variant-numeric: normal;
-  font-variation-settings: var(--uls-led-variation);
-  line-height: 1;
-  letter-spacing: 0;
-  word-spacing: -0.6em;
-  white-space: nowrap;
-}
-:where(:root[data-world="under-the-lights"]) .sc-transport-progress::before {
-  content: "888/888" / "";
-  position: absolute;
-  inset: 0 var(--sc-space-2) auto auto;
-  z-index: -1;
-  color: var(--uls-ghost, var(--uls-segment-unlit));
-}
-:where(:root[data-world="under-the-lights"]) .sc-transport-progress::after {
-  content: "888/888" / "";
-  height: 0;
-  overflow: hidden;
-  visibility: hidden;
-}
-
-/* The keys, then the speeds, each a row on the desk. */
 :where(:root[data-world="under-the-lights"]) :is(.sc-transport-keys, .sc-transport-speeds) {
   display: flex;
+  flex: none;
   flex-wrap: nowrap;
-  align-items: stretch;
-  gap: var(--sc-space-2);
+  align-items: center;
+  gap: var(--sc-space-1);
   min-width: 0;
-  padding: 0;
-  border: 0;
 }
-:where(:root[data-world="under-the-lights"]) .sc-transport-keys { grid-area: keys; }
-:where(:root[data-world="under-the-lights"]) .sc-transport-speeds { grid-area: speeds; }
+/* The speeds sit behind a steel seam, one group: exactly one window lit. */
+:where(:root[data-world="under-the-lights"]) .sc-transport-speeds {
+  padding-inline-start: var(--sc-space-3);
+  border-inline-start: 1px solid var(--uls-steel-seam);
+}
 :where(:root[data-world="under-the-lights"]) .sc-transport .sc-key { flex: none; }
 
-/* Playing: the pause key's window is lit, the on-air state at a glance (the neutral world's red edge is not ours). */
-:where(:root[data-world="under-the-lights"]) .sc-transport[data-watch-state="playing"] .sc-transport-pause {
-  border-color: var(--uls-steel-edge);
-}
-:where(:root[data-world="under-the-lights"]) .sc-transport[data-watch-state="playing"] .sc-transport-pause .sc-key-cap {
-  border-color: transparent;
+/* Playing: the play key's window is lit, the on-air state at a glance (the neutral world's red edge is not ours). */
+:where(:root[data-world="under-the-lights"]) .sc-transport-play[data-playing="true"] { border-color: var(--uls-steel-edge); }
+:where(:root[data-world="under-the-lights"]) .sc-transport-play[data-playing="true"] .sc-key-cap {
   background: var(--uls-led-amber);
   color: var(--uls-led-panel);
 }
 
+/* Go Live: its lamp between the cap and the words, lit tally red at the live edge (DESIGN.md Lamp: tally red is live). */
+:where(:root[data-world="under-the-lights"]) .sc-transport-live .sc-lamp[data-on="true"] { background: var(--uls-tally-red); }
+
+/* ---------------------------------------------------------------- the progress bar: an LED strip */
+:where(:root[data-world="under-the-lights"]) .sc-progress {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: calc(120px * var(--uls-hud-scale));
+}
+/* The strip: an LED face; the part played lit amber cell by cell (a mask of the panel's pitch, never a glow); each
+   drive's start a tick (warm white for the caller's drives, dim for the other team's), each quarter a full-height
+   steel one, each score a short gold one, every tick edged in the panel's black so it reads on the lit part too (a
+   flat edge, never a glow); the knob a warm-white bar standing out of the strip. */
+:where(:root[data-world="under-the-lights"]) .sc-progress-track {
+  height: calc(var(--uls-ribbon-h) - 20px);
+  border: 0;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .sc-progress-fill {
+  background: var(--uls-segment-lit);
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+:where(:root[data-world="under-the-lights"]) .sc-progress-mark {
+  inset-block: 3px;
+  box-sizing: content-box;
+  width: 2px;
+  border-inline: 1px solid var(--uls-led-panel);
+  background: var(--uls-led-dim);
+}
+:where(:root[data-world="under-the-lights"]) .sc-progress-mark[data-caller="true"] { background: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-progress-mark[data-kind="quarter"] {
+  inset-block: 0;
+  background: var(--uls-steel-frame);
+}
+:where(:root[data-world="under-the-lights"]) .sc-progress-mark[data-kind="score"] {
+  inset-block: 30%;
+  width: 4px;
+  background: var(--uls-led-gold);
+}
+:where(:root[data-world="under-the-lights"]) .sc-progress-knob {
+  inset-block: -3px;
+  width: 4px;
+  inset-inline-start: calc(var(--sc-at, 0) * 100% - 2px);
+  border-radius: 0;
+  background: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-progress[data-dragging="true"] .sc-progress-knob { background: var(--uls-led-amber); }
+/* The count: where the game is of its plays, in the ribbon's numerals (a ticking number, never Doto under 40 px). */
+:where(:root[data-world="under-the-lights"]) .sc-progress-count {
+  min-width: 4.6em;
+  color: var(--uls-segment-lit);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-num);
+  letter-spacing: 0.02em;
+}
+
 /* An error: the watch's own words on an LED strip, beside a tally-red lamp. */
 :where(:root[data-world="under-the-lights"]) .sc-transport-error {
-  grid-area: error;
   display: flex;
   align-items: center;
   gap: var(--sc-space-2);
   min-width: 0;
-  padding: var(--sc-space-2);
+  padding: var(--sc-space-2) var(--sc-gutter);
   background: var(--uls-led-face);
   color: var(--sc-ink);
   font: var(--sc-weight-strong) var(--sc-size-s) / 1.25 var(--sc-font-text);
 }
 :where(:root[data-world="under-the-lights"]) .sc-transport-error .sc-lamp { background: var(--uls-tally-red); }
 
-/* ---------------------------------------------------------------- the stadium's desk */
-@media (min-width: 1200px) and (min-height: 640px) {
-  :where(#app[data-layout="uls"]) .sc-transport::before { content: none; }
-}
+/* A request in flight: the strip dims a step until the server answers (the keys stay where they are). */
+:where(:root[data-world="under-the-lights"]) .sc-transport[data-busy="true"] .sc-progress-track { opacity: 0.75; }

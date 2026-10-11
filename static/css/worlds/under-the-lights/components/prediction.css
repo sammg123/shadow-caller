@@ -1,11 +1,13 @@
-/* Under the Lights: the video board, the next call (ui/prediction.js; DESIGN.md Components "Video board"; owner W2).
-   The call is the largest, brightest thing on screen. Under a painted plate, the LED face: the call name in Display
-   caps (never cut), the percentage in Doto over its unlit 88%, the tilt tag, the then-line, the pass/run split and the
-   five families as LED bars with league notches. Hover or focus opens the board (layout.css) and scans in the 14 plays,
-   the why lines and the legend, which wait visually hidden so Tab and screen readers still reach them. No team color
-   lights the board. Shared LED primitives (--uls-led-num, --uls-lit, --uls-track, --uls-cell) live in masthead.css.
-   The board's other faces (off the field, his night so far, FINAL) are in board.css. v1.5 (G4-5): the then-line holds
-   to one line and the open board's names never break; (G4-4) a 4th-down plate lights its caveat yellow. */
+/* Under the Lights: the video board's NEXT CALL with a call up (ui/prediction.js; DESIGN.md Components "Video board";
+   restructure-v2.md section 3). The call is the largest, brightest thing on screen. Under a painted plate, the LED
+   face: the call name in Display caps (never cut), the percentage in Doto over its unlit 88%, the tilt tag, the
+   then-line (#2 and #3, one to a row, each with its share), the pass/run split and the five families as LED bars with
+   league notches. The pointer or keyboard focus inside the board scans in the 14 plays under their families, the why
+   lines and the legend, which wait visually hidden so Tab and screen readers still reach them; a play under the
+   pointer or focus lights its shadow on the turf, and nothing on the board is pressed or picked. No team color lights the board. Shared LED
+   primitives (--uls-led-num, --uls-lit, --uls-track, --uls-cell, --uls-glyph) live in masthead.css. The card around it
+   (PREVIOUS PLAY, LAST 6, NEXT CALL off the field and at FINAL) is board.css. A play's name never breaks (v1.5,
+   G4-5); a 4th-down plate lights its caveat yellow (G4-4). */
 
 /* ---------------------------------------------------------------- the face and its plate */
 :where(:root[data-world="under-the-lights"]) .sc-call {
@@ -36,6 +38,7 @@
   text-transform: uppercase;
 }
 /* 4th down: the call is the play if he goes for it (the model has no kick class); its caveat lights yellow. */
+:where(:root[data-world="under-the-lights"]) :is(.sc-call-sep, .sc-face-sep) { color: var(--uls-led-dim); }
 :where(:root[data-world="under-the-lights"]) .sc-call[data-fourth="true"] .sc-call-label { color: var(--uls-line-to-gain); }
 
 /* ---------------------------------------------------------------- the call: name, figure, tilt tag */
@@ -101,39 +104,37 @@
   color: var(--uls-led-panel);
 }
 
-/* ---------------------------------------------------------------- the then-line */
-/* One line, always (the face's height has no slack): the plays sit in a wrapping row one line tall, so a second play
-   that doesn't fit steps down a row, far below and clipped, instead of pushing the families off the face. A play never
-   breaks inside its name; the open board lists every play. The clip margin keeps the hover frame. */
+/* ---------------------------------------------------------------- the then-line: #2 and #3 */
+/* "THEN" once, then his #2 and #3 one to a row, the name at the left and its share in amber at the right, so both
+   always show (the card is as tall as its content) and the shares line up like the families' below. A name never
+   breaks; a long one gives way at its end before it touches its share. */
 :where(:root[data-world="under-the-lights"]) .sc-then {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: baseline;
-  gap: 0 0.3em;
+  gap: 0 var(--sc-space-2);
   margin-top: var(--sc-space-2);
   color: var(--sc-ink);
   font: var(--sc-weight-strong) var(--sc-size-m) / 1.15 var(--sc-font-text);
   letter-spacing: 0.01em;
 }
 :where(:root[data-world="under-the-lights"]) .sc-then-lead {
-  flex: none;
   color: var(--sc-ink-muted);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-:where(:root[data-world="under-the-lights"]) .sc-then-items {
+:where(:root[data-world="under-the-lights"]) .sc-then-items { display: grid; gap: 2px 0; min-width: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-then-item {
   display: flex;
-  flex: 1 1 auto;
-  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10em 0.3em;
+  justify-content: space-between;
+  gap: var(--sc-space-3);
   min-width: 0;
-  height: 1lh;
-  overflow: clip;
-  overflow-clip-margin: 4px;
+  white-space: nowrap;
 }
-:where(:root[data-world="under-the-lights"]) .sc-then-item { white-space: nowrap; }
-:where(:root[data-world="under-the-lights"]) :is(.sc-call-sep, .sc-then-sep) { color: var(--sc-ink-muted); }
-:where(:root[data-world="under-the-lights"]) .sc-then-pct { color: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-then-sep { display: none; }
+:where(:root[data-world="under-the-lights"]) .sc-then-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+:where(:root[data-world="under-the-lights"]) .sc-then-pct { flex: none; color: var(--uls-led-amber); }
 
 /* ---------------------------------------------------------------- LED bars: the panel, its lit cells, the notch */
 /* A bar is a track of unlit cells to 100%, with one empty cell row above and below for the league notch; the lit
@@ -296,15 +297,8 @@
   color: var(--sc-tone);
 }
 :where(:root[data-world="under-the-lights"]) .leaf .sc-hot { grid-area: hot; }
-:where(:root[data-world="under-the-lights"]) .leaf[aria-pressed="true"] {
-  background: none;
-  color: var(--uls-led-amber);
-}
-:where(:root[data-world="under-the-lights"]) .leaf[aria-pressed="true"] .sc-leaf-name {
-  font-weight: var(--sc-weight-display);
-}
 
-/* A row under the pointer or keyboard focus wears a 2 px warm-white frame (its play lights on the turf). */
+/* A row under the pointer or keyboard focus wears a 2 px warm-white frame (its shadow lights on the turf). */
 :where(:root[data-world="under-the-lights"]) :is(.sc-call-top, .sc-then-item, .fam) { outline-offset: 2px; }
 /* Inside the open board's columns the frame sits within the row, so a column edge never clips it. */
 :where(:root[data-world="under-the-lights"]) .leaf { outline-offset: -2px; }
@@ -312,9 +306,6 @@
 :where(:root[data-world="under-the-lights"]) .leaf:is(:hover, [data-highlighted="true"]):not(:focus-visible) {
   outline: var(--sc-border-w) solid var(--sc-ink);
   background: none;
-}
-:where(:root[data-world="under-the-lights"]) .leaf[aria-pressed="true"]:not(:focus-visible) {
-  outline: var(--sc-border-w) solid var(--uls-led-amber);
 }
 
 /* ---------------------------------------------------------------- why lines and the legend (sentence case) */
@@ -355,29 +346,16 @@
     clip-path: inset(50%);
     white-space: nowrap;
   }
-  #app[data-layout="uls"][data-board-open="true"] .uls-board
-    :is(.sc-leaves, .sc-call-more, .sc-split-labels [data-side="league"]) {
-    position: static;
-    width: auto;
-    height: auto;
-    overflow: visible;
-    clip-path: none;
-    white-space: normal;
-  }
-  /* Open: the families stand in two columns, each over its plays, and the rest scans in, top to bottom. */
-  #app[data-layout="uls"] :is(.uls-board:is(:hover, :has(:focus-visible)), [data-board-open="true"] .uls-board) .sc-fams {
-    display: block;
-    columns: 2;
-    column-gap: var(--sc-space-5);
-  }
-  #app[data-layout="uls"] :is(.uls-board:is(:hover, :has(:focus-visible)), [data-board-open="true"] .uls-board) .fam {
-    margin-bottom: var(--sc-space-1);
+  /* Open (the pointer or keyboard focus inside the board): each family stands over its plays and the why lines follow,
+     scanning in top to bottom. The board keeps its width (it never reaches over the field) and grows down, scrolling
+     inside its cabinet once it meets the lower ribbon. */
+  #app[data-layout="uls"] .uls-board:is(:hover, :has(:focus-visible)) .fam {
     padding: 3px 4px;
     outline-offset: -2px;
-    break-inside: avoid;
   }
-  #app[data-layout="uls"] :is(.uls-board:is(:hover, :has(:focus-visible)), [data-board-open="true"] .uls-board)
-    :is(.sc-leaves, .sc-call-more) { animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both; }
+  #app[data-layout="uls"] .uls-board:is(:hover, :has(:focus-visible)) :is(.sc-leaves, .sc-call-more) {
+    animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
+  }
 }
 
 /* The TV's bigger board: the bars carry three rows of cells. */

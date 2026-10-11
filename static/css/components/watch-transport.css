@@ -1,46 +1,95 @@
-/* Watch this game transport (ui/watch-transport.js; owner A9). Structure and token references only; key caps live
-   in masthead.css. States: .sc-transport[data-watch-state="idle|playing|paused|done|error|stopped"][data-active],
-   speeds by aria-pressed, keys hidden or disabled by state. A world skins it in its watch-transport.css (W5). */
+/* The top bar's playback (ui/watch-transport.js, ui/progress-bar.js; restructure-v2.md 2). Structure and token
+   references only; key caps live in masthead.css. States: .sc-transport[data-state="loading|playing|paused|done|error|
+   live|idle"][data-busy], speeds by aria-pressed, keys disabled by state. A world skins it in its watch-transport.css.
+   The row: back, Play or Pause, forward, the speeds, the progress bar (it takes the room left), Reset, Go Live. */
 
 .sc-transport {
   display: flex;
+  flex: 1 1 100%;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sc-space-2) var(--sc-space-4);
+  gap: var(--sc-space-2) var(--sc-space-3);
   min-width: 0;
-  padding: var(--sc-space-3) var(--sc-space-4);
+  padding: var(--sc-space-2) var(--sc-space-3);
   border: var(--sc-border-w) solid var(--sc-rule);
   border-radius: var(--sc-radius-m);
   background: var(--sc-surface);
 }
-.sc-transport[data-active="true"] { border-color: var(--sc-rule-strong); }
 
 .sc-transport-keys,
 .sc-transport-speeds {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--sc-space-2);
+  gap: var(--sc-space-1);
   min-width: 0;
 }
-.sc-transport-speeds {
-  padding-inline-start: var(--sc-space-4);
-  border-inline-start: var(--sc-border-w) solid var(--sc-rule);
+
+/* While the game plays, Pause carries the live mark so the state reads at a glance. */
+.sc-transport-play[data-playing="true"] { border-color: var(--sc-live); }
+
+/* ---------------------------------------------------------------- the progress bar */
+.sc-progress {
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: 8rem;
 }
-
-/* While a game plays back, Pause carries the live mark so the state reads at a glance. */
-.sc-transport[data-watch-state="playing"] .sc-transport-pause { border-color: var(--sc-live); }
-.sc-transport[data-watch-state="playing"] .sc-transport-pause .sc-key-cap { border-color: var(--sc-live); }
-
-.sc-transport-progress {
-  margin-inline-start: auto;
+.sc-progress-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 1.5rem;
+  min-width: 0;
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  cursor: pointer;
+  touch-action: none;
+}
+.sc-progress-track[aria-disabled="true"] { cursor: default; opacity: 0.6; }
+/* A finger's target (2.75rem, as the keys' on a touch screen). */
+@media (pointer: coarse) {
+  .sc-progress-track { min-height: 2.75rem; }
+}
+.sc-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(var(--sc-at, 0) * 100%);
+  background: var(--sc-rule-strong);
+}
+.sc-progress-marks { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; pointer-events: none; }
+.sc-progress-mark {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: calc(var(--sc-at, 0) * 100%);
+  width: 2px;
+  background: var(--sc-ink-muted);
+}
+.sc-progress-mark[data-kind="quarter"] { inset-block: -3px; background: var(--sc-ink); }
+.sc-progress-mark[data-kind="score"] { inset-block: 25%; width: 4px; background: var(--sc-gain); }
+.sc-progress-knob {
+  position: absolute;
+  inset-block: -4px;
+  inset-inline-start: calc(var(--sc-at, 0) * 100% - 3px);
+  width: 6px;
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-ink);
+}
+.sc-progress-count {
+  flex: none;
+  min-width: 4.5em;
   font-family: var(--sc-font-num);
-  font-size: var(--sc-size-l);
+  font-size: var(--sc-size-s);
   font-weight: var(--sc-weight-strong);
   font-variant-numeric: tabular-nums;
-  line-height: 1;
+  text-align: end;
   white-space: nowrap;
 }
+.sc-transport[data-busy="true"] .sc-progress-knob { opacity: 0.6; }
+
+/* Go Live's lamp is lit while the page is at the live edge (or a finished game's final state). */
+.sc-transport-live[data-live="true"] .sc-lamp { background: var(--sc-live); }
 
 .sc-transport-error {
   display: flex;
@@ -53,8 +102,3 @@
 }
 .sc-transport-error .sc-lamp { background: var(--sc-bad); }
 .sc-transport-error-text { min-width: 0; overflow-wrap: anywhere; }
-
-@media (max-width: 760px) {
-  .sc-transport-speeds { padding-inline-start: 0; border-inline-start: 0; }
-  .sc-transport-progress { margin-inline-start: 0; }
-}

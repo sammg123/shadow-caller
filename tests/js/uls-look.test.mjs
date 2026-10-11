@@ -91,23 +91,22 @@ test("the shadow plays fade out at the snap; every key of world.plays is taken; 
   assert.deepEqual(plays.tones, { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg });
 });
 
-test("cameras by altitude: wide holds the drive (default), tight follows the ball, blimp holds the game", () => {
+test("restructure-v2.md 4: two cameras, Wide (the default, following the ball sideways) and Blimp; no Tight", () => {
   const ids = night.cameras.modes.map((m) => m.id);
-  assert.deepEqual(ids, ["wide", "tight", "blimp"]);
+  assert.deepEqual(ids, ["wide", "blimp"]);
   assert.equal(night.cameras.default, "wide");
-  const [wide, tight, blimp] = night.cameras.modes;
-  assert.equal(tight.follow, "ball");
+  const [wide, blimp] = night.cameras.modes;
+  assert.deepEqual([wide.label, blimp.label], ["Wide", "Blimp"]);
+  assert.equal(wide.follow, "pan", "following the ball sideways in Wide is fine");
   assert.equal(blimp.rig, "blimp");
   const pitch = (m) => (Math.atan2(m.height, m.back) * 180) / Math.PI;
   assert.ok(pitch(wide) > 18 && pitch(wide) < 30, `wide looks down ${pitch(wide)}`);
-  assert.ok(pitch(tight) < pitch(wide), "tight is at press level, lower than wide");
   assert.ok(Math.abs(pitch(blimp) - 65) < 1, "the blimp looks 65 degrees down");
 });
 
 test("the light dip and the moments' timings live in world.uls (DESIGN.md: 80% in 300 ms)", () => {
   assert.deepEqual(look.world.uls.dip, { level: 0.8, ms: 300 });
-  assert.ok(look.world.uls.camera.driftDegPerS <= 3, "the blimp drifts at most 3 degrees a second");
-  assert.equal(look.world.uls.camera.holdScoreMs, 2000, "G3-4: a touchdown or a turnover holds 2 s before the rise");
+  assert.equal(look.world.uls.camera, undefined, "restructure-v2.md 4: no camera move of the world's own");
   assert.equal(look.world.uls.ribbons.stepMs, 83);
   assert.equal(look.world.uls.ribbons.dwellMs, 1500, "G3-6: a play's words get 1.5 s before the next call steps in");
   assert.deepEqual(look.world.uls.flare, { peak: 1.15, ms: 300 }, "G3-7: the lamp banks flare x1.15 for 300 ms");

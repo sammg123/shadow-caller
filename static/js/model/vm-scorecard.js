@@ -115,11 +115,12 @@ function basisOf(pairs) {
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, empty, emptyText, groups: {id, title, kpis: {value, label, tone}[]}[], note,
- *   expanded, pairs, basisLine, basisShared}
+ *   expanded, pairs, basisLine, basisShared}; expanded is false here: the Model Report shows the scorecard at full
+ *   size (report/model/vm-league.js), the only page it is on (restructure-v2.md 1 and 6)
  */
 export function scorecardVm(pv) {
   const metrics = pv && pv.presented && pv.presented.metrics;
-  const expanded = Boolean(pv && pv.view && pv.view.scorecardOpen);
+  const expanded = false;
   if (!metrics || !metrics.n) {
     return freezeDeep({ heading: SCORECARD.heading, empty: true, emptyText: SCORECARD.empty, groups: [], note: "",
       expanded, pairs: [], basisLine: "", basisShared: false });

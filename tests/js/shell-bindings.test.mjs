@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { presentedView } from "../../static/js/core/present.js";
 import { initialState, reducer } from "../../static/js/core/reducer.js";
-import { COMPONENTS, SHELL_IDS, inputModeDeps, retryCountdown } from "../../static/js/shell/bindings.js";
+import { COMPONENTS, SHELL_IDS, retryCountdown } from "../../static/js/shell/bindings.js";
 import { NOW, state as states, timeline as timelines } from "./model-fixtures.mjs";
 
 const INDEX = readFileSync(new URL("../../static/index.html", import.meta.url), "utf8");
@@ -18,12 +18,15 @@ function realState(body) {
   return reducer(s, { type: "tick", now: NOW + 5000 });
 }
 
-test("the table mounts every component of 9.1, in order", () => {
-  assert.deepEqual(COMPONENTS.map((c) => c.name), ["boot-screen", "conn-banner", "toast", "masthead", "feed-bar",
-    "scoreboard", "situation-strip", "field-host", "review-banner", "watch-transport", "scrub", "prediction", "entry-pad",
-    "last-play", "shorthand", "flag-panel", "play-feed", "drive-chart", "win-prob", "scorecard", "box-score",
-    "tendencies", "play-log"]);
+test("the home page mounts the GameCast and the prediction only (restructure-v2.md 1), in order", () => {
+  assert.deepEqual(COMPONENTS.map((c) => c.name), ["boot-screen", "conn-banner", "toast", "masthead", "view-keys",
+    "watch-transport", "play-feed", "scoreboard", "field-host", "prediction", "drive-chart", "win-prob"]);
   assert.ok(Object.isFrozen(COMPONENTS) && COMPONENTS.every(Object.isFrozen));
+});
+
+test("the top bar is three components in its reading order: the nameplate, the view keys, then the playback row", () => {
+  const top = COMPONENTS.filter((c) => c.root === "#rg-masthead").map((c) => c.name);
+  assert.deepEqual(top, ["masthead", "view-keys", "watch-transport"]);
 });
 
 test("every entry has a root in index.html, a label, a loader, a select and deps", () => {
@@ -44,7 +47,7 @@ test("on the replayed game every binding's deps are a list and its view model bu
   for (const body of [states.final(), states.drive(), states.feedOn()]) {
     const s = realState(body);
     assert.ok(s.presented, "the fixture state is presented");
-    const env = { now: NOW + 5000, extras: { cameraModes: [{ id: "sideline", label: "Sideline" }] } };
+    const env = { now: NOW + 5000, extras: { cameraModes: [{ id: "wide", label: "Wide" }] } };
     const pv = { ...presentedView(s, env.now), ...env.extras };
     for (const c of COMPONENTS) {
       assert.ok(Array.isArray(c.deps(s, env)), c.name);
@@ -63,24 +66,28 @@ test("view models also build before anything has loaded (boot)", () => {
   }
 });
 
-test("deps ignore what a view does not read: a version poll alone does not re-render the play log", () => {
+test("deps ignore what a view does not read: a version poll re-renders the playback, never the drive chart", () => {
   const s = realState(states.final());
   const env = { now: NOW, extras: {} };
-  const log = COMPONENTS.find((c) => c.name === "play-log");
-  const feed = COMPONENTS.find((c) => c.name === "feed-bar");
+  const drives = COMPONENTS.find((c) => c.name === "drive-chart");
+  const transport = COMPONENTS.find((c) => c.name === "watch-transport");
   const polled = reducer(s, { type: "version/loaded", body: { version: 1, feed: { on: false } }, now: NOW + 1 });
   const same = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
-  assert.ok(same(log.deps(s, env), log.deps(polled, env)));
-  assert.equal(same(feed.deps(s, env), feed.deps(polled, env)), false);
+  assert.ok(same(drives.deps(s, env), drives.deps(polled, env)));
+  assert.equal(same(transport.deps(s, env), transport.deps(polled, env)), false);
 });
 
-test("inputModeDeps changes only with the watch state or the feed switch", () => {
+test("a playback request in flight re-renders the playback and the loading board, not the field host", () => {
   const s = realState(states.final());
-  const a = inputModeDeps(s);
-  const polled = reducer(s, { type: "version/loaded", body: { version: 1, feed: { on: false }, watch: null }, now: NOW + 1 });
-  assert.deepEqual(inputModeDeps(polled), a);
-  const on = reducer(s, { type: "version/loaded", body: { version: 1, feed: { on: true } }, now: NOW + 2 });
-  assert.notDeepEqual(inputModeDeps(on), a);
+  const env = { now: NOW, extras: {} };
+  const seeking = reducer(s, { type: "playback/start", kind: "open" });
+  const same = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
+  for (const name of ["watch-transport", "boot-screen"]) {
+    const c = COMPONENTS.find((x) => x.name === name);
+    assert.equal(same(c.deps(s, env), c.deps(seeking, env)), false, name);
+  }
+  const field = COMPONENTS.find((c) => c.name === "field-host");
+  assert.ok(same(field.deps(s, env), field.deps(seeking, env)));
 });
 
 test("the retry countdown dep is the seconds the text shows, and 0 while no retry is pending", () => {
@@ -95,18 +102,4 @@ test("the retry countdown dep is the seconds the text shows, and 0 while no retr
 test("SHELL_IDS are exactly the ids index.html provides", () => {
   const ids = [...INDEX.matchAll(/\bid="([\w-]+)"/g)].map((m) => m[1]).filter((id) => id !== "world-css");
   assert.deepEqual([...SHELL_IDS].sort(), ids.sort());
-});
-
-// v1.2 (A8, additive): the play feed, drive chart and play log mark the reviewed play, so they follow the cursor.
-test("the play feed, the drive chart and the play log re-render when the review cursor moves; the box does not", () => {
-  const s = realState(states.final());
-  const env = { now: NOW, extras: {} };
-  const reviewed = reducer(s, { type: "review/set", seq: 104 });
-  const same = (a, b) => a.length === b.length && a.every((v, i) => Object.is(v, b[i]));
-  for (const name of ["play-feed", "drive-chart", "play-log"]) {
-    const c = COMPONENTS.find((x) => x.name === name);
-    assert.equal(same(c.deps(s, env), c.deps(reviewed, env)), false, name);
-  }
-  const box = COMPONENTS.find((c) => c.name === "box-score");
-  assert.ok(same(box.deps(s, env), box.deps(reviewed, env)));
 });

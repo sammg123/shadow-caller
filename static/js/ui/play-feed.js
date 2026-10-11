@@ -1,9 +1,8 @@
 // Play feed (ui-architecture.md 2.6, 5.4; owner A8). Renders playsVm: every play drawn so far, both teams, newest
 // first and grouped by drive under a header with the drive's team, result and summary. The caller's snaps carry the
-// call (as logged, retags included) and the verdict: top pick, in his top 3, or miss. Every row that draws something
-// is a button (G18): it shows that play on the field (actions.reviewAt), and pressing the reviewed row again goes
-// back to live. Rows are reconciled by seq, so new plays never rebuild old rows and a focused row keeps focus.
-// Text only (G27): ESPN's play text goes in through textContent.
+// call and the verdict: top pick, in his top 3, or miss. Read only (restructure-v2.md 1): it is the top LED ticker,
+// the newest play; a world may unroll the recent plays under the pointer. Rows are reconciled by seq, so new plays
+// never rebuild old rows. Text only (G27): ESPN's play text goes in through textContent.
 // v1.4 (W2; surface brief unresolved #7): ribbon paging. A world that sets the newest play on one line (Under the
 // Lights' LED ribbon) cuts it at the face's edge; when the newest row's words overflow its own button, the row pages a
 // screenful at a time, whole words only: --sc-page-x (px) shifts the words, --sc-page-cut (px) is the visible width of
@@ -11,12 +10,9 @@
 // page in. Each page holds PAGE_HOLD_MS; after the last page it returns to the first and rests. Where rows wrap (the
 // neutral world, an unrolled feed) nothing overflows and nothing pages. ctx.timers and ctx.measureRibbon are for tests.
 // G5-10: each row also carries its ribbon face (.sc-pf-face, aria-hidden): the field's words for the play and who had
-// the ball, one page, which a one-line world shows instead of ESPN's text (that text still names the button). No
-// paging under reduced motion, none while the feed is unrolled; a re-render writes only rows that changed.
-// G5-9: #rg-plays[data-open="true"] while keyboard focus is inside the feed (a world unrolls it then, so Tab can walk
-// its rows); it clears when focus leaves the feed, checked again on the next frame when the next focus is unknown,
-// and on Escape (focus goes back to the play the rolled-up ribbon shows).
-import { el, openWhileKeyboardInside, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
+// the ball, one page, which a one-line world shows instead of ESPN's text (that text stays in the row for assistive
+// tech). No paging under reduced motion, none while the feed is unrolled; a re-render writes only rows that changed.
+import { el, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
 
 const ROW_PARTS = new WeakMap();
 const GROUP_PARTS = new WeakMap();
@@ -133,13 +129,6 @@ function applyPage(control, p) {
   }
 }
 
-function onRowPress(li, actions) {
-  const item = ROW_PARTS.get(li)?.item;
-  if (!item) return;
-  if (item.reviewing) actions.exitReview();
-  else actions.reviewAt(item.seq);
-}
-
 function rowParts(copy) {
   return {
     face: el("span", { cls: "sc-pf-face", attrs: { "aria-hidden": "true" } }),
@@ -155,17 +144,13 @@ function rowParts(copy) {
   };
 }
 
-function createRow(item, ctx) {
-  const copy = ctx.copy.PLAYS;
-  const p = rowParts(copy);
+function createRow(ctx) {
+  const p = rowParts(ctx.copy.PLAYS);
   const call = el("span", { cls: "sc-pf-call" }, [p.verdict, p.callName, p.retagged]);
   const inner = [el("span", { cls: "sc-pf-meta" }, [p.time, p.team, p.sit, p.noPlay]), p.result, p.text, call, p.face];
-  const control = item.reviewable
-    ? el("button", { cls: "sc-pf-btn", attrs: { type: "button" } }, inner)
-    : el("div", { cls: "sc-pf-btn" }, inner);
+  const control = el("div", { cls: "sc-pf-btn" }, inner);
   const li = el("li", { cls: "sc-pf-row", data: { testid: "play-row" } }, [control]);
-  if (item.reviewable) control.addEventListener("click", () => onRowPress(li, ctx.actions));
-  ROW_PARTS.set(li, { ...p, call, control, item });
+  ROW_PARTS.set(li, { ...p, call, control, item: null });
   return li;
 }
 
@@ -186,16 +171,16 @@ export function resultKind(word) {
 }
 
 const ROW_KEYS = Object.freeze(["seq", "id", "kind", "team", "caller", "verdict", "nullified", "retagged", "scoring",
-  "reviewing", "result", "time", "situation", "text", "verdictText", "call", "face", "reviewable"]);
+  "result", "time", "situation", "text", "verdictText", "call", "face"]);
 /** G5-10: the row shows exactly what it showed: nothing to write (183 rows are reconciled on every update). */
 const sameRow = (a, b) => Boolean(a) && ROW_KEYS.every((k) => a[k] === b[k]);
 
-function updateRow(li, item, newest, copy) {
+function updateRow(li, item, newest) {
   const p = ROW_PARTS.get(li);
   const isNewest = item.seq === newest;
   if (p.shown === isNewest && sameRow(p.item, item)) return;
-  ROW_PARTS.set(li, { ...p, item, shown: isNewest });   // the click handler reads the newest item
-  for (const key of ["seq", "id", "kind", "team", "caller", "verdict", "nullified", "retagged", "scoring", "reviewing"]) {
+  ROW_PARTS.set(li, { ...p, item, shown: isNewest });
+  for (const key of ["seq", "id", "kind", "team", "caller", "verdict", "nullified", "retagged", "scoring"]) {
     setData(li, key, item[key]);
   }
   setData(li, "result", resultKind(item.result));
@@ -212,10 +197,6 @@ function updateRow(li, item, newest, copy) {
   setHidden(p.callName, !item.call || item.call === item.text);   // hand-entered rows already read as the call
   setHidden(p.retagged, !item.retagged);
   setText(p.face, item.face || item.text || "");
-  if (p.control.localName === "button") {
-    setAttr(p.control, "aria-pressed", item.reviewing ? "true" : "false");
-    setAttr(p.control, "title", item.reviewing ? copy.reviewing : copy.review);
-  }
 }
 
 function createGroup() {
@@ -241,8 +222,8 @@ function updateGroup(li, group, ctx, newest) {
   setText(p.team, group.team);
   setText(p.result, group.complete ? group.resultText : copy.inProgress);
   setText(p.summary, group.summary);
-  reconcile(p.rows, group.rows, { key: (r) => r.seq, create: (r) => createRow(r, ctx),
-    update: (node, r) => updateRow(node, r, newest, copy) });
+  reconcile(p.rows, group.rows, { key: (r) => r.seq, create: () => createRow(ctx),
+    update: (node, r) => updateRow(node, r, newest) });
 }
 
 /** v1.4 (W2): page the newest row when another row becomes the newest (a re-render of the same row keeps its pages);
@@ -277,7 +258,7 @@ function motionOn(root) {
 
 /**
  * @param {HTMLElement} root  #rg-plays
- * @param {{ actions: object, copy: object, timers?: object, measureRibbon?: Function }} ctx
+ * @param {{ copy: object, timers?: object, measureRibbon?: Function }} ctx
  *   timers, measureRibbon: injected by tests (v1.4, W2); the page uses the browser's timers and layout
  * @returns {{ update(vm: object): void, destroy(): void }}
  */
@@ -292,9 +273,9 @@ export function mount(root, ctx) {
   const pager = createPager({ timers, measure: ctx.measureRibbon ?? measureWords, apply: applyPage,
     enabled: () => motionOn(root) });
   const hover = { on: false };
-  const paged = { control: null, resize: null, held: () => hover.on || root.getAttribute("data-open") === "true" };
-  // When the pointer or focus leaves (a world may unroll the feed under them), measure the newest play again on the
-  // next task, once the row is back on its one line. While it is unrolled, the face isn't shown: no page turns.
+  const paged = { control: null, resize: null, held: () => hover.on };
+  // When the pointer leaves (a world may unroll the feed under it), measure the newest play again on the next task,
+  // once the row is back on its one line. While it is unrolled, the face isn't shown: no page turns.
   const settleTimers = new Set();
   const settle = () => {
     const id = timers.setTimeout(() => {
@@ -313,8 +294,6 @@ export function mount(root, ctx) {
   };
   root.addEventListener("pointerenter", enter);
   root.addEventListener("pointerleave", leave);
-  root.addEventListener("focusout", settle);
-  const stopOpen = openWhileKeyboardInside(root, { timers, onOpen: () => pager.stop(), escapeTo: () => paged.control });
   root.appendChild(box);
   return {
     update(vm) {
@@ -331,8 +310,6 @@ export function mount(root, ctx) {
     destroy() {
       root.removeEventListener("pointerenter", enter);
       root.removeEventListener("pointerleave", leave);
-      root.removeEventListener("focusout", settle);
-      stopOpen();
       for (const id of settleTimers) timers.clearTimeout(id);
       settleTimers.clear();
       paged.resize?.disconnect();

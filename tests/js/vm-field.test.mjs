@@ -86,3 +86,14 @@ test("a grade without a specific play keeps its plain words; no pred, no words (
   assert.equal(text({ ...PRED[7], leaf_p: Number.NaN }), "Miss · #11 Deep shot");
   assert.equal(text({ ...PRED[7], leaf: "not_a_leaf" }), "Miss · #11 · 3%");
 });
+
+test("4b: the LAST plate's verdict for a play drawn at once: a graded caller snap's chip words, else none", async () => {
+  const { rowVerdictText } = await import("../../static/js/model/vm-field.js");
+  const rows = loadJson("timeline_tb_dal.json").rows;
+  const bySeq = (seq) => rows.find((r) => r.seq === seq);
+  assert.equal(rowVerdictText(bySeq(126)), "Top pick · 19%");
+  assert.equal(rowVerdictText(bySeq(151), { dropback_mid: "Medium shot (10–19)" }), "Miss · #4 Medium shot · 10%");
+  assert.equal(rowVerdictText(bySeq(43)), "", "his punt: no call to grade");
+  assert.equal(rowVerdictText(bySeq(15)), "", "a TB play");
+  assert.equal(rowVerdictText(null), "");
+});

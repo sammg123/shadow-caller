@@ -1,19 +1,21 @@
-// theme/worlds/under-the-lights/booth.js (owner W4; DESIGN.md "Control-room drawer", "Keys, lamps and LED inputs";
-// ui-architecture.md 8.2, v1.4). The booth fills the drawer's SETTINGS rack with the world's two lamp switches (light
-// dip in live games, room lights), keeps them true to the page (<html data-ambient>, sc:uls:dip-live), hands a room
-// lights change to the app (a cancelable sc:booth-ambient event on #app) or applies it itself, tells W1's moments
-// whether to dip, and opens the drawer to the FLAGS rack when the flag panel appears (X).
+// theme/worlds/under-the-lights/booth.js (restructure-v2.md 1 and 2: the control-room drawer's two settings move to
+// a small menu in the top bar; DESIGN.md "Keys, lamps and LED inputs"; owner: home frame). The booth fills the
+// settings menu ([data-settings-menu], hung by arrange.js) with the world's two lamp switches (light dip in live
+// games, room lights), keeps them true to the page (<html data-ambient>, sc:uls:dip-live), hands a room lights change
+// to the app (a cancelable sc:booth-ambient event on #app) or applies it itself, tells the world's moments whether to
+// dip, moves focus into the menu when it opens and back when it closes, and asks the app to close it on a press
+// outside or when focus leaves it (sc:settings-close).
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  AMBIENT_EVENT, AMBIENT_KEY, BOOTH_COPY, DIP_KEY, ROW_CUT_RATIO, dipFor, dipInLiveGames, mountBooth, setDipInLiveGames,
+  AMBIENT_EVENT, AMBIENT_KEY, BOOTH_COPY, CLOSE_EVENT, DIP_KEY, dipFor, dipInLiveGames, mountBooth, setDipInLiveGames,
   shouldDipNow,
 } from "../../static/js/theme/worlds/under-the-lights/booth.js";
-import { arrange } from "../../static/js/theme/worlds/under-the-lights/arrange.js";
+import { SETTINGS_ID, arrange } from "../../static/js/theme/worlds/under-the-lights/arrange.js";
 import { REGION_NAMES } from "../../static/js/theme/registry.js";
 import { createDocument } from "./fake-dom.mjs";
 
-/** The shell (index.html 5.2) with every region, #flagPanel inside the flags region, hung by W3's arrange. */
+/** The shell (index.html) with every region, hung by arrange. */
 function stadium({ win = null } = {}) {
   const doc = createDocument();
   if (win) doc.defaultView = win;
@@ -23,47 +25,31 @@ function stadium({ win = null } = {}) {
   const regions = {};
   for (const name of REGION_NAMES) {
     const node = doc.createElement(name === "masthead" ? "header" : "section");
-    node.setAttribute("id", name === "entry" ? "entry" : `rg-${name}`);
+    node.setAttribute("id", `rg-${name}`);
     node.setAttribute("data-region", name);
     app.appendChild(node);
     regions[name] = node;
   }
-  const flagPanel = doc.createElement("div");
-  flagPanel.setAttribute("id", "flagPanel");
-  flagPanel.setAttribute("hidden", "");
-  regions.flags.appendChild(flagPanel);
-  return { doc, app, regions: Object.freeze(regions), flagPanel };
+  return { doc, app, regions: Object.freeze(regions) };
 }
 
-/** Just the drawer the booth needs (a FLAGS rack holding #flagPanel, an empty SETTINGS body), without arrange. */
-function drawer({ win = null } = {}) {
+/** Just what the booth needs, without arrange: #app, the top bar's Settings key and the empty menu it controls. */
+function menuOnly({ win = null } = {}) {
   const doc = createDocument();
   if (win) doc.defaultView = win;
   const app = doc.createElement("div");
   app.setAttribute("id", "app");
   doc.body.appendChild(app);
-  const box = doc.createElement("div");
-  box.setAttribute("class", "uls-drawer");
-  app.appendChild(box);
-  const rack = (key) => {
-    const node = doc.createElement("div");
-    node.setAttribute("class", "uls-rack");
-    node.setAttribute("data-rack", key);
-    box.appendChild(node);
-    return node;
-  };
-  const flags = rack("flags");
-  const region = doc.createElement("section");
-  region.setAttribute("id", "rg-flags");
-  flags.appendChild(region);
-  const flagPanel = doc.createElement("div");
-  flagPanel.setAttribute("id", "flagPanel");
-  flagPanel.setAttribute("hidden", "");
-  region.appendChild(flagPanel);
-  const body = doc.createElement("div");
-  body.setAttribute("class", "uls-rack-body");
-  rack("settings").appendChild(body);
-  return { doc, app, flagPanel, flags };
+  const key = doc.createElement("button");
+  key.setAttribute("aria-controls", SETTINGS_ID);
+  app.appendChild(key);
+  const menu = doc.createElement("div");
+  menu.setAttribute("id", SETTINGS_ID);
+  menu.setAttribute("data-settings-menu", "");
+  app.appendChild(menu);
+  const elsewhere = doc.createElement("button");
+  app.appendChild(elsewhere);
+  return { doc, app, key, menu, elsewhere };
 }
 
 /** A Storage stand-in; `broken` throws on every call, like a private window or blocked site data. */
@@ -103,13 +89,28 @@ function fakeWindow() {
   };
 }
 
-const settingsOf = (app) => app.querySelector('[data-rack="settings"]').querySelector(".uls-rack-body");
 const observerOn = (win, target) => win.observers.find((o) => o.target === target);
+/** Open or close the menu as the conductor does (#app[data-settings-open]), then run the booth's watcher. */
+function setOpen(win, app, open) {
+  app.setAttribute("data-settings-open", String(open));
+  observerOn(win, app).fn([]);
+}
+/** A press on `target`, delivered to the document's own listeners (the booth listens on the document; the fake
+ * document listens but does not dispatch). */
+function press(doc, target) {
+  for (const fn of doc.listeners.get("pointerdown") ?? []) fn({ type: "pointerdown", target });
+}
+/** Count the close requests the booth sends the app. */
+function closes(app) {
+  const seen = [];
+  app.addEventListener(CLOSE_EVENT, (e) => seen.push(e.type));
+  return seen;
+}
 
-test("dipFor: Watch this game always dips; live entry (feed, manual, flags) follows the setting", () => {
+test("dipFor: a watched game always dips; the live feed follows the setting", () => {
   assert.equal(dipFor("watch", false), true);
   assert.equal(dipFor("watch", true), true);
-  for (const mode of ["normal", "flag", "feed"]) {
+  for (const mode of ["feed", "normal"]) {
     assert.equal(dipFor(mode, true), true, mode);
     assert.equal(dipFor(mode, false), false, mode);
   }
@@ -154,28 +155,30 @@ test("shouldDipNow reads #app[data-mode] and the setting", () => {
   assert.equal(shouldDipNow(null, memoryStorage()), true);
 });
 
-test("arrange hangs the booth: the SETTINGS rack holds two lamp switches with their notes", () => {
+test("arrange fills the settings menu: two lamp switches with their notes, and nothing else", () => {
   const { doc, app, regions } = stadium();
   doc.documentElement.setAttribute("data-ambient", "dark");
   arrange(app, regions);
-  const body = settingsOf(app);
-  const dip = body.querySelector("#ulsDipLive");
-  const room = body.querySelector("#ulsRoomLights");
+  const menu = app.querySelector("[data-settings-menu]");
+  const dip = menu.querySelector("#ulsDipLive");
+  const room = menu.querySelector("#ulsRoomLights");
   assert.equal(dip.getAttribute("type"), "checkbox");
   assert.equal(room.getAttribute("type"), "checkbox");
   assert.equal(dip.checked, true, "the dip is on by default");
   assert.equal(room.checked, false, "the room lights follow <html data-ambient> (dark)");
-  const labels = body.querySelectorAll(".uls-switch-label");
+  const labels = menu.querySelectorAll(".uls-switch-label");
   assert.deepEqual([...labels].map((n) => n.textContent), [BOOTH_COPY.dip, BOOTH_COPY.room]);
   assert.equal(dip.getAttribute("aria-describedby"), "ulsDipNote");
   assert.equal(doc.getElementById("ulsDipNote").textContent, BOOTH_COPY.dipNote);
   assert.equal(doc.getElementById("ulsRoomNote").textContent, BOOTH_COPY.roomNote);
-  for (const sw of body.querySelectorAll(".uls-switch")) {
+  for (const sw of menu.querySelectorAll(".uls-switch")) {
     assert.equal(sw.localName, "label", "the whole switch is the hit area");
   }
+  assert.equal(menu.querySelectorAll("input").length, 2, "restructure-v2.md 2: the booth's two settings only");
+  assert.equal(menu.querySelectorAll("[data-region]").length, 0, "the menu holds no region");
 });
 
-test("mountBooth is idempotent and needs only a SETTINGS rack", () => {
+test("mountBooth is idempotent and needs only the settings menu", () => {
   const { app, regions } = stadium();
   arrange(app, regions);
   const first = mountBooth(app);
@@ -183,15 +186,14 @@ test("mountBooth is idempotent and needs only a SETTINGS rack", () => {
   assert.equal(mountBooth(app), first, "the same booth comes back");
   arrange(app, regions);
   assert.equal(app.querySelectorAll("#ulsDipLive").length, 1);
-  assert.equal(app.querySelectorAll(".uls-plate").length, 4, "the booth adds no plates");
   const bare = createDocument().createElement("div");
-  assert.equal(mountBooth(bare), null, "no drawer, no booth");
+  assert.equal(mountBooth(bare), null, "no menu, no booth");
   assert.equal(mountBooth(null), null);
 });
 
 test("the dip switch stores the viewer's choice; a stored OFF shows unlit", () => {
   const store = memoryStorage({ [DIP_KEY]: "off" });
-  const { app } = drawer();
+  const { app } = menuOnly();
   const booth = mountBooth(app, { storage: store });
   const dip = booth.dip;
   assert.equal(dip.checked, false);
@@ -205,7 +207,7 @@ test("the dip switch stores the viewer's choice; a stored OFF shows unlit", () =
 
 test("room lights: the app takes the change when it answers the event, else the booth applies it", () => {
   const win = fakeWindow();
-  const { doc, app } = drawer({ win });
+  const { doc, app } = menuOnly({ win });
   doc.documentElement.setAttribute("data-ambient", "dark");
   const store = memoryStorage();
   const booth = mountBooth(app, { storage: store });
@@ -228,7 +230,7 @@ test("room lights: the app takes the change when it answers the event, else the 
 });
 
 test("without a window the booth applies room lights itself", () => {
-  const { doc, app } = drawer();
+  const { doc, app } = menuOnly();
   doc.documentElement.setAttribute("data-ambient", "dark");
   const booth = mountBooth(app, { storage: memoryStorage() });
   booth.room.checked = true;
@@ -237,7 +239,7 @@ test("without a window the booth applies room lights itself", () => {
 });
 
 test("blocked storage never breaks the room lights: the page still changes", () => {
-  const { doc, app } = drawer();
+  const { doc, app } = menuOnly();
   doc.documentElement.setAttribute("data-ambient", "dark");
   const booth = mountBooth(app, { storage: memoryStorage({}, { broken: true }) });
   booth.room.checked = true;
@@ -245,21 +247,9 @@ test("blocked storage never breaks the room lights: the page still changes", () 
   assert.equal(doc.documentElement.getAttribute("data-ambient"), "room");
 });
 
-test("a flag panel outside any rack scrolls nothing", () => {
-  const win = fakeWindow();
-  const { doc, app, flagPanel, flags } = drawer({ win });
-  doc.body.appendChild(flagPanel);   // out of the drawer
-  const scrolls = [];
-  flags.scrollIntoView = (opts) => scrolls.push(opts);
-  mountBooth(app);
-  flagPanel.removeAttribute("hidden");
-  observerOn(win, flagPanel).fn([]);
-  assert.deepEqual(scrolls, []);
-});
-
 test("the room switch follows <html data-ambient> whoever changes it", () => {
   const win = fakeWindow();
-  const { doc, app } = drawer({ win });
+  const { doc, app } = menuOnly({ win });
   doc.documentElement.setAttribute("data-ambient", "dark");
   const booth = mountBooth(app);
   const mo = observerOn(win, doc.documentElement);
@@ -273,141 +263,81 @@ test("the room switch follows <html data-ambient> whoever changes it", () => {
   assert.equal(booth.room.checked, false);
 });
 
-test("X opens the drawer to the FLAGS rack: it scrolls into view when the flag panel appears", () => {
+test("opening the menu moves focus to its first switch; closing gives it back to the Settings key", () => {
   const win = fakeWindow();
-  const { app, flagPanel, flags: rack } = drawer({ win });
-  const booth = mountBooth(app);
-  const scrolls = [];
-  rack.scrollIntoView = (opts) => scrolls.push(opts);
-  const mo = observerOn(win, flagPanel);
-  assert.ok(mo, "the booth watches the flag panel");
-  assert.deepEqual([...mo.opts.attributeFilter], ["hidden"]);
-  mo.fn([]);
-  assert.equal(scrolls.length, 0, "still hidden: nothing moves");
-  flagPanel.removeAttribute("hidden");
-  mo.fn([]);
-  assert.deepEqual(scrolls, [{ block: "start", inline: "nearest" }]);
-  mo.fn([]);
-  assert.equal(scrolls.length, 1, "only when it appears, not on every change while open");
-  flagPanel.setAttribute("hidden", "");
-  mo.fn([]);
-  flagPanel.removeAttribute("hidden");
-  mo.fn([]);
-  assert.equal(scrolls.length, 2, "each new open");
+  const { doc, app, key } = menuOnly({ win });
+  const booth = mountBooth(app, { storage: memoryStorage() });
+  const mo = observerOn(win, app);
+  assert.deepEqual([...mo.opts.attributeFilter], ["data-settings-open"]);
+  key.focus();
+  setOpen(win, app, true);
+  assert.equal(doc.activeElement, booth.dip, "focus went into the menu");
+  setOpen(win, app, true);
+  assert.equal(doc.activeElement, booth.dip, "no change, no move");
+  setOpen(win, app, false);
+  assert.equal(doc.activeElement, key, "and came back where it was");
+});
+
+test("closing never steals focus the viewer already moved out of the menu", () => {
+  const win = fakeWindow();
+  const { doc, app, key, elsewhere } = menuOnly({ win });
+  mountBooth(app, { storage: memoryStorage() });
+  key.focus();
+  setOpen(win, app, true);
+  elsewhere.focus();
+  setOpen(win, app, false);
+  assert.equal(doc.activeElement, elsewhere);
+});
+
+test("a press outside the open menu asks the app to close it; a press inside it or on its key does not", () => {
+  const win = fakeWindow();
+  const { doc, app, key, menu, elsewhere } = menuOnly({ win });
+  const booth = mountBooth(app, { storage: memoryStorage() });
+  const seen = closes(app);
+  press(doc, elsewhere);
+  assert.deepEqual(seen, [], "closed: nothing to close");
+  setOpen(win, app, true);
+  press(doc, booth.room);
+  press(doc, menu);
+  press(doc, key);
+  assert.deepEqual(seen, [], "inside the menu, or the key that toggles it");
+  press(doc, elsewhere);
+  assert.deepEqual(seen, [CLOSE_EVENT]);
+});
+
+test("focus leaving the open menu asks the app to close it; moving between its switches does not", () => {
+  const win = fakeWindow();
+  const { app, key, menu, elsewhere } = menuOnly({ win });
+  const booth = mountBooth(app, { storage: memoryStorage() });
+  const seen = closes(app);
+  setOpen(win, app, true);
+  const leave = (relatedTarget) => menu.dispatchEvent({ type: "focusout", target: booth.dip, relatedTarget });
+  leave(booth.room);
+  leave(key);
+  leave(null);
+  assert.deepEqual(seen, [], "within the menu, back to its key, or focus nowhere (a click on empty page)");
+  leave(elsewhere);
+  assert.deepEqual(seen, [CLOSE_EVENT]);
+});
+
+test("stop disconnects every observer and listener", () => {
+  const win = fakeWindow();
+  const { doc, app, elsewhere } = menuOnly({ win });
+  const booth = mountBooth(app, { storage: memoryStorage() });
+  const seen = closes(app);
+  setOpen(win, app, true);
   booth.stop();
-  assert.ok(win.observers.every((o) => o.off), "stop disconnects every observer");
+  assert.ok(win.observers.every((o) => o.off));
+  assert.equal((doc.listeners.get("pointerdown") ?? []).length, 0, "the document listener is gone");
+  press(doc, elsewhere);
+  assert.deepEqual(seen, []);
 });
 
 test("the booth copy is plain words, set in caps by CSS", () => {
   for (const [key, text] of Object.entries(BOOTH_COPY)) {
     assert.equal(typeof text, "string", key);
     assert.ok(text.length > 2 && text === text.trim(), key);
+    assert.ok(!text.includes("—"), `${key}: no em dash`);
   }
   assert.ok(Object.isFrozen(BOOTH_COPY));
-});
-
-test("G5-8: #app[data-desk-focus] follows keyboard focus in a desk input, so no #app-wide :has() has to watch it", () => {
-  const { doc, app, regions } = stadium();
-  arrange(app, regions);
-  const desk = app.querySelector(".uls-desk");
-  assert.ok(desk, "arrange hung the desk");
-  const yards = doc.createElement("input");
-  const button = doc.createElement("button");
-  regions.entry.appendChild(yards);
-  regions.entry.appendChild(button);
-  // focusin and focusout bubble to the desk (the fake DOM delivers to the node it is given, so deliver it there)
-  const fire = (node, type, relatedTarget = null) => desk.dispatchEvent({ type, target: node, relatedTarget });
-  fire(button, "focusin");
-  assert.equal(app.getAttribute("data-desk-focus"), null, "a key is not a typing box");
-  fire(yards, "focusin");
-  assert.equal(app.getAttribute("data-desk-focus"), "true");
-  fire(yards, "focusout", button);
-  assert.equal(app.getAttribute("data-desk-focus"), null, "focus moved to a key");
-  fire(yards, "focusin");
-  fire(yards, "focusout", null);
-  assert.equal(app.getAttribute("data-desk-focus"), null, "focus left the page's controls");
-});
-
-test("G5-2: a keypad row the desk's foot cuts is marked data-cut (whole rows only); the rows can arrive after the booth", () => {
-  const ios = [];
-  const mos = [];
-  const win = { ...fakeWindow(), addEventListener() {}, removeEventListener() {},
-    getComputedStyle: () => ({ getPropertyValue: () => "" }),
-    IntersectionObserver: class {
-      constructor(fn, opts) { this.fn = fn; this.opts = opts; this.seen = []; ios.push(this); }
-      observe(node) { this.seen.push(node); }
-      disconnect() { this.off = true; }
-    },
-    MutationObserver: class {
-      constructor(fn) { this.fn = fn; mos.push(this); }
-      observe(target, opts) { this.target = target; this.opts = opts; }
-      disconnect() { this.off = true; }
-    } };
-  const { doc, app, regions } = stadium({ win });
-  arrange(app, regions);
-  const io = ios.at(-1);
-  const desk = app.querySelector(".uls-desk");
-  assert.equal(io.opts.root, desk);
-  assert.ok(io.opts.threshold.includes(ROW_CUT_RATIO));
-  assert.equal(io.seen.length, 0, "the entry pad hasn't mounted yet");
-  const waiting = mos.find((m) => m.target === desk);
-  assert.ok(waiting && waiting.opts.subtree, "the booth waits for the keypad");
-  const rows = ["run", "pass", "rpo", "result"].map((id) => {
-    const row = doc.createElement("div");
-    row.setAttribute("class", "sc-keyrow");
-    row.setAttribute("data-row", id);
-    regions.entry.appendChild(row);
-    return row;
-  });
-  waiting.fn([]);
-  assert.deepEqual(io.seen, rows, "each row is watched once the pad is there");
-  assert.equal(waiting.off, true, "and the wait ends");
-  io.fn([{ target: rows[0], isIntersecting: true, intersectionRatio: 1 },
-    { target: rows[2], isIntersecting: true, intersectionRatio: 0.15 },
-    { target: rows[3], isIntersecting: false, intersectionRatio: 0 }]);
-  assert.deepEqual(rows.map((r) => r.getAttribute("data-cut")), [null, null, "true", null]);
-  io.fn([{ target: rows[2], isIntersecting: true, intersectionRatio: 1 }]);
-  assert.equal(rows[2].getAttribute("data-cut"), null, "scrolled in whole: shown");
-});
-
-test("G5-9: B and G move focus into what they open and give it back on close; X keeps Yards; racks are groups only open", () => {
-  const win = { ...fakeWindow(), addEventListener() {}, removeEventListener() {},
-    getComputedStyle: () => ({ getPropertyValue: () => "" }) };
-  const { doc, app, regions } = stadium({ win });
-  const feedBtn = doc.createElement("button");
-  feedBtn.setAttribute("id", "feedBtn");
-  regions.feed.appendChild(feedBtn);
-  const yards = doc.createElement("input");
-  yards.setAttribute("id", "yards");
-  regions.entry.appendChild(yards);
-  arrange(app, regions);
-  const panels = win.observers.find((o) => o.target === app && o.opts.attributeFilter.includes("data-scorecard-open")
-    && !o.opts.attributeFilter.includes("data-mode"));   // not W3's insets watcher, which watches the mode too
-  assert.ok(panels, "the booth watches the drawer and the stat board on #app");
-  const racks = [...app.querySelectorAll(".uls-rack")];
-  assert.ok(racks.every((r) => r.getAttribute("role") === null && r.getAttribute("aria-labelledby") === null),
-    "closed: no empty groups in the accessibility tree (and no label without a role)");
-  const flip = (attrs) => {
-    for (const [name, value] of Object.entries(attrs)) app.setAttribute(name, value);
-    panels.fn([]);
-  };
-  yards.focus();
-  flip({ "data-mode": "normal", "data-booth-open": "true" });
-  const focused = (node, why) => assert.ok(doc.activeElement === node, `${why}: focus is on ${doc.activeElement?.localName}#${doc.activeElement?.id}`);
-  focused(feedBtn, "B: the drawer's first control");
-  assert.ok(racks.every((r) => r.getAttribute("role") === "group"
-    && r.getAttribute("aria-labelledby") === r.querySelector(".uls-plate").getAttribute("id")));
-  flip({ "data-booth-open": "false" });
-  focused(yards, "closed: back where B was pressed");
-  flip({ "data-mode": "flag", "data-booth-open": "true" });
-  focused(yards, "X opens the drawer to FLAGS, and Yards keeps focus for the penalty yards");
-  flip({ "data-mode": "normal", "data-booth-open": "false" });
-  const board = app.querySelector(".uls-statboard");
-  flip({ "data-scorecard-open": "true" });
-  assert.deepEqual([board.getAttribute("role"), board.getAttribute("tabindex"), board.getAttribute("aria-label")],
-    ["region", "-1", "Scorecard"]);
-  focused(board, "G: the stat board itself, so its region is read and scrolls by keys");
-  flip({ "data-scorecard-open": "false" });
-  focused(yards, "G again: back to Yards");
-  assert.deepEqual([board.getAttribute("role"), board.getAttribute("tabindex")], [null, null]);
 });

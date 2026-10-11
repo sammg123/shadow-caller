@@ -6,6 +6,7 @@ for anything nobody planned for (v1.4). Error pages are JSON too, and only this 
 """
 import threads  # noqa: F401  (first: pins OpenMP/BLAS before numpy and sklearn load)
 import functools
+import http.client
 import json
 import logging
 import math
@@ -20,6 +21,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
 import logos
+import playback
 import timeline
 import watch
 from config import DATA_DIR, ESPN_OFFLINE, GAME, PORT, ROOT, STATE_PATH, WATCH_SCALE
@@ -280,6 +282,12 @@ def index():
     return send_from_directory(app.static_folder, "index.html")
 
 
+@app.get("/report")
+def report():
+    """The Model Report page (restructure-v2 section 6), served like the GameCast; a 404 while it doesn't exist."""
+    return send_from_directory(app.static_folder, "report.html")
+
+
 @app.get("/api/state")
 def state():
     return ok()
@@ -484,6 +492,23 @@ def backup_before_feed(eid):
     return kept.name if kept else None
 
 
+def follow_live(eid, first):
+    """Under LOCK, with no watch on screen: the live feed follows ESPN event eid. The game is backed up first when the
+    feed would add to another event's plays or a typed game (OSError when it can't be, before anything changed).
+    first, a summary fetched for eid, must be this matchup's game: WrongGame (a 400) stops the feed with the reason.
+    Returns the backup's name or None."""
+    kept = backup_before_feed(eid)
+    if first is not None:
+        try:
+            espn_feed.check_matchup(first, eid)
+        except espn_feed.WrongGame as e:
+            feed.stop()
+            feed.status.update(state="error", detail=str(e)[:espn_feed.STATUS_MAX])
+            raise
+    feed.start(eid)
+    return kept
+
+
 @app.post("/api/feed")
 @answers_with_state
 def feed_control():
@@ -504,18 +529,10 @@ def feed_control():
     with LOCK:                     # atomic with /api/watch/start: the live feed never comes on during a watch
         WATCH.require_idle("turning the live feed on")
         try:
-            kept = backup_before_feed(eid)
+            kept = follow_live(eid, first)
         except OSError as e:
             log.exception("Live feed refused: the game couldn't be backed up")
             return fail(f"Couldn't keep a copy of the game, so the live feed stayed off ({e}).", 500)
-        if first is not None:
-            try:
-                espn_feed.check_matchup(first, eid)
-            except espn_feed.WrongGame as e:
-                feed.stop()
-                feed.status.update(state="error", detail=str(e)[:espn_feed.STATUS_MAX])
-                raise
-        feed.start(eid)
         engine.state["message"] = ("ESPN live feed on." + (f" Your game was backed up first ({kept})." if kept else "")
                                    + " Plays log themselves; retag play-action, screen or RPO.")
 
@@ -567,7 +584,7 @@ def watch_body():
 
 
 def watch_action(method):
-    """pause, resume and step: no fields, then the action."""
+    """pause, resume, step, back, forward, Go Live and open: no fields, then the action."""
     def run():
         watch.parse_empty(watch_body())
         method()
@@ -611,6 +628,89 @@ def watch_speed():
 @app.post("/api/watch/stop")
 def watch_stop():
     return state_call(lambda: WATCH.stop(restore=watch.parse_stop(watch_body())))
+
+
+# ---------------------------------------------------------------- playback (restructure-v2 sections 5 and 9)
+# No network, refused, an HTTP error, timed out or cut off mid-answer (a saved file that can't be read is not one)
+ESPN_DOWN = (urllib.error.URLError, TimeoutError, ConnectionError, http.client.HTTPException)
+
+
+def reach_espn(call, *args):
+    """call(*args) with ESPN out of reach as a 503 that changes nothing. Offline with no saved game stays the 400 a
+    watch gives ('no saved game')."""
+    try:
+        return call(*args)
+    except FileNotFoundError:
+        raise
+    except ESPN_DOWN as e:
+        log.info("%s %s: ESPN is out of reach (%s)", request.method, request.path, e)
+        raise watch.WatchError("Can't reach ESPN right now, so nothing changed. Try again in a moment.", 503) from None
+
+
+def playback_game():
+    """(event, summary) that seek, back and forward work on: the session's game; else the game on screen, from memory
+    or the saved files; else the saved final or ESPN, loaded outside LOCK."""
+    eid, summary = WATCH.session_game()
+    if summary is not None:
+        return eid, summary
+    eid = reach_espn(feed.resolve_event, eid)          # the session's, else the feed's (config.py's at first)
+    with LOCK:                                         # load_summary may set feed.summary
+        summary = feed.load_summary() if feed.event_id == eid else None
+    return eid, summary if summary is not None else reach_espn(watch.load_game, eid)
+
+
+def go_live(opening=False):
+    """Go Live: a game in progress (or not started yet) gets every ESPN play so far and the live feed follows it; a
+    finished one jumps to its end. The game is loaded fresh (the saved final, else ESPN) before LOCK, and another
+    matchup's game is refused (400) before anything changes. opening (POST /api/open): a finished game opens paused
+    at kickoff, and nothing changes once a session or the live feed is on, checked again under LOCK."""
+    eid = reach_espn(feed.resolve_event, WATCH.session_game()[0])
+    summary = reach_espn(watch.load_game, eid)
+    live = playback.is_live(playback.game_of(summary))
+    if live:
+        espn_feed.check_matchup(espn_feed.check_summary(summary, live=True), eid)
+    with LOCK:
+        if opening and (WATCH.in_session() or feed.on):
+            return
+        if not live:
+            WATCH.seek(0 if opening else len(espn_feed.iter_plays(summary)), eid, summary)
+            return
+        WATCH.go_live(eid, summary)
+        follow_live(eid, None)
+
+
+@app.post("/api/open")
+def open_game():
+    """What the home page calls once on load. A session or the live feed on: nothing changes. Otherwise a game in
+    progress goes live, and a finished one opens paused at kickoff."""
+    def run():
+        if not (WATCH.in_session() or feed.on):   # checked first too, so a page reload never waits on ESPN
+            go_live(opening=True)
+    return watch_action(run)
+
+
+@app.post("/api/golive")
+def golive():
+    return watch_action(go_live)
+
+
+@app.post("/api/watch/seek")
+def watch_seek():
+    """Rebuild to the first idx plays, paused (done at the end). Reset is idx 0."""
+    def seek():
+        n = watch.parse_seek(watch_body())
+        WATCH.seek(n, *playback_game())
+    return state_call(seek)
+
+
+@app.post("/api/watch/back")
+def watch_back():
+    return watch_action(lambda: WATCH.back(*playback_game()))
+
+
+@app.post("/api/watch/forward")
+def watch_forward():
+    return watch_action(lambda: WATCH.forward(*playback_game()))
 
 
 @app.get("/api/export.csv")

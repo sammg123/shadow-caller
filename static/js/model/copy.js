@@ -1,73 +1,28 @@
 // Every client-side string (pure). FI sections 1 to 3 verbatim where the current UI says it; new features
-// (watch, booth, camera, scoreboard, play feed, connection) in the same plain football language.
+// (the top bar, camera, scoreboard, play feed, connection) in the same plain football language. The page takes no
+// user input into the game (restructure-v2.md 1), so there is no entry, flag, shorthand or strip copy.
 // Team names always come in as arguments: nothing here is specific to Dallas (G13).
 
 export const APP = Object.freeze({
   title: "Shadow Play-Caller",
 });
 
+// restructure-v2.md 2: the top bar's nameplate, its current game (phase 2 puts the game picker there) and its view keys
 export const MASTHEAD = Object.freeze({
-  undo: "Undo",
-  undoTitle: "Undo (U)",
-  exportCsv: "Export CSV",
-  reset: "Reset game",
   camera: "Camera",
-  cameraTitle: "Change the camera (V)",
-  // v1.5 (G4-2): the B and G keys print only their letter on a world's ribbon, so their names carry it too (a voice
-  // user says what they see)
-  booth: "Booth (B)",
-  boothTitle: "Open the booth (B)",
-  scorecard: "Scorecard (G)",
-  scorecardTitle: "Full scorecard (G)",
+  cameraTitle: "Wide or Blimp (V)",
+  report: "Model Report",
+  reportTitle: "How the model did: every call, the scorecard, his tendencies",
+  ask: "Ask",
+  settings: "Settings",
+  settingsTitle: "Display settings",
   // v1.5 (G4-2): the nameplate's short line names the caller this app shadows (his last name, model/vm-masthead.js);
   // the full words ride on the plate's tooltip
   whoLabel: (last, team) => `Shadowing ${last} · ${team}`,
   whoTitle: (caller, team) => `Modelling ${caller} (${team} offense)`,
-  // v1.2 (A9): names of the masthead's two key groups, for assistive tech
-  gameGroup: "Game",
+  game: (away, home) => `${away} at ${home}`,
+  gameDetail: (game, detail) => `${game} · ${detail}`,
   viewGroup: "View",
-});
-
-export const FEED = Object.freeze({
-  buttonOff: "ESPN live: off",
-  buttonOn: "ESPN live: on",
-  buttonRetrying: "ESPN live: retrying",
-  eventLabel: "ESPN game id",
-  eventPlaceholder: "today's game",
-  replay: "Replay this game",
-  replayTitle: "Rebuild a finished game from ESPN (backs up the current one)",
-  watch: "Watch this game",
-  watchTitle: "Play a finished game back snap by snap (backs up the current one)",
-  statusOff: "Off: enter plays by hand, or turn it on and plays log themselves.",
-  updated: (when) => `Updated ${when}`,
-  notYet: "…",
-  separator: " · ",
-  last: "Last:",
-  skipped: "Skipped, enter it by hand:",
-  error: (detail) => `Can't reach ESPN (${detail}). Still trying every few seconds.`,
-});
-
-export const STRIP = Object.freeze({
-  qtr: "Qtr",
-  clock: "Clock",
-  est: "est.",
-  estTitle: "Estimated from snaps; type the real clock",
-  down: "Down",
-  amp: "&",
-  togo: "To go",
-  ballOn: "Ball on",
-  yardAria: "Yard line",
-  sideGlyph: "⇄",
-  sideTitle: "Click to switch sides of the field",
-  scoreAria: (team) => `${team} score`,
-  endPunt: "Punt",
-  endFg: "FG good",
-  endFgMiss: "FG missed",
-  endHalf: "Half over",
-  note: "Click any number and type; Enter or Tab saves. Click the team to switch sides of the field. Clock takes 8:41 or 841; G in To go means goal.",
-  driveInfo: (drive, snap) => `Drive ${drive} · snap ${snap}`,      // v1.5 (G4-12): fits the strip's one row
-  offField: (off) => `${off} off the field. Type where they get the ball in Ball on.`,
-  final: "Final. Replay or watch another game from the booth (B).",   // v1.5 (G4-1): the game is over
 });
 
 export const PREDICTION = Object.freeze({
@@ -101,21 +56,20 @@ export const PREDICTION = Object.freeze({
   hotDownGlyph: "▼",
   hotUp: "Well above the league",
   hotDown: "Well below the league",
-  legend: "▲ ▼ = at least 4 points and 30% above or below the league for this exact situation. Bars are scaled to the top pick. Click a play to pick it as what he called.",
-  leafTitle: "Click to log this as the play he called",
+  // restructure-v2.md: no user input into the game, so a play on the board is shown on the field, never picked
+  legend: "▲ ▼ = at least 4 points and 30% above or below the league for this exact situation. Bars are scaled to the top pick. Point at a play to see its shadow on the field.",
+  leafTitle: "Shows this play's shadow on the field",
   habits: "pass pts from his habits here",
   scriptPts: "—",
   script: (n) => `Opening script: memory switches on after snap ${n}`,
   scriptNoCount: "Opening script: memory switches on after the opening snaps",
-  offFieldHeading: (off) => `${off} is off the field`,
-  offFieldManual: (off, spot) => [
-    { text: `When ${off} gets the ball, click ` }, { text: "Ball on", strong: true },
-    { text: " above and type the spot, like " }, { text: spot, strong: true },
-    { text: ". The drive starts and predictions come back. Update the score and clock the same way." },
-  ],
-  offFieldFeed: (off) => `When ${off} gets the ball, the ESPN feed starts the drive and the next call appears here.`,
-  offFieldWatch: (off) => `When ${off} gets the ball in this game, the next call appears here.`,
-  // v1.5 (G4-1): off the field in a fed or watched game the board recaps his last call and the night so far
+  // restructure-v2.md section 3: NEXT CALL while his offense doesn't have the ball (ESPN's possession)
+  hasBall: (team) => `${team} has the ball`,
+  kicksOff: (team) => `${team} kicks off`,
+  waiting: (off) => `When ${off} gets the ball, his next call appears here.`,
+  // restructure-v2.md section 3: PREVIOUS PLAY (his most recent call) and LAST 6 with his night so far
+  previousPlate: "Previous play",
+  spokenPrevious: (snap) => `Previous play${Number.isInteger(snap) ? `, snap ${snap}` : ""}:`,
   soFar: (last) => `${last} so far`,
   soFarPlain: "So far",
   lead: Object.freeze({ td: "Touchdown", int: "Intercepted", fumble: "Fumble lost", turnover: "Turnover" }),
@@ -123,70 +77,16 @@ export const PREDICTION = Object.freeze({
   tallyTop1: "Top pick",
   tallyTop3: "In his top 3",
   recentLabel: "Last 6",
-  spokenPredicted: (call, pct) => `Predicted ${call}, ${pct} percent`,
-  // v1.5 (G4-1): at the final whistle: the score and SHADOW v LEAGUE's three lines, with the stat board's key
+  recentTop3: (rank) => `In his top 3 (#${rank})`,
+  // a call a flag wiped out is graded but has no snap number, so the tally says how its calls split
+  callsNote: (calls, snaps, wiped) => `${calls} calls: ${snaps} snaps and ${wiped} wiped out by `
+    + (wiped === 1 ? "a flag" : "flags"),
+  spokenPredicted: (call, pct) => `Predicted ${call}, ${pct}`,
+  // v1.5 (G4-1): at the final whistle NEXT CALL shows the score and the way to the full scorecard, which lives in the
+  // Model Report (restructure-v2.md section 6; no SHADOW v LEAGUE numbers on the home page)
   finalPlate: "Final",
   finalKey: "Tonight's scorecard",
-  finalKeyTitle: "Full scorecard (G)",
-});
-
-export const ENTRY = Object.freeze({
-  heading: "What did he call?",
-  rows: Object.freeze({ run: "Run", pass: "Pass", rpo: "RPO", result: "Result" }),
-  keys: Object.freeze({
-    J: Object.freeze({ name: "Left", hint: "JJ: outside edge" }),
-    K: Object.freeze({ name: "Inside", hint: "A/B gap (R works too)" }),
-    L: Object.freeze({ name: "Right", hint: "LL: outside edge" }),
-    P: Object.freeze({ name: "Dropback", hint: "tap again: short, mid, deep" }),
-    A: Object.freeze({ name: "Play-action", hint: "tap again: short, mid, deep" }),
-    N: Object.freeze({ name: "Screen", hint: "" }),
-    O: Object.freeze({ name: "RPO", hint: "OO: he threw it" }),
-    I: Object.freeze({ name: "Incomplete", hint: "after P, A, N or OO" }),
-    S: Object.freeze({ name: "Sack", hint: "yards lost" }),
-    C: Object.freeze({ name: "Scramble", hint: "yards gained" }),
-    X: Object.freeze({ name: "Flag", hint: "penalty menu" }),
-  }),
-  yards: "Yards",
-  td: "Touchdown",
-  tdKey: "(T)",
-  turnover: "Turnover",
-  turnoverKey: "(F)",
-  logPlay: "Log play",
-  shorthandPlaceholder: "Shorthand: JJ 6 | 2&4 D44   ·   PP 0 INC   ·   PPP 35 TD   ·   X DH   ·   X DPI 25   ·   new D25",
-  shorthandAria: "Shorthand command",
-  shorthandRun: "Run",
-  hintManual: "Press the play key (tap again to cycle), type yards, Enter. I incomplete, X flag, Esc clears, U undoes. Down, distance and field position advance on their own.",
-  hintFeed: "ESPN logs each play, down, distance, spot, clock and score. It can't see play-action, screens or RPOs: press A, N or O to fix the last play. P undoes that, J/K/L change the run gap, U undoes.",
-  hintWatch: "Plays log themselves as the game plays back. A, N or O fix the last play (the playback pauses first). Space pauses or resumes, Left and Right step, 1 to 4 set the speed.",
-});
-
-export const FLAGS = Object.freeze({
-  title: "Flag.",
-  close: "Close (Esc)",
-  defHeading: (opp) => `On ${opp} (defense)`,
-  offHeading: (off) => `On ${off} (offense)`,
-  otherD: (opp) => `Other on ${opp}`,
-  otherO: (off) => `Other on ${off}`,
-  otherSummary: "yards from the Yards box",
-  autoFirst: "automatic 1st down",
-  offsetLabel: "Offsetting",
-  offsetSummary: "replay the down",
-  hint: "Flag on the play you picked: that play is wiped out but still counts as his call for scoring. Flag after a play that stands (late hit): log the play first, then flag. DPI and Other use the Yards box (for DPI, yards past the line). Half the distance applies near the goal line.",
-});
-
-export const LAST_PLAY = Object.freeze({
-  fromEspn: "Last play from ESPN",
-  byHand: "Last play (entered by hand)",
-  waiting: (off) => `Waiting for the first ${off} play`,
-  waitingText: "Plays appear here a few seconds after ESPN posts them.",
-  td: ", TD",
-  turnover: ", turnover",
-  yards: (n) => `${n} yds`,
-  retagged: " · retagged",
-  pass: Object.freeze([["A", "Play-action", "pa"], ["N", "Screen", "screen"], ["O", "RPO, thrown", "rpo"],
-    ["P", "Plain dropback", "dropback"]]),
-  run: Object.freeze([["O", "RPO, handed off", "rpo"], ["J", "Left (again: edge)", null], ["K", "Inside", null],
-    ["L", "Right (again: edge)", null]]),
+  finalKeyTitle: "The full scorecard is in the Model Report",
 });
 
 export const SCORECARD = Object.freeze({
@@ -244,27 +144,19 @@ export const TENDENCIES = Object.freeze({
   unsure: "90% interval includes zero",
 });
 
+// A logged call's words (model/vm-log.js); the play log itself is the Model Report's calls table (restructure-v2.md 6)
 export const LOG = Object.freeze({
-  heading: "Play log",
-  empty: "No snaps yet. Each logged play shows his top pick next to what he called.",
-  columns: Object.freeze(["#", "Time", "Situation", "His top pick", "Actual", "His % on it", "League %", "Rank", "Yds"]),
   legacyCall: Object.freeze({ R: "Run", P: "Pass", SC: "Scramble", S: "Sack" }),
-  pass: "Pass",
-  run: "Run",
-  flag: "flag",
-  time: (qtr, clock) => `Q${qtr} ${clock}`,
 });
 
 export const PLAYS = Object.freeze({
   heading: "Plays",
   verdict: Object.freeze({ top1: "Top pick", top3: "In his top 3", miss: "Miss", none: "" }),
   unlinked: (n) => (n === 1 ? "1 hand-entered play isn't on the field" : `${n} hand-entered plays aren't on the field`),
-  // v1.2 (A8): empty feed, row marks, and what clicking a row does
+  // v1.2 (A8): empty feed and row marks (a row retagged before restructure-v2.md says so)
   empty: "Plays appear here as they happen, newest first.",
   noPlay: "No play",
   retagged: "retagged",
-  review: "Show this play on the field",
-  reviewing: "On the field now. Click again to go back to live.",
   inProgress: "Drive in progress",
 });
 
@@ -273,17 +165,17 @@ export const DRIVES = Object.freeze({
   plays: (n) => `${n} ${n === 1 ? "play" : "plays"}`,
   yards: (n) => `${n} yds`,
   label: (team, result) => (result ? `${team} ${result}` : `${team} drive`),
-  // v1.2 (A8): empty chart and what clicking a drive does
+  // v1.2 (A8): empty chart and what clicking a drive does (restructure-v2.md 5: the game jumps to that play)
   empty: "Drives appear after the first play.",
   review: "Show this drive's first play on the field",
-  reviewing: "This drive is on the field. Click again to go back to live.",
   now: "Now",
 });
 
 export const WP = Object.freeze({
   heading: "Win probability",
   aria: (team, p) => `${team} win probability ${p}`,
-  unavailable: "Win probability comes from ESPN; hand-entered games don't have it.",
+  // at kickoff, before ESPN's first number: no play is applied yet, so the server's timeline isn't ESPN's (DC D)
+  unavailable: "Win probability appears after the first play.",
   // v1.2 (A8): the chart's axis words
   quarters: Object.freeze(["Q1", "Q2", "Q3", "Q4"]),
   overtime: "OT",
@@ -321,6 +213,8 @@ export const BOX = Object.freeze({
 export const SCOREBOARD = Object.freeze({
   qtr: "Qtr",
   time: "Time",
+  est: "est.",
+  estTitle: "Estimated from the snaps since ESPN's last clock",
   down: "Down",
   ballOn: "Ball on",
   timeouts: "Timeouts",
@@ -332,38 +226,31 @@ export const SCOREBOARD = Object.freeze({
   final: "Final",
 });
 
+// restructure-v2.md 2: the top bar's playback, clear words a first-time viewer understands; each key's tooltip names
+// the keyboard key that does the same
 export const WATCH = Object.freeze({
-  start: "Watch this game",
+  group: "Playback",
+  back: "Back",
+  backTitle: "One play back (Left arrow)",
   play: "Play",
   pause: "Pause",
-  step: "Step",
-  stop: "Stop",
-  back: "Back to my game",
-  again: "Watch again",
+  playTitle: "Play or pause (Space)",
+  forward: "Forward",
+  forwardTitle: "One play forward (Right arrow)",
   speed: (n) => `${n}x`,
-  progress: (idx, total) => `${idx} / ${total}`,
-  speedTitle: "Playback speed (1 to 4)",
-});
-
-export const REVIEW = Object.freeze({
-  text: (who, when, what) => `Reviewing ${who}, ${when}, ${what}. Esc returns to live.`,
-  unknown: (seq) => `Reviewing play ${seq}. Esc returns to live.`,
-  kickoff: "kickoff",
-  // v1.2 (A9): the review banner's keys (Left, Right, Esc), so a mouse or a phone can step and leave review too
-  earlier: "Earlier play",
-  later: "Later play",
-  live: "Back to live",
-});
-
-// v1.4 (W5): the replay scrub (ui/scrub.js, model/vm-scrub.js): the game so far as one strip you drag to review a
-// play. Review only: it moves the client's review cursor and never the server's game. Its keys reuse REVIEW's names.
-export const SCRUB = Object.freeze({
-  label: "Replay",
-  track: "Review a play",
+  speedGroup: "Playback speed",
+  speedTitle: (n, key) => `Play at ${n}x (${key})`,
+  progress: "Game progress",
+  progressTitle: "Click or drag to jump to any play",
+  count: (idx, total) => `${idx} / ${total}`,
+  position: (idx, total) => `Play ${idx} of ${total}`,
+  kickoff: "Kickoff",
+  final: "Final",
   live: "Live",
-  review: "Review",
-  none: "No plays yet",
-  play: (when, team, what) => [when, team, what].filter(Boolean).join(" · "),
+  reset: "Reset",
+  resetTitle: "Back to kickoff, paused",
+  goLive: "Go Live",
+  goLiveTitle: "Jump to the latest play (Esc)",
 });
 
 export const FIELD = Object.freeze({
@@ -397,19 +284,8 @@ export const BOOT = Object.freeze({
   ]),
 });
 
+// restructure-v2.md 5: the top bar only moves the game, so a request that never reached the server changed nothing
 export const TOASTS = Object.freeze({
-  noDrive: (team) => `No ${team} drive in progress. Type the ball spot first.`,
-  undoRefused: "Undo is off while a game plays back. Stop watching first.",
-  networkFail: "Can't reach the app server. Nothing was saved.",
-});
-
-export const CONFIRMS = Object.freeze({
-  // v1.5 (G4-12): /api/reset backs the game up before it clears it (watch.backup_game), so the confirm says so
-  reset: "Clear every snap logged for this game? A copy is kept in data/.",
-  resetFeedOn: "Clear every snap logged for this game? The ESPN feed turns off first, so it doesn't log the game again. "
-    + "A copy is kept in data/.",
-  replay: (id) => `Rebuild the game log from ESPN game ${id}? The current log is backed up first.`,
-  todaysGame: "(today's)",
-  watchStart: (id) => `Watch ESPN game ${id} from the start? Your game is backed up first and comes back when you stop.`,
-  watchStop: "Stop watching and put your game back?",
+  networkFail: "Can't reach the app server, so the game didn't move. Try again in a moment.",
+  serverError: "The app server refused that.",
 });

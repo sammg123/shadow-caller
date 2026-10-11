@@ -1,28 +1,32 @@
 """Under the Lights scenes, frozen in time (v1.4, W6): the golden screenshots (ui-architecture 7.3) and the watch-mode
 walk-through of docs/design/play-drawing.md drive the page to the same five states.
 
-  final       a replayed game, at rest
-  presnap     Watch this game, paused before the first Dallas snap: his top 2 as shadow plays, text underneath
+  final       the game at its final whistle, at rest
+  presnap     a watch paused before the first Dallas snap: his top 2 as shadow plays, text underneath
   midflight   that watch stepped to Dallas's deep pass middle (+21), the ball at the top of its arc
   incomplete  the first Dallas snap stepped: its arc, the X and "Short pass middle · incomplete"
-  drawer      the paused pre-snap with the control-room drawer open (B)
+  settings    the paused pre-snap with the top bar's settings menu open
 
-The page runs on Playwright's clock (page.clock), paused once the state is set, and every frame after that is a
-16 ms tick of it, so a ball in flight is caught on the same frame every run. Captures need the real GPU: Playwright's
+The page opens its game on load (restructure-v2.md 9: POST /api/open), which leaves a watch session where it is, so
+every state is a session. A play is stepped through the API (POST /api/watch/step), which draws it in motion: the
+page's own Right jumps one play and snaps the field (restructure-v2.md 2). The page runs on Playwright's clock
+(page.clock), paused once the state is set, and every frame after that is a 16 ms tick of it, so a ball in flight is
+caught on the same frame every run. Captures need the real GPU: Playwright's
 default headless Chromium renders with SwiftShader (the engine's low tier, no bloom, no crowd), and the goldens are
 what Sam sees, so `gpu_browser` launches the new headless mode (`channel="chromium"`)."""
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from ui_helpers import EVENT, api_get, api_post, stop_watch
+from ui_helpers import api_post, stop_watch, watch_paused_at
 
 GOLDEN_DIR = Path(__file__).resolve().parent / "goldens" / "under-the-lights"
 ACTUAL_DIR = Path(__file__).resolve().parents[2] / "test-results" / "visual" / "under-the-lights"
 SIZES = ((1440, 900), (1920, 1080))
-STATES = ("final", "presnap", "midflight", "incomplete", "drawer")
+STATES = ("final", "presnap", "midflight", "incomplete", "settings")
 TICK_MS = 16                    # one frame of the page clock
-SETTLE_MS = 10_000              # paging, the 8 s retag light, the camera's glide in and the light dip all done
+SETTLE_MS = 10_000              # the ticker's paging and the light dip all done
 CHUNK_MS = 96                   # the clock runs in chunks with a real pause between, so fetches can answer
 BOOT_MS = 60_000
 PRESNAP_IDX = 1                 # the kickoff applied: the first Dallas snap (seq 2) is next
@@ -47,26 +51,18 @@ def golden_path(state, size):
 
 
 # ---------------------------------------------------------------- the server
-def watch_paused_at(base, idx, tries=3):
-    """A watch of the saved game, paused with exactly `idx` plays applied (step is exact, DC E2). The slowest speed
-    leaves the first play's wait between start and pause; should a busy server apply plays past `idx` first, it starts
-    over."""
-    for _ in range(tries):
-        stop_watch(base)
-        api_post(base, "/api/feed", {"on": False})
-        api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 0.5, "from_seq": 0})
-        api_post(base, "/api/watch/pause")
-        while api_get(base, "/api/watch")["idx"] < idx:
-            api_post(base, "/api/watch/step")
-        if api_get(base, "/api/watch")["idx"] == idx:
-            return
-    raise AssertionError(f"couldn't pause the watch at play {idx}: {api_get(base, '/api/watch')}")
-
-
 def replayed(base):
+    """The saved game at its final whistle: Go Live on a finished game jumps to its end, in a watch session, so the
+    page's POST /api/open on load leaves it there (a replay alone would open at kickoff)."""
     stop_watch(base)
     api_post(base, "/api/feed", {"on": False})
-    api_post(base, "/api/feed/replay", {"event_id": EVENT})
+    api_post(base, "/api/golive")
+
+
+def step_play(page):
+    """Step one play of the paused watch on the page's server, drawn in motion (POST /api/watch/step)."""
+    parts = urlsplit(page.url)
+    api_post(f"{parts.scheme}://{parts.netloc}", "/api/watch/step")
 
 
 # ---------------------------------------------------------------- the page and its clock
@@ -107,7 +103,7 @@ def run(page, ms, chunk=CHUNK_MS, gap_ms=12):
 
 
 def settle(page):
-    page.wait_for_timeout(600)          # the LED step-ins and the drawer's rails are CSS: real time
+    page.wait_for_timeout(600)          # the LED step-ins are CSS: real time
     run(page, SETTLE_MS)
     page.wait_for_timeout(600)
 
@@ -116,9 +112,9 @@ PLAY_FRAME_JS = "(() => { const d = window.__shadowDebug(); return d.ball ? d.fr
 
 
 def snap_and_tick(page, frames):
-    """Step one play from the page (Right on a paused watch), then stop on its `frames`th frame, counted by the
-    engine from the first frame its ball is in play (never by the page's hooks, which can trail by a frame)."""
-    page.keyboard.press("ArrowRight")
+    """Step one play of the paused watch (step_play), then stop on its `frames`th frame, counted by the engine from
+    the first frame its ball is in play (never by the page's hooks, which can trail by a frame)."""
+    step_play(page)
     page.wait_for_timeout(STEP_SETTLE_MS)      # the step and its fetches land while the clock stands still
     end = time.monotonic() + 30
     first = None
@@ -138,9 +134,9 @@ FRAME_JS = """() => { const d = window.__shadowDebug(); return { anim: d.animSta
 
 
 def step_frames(page, max_frames=900):
-    """Step one play (Right on a paused watch) on the frozen clock and return the engine's state at every frame of it
-    (`__shadowDebug()`: anim, seq, ball, ghosts), from the frame it starts to the frame it is down."""
-    page.keyboard.press("ArrowRight")
+    """Step one play of the paused watch (step_play) on the frozen clock and return the engine's state at every frame
+    of it (`__shadowDebug()`: anim, seq, ball, ghosts), from the frame it starts to the frame it is down."""
+    step_play(page)
     frames, started = [], False
     for _ in range(max_frames):
         page.clock.run_for(TICK_MS)
@@ -172,9 +168,9 @@ def scene(browser, base, state, size):
     wait_shadows(page)
     freeze(page)
     settle(page)
-    if state == "drawer":
-        page.keyboard.press("b")
-        page.wait_for_selector('#app[data-booth-open="true"]', state="attached")
+    if state == "settings":
+        page.locator('[data-testid="settings-toggle"]').click()
+        page.wait_for_selector('#app[data-settings-open="true"]', state="attached")
         settle(page)
     elif state in ("midflight", "incomplete"):
         snap_and_tick(page, MIDFLIGHT_FRAMES if state == "midflight" else INCOMPLETE_FRAMES)

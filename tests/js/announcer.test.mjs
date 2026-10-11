@@ -1,7 +1,7 @@
 // ui/announcer.js (G2-6): what assistive tech hears as the game goes. A visually hidden log speaks each newly drawn
-// play ("{time} {team}. {play words}, {result}. {verdict}.") and a status line speaks mode changes ("Camera: Tight",
-// "Speed 4x", "Paused", "Flag mode. Press a foul letter or Esc", "Back to live"). The pure part (announcerVm,
-// announce) is tested on real store states; the DOM part on the fake DOM.
+// play ("{time} {team}. {play words}, {result}. {verdict}.") and a status line speaks what a key changed ("Camera:
+// Blimp", "Speed 4x", "Paused", "Playing", "Live"). The pure part (announcerVm, announce) is tested on real store states;
+// the DOM part on the fake DOM.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { presentedView } from "../../static/js/core/present.js";
@@ -12,7 +12,7 @@ import { createDocument, withDocument } from "./fake-dom.mjs";
 import { loadTimeline, stateBody, stubRows, timelineBody } from "./fixtures.mjs";
 
 const TL = loadTimeline();
-const CAMERAS = Object.freeze([{ id: "wide", label: "Wide" }, { id: "tight", label: "Tight" }, { id: "blimp", label: "Blimp" }]);
+const CAMERAS = Object.freeze([{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }]);
 
 /** A store with a game on it: the timeline and the /api/state that points at it (presented once drawn). */
 function game() {
@@ -97,37 +97,36 @@ test("a burst of plays (a hidden tab coming back) speaks only the newest three",
   assert.equal(lines[2], playLine(TL.row(8)));
 });
 
-test("mode changes speak on the status line: camera, speed, pause and play, flag mode, back to live", () => {
+test("what a key changed speaks on the status line: camera, speed, pause and play, going live", () => {
   const base = { epoch: "e", drawnThrough: 0, rows: [], camera: "Wide", watch: { state: "playing", speed: 2 },
-    flag: false, reviewing: false };
+    live: false };
   const say = (change, from = base) => announce(from, { ...from, ...change }).status;
-  assert.equal(say({ camera: "Tight" }), "Camera: Tight");
+  assert.equal(say({ camera: "Blimp" }), "Camera: Blimp");
   assert.equal(say({ watch: { state: "playing", speed: 4 } }), "Speed 4x");
   assert.equal(say({ watch: { state: "paused", speed: 2 } }), "Paused");
   assert.equal(say({ watch: { state: "playing", speed: 2 } }, { ...base, watch: { state: "paused", speed: 2 } }), "Playing");
-  assert.equal(say({ flag: true }), "Flag mode. Press a foul letter or Esc");
-  assert.equal(say({ reviewing: false }, { ...base, reviewing: true }), "Back to live");
-  assert.equal(say({ reviewing: true }), null, "entering a review: the review banner speaks for itself");
+  assert.equal(say({ live: true, watch: { state: "stopped", speed: 2 } }), "Live");
   assert.equal(say({}), null);
-  assert.equal(say({ camera: "Tight", flag: true }), "Camera: Tight. Flag mode. Press a foul letter or Esc");
+  assert.equal(say({ camera: "Blimp", watch: { state: "paused", speed: 2 } }), "Camera: Blimp. Paused");
   assert.equal(announce(null, base).status, null, "the first state is not a change");
   assert.equal(say({ watch: { state: "idle", speed: null } }), null, "a watch that ends is the transport's to say");
 });
 
-test("announcerVm reads the store: the camera's label, the watch session, flag mode and the review", () => {
+test("announcerVm reads the store: the camera's label, the watch session and whether the live feed is followed", () => {
   const g = game();
   g.load(TL.rows(1, 3));
-  g.store.dispatch({ type: "camera/set", id: "tight" });
+  g.store.dispatch({ type: "camera/set", id: "blimp" });
   g.store.dispatch({ type: "version/loaded", body: { version: 1, epoch: TL.body.epoch, timeline_n: 3,
     watch: { state: "paused", speed: 4 }, feed: { on: false } }, now: 1 });
-  g.store.dispatch({ type: "review/set", seq: 2 });
   const vm = g.vm();
-  assert.equal(vm.camera, "Tight");
+  assert.equal(vm.camera, "Blimp");
   assert.deepEqual(vm.watch, { state: "paused", speed: 4 });
-  assert.equal(vm.reviewing, true);
-  assert.equal(vm.flag, false);
+  assert.equal(vm.live, false);
   assert.equal(vm.drawnThrough, 3);
   assert.ok(Object.isFrozen(vm));
+  g.store.dispatch({ type: "version/loaded", body: { version: 2, epoch: TL.body.epoch, timeline_n: 3,
+    watch: { state: "stopped", speed: 4 }, feed: { on: true } }, now: 2 });
+  assert.equal(g.vm().live, true);
 });
 
 test("the DOM: a polite log gets one line per play, the status line its words; destroy removes both", () => {
@@ -139,29 +138,24 @@ test("the DOM: a polite log gets one line per play, the status line its words; d
     ["log", "polite", "additions"]);
   assert.deepEqual([status.getAttribute("role"), status.getAttribute("aria-live")], ["status", "polite"]);
   assert.deepEqual([log.getAttribute("class"), status.getAttribute("class")], ["sr-only", "sr-only"], "heard, not seen");
-  const base = { epoch: "e", drawnThrough: 1, rows: [TL.row(1)], camera: "Wide", watch: null, flag: false, reviewing: false };
+  const base = { epoch: "e", drawnThrough: 1, rows: [TL.row(1)], camera: "Wide", watch: null, live: false };
   withDocument(doc, () => {
     announcer.update(base);
-    announcer.update({ ...base, drawnThrough: 2, rows: [TL.row(1), TL.row(2)], camera: "Tight" });
+    announcer.update({ ...base, drawnThrough: 2, rows: [TL.row(1), TL.row(2)], camera: "Blimp" });
   });
   assert.deepEqual([...log.childNodes].map((n) => n.textContent), [playLine(TL.row(2))]);
-  assert.equal(status.textContent.trim(), "Camera: Tight");
+  assert.equal(status.textContent.trim(), "Camera: Blimp");
+  const live = { ...base, drawnThrough: 2, rows: [TL.row(1), TL.row(2)], camera: "Blimp", live: true };
   withDocument(doc, () => {
-    announcer.update({ ...base, drawnThrough: 2, rows: [TL.row(1), TL.row(2)], camera: "Wide" });
-    announcer.update({ ...base, drawnThrough: 2, rows: [TL.row(1), TL.row(2)], camera: "Tight" });
-  });
-  assert.equal(status.textContent.trim(), "Camera: Tight");
-  const reviewing = { ...base, drawnThrough: 2, rows: [TL.row(1), TL.row(2)], camera: "Tight", reviewing: true };
-  withDocument(doc, () => {
-    announcer.update(reviewing);
-    announcer.update({ ...reviewing, reviewing: false });
+    announcer.update({ ...live, live: false });
+    announcer.update(live);
   });
   const first = status.textContent;
   withDocument(doc, () => {
-    announcer.update(reviewing);
-    announcer.update({ ...reviewing, reviewing: false });
+    announcer.update({ ...live, live: false });
+    announcer.update(live);
   });
-  assert.equal(status.textContent.trim(), "Back to live");
+  assert.equal(status.textContent.trim(), "Live");
   assert.notEqual(status.textContent, first, "the same words again still change the node, so they are heard again");
   withDocument(doc, () => announcer.destroy());
   assert.equal(doc.querySelector('[data-testid="announcer-log"]'), null);
@@ -173,11 +167,9 @@ test("the log keeps the last 20 lines", () => {
   const announcer = withDocument(doc, () => mountAnnouncer(doc));
   const rows = TL.rows(1, 60);
   withDocument(doc, () => {
-    announcer.update({ epoch: "e", drawnThrough: 1, rows: rows.slice(0, 1), camera: null, watch: null, flag: false,
-      reviewing: false });
+    announcer.update({ epoch: "e", drawnThrough: 1, rows: rows.slice(0, 1), camera: null, watch: null, live: false });
     for (let n = 2; n <= 60; n += 1) {
-      announcer.update({ epoch: "e", drawnThrough: n, rows: rows.slice(0, n), camera: null, watch: null, flag: false,
-        reviewing: false });
+      announcer.update({ epoch: "e", drawnThrough: n, rows: rows.slice(0, n), camera: null, watch: null, live: false });
     }
   });
   const log = doc.querySelector('[data-testid="announcer-log"]');

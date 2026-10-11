@@ -1,5 +1,5 @@
-/* Under the Lights: his tendencies on the stat board (ui/tendencies.js; DESIGN.md Components "Stat board (G)"; owner
-   W2). An LED forest plot: each term's row is its own strip of LED cells (the row's SVG masked onto the 4 px pitch
+/* Under the Lights: his tendencies on the Model Report (ui/tendencies.js; restructure-v2.md 6; DESIGN.md Components
+   "Stat board (G)"; owner W2). An LED forest plot: each term's row is its own strip of LED cells (the row's SVG masked onto the 4 px pitch
    over a plain panel cell, the row's ::before), the 90% interval a lit row of cells, the estimate a 3 x 3 block, filled
    when the interval excludes zero and hollow (its center unlit) otherwise; pass terms warm white, run terms amber,
    zero a dim column; "more run" and "more pass" under it. Then his play-type mix against what the league would call,
@@ -20,8 +20,8 @@
 }
 
 /* ---------------------------------------------------------------- one term: its label and its LED strip */
-/* v1.5 (G4-8): each term's label sits over its strip, so the strips span the stat board's right column (beside a
-   47% label column they had about 170 px, too short to read an interval from across a room). */
+/* v1.5 (G4-8): each term's label sits over its strip, so the strips span the board's whole column (beside a 47%
+   label column they had about 170 px, too short to read an interval from across a room). */
 :where(:root[data-world="under-the-lights"]) :is(.sc-tend-row, .sc-tend-axis) { grid-template-columns: minmax(0, 1fr); }
 :where(:root[data-world="under-the-lights"]) .sc-tend-row {
   --sc-tend-tone: var(--sc-pass);

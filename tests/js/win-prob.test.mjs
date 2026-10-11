@@ -64,15 +64,15 @@ test("scores and turnovers are marked on the line; quarters are labelled", () =>
   assert.deepEqual(axis.map(text), ["Q1", "Q2", "Q3", "Q4"], "no overtime in this game");
 }));
 
-test("hand-entered games say why there is no line", () => inDoc((doc) => {
+test("at kickoff, before ESPN's first number, the note says when the line appears", () => inDoc((doc) => {
   const { root, wp } = setup(doc);
-  wp.update(wpVm(makePv({ presented: state.tilt(), tl: tlOf(patch(timeline.final(), { source: "log", rows: [
-    { ...timeline.final().rows[1], src: "log", wp: null }] })) })));
+  const kickoff = { ...tlOf(patch(timeline.final(), { rows: [], wp_start: null })), source: "log" };   // no play yet
+  wp.update(wpVm(makePv({ presented: state.tilt(), tl: kickoff })));
   const chart = one(root, '[data-testid="wp-chart"]');
   assert.deepEqual([chart.getAttribute("data-available"), chart.hasAttribute("data-wp-caller"), chart.hasAttribute("role")],
     ["false", false, false]);
   const note = one(root, ".sc-wp-note");
-  assert.deepEqual([note.hidden, text(note)], [false, "Win probability comes from ESPN; hand-entered games don't have it."]);
+  assert.deepEqual([note.hidden, text(note)], [false, "Win probability appears after the first play."]);
   assert.equal(one(root, ".sc-wp-plot").hidden, true);
 }));
 

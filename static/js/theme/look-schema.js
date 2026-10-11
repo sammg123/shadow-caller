@@ -45,7 +45,7 @@ const LIGHT = obj({
 const CAMERA_MODE = obj({
   id: str(ID_RE, "a lowercase id (a-z, 0-9 and -)"), label: str(LABEL_RE, "a label of 1 to 24 characters"),
   rig: oneOf("sideline", "endzone", "overhead", "skycam", "table", "blimp"), fov: num(1, 120, { above: true }),
-  height: num(0, 1000), back: num(-1000, 1000), yaw: num(-360, 360), follow: oneOf("ball", "drive", "none"), cut: bool,
+  height: num(0, 1000), back: num(-1000, 1000), yaw: num(-360, 360), follow: oneOf("ball", "drive", "pan", "none"), cut: bool,
 }, ["yaw"]);
 const MOTION_FIELDS = Object.fromEntries([...Object.keys(DEFAULT_MOTION), "ghostInMs", "ghostOutMs", "verdictMs"]
   .map((k) => [k, ["groundYps", "airYps", "kickYps", "maxRowMs"].includes(k) ? num(0, 1e5, { above: true }) : num(0, 1e5)]));

@@ -1,33 +1,8 @@
 // Mounting components defensively (ui-architecture.md 9.1; owner A0). DOM side.
-// Every component module is imported in parallel, then mounted in table order (the field host before the review
-// banner that shares its root). A module that fails to load, has no mount(), or throws while mounting leaves a
-// visible notice and boot goes on. The boot screen and the toast fall back to built-in text-only versions.
-// The Form hub forwards ctx.form calls to whichever mounted component provides each method (2.6, 9.1).
+// Every component module is imported in parallel, then mounted in table order (components that share a root, like
+// the top bar's three, append in that order). A module that fails to load, has no mount(), or throws while mounting
+// leaves a visible notice and boot goes on. The boot screen and the toast fall back to built-in text-only versions.
 import { setClass, setData, setHidden, setText } from "../ui/dom.js";
-
-const FORM_DEFAULTS = Object.freeze({
-  readYards: "", readTD: false, readTO: false, readAutoFirst: false,
-  writeYards: undefined, writeTD: undefined, writeTO: undefined, writeAutoFirst: undefined, focusYards: undefined,
-  focusTransport: undefined,   // G5-7: the watch transport takes focus once a started watch shows its Pause key
-});
-
-/** ctx.form: each Form method goes to the first registered component that has it (directly or under .form). */
-export function createFormHub() {
-  const providers = [];
-  const targetFor = (name) => {
-    for (const p of providers) {
-      if (typeof p?.[name] === "function") return p;
-      if (typeof p?.form?.[name] === "function") return p.form;
-    }
-    return null;
-  };
-  const form = Object.freeze(Object.fromEntries(Object.entries(FORM_DEFAULTS).map(([name, fallback]) => [name,
-    (...args) => {
-      const target = targetFor(name);
-      return target ? target[name](...args) : fallback;
-    }])));
-  return { form, register: (component) => { providers.push(component); } };
-}
 
 /** Start every import at once; the results come back in table order. */
 export function loadModules(specs) {
@@ -93,10 +68,10 @@ function asBinding(spec, component) {
  * Mount `specs` (in order) from `settled` (loadModules). Returns { bindings, failed: names }.
  * @param {object[]} specs   shell/bindings.js COMPONENTS
  * @param {PromiseSettledResult[]} settled
- * @param {{ doc: Document, ctx: object, notices: object, formHub: { register(c): void }, shellIds?: string[] }} deps
+ * @param {{ doc: Document, ctx: object, notices: object, shellIds?: string[] }} deps
  *   shellIds: ids index.html provides; one that disappears while a component mounts is reported with its name.
  */
-export function mountComponents(specs, settled, { doc, ctx, notices, formHub, shellIds = [] }) {
+export function mountComponents(specs, settled, { doc, ctx, notices, shellIds = [] }) {
   const bindings = [];
   const failed = [];
   let present = shellIds.filter((id) => doc.getElementById(id));
@@ -109,7 +84,6 @@ export function mountComponents(specs, settled, { doc, ctx, notices, formHub, sh
     }
     try {
       const component = mountOne(spec, settled[i], root, ctx);
-      formHub.register(component);
       bindings.push(asBinding(spec, component));
       if (spec.fallback === "boot") root.querySelector("[data-boot-static]")?.remove();
     } catch (err) {

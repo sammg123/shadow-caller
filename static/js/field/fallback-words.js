@@ -5,7 +5,7 @@
  * legend or another plate, a thin leader when a plate had to move. DOM side: it fits each tagged plate to its measured
  * words (fallback-plates.js layout), then moves it there (its group's transform) and pins its box (data-box) so
  * fallback-svg declutter keeps the other tags clear of it. The last layout's choices are kept while still clear, so
- * the words hold still while the Drive view eases.
+ * the words hold still while the Wide view eases.
  */
 import { setAttr } from "../ui/dom.js";
 import { FIELD } from "./coords.js";

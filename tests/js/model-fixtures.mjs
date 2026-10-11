@@ -60,18 +60,13 @@ export function tlOf(body, drawnThrough = body.n) {
   });
 }
 
+// core/reduce-view.js initialView(): the page holds no user input into the game (restructure-v2.md 1)
 export const DEFAULT_VIEW = Object.freeze({
-  pick: { k: null, i: 0, out: null },
-  flag: { open: false, gen: 0 },
-  booth: { open: false, auto: false },
-  scorecardOpen: false,
   camera: null,
-  review: { seq: null },
-  sideAtFifty: null,
-  stripRejected: {},
   hoverLeaf: null,
   toast: null,
-  bgMessage: null,
+  settingsOpen: false,
+  playback: { kind: null, target: null },
 });
 
 // pv as the scheduler builds it (ui-architecture 2.3); deep-frozen so a VM that mutates its input throws.

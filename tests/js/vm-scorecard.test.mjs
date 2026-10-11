@@ -61,8 +61,8 @@ test("specific-play and play-type groups appear only when they have snaps (#110)
   assert.deepEqual(noGranular.groups.map((g) => g.id), ["passrun"]);
 });
 
-test("expanded follows the G toggle", () => {
-  assert.equal(scorecardVm(makePv({ presented: state.final(), view: { scorecardOpen: true } })).expanded, true);
+test("the stat board (G) is gone: expanded is the Model Report's to set, never a view flag (restructure-v2.md 1)", () => {
+  assert.equal(scorecardVm(makePv({ presented: state.final(), view: { scorecardOpen: true } })).expanded, false);
   assert.equal(scorecardVm(makePv({ presented: state.final() })).expanded, false);
 });
 

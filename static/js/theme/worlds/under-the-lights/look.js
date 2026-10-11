@@ -60,9 +60,6 @@ const DAY = {
 /** look.world.uls: what props.js and moments.js read (plain data; the schema keeps `world` JSON-only). */
 const WORLD_ULS = {
   dip: { level: 0.8, ms: 300 },                        // DESIGN.md: the stadium lights fall to 80% in 300 ms
-  // holdScoreMs: in Watch this game the camera stays on a touchdown or a turnover this long before it rises (G3-4)
-  camera: { pushMs: 650, settleMs: 900, riseMs: 1700, descendMs: 1100, holdScoreMs: 2000, driftDegPerS: 2.4,
-    driftMaxDeg: 20, driftZoom: 1.65, driftPitchDeg: 42, driftLiftYd: 25 },
   // LED steps at 12 fps, 5 frames (DESIGN.md motion grammar); G3-6: the next call steps in over a play's words once
   // they have been up dwellMs
   ribbons: { stepMs: 83, steps: 5, holdTdMs: 3200, dwellMs: 1500 },
@@ -101,10 +98,11 @@ export const look = deepFreeze({
   residue: { keep: "drive", opacity: 0.16 },
   labels: { renderer: "css2d", className: "sc-label", result: true },
   post: { bloom: { strength: 0.55, radius: 0.5, threshold: 1.05 }, extra: ["uls-lens"] },
+  // restructure-v2.md 4: two views only, toggled by V: Wide (the TV angle, the default; it follows the ball sideways
+  // while a play runs) and Blimp (the overhead stadium view). No Tight, and no move of the camera's own.
   cameras: {
     modes: [
-      { id: "wide", label: "Wide", rig: "sideline", fov: 20, height: 38, back: 82, follow: "none", cut: false },
-      { id: "tight", label: "Tight", rig: "sideline", fov: 18, height: 10, back: 40, follow: "ball", cut: false },
+      { id: "wide", label: "Wide", rig: "sideline", fov: 20, height: 38, back: 82, follow: "pan", cut: false },
       { id: "blimp", label: "Blimp", rig: "blimp", fov: 30, height: 300, back: 140, follow: "none", cut: false },
     ],
     default: "wide", moveMs: 1100, ease: "inOutCubic", orbit: null, inset: null,

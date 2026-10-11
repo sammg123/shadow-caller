@@ -9,7 +9,7 @@ software WebGL, the suite's default, can't keep a real-time pace, and its frame 
 import sys
 
 import pytest
-from ui_helpers import EVENT, WORLD, api_post, app_url, reset_game, stop_watch, wait_ready
+from ui_helpers import WORLD, api_post, app_url, reset_game, stop_watch, wait_ready
 
 pytestmark = pytest.mark.e2e
 
@@ -80,11 +80,14 @@ def gpu_browser(browser):
 
 
 def exposure(page, base, query):
+    """The page opens the saved game paused at kickoff (restructure-v2.md 9); it then plays at 4x from there, as Play
+    does, and the trace records every phase and shadow change."""
     reset_game(base)
     page.goto(app_url(base, query), wait_until="domcontentloaded")
     wait_ready(page)
     page.evaluate(TRACE_JS)
-    api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": SPEED, "from_seq": 0})
+    api_post(base, "/api/watch/speed", {"speed": SPEED})
+    api_post(base, "/api/watch/resume")
     page.wait_for_timeout(WATCH_S * 1000)
     trace = page.evaluate("window.__presnap")
     stop_watch(base)

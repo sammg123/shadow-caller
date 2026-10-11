@@ -248,6 +248,7 @@ export function openWhileKeyboardInside(root, { timers, onOpen = () => {}, escap
     },
     keydown: (e) => {
       if (e.key !== "Escape" || root.getAttribute("data-open") !== "true") return;
+      e.preventDefault?.();   // the Escape is spent rolling the region up: it is not the page's (core/keyboard.js)
       set(false);
       const shown = escapeTo();
       if (!shown || !inside(doc?.activeElement) || doc.activeElement === shown) return;

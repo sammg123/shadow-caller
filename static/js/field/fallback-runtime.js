@@ -3,9 +3,10 @@
  * (fallback-2d.js) owns the state `s` and its lifecycle; this module runs the parts the conductor drives: plays
  * (animated through fallback-player.js on the frame loop, or drawn at once), the situation, the shadow plays before
  * a caller snap (docs/design/play-drawing.md 4: deferred while a play runs, the last call wins; gone when the next
- * play draws, while the previous play stays dimmed until then), review, verdicts and relabels, and the camera: the
- * Drive view (the default) frames the snap with his shadows large enough to read and takes in a play's whole extent
- * while it draws, easing between frames over look.cameras.moveMs; Top shows the whole field.
+ * play draws, while the previous play stays dimmed until then), review, verdicts and relabels, and the camera
+ * (restructure-v2.md 4, named as the 3D field's): the Wide view (the default) frames the snap with his shadows large
+ * enough to read and takes in a play's whole extent while it draws, easing between frames over look.cameras.moveMs;
+ * Blimp shows the whole field from above.
  * Frames are requested only while something moves; every change counts one painted frame and emits "frame".
  */
 import { deepFreeze } from "../core/domain.js";
@@ -29,8 +30,9 @@ import { buildShadowPlays } from "./shadows.js";
 import { EASE, normalDurationMs, planDrawing } from "./timing.js";
 
 const VERDICT_KEYS = new Set(["top1", "top3", "miss", "none"]);
-/** The 2D field's cameras, V in this order: the drive around the ball (the default), the whole field from above. */
-export const CAMERA_MODES = deepFreeze([{ id: "drive", label: "Drive" }, { id: "top", label: "Top" }]);
+/** The 2D field's cameras, V in this order: Wide, the drive around the ball (the default), and Blimp, the whole field
+ * from above (restructure-v2.md 4: the same two views, by the same names, as the 3D field). */
+export const CAMERA_MODES = deepFreeze([{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }]);
 /** The whole field with its apron, as a camera box (layoutPlane fits it exactly as it fits no box). */
 const WHOLE = deepFreeze({ x0: FIELD.X_MIN - APRON_YD, x1: FIELD.X_MAX + APRON_YD, y0: -APRON_YD,
   y1: FIELD.WIDTH + APRON_YD });
@@ -76,7 +78,7 @@ export function onFrame(s, now) {
   if (running) requestFrame(s);
 }
 
-// ---------------------------------------------------------------- the camera (Drive or Top)
+// ---------------------------------------------------------------- the camera (Wide or Blimp)
 /**
  * The layouts for the camera's box: the whole field, which the static field is drawn in once (fallback-layers
  * renderField; `s.fieldCtx`), and the view the moving layers draw in one unit a pixel (`s.ctx`). The static field
@@ -119,11 +121,11 @@ function shadowStrokes(input, hover = null, play = null) {
   return strokesOf(shown.flatMap((sp) => sp.drawing.steps));
 }
 
-/** Where the camera looks now: Top the whole field; the Drive view a review's snap, its shadows and its play; live,
+/** Where the camera looks now: Blimp the whole field; the Wide view a review's snap, its shadows and its play; live,
  * the snap and his shadows (a hovered play's too, so a deep shot he hovers is seen whole); while a play draws,
  * whatever it already shows grown to take in the whole play (a play that fits moves nothing); else the field. */
 function targetBox(s) {
-  if (s.camera === "top") return WHOLE;
+  if (s.camera === "blimp") return WHOLE;
   if (s.review) {
     const r = s.review;
     return unionBox(driveFrame(r.sit, shadowStrokes(r.ghosts, s.highlight, r.entry)),
@@ -183,7 +185,7 @@ export function settleCamera(s) {
   painted(s);
 }
 
-/** V: the Drive view or the whole field (an id the 2D field has; anything else is ignored). */
+/** V: the Wide view or the whole field (Blimp); an id the 2D field doesn't have is ignored. */
 export function setCamera(s, id) {
   if (!CAMERA_MODES.some((m) => m.id === id)) return;
   s.camera = id;

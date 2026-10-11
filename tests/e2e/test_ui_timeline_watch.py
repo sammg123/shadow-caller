@@ -1,15 +1,17 @@
-"""New features (ui-architecture 7.2, 5.3, 5.4; DC B, C, E): every timeline row drawn on the field and listed in the
-play feed, drives, win probability, scoreboard and box score after a replay; Left/Right review; and Watch this game
-(start, Space, Right, 1 to 4, Stop with restore, Done then Watch again, no spoilers) on a sandbox whose Watch pace is
-scaled down (SHADOW_WATCH_SCALE, conftest `watch_server`)."""
+"""The timeline on the page and the playback contract (ui-architecture 7.2, 5.3, 5.4; DC B, C, E; restructure-v2.md 5
+and 9): every timeline row drawn on the field and listed on the ticker, the drive chart, win probability and the
+scoreboard at the final whistle; the page opens its game once on load and leaves a running session or the live feed
+alone; a jump (a seek, a drive picked on the drive chart) snaps the field to where the game is without replaying the
+plays in between; while the game plays no row is ever ahead of the field. Runs on the sandboxes (conftest `server`
+and the scaled-pace `watch_server`), never the live game."""
 import re
 import time
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import (EVENT, TOTAL_ROWS, answer_dialogs, api_get, api_post, blur, command,
-                        ensure_finished, expect_log_rows, expect_toast, finished, full_timeline, load, quiet,
-                        record_requests, reset_game, show, state, stop_watch, until, version, wait_idle)
+from ui_helpers import (EVENT, TOTAL_ROWS, api_get, api_post, app_url, blur, click_at, feed_on_server, finished,
+                        full_timeline, game_at_end, load, quiet, record_requests, reset_game, seek_game, state,
+                        stop_watch, until, version, wait_idle, wait_ready)
 
 pytestmark = pytest.mark.e2e
 
@@ -17,6 +19,9 @@ PLAY_ROW = '[data-testid="play-row"]'
 DRIVE_RESULTS = ["TD", "TD", "PUNT", "PUNT", "PUNT", "PUNT", "PUNT", "PUNT", "FG", "END OF HALF", "TD", "INT", "TD",
                  "FUMBLE", "FG", "DOWNS", "DOWNS", "TD", "PUNT", "INT", "END OF GAME"]          # DC G17
 SCENES = {"webgl": "", "2d": "scene=2d"}
+MID = 40
+JUMP_FROM, JUMP_TO = 10, 120    # a long seek: 110 plays the field must not replay one by one
+DRIVE_PICK = 4                  # the fifth drive on the chart
 
 
 def verdict_of(pred):
@@ -34,14 +39,15 @@ def verdict_of(pred):
     return "none"
 
 
-def field_attr(page, name):
-    return page.locator("#field").get_attribute(name)
+def last_seq(base):
+    return max((r["seq"] for r in full_timeline(base)["rows"]), default=0)
 
 
-# ---------------------------------------------------------------- the whole game, after a replay
+# ---------------------------------------------------------------- the whole game, at the final whistle
 @pytest.mark.parametrize("scene", sorted(SCENES))
 def test_every_row_is_drawn_on_the_field(upage, server, scene):
-    """5.3: after a replay the field has drawn all 183 rows (data-drawn-seq), nothing queued, idle, this epoch."""
+    """5.3: at the final whistle the field has drawn all 183 rows (data-drawn-seq), nothing queued, idle, this
+    epoch, ESPN's plays."""
     base = server["base"]
     finished(upage, base, SCENES[scene])
     wait_idle(upage, TOTAL_ROWS)
@@ -54,7 +60,7 @@ def test_every_row_is_drawn_on_the_field(upage, server, scene):
     expect(upage.locator("#app")).to_have_attribute("data-source", "espn")
 
 
-def test_play_feed_lists_every_row_with_its_verdict(upage, server):
+def test_the_ticker_lists_every_row_with_its_verdict(upage, server):
     """5.4, DC G1: 183 play rows, newest first, 64 caller snaps; hooks per row; verdicts match each pred."""
     base = server["base"]
     finished(upage, base)
@@ -72,11 +78,11 @@ def test_play_feed_lists_every_row_with_its_verdict(upage, server):
              "true" if r["scoring"] else "false"] for r in sorted(rows, key=lambda r: -r["seq"])]
     assert got == want
     assert sum(1 for r in rows if r["scoring"]) == 7
+    assert upage.locator(f"{PLAY_ROW} button, {PLAY_ROW} [tabindex]").count() == 0, "the ticker only reads"
 
 
-def test_drives_win_probability_scoreboard_and_box(upage, server):
-    """5.4, DC C: 21 drives with G17's results in order, win probability 0 at the end, 16 to 24, DAL 366 and TB 419
-    yards, both logos."""
+def test_drives_win_probability_and_scoreboard(upage, server):
+    """5.4, DC C: 21 drives with G17's results in order, win probability 0 at the end, 16 to 24, both logos."""
     finished(upage, server["base"])
     drives = upage.locator('[data-testid="drive-chart"] [data-testid="drive"]')
     expect(drives).to_have_count(21)
@@ -98,57 +104,13 @@ def test_drives_win_probability_scoreboard_and_box(upage, server):
         assert re.fullmatch(r"/api/logo/(DAL|TB)(\?v=(default|dark))?", logo.get_attribute("src")), logo.get_attribute("src")
         assert logo.get_attribute("alt")
         until(upage, lambda: logo.evaluate("e => e.complete && e.naturalWidth > 0"), what="the logo to load")
-    box = upage.locator('[data-testid="box-score"]')
-    assert box.evaluate("e => e.tagName") == "TABLE"
-    teams, yards = box.evaluate(
-        "t => { const teams = [...t.querySelectorAll('th[data-team]')].map(th => th.dataset.team);"
-        " const row = [...t.querySelectorAll('tr')].find(r => r.cells[0] && r.cells[0].innerText.trim() === 'Total yards');"
-        " return [teams, row ? [...row.cells].slice(1).map(c => c.innerText.trim()) : null]; }")
-    assert teams == ["TB", "DAL"]
-    assert yards == ["419", "366"]
+    assert upage.locator('[data-testid="box-score"]').count() == 0, "the box score lives on the Model Report now"
 
 
-def test_hand_entered_play_is_noted_as_off_the_field(upage, server):
-    """DC C1 + 5.4: after a replay, a typed play has no ESPN row: "1 hand-entered play isn't on the field"."""
-    base = server["base"]
-    ensure_finished(base)
-    command(base, "new D25 | K 3")
-    load(upage, base)
-    expect(upage.locator('[data-testid="unlinked-note"]')).to_have_text("1 hand-entered play isn't on the field")
-
-
-def test_left_and_right_review_drawn_rows_and_escape_returns_live(upage, server):
-    """2.2 review: Left shows the newest drawable row, Left again the one before, Right goes forward then back to
-    live; Esc returns to live. The field and the banner both say which row."""
-    base = server["base"]
-    finished(upage, base)
-    wait_idle(upage, TOTAL_ROWS)
-    drawable = [r["seq"] for r in full_timeline(base)["rows"] if r["kind"] != "admin"]
-    banner = upage.locator('[data-testid="review"]')
-    blur(upage)
-    upage.keyboard.press("ArrowLeft")
-    expect(banner).to_be_visible()
-    expect(banner).to_have_attribute("data-seq", str(drawable[-1]))
-    expect(upage.locator("#field")).to_have_attribute("data-review-seq", str(drawable[-1]))
-    expect(upage.locator("#field")).to_have_attribute("data-anim-state", "reviewing")
-    upage.keyboard.press("ArrowLeft")
-    expect(banner).to_have_attribute("data-seq", str(drawable[-2]))
-    upage.keyboard.press("ArrowRight")
-    expect(banner).to_have_attribute("data-seq", str(drawable[-1]))
-    upage.keyboard.press("ArrowRight")
-    expect(banner).to_be_hidden()
-    expect(upage.locator("#field")).not_to_have_attribute("data-review-seq", re.compile(".*"))
-    upage.keyboard.press("ArrowLeft")
-    expect(banner).to_be_visible()
-    upage.keyboard.press("Escape")
-    expect(banner).to_be_hidden()
-    expect(upage.locator("#field")).to_have_attribute("data-anim-state", "idle")
-
-
-def test_play_feed_text_is_never_html(upage, server):
+def test_play_text_is_never_html(upage, server):
     """G27 for ESPN's play text: a row whose text holds markup shows it as literal text."""
     base = server["base"]
-    ensure_finished(base)
+    game_at_end(base)
     evil = 'D.Prescott pass <b>x</b> <img src=x onerror="window.__a11Pwned=1"> to TB 12'
 
     def inject(route):
@@ -167,7 +129,56 @@ def test_play_feed_text_is_never_html(upage, server):
     assert upage.evaluate("() => window.__a11Pwned") is None
 
 
-# ---------------------------------------------------------------- Watch this game
+# ---------------------------------------------------------------- the page opens its game (restructure-v2.md 9)
+def opens(page):
+    """POST /api/open requests from the page's first request on (recorded before it loads)."""
+    return record_requests(page, "/api/open")
+
+
+def test_a_first_visit_opens_the_saved_game_once_paused_at_kickoff(upage, server):
+    base = server["base"]
+    reset_game(base)
+    sent = opens(upage)
+    load(upage, base)
+    assert len(sent) == 1, sent
+    w = api_get(base, "/api/watch")
+    assert (w["state"], w["idx"]) == ("paused", 0), w
+    expect(upage.locator("#app")).to_have_attribute("data-mode", "watch")
+    expect(upage.locator("#app")).to_have_attribute("data-watch-state", "paused")
+    expect(upage.locator('[data-testid="progress-count"]')).to_have_text(f"0 / {w['total']}")
+    upage.reload(wait_until="domcontentloaded")
+    wait_ready(upage)
+    assert len(sent) == 2, "every load opens once"
+    assert api_get(base, "/api/watch")["idx"] == 0
+    assert upage.errors == [], upage.errors
+
+
+def test_open_leaves_a_running_session_where_it_is(upage, server):
+    base = server["base"]
+    seek_game(base, MID)
+    sent = opens(upage)
+    load(upage, base)
+    assert len(sent) == 1, sent
+    assert api_get(base, "/api/watch")["idx"] == MID
+    expect(upage.locator('[data-testid="progress-count"]')).to_have_text(re.compile(rf"^{MID} / \d+$"))
+
+
+def test_open_leaves_the_live_feed_on(upage, server):
+    """With the live feed on (offline: the saved game, applied whole), open changes nothing: the feed stays on and no
+    watch session starts."""
+    base = server["base"]
+    feed_on_server(base)
+    before = version(base)
+    load(upage, base)
+    after = version(base)
+    assert after["feed"]["on"] is True
+    assert after["watch"]["state"] not in ("playing", "paused", "done"), after["watch"]
+    assert after["epoch"] == before["epoch"]
+    expect(upage.locator("#app")).to_have_attribute("data-mode", "feed")
+    api_post(base, "/api/feed", {"on": False})
+
+
+# ---------------------------------------------------------------- jumps snap the field
 @pytest.fixture
 def wsrv(watch_server):
     """The scaled-pace sandbox; any session a test leaves behind is stopped with the game put back."""
@@ -175,148 +186,79 @@ def wsrv(watch_server):
     stop_watch(watch_server["base"])
 
 
-def watch_now(base):
-    return api_get(base, "/api/watch")
-
-
-def start_watch(base, speed):
-    reset_game(base)
-    return api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": speed, "from_seq": 0})
-
-
-def wait_watch(base, check, timeout_s=40, what="the watch"):
+def sample_anim(page, until_seq, timeout_s=30):
+    """#field's anim states, sampled every 40 ms until it is idle with `until_seq` drawn."""
+    states = []
     end = time.monotonic() + timeout_s
     while time.monotonic() < end:
-        w = watch_now(base)
-        if check(w):
-            return w
-        time.sleep(0.1)
-    raise AssertionError(f"timed out waiting for {what}: {watch_now(base)}")
+        st, drawn = page.evaluate("() => { const f = document.getElementById('field');"
+                                  " return [f.dataset.animState, Number(f.dataset.drawnSeq || 0)]; }")
+        states.append(st)
+        if st == "idle" and drawn == until_seq:
+            return states
+        page.wait_for_timeout(40)
+    raise AssertionError(f"#field never settled on {until_seq}: {states[-10:]}")
 
 
-def watch_box(page):
-    return page.locator('[data-testid="watch"]')
+def test_a_seek_snaps_the_field_without_replaying_the_plays(upage_motion, wsrv):
+    """restructure-v2.md 9: a long jump draws the last play and the next call's shadows at once (motion on): the
+    field never runs the 110 plays in between."""
+    base = wsrv["base"]
+    seek_game(base, JUMP_FROM)
+    load(upage_motion, base)
+    wait_idle(upage_motion, JUMP_FROM)
+    sent = record_requests(upage_motion, "/api/watch/seek")
+    track = upage_motion.locator('[data-testid="progress"]')
+    box = track.bounding_box()
+    n = api_get(base, "/api/watch")["total"]
+    track.click(position={"x": box["width"] * JUMP_TO / n, "y": box["height"] / 2})
+    until(upage_motion, lambda: len(sent) == 1, what="the seek")
+    until(upage_motion, lambda: api_get(base, "/api/watch")["idx"] == sent[0]["body"]["idx"], what="the server")
+    states = sample_anim(upage_motion, last_seq(base))
+    assert "playing" not in states, states
+    assert upage_motion.errors == [], upage_motion.errors
 
 
-def test_watch_start_from_the_page(upage, wsrv):
-    """3.8: Watch this game confirms, posts the start at the chosen speed (default 4) from 0, and the page switches
-    to watch mode: data-watch-state playing, the pad and flags hidden, progress "n / 183"."""
+def test_a_drive_on_the_drive_chart_jumps_to_its_first_play(upage, wsrv):
+    """restructure-v2.md 5: a drive picked on the drive chart jumps the game there (a seek), paused."""
+    base = wsrv["base"]
+    game_at_end(base)
+    load(upage, base)
+    sent = record_requests(upage, "/api/watch/seek")
+    click_at(upage, f'[data-testid="drive-chart"] [data-testid="drive"]:nth-child({DRIVE_PICK + 1}) button')
+    until(upage, lambda: len(sent) == 1, what="the drive's seek")
+    idx = sent[0]["body"]["idx"]
+    until(upage, lambda: api_get(base, "/api/watch")["idx"] == idx, what="the server at the drive")
+    expect(upage.locator('[data-testid="progress-count"]')).to_have_text(re.compile(rf"^{idx} / \d+$"))
+    assert api_get(base, "/api/watch")["state"] == "paused"
+    wait_idle(upage, last_seq(base))
+    assert upage.errors == [], upage.errors
+
+
+def test_space_pauses_then_resumes_through_the_server(upage, wsrv):
+    """3.8, 4.3: Space posts pause on a playing game and resume on a paused one, nothing else."""
     base = wsrv["base"]
     reset_game(base)
+    api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 1, "from_seq": 0})
     load(upage, base)
-    asked = answer_dialogs(upage, accept=True)
-    sent = record_requests(upage, "/api/watch/start")
-    show(upage, '[data-watch="start"]').click()          # v1.4 (W5): a world may keep it in its booth (the drawer)
     expect(upage.locator("#app")).to_have_attribute("data-watch-state", "playing")
-    assert asked == [f"Watch ESPN game {EVENT} from the start? Your game is backed up first and comes back when you "
-                     "stop."]
-    assert [r["body"] for r in sent] == [{"event_id": EVENT, "speed": 4, "from_seq": 0}]
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
-    expect(upage.locator("#app")).to_have_attribute("data-mode", "watch")
-    expect(upage.locator("#manualEntry")).to_be_hidden()
-    expect(upage.locator("#flagPanel")).to_be_hidden()
-    expect(upage.locator('[data-testid="watch-progress"]')).to_have_text(re.compile(r"^\s*\d+ / 183\s*$"))
-
-
-@pytest.mark.parametrize("how", ["mouse", "keyboard"])
-def test_g5_7_watch_this_game_puts_the_booth_away_and_focus_on_pause(upage, wsrv, how):
-    """G5-7: "Watch this game" (in the drawer on Under the Lights, the feed bar on neutral) starts the watch, the
-    drawer steps away from the field, and focus lands on Pause instead of the body (by mouse or by keyboard)."""
-    base = wsrv["base"]
-    reset_game(base)
-    load(upage, base)
-    answer_dialogs(upage, accept=True)
-    start = show(upage, '.sc-feed-watch[data-watch="start"]')
-    if how == "keyboard":
-        start.focus()
-        upage.keyboard.press("Enter")
-    else:
-        start.click()
-    expect(upage.locator("#app")).to_have_attribute("data-watch-state", re.compile("playing|paused"))
-    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "false")
-    expect(upage.locator('[data-testid="watch"] [data-watch="pause"]')).to_be_focused()
-    upage.keyboard.press("Space")                          # the keyboard is right where the transport is
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "paused")
-
-
-def test_space_pauses_and_resumes(upage, wsrv):
-    """3.8, 4.3: Space pauses a playing watch and resumes a paused one."""
-    base = wsrv["base"]
-    start_watch(base, 1)
-    load(upage, base)
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
     sent = record_requests(upage, "/api/watch/", "POST")
     blur(upage)
     upage.keyboard.press("Space")
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "paused")
-    assert watch_now(base)["state"] == "paused"
+    expect(upage.locator("#app")).to_have_attribute("data-watch-state", "paused")
     upage.keyboard.press("Space")
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
+    expect(upage.locator("#app")).to_have_attribute("data-watch-state", "playing")
+    quiet(upage)
     assert [r["path"] for r in sent] == ["/api/watch/pause", "/api/watch/resume"]
 
 
-def test_right_steps_exactly_one_play_when_paused(upage, wsrv):
-    """2.2 review at the live edge: Right on a paused watch steps the server one play; the field draws exactly it."""
-    base = wsrv["base"]
-    start_watch(base, 1)
-    wait_watch(base, lambda w: w["idx"] >= 3, what="three plays")
-    api_post(base, "/api/watch/pause")
-    n = version(base)["timeline_n"]
-    load(upage, base)
-    wait_idle(upage, n)
-    steps = record_requests(upage, "/api/watch/step")
-    blur(upage)
-    upage.keyboard.press("ArrowRight")
-    wait_idle(upage, n + 1)
-    quiet(upage, 1000)
-    assert field_attr(upage, "data-drawn-seq") == str(n + 1)
-    assert len(steps) == 1
-    assert (watch_now(base)["idx"], watch_now(base)["state"]) == (n + 1, "paused")
-
-
-def test_digit_keys_set_the_watch_speed(upage, wsrv):
-    """3.8, 4.3: 1 to 4 post speeds 1, 2, 4 and 10; the pressed speed button follows."""
-    base = wsrv["base"]
-    start_watch(base, 1)
-    api_post(base, "/api/watch/pause")
-    load(upage, base)
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "paused")
-    sent = record_requests(upage, "/api/watch/speed")
-    blur(upage)
-    for key in ("1", "2", "3", "4"):
-        upage.keyboard.press(key)
-    until(upage, lambda: len(sent) == 4, what="four speed posts")
-    assert [r["body"] for r in sent] == [{"speed": 1}, {"speed": 2}, {"speed": 4}, {"speed": 10}]
-    expect(upage.locator('[data-speed="10"]')).to_have_attribute("aria-pressed", "true")
-    expect(upage.locator('[data-speed][aria-pressed="true"]')).to_have_count(1)
-    assert watch_now(base)["speed"] == 10
-
-
-def test_stop_puts_the_pre_watch_game_back(upage, wsrv):
-    """3.8: Stop confirms "Stop watching and put your game back?", posts restore, and the pre-watch log returns."""
+def test_no_play_row_is_ever_ahead_of_the_field(upage_motion, wsrv):
+    """DC E5 on screen (3.4): while a game plays with motion on, no play row has a seq above #field[data-drawn-seq]."""
     base = wsrv["base"]
     reset_game(base)
-    command(base, "new D25 | K 3")
-    api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 1, "from_seq": 0})
-    wait_watch(base, lambda w: w["idx"] >= 3, what="three plays")
-    load(upage, base)
-    asked = answer_dialogs(upage, accept=True)
-    sent = record_requests(upage, "/api/watch/stop")
-    upage.locator('[data-watch="stop"]').click()
-    expect(upage.locator("#app")).not_to_have_attribute("data-watch-state", re.compile("playing|paused"))
-    assert asked == ["Stop watching and put your game back?"]
-    assert [r["body"] for r in sent] == [{"restore": True}]
-    s = state(base)
-    assert (len(s["log"]), s["log"][0]["name"], s["drive_active"]) == (1, "Inside run (A/B gap)", True)
-    expect_log_rows(upage, 1)
-    expect(upage.locator("#manualEntry")).to_be_visible()
-
-
-def test_no_play_row_is_ever_ahead_of_the_field(upage_motion, wsrv):
-    """DC E5 on screen (3.4): while a watch plays with motion on, no play row has a seq above #field[data-drawn-seq]."""
-    base = wsrv["base"]
-    start_watch(base, 4)
-    load(upage_motion, base)
+    api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 4, "from_seq": 0})
+    upage_motion.goto(app_url(base), wait_until="domcontentloaded")
+    wait_ready(upage_motion)
     samples = []
     end = time.monotonic() + 6
     while time.monotonic() < end:
@@ -327,112 +269,5 @@ def test_no_play_row_is_ever_ahead_of_the_field(upage_motion, wsrv):
         upage_motion.wait_for_timeout(80)
     ahead = [s for s in samples if s[1] > s[0]]
     assert not ahead, f"play rows ahead of the field: {ahead[:5]}"
-    assert max(d for d, _ in samples) > 0, "nothing was drawn while the watch played"
-
-
-def test_done_then_watch_again_restores_before_starting(upage, wsrv):
-    """3.8: a finished session shows Back to my game and Watch again; Watch again stops with restore, then starts."""
-    base = wsrv["base"]
-    start_watch(base, 10)
-    wait_watch(base, lambda w: w["state"] == "done", timeout_s=60, what="the watched game to finish")
-    load(upage, base)
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "done")
-    expect(upage.locator('[data-watch="back"]')).to_be_enabled()
-    expect(upage.locator('[data-watch="again"]')).to_be_enabled()
-    expect(upage.locator('[data-testid="watch-progress"]')).to_have_text(re.compile(r"^\s*183 / 183\s*$"))
-    answer_dialogs(upage, accept=True)
-    sent = record_requests(upage, "/api/watch/", "POST")
-    upage.locator('[data-watch="again"]').click()
-    until(upage, lambda: len(sent) >= 2, what="stop then start")
-    assert [r["path"] for r in sent[:2]] == ["/api/watch/stop", "/api/watch/start"]
-    assert sent[0]["body"] == {"restore": True}
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
-
-
-def test_retag_while_playing_pauses_first(upage, wsrv):
-    """DC E2.8, 4.3 watch mode: A while the watch plays posts pause, then the retag."""
-    base = wsrv["base"]
-    start_watch(base, 1)
-    wait_watch(base, lambda w: w["idx"] >= 3, what="the first Dallas snap")
-    load(upage, base)
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
-    sent = record_requests(upage, "/api/", "POST")
-    blur(upage)
-    upage.keyboard.press("a")
-    until(upage, lambda: len(sent) >= 2, what="pause then retag")
-    assert [r["path"] for r in sent[:2]] == ["/api/watch/pause", "/api/retag"]
-    assert sent[1]["body"] == {"key": "A"}
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "paused")
-
-
-def test_undo_is_refused_while_a_game_plays_back(upage, wsrv):
-    """4.3 watch mode: U gives the red toast "Undo is off while a game plays back. Stop watching first." and no undo."""
-    base = wsrv["base"]
-    start_watch(base, 1)
-    load(upage, base)
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
-    undos = record_requests(upage, "/api/undo")
-    blur(upage)
-    upage.keyboard.press("u")
-    expect_toast(upage, "Undo is off while a game plays back. Stop watching first.", error=True)
-    quiet(upage)
-    assert undos == []
-
-
-def test_transport_buttons_follow_the_watch_state(upage, wsrv):
-    """5.4: transport buttons are disabled when not allowed: playing (pause, stop), paused (play, step, stop)."""
-    base = wsrv["base"]
-    start_watch(base, 1)
-    load(upage, base)
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "playing")
-    expect_buttons(upage, enabled=("pause", "stop"), disabled=("play", "step"))
-    upage.locator('[data-watch="pause"]').click()
-    expect(watch_box(upage)).to_have_attribute("data-watch-state", "paused")
-    expect_buttons(upage, enabled=("play", "step", "stop"), disabled=("pause",))
-
-
-def expect_buttons(page, enabled, disabled):
-    for name in enabled:
-        expect(page.locator(f'[data-watch="{name}"]')).to_be_enabled()
-    for name in disabled:
-        expect(page.locator(f'[data-watch="{name}"]')).to_be_disabled()
-
-
-def test_g5_12_keys_on_the_replay_slider_reach_the_page(upage, wsrv):
-    """G5-12: with the replay strip (a slider) focused, B opens the booth and Escape closes it, while Left still
-    reviews an earlier play on the strip itself."""
-    base = wsrv["base"]
-    start_watch(base, 10)
-    wait_watch(base, lambda w: w["idx"] >= 12, what="a dozen plays")
-    api_post(base, "/api/watch/pause")
-    load(upage, base)
-    track = upage.locator('[data-testid="scrub-track"]')
-    expect(track).to_be_visible()
-    track.focus()
-    upage.keyboard.press("b")
-    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "true")
-    upage.keyboard.press("Escape")
-    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "false")
-    track.focus()
-    upage.keyboard.press("ArrowLeft")
-    expect(upage.locator("#field")).to_have_attribute("data-review-seq", re.compile(r"^\d+$"))
-
-
-def test_g5_16_the_watch_booth_puts_settings_before_a_read_only_situation(upage, wsrv):
-    """G5-16 (Under the Lights): in Watch this game the drawer reads FEED, SETTINGS, SITUATION, and the situation is
-    read-only with no drive ends (ESPN's plays are applied)."""
-    from ui_helpers import BOOT_TIMEOUT_MS
-    base = wsrv["base"]
-    start_watch(base, 10)
-    wait_watch(base, lambda w: w["idx"] >= 5, what="a few plays")
-    api_post(base, "/api/watch/pause")
-    upage.goto(f"{base}/?world=under-the-lights&scene=2d", wait_until="domcontentloaded", timeout=BOOT_TIMEOUT_MS)
-    upage.wait_for_selector('#app[data-boot="ready"][data-mode="watch"]', state="attached", timeout=BOOT_TIMEOUT_MS)
-    upage.keyboard.press("b")
-    expect(upage.locator("#app")).to_have_attribute("data-booth-open", "true")
-    tops = {name: upage.locator(f"#uls-plate-{name}").bounding_box()["y"] for name in ("feed", "settings", "situation")}
-    assert tops["feed"] < tops["settings"] < tops["situation"], tops
-    expect(upage.locator("#iClock")).to_have_attribute("readonly", "")
-    expect(upage.locator("#iClock")).to_have_attribute("tabindex", "-1")
-    expect(upage.locator("#endRow")).to_be_hidden()
-    expect(upage.locator("#ulsRoomLights")).to_be_in_viewport()
+    assert max(d for d, _ in samples) > 0, "nothing was drawn while the game played"
+    assert state(base)["watch"]["state"] in ("playing", "done")

@@ -1,11 +1,13 @@
-// Masthead (FI 3.1, #1): title, game label, who is modelled, camera mode (V), booth (B) and scorecard (G) toggles.
+// The top bar's nameplate (restructure-v2.md 2): the title, who it shadows ("Shadowing Schottenheimer · DAL") and
+// the current game ("TB at DAL · Final"), where phase 2 puts the game picker. Nothing team-specific.
 import { APP, MASTHEAD } from "./copy.js";
-import { capitalize, freezeDeep } from "./format.js";
+import { freezeDeep } from "./format.js";
+import { gameOf } from "./vm-transport.js";
+import { teamsOf } from "./vm-scoreboard.js";
 
 const str = (v) => (typeof v === "string" ? v : "");
 /** Name suffixes that are never the family name ("Frank Smith Jr." is Smith). */
 const SUFFIX_RE = /^(jr|sr|ii|iii|iv|v)\.?$/i;
-const TITLE_SEP = " · ";
 
 /**
  * v1.5 (G4-2): the play-caller's last name from the profile's full name ("Brian Schottenheimer" gives
@@ -19,35 +21,31 @@ export function lastNameOf(caller) {
   return named.length ? named[named.length - 1] : "";
 }
 
-/** The camera's label from the engine's modes when the scheduler passes them (pv.cameraModes), else from its id. */
-function cameraLabel(id, modes) {
-  if (!id) return "";
-  const mode = Array.isArray(modes) ? modes.find((m) => m && m.id === id) : null;
-  return mode && typeof mode.label === "string" ? mode.label : capitalize(id);
+/** "TB at DAL", and ESPN's status for the game once the watch says it ("TB at DAL · Final"). */
+function gameLabelOf(pv) {
+  const [away, home] = teamsOf(pv).order;
+  if (!away || !home) return "";
+  const game = gameOf(pv);
+  const detail = game ? str(game.detail) : "";
+  return detail ? MASTHEAD.gameDetail(MASTHEAD.game(away, home), detail) : MASTHEAD.game(away, home);
 }
 
 /**
- * @param {object} pv  presented view; optional pv.cameraModes = engine.cameraModes()
- * @returns {object} frozen {title, gameLabel, whoLabel, plateTitle, cameraLabel, cameraMode, boothOpen, scorecardOpen}
- *   whoLabel is the short line ("Shadowing Schottenheimer · DAL"); plateTitle the plate's tooltip, every word whole
+ * @param {object} pv  presented view
+ * @returns {object} frozen {title, whoLabel, plateTitle, gameLabel, gameTitle}: whoLabel is the short line; plateTitle
+ *   its tooltip, every word whole; gameTitle the game's whole label (ESPN's matchup, the broadcast and the date)
  */
 export function mastheadVm(pv) {
   const p = pv && pv.presented;
   const profile = (p && p.profile) || null;
-  const view = (pv && pv.view) || {};
-  const camera = str(view.camera);
   const caller = profile ? str(profile.caller) : "";
   const team = profile ? str(profile.team) : "";
-  const gameLabel = str(p && p.game && p.game.label);
-  const whoTitle = caller ? MASTHEAD.whoTitle(caller, team) : "";
+  const gameLabel = gameLabelOf(pv);
   return freezeDeep({
     title: APP.title,
-    gameLabel,
     whoLabel: caller ? MASTHEAD.whoLabel(lastNameOf(caller), team) : "",
-    plateTitle: [gameLabel, whoTitle].filter(Boolean).join(TITLE_SEP),
-    cameraLabel: cameraLabel(camera, pv && pv.cameraModes),
-    cameraMode: camera,
-    boothOpen: Boolean(view.booth && view.booth.open),
-    scorecardOpen: Boolean(view.scorecardOpen),
+    plateTitle: caller ? MASTHEAD.whoTitle(caller, team) : "",
+    gameLabel,
+    gameTitle: str(p && p.game && p.game.label) || gameLabel,
   });
 }

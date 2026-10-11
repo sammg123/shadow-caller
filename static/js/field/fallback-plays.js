@@ -14,6 +14,7 @@
  */
 import { deepFreeze } from "../core/domain.js";
 import { verdictText } from "../model/verdict.js";
+import { rowVerdictText } from "../model/vm-field.js";
 import { liftToLuminance, mixHex } from "../theme/team-colors.js";
 import { FIELD } from "./coords.js";
 import { r2, node, paintOf, tagNode, tagSize } from "./fallback-draw.js";
@@ -148,10 +149,16 @@ function labelSpec(label, ctx, side) {
   return { text: label.text, at, side, node: marked };
 }
 
+/**
+ * 4b: the LAST plate's verdict line: the words its chip was given (markVerdict, a retag), else its verdict's plain
+ * words, else, for a play drawn at once (a jump, a step: never marked), the same words from its row.
+ */
+const lastSub = (verdict, words, row) => [words, verdictText(verdict), rowVerdictText(row)]
+  .find((w) => typeof w === "string" && w.trim() !== "") ?? "";
+
 /** 4b: the previous play's words on the LAST plate, its verdict on a second line in the same muted plate. */
-function lastSpec(label, ctx, verdict, words) {
+function lastSpec(label, ctx, sub) {
   if (!label?.text || !showsWords(ctx)) return null;
-  const sub = typeof words === "string" && words.trim() ? words : verdictText(verdict) || "";
   const plate = plateNode({ tag: LAST_TAG, body: label.text, sub, tab: resolvePlayLook(ctx.look).last.core,
     tone: "muted", size: tagSize(ctx, "s"), part: "play-label", role: "last",
     cls: `${ctx.look.labels.className} sc-fb-play-label is-last` });
@@ -183,7 +190,8 @@ function stepSpec(step, index, team, ctx, badge, last) {
  * on screen, -1 above), verdictNode (on the far side of the words from the play), words (that label in field yards,
  * what the shadows' words keep clear of). A part is { role, tag, attrs (its finished state), anim }. `labelPx` is the
  * tags' measured size (the label model's when null). `last` (4b, while his next call is up): the play in muted steel
- * and its words on the LAST plate with the verdict (`verdictWords`, else the verdict's plain words) under them.
+ * and its words on the LAST plate with the verdict (`verdictWords`, else the verdict's plain words, else the row's own
+ * when it was drawn at once and never marked) under them.
  * Never mutates the row or the drawing.
  */
 export function playSpec(drawing, row, ctx, { verdict = null, labelPx = null, last = false,
@@ -191,7 +199,7 @@ export function playSpec(drawing, row, ctx, { verdict = null, labelPx = null, la
   const carriers = carriersOf(row, drawing);
   const words = placePlayLabel(drawing, viewMetrics(ctx, drawing.ballStart?.x, labelPx));
   const side = wordsSide(words, drawing);
-  const label = last ? lastSpec(words, ctx, verdict, verdictWords) : labelSpec(words, ctx, side);
+  const label = last ? lastSpec(words, ctx, lastSub(verdict, verdictWords, row)) : labelSpec(words, ctx, side);
   return {
     seq: drawing.seq, drive: row.drive ?? null, team: drawing.team,
     steps: drawing.steps.map((step, i) => stepSpec(step, i, carriers[i], ctx, -side, last)),

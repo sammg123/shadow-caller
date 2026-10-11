@@ -1,8 +1,8 @@
 // HTTP client for every endpoint the UI calls (ui-architecture.md 2.2; DC C1, E1, E4; FI 2.1; owner A1).
 // Pure*: no DOM; fetch and the timers are injected so node tests can stub them. Both are called bare: browsers
 // throw "Illegal invocation" when fetch or setTimeout run as a method of another object.
-// GETs resolve with the parsed JSON object. POSTs resolve { status, body } for 200, 400 and 409 (400 bodies are the
-// full state plus `error`; 409 bodies may hold only `error`); everything else rejects with ApiError.
+// GETs resolve with the parsed JSON object. POSTs resolve { status, body } for 200, 400, 409 and 503 (400 bodies are
+// the full state plus `error`; 409 and 503 bodies may hold only `error`); everything else rejects with ApiError.
 
 export class ApiError extends Error {
   /** @param {"network" | "timeout" | "http" | "bad-json"} kind */
@@ -15,19 +15,18 @@ export class ApiError extends Error {
   }
 }
 
-/** Per-request timeouts in ms. Replay holds the server lock about 11 s (DC E6), hence the long POST timeout. */
+/** Per-request timeouts in ms. A seek rebuilds the game from kickoff and Go Live applies every ESPN play so far, both
+ * under the server's lock, hence the long POST timeout. */
 export const TIMEOUTS = Object.freeze({ version: 4000, state: 8000, timeline: 8000, post: 30000 });
 
-/** Every POST endpoint (FI 2.1 and DC E1). `score` is unused by the UI but exists on the server. */
+/** Every POST the page sends: playback only (restructure-v2.md 9). The manual-entry endpoints stay on the server for
+ * compatibility, but the page never sends user input into the game (restructure-v2.md 1). */
 export const ROUTES = Object.freeze({
-  situation: "/api/situation", play: "/api/play", penalty: "/api/penalty", retag: "/api/retag", drive: "/api/drive",
-  score: "/api/score", command: "/api/command", undo: "/api/undo", reset: "/api/reset", feed: "/api/feed",
-  replay: "/api/feed/replay", watchStart: "/api/watch/start", watchPause: "/api/watch/pause",
-  watchResume: "/api/watch/resume", watchStep: "/api/watch/step", watchSpeed: "/api/watch/speed",
-  watchStop: "/api/watch/stop",
+  open: "/api/open", seek: "/api/watch/seek", back: "/api/watch/back", forward: "/api/watch/forward",
+  golive: "/api/golive", pause: "/api/watch/pause", resume: "/api/watch/resume", speed: "/api/watch/speed",
 });
 export const POST_PATHS = Object.freeze(Object.values(ROUTES));
-const POST_OK = Object.freeze([200, 400, 409]);
+const POST_OK = Object.freeze([200, 400, 409, 503]);
 const JSON_HEADERS = Object.freeze({ Accept: "application/json" });
 
 const isObjectBody = (v) => v !== null && typeof v === "object" && !Array.isArray(v);

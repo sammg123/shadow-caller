@@ -10,7 +10,7 @@ from helpers import EVENT, get, post
 
 SLOW = 0.5            # speed: the opening kickoff lands 10 s after a start, so a session sits at row 0 during a test
 WATCH_KEYS = {"state", "event_id", "speed", "idx", "total", "next_at", "skipped", "next_kind", "ff_until",
-              "started_at", "feed_was_on", "backup", "error"}
+              "started_at", "feed_was_on", "backup", "error", "marks", "game"}
 
 
 def send(base, path, body=None, raw=None):

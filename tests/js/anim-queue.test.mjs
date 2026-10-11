@@ -3,7 +3,7 @@ import test from "node:test";
 
 import {
   BUDGET_SHARE, CALL_RESERVE_MS, CALL_RESERVE_SHARE, MAX_ANIMATED_QUEUE, MIN_ANIM_MS, OWN_ACTION_MAX_MS,
-  STALE_WATCH_HOLD_MS, emptyAnim, enqueue, flushAll, markDone, markRebuilt, markStarted, nextJob, rebuild,
+  STALE_WATCH_HOLD_MS, emptyAnim, enqueue, flushAll, markDone, markJump, markRebuilt, markStarted, nextJob, rebuild,
 } from "../../static/js/core/anim-queue.js";
 import { deepFreeze, loadTimeline } from "./fixtures.mjs";
 
@@ -18,7 +18,7 @@ test("the E4 constants", () => {
   assert.equal(BUDGET_SHARE, 0.8);
   assert.equal(MIN_ANIM_MS, 120);
   assert.equal(OWN_ACTION_MAX_MS, 800);
-  assert.deepEqual(emptyAnim(), { token: 0, queue: [], playing: null, drawnThrough: 0, rebuilding: false });
+  assert.deepEqual(emptyAnim(), { token: 0, queue: [], playing: null, drawnThrough: 0, rebuilding: false, jump: null });
 });
 
 test("5 queued: the 2 oldest draw instantly, the newest 3 animate (DC E4)", () => {
@@ -143,7 +143,7 @@ test("markStarted and markDone move the head through playing into drawnThrough",
 
 test("rebuild bumps the token and draws through n without animation", () => {
   const q = deepFreeze({ ...enqueue(emptyAnim(), plays(1, 3), POLL), playing: { seq: 9, startedAt: 0, durationMs: 1 } });
-  assert.deepEqual(rebuild(q, 183), { token: 1, queue: [], playing: null, drawnThrough: 183, rebuilding: true });
+  assert.deepEqual(rebuild(q, 183), { token: 1, queue: [], playing: null, drawnThrough: 183, rebuilding: true, jump: null });
   const r = deepFreeze(rebuild(q, 183));
   assert.equal(markRebuilt(r, 0), r, "stale token");
   assert.equal(markRebuilt(r, 1).rebuilding, false);
@@ -156,4 +156,26 @@ test("flushAll makes every queued item instant and hurries the running play", ()
   assert.equal(f.playing.hurry, true);
   assert.equal(flushAll(deepFreeze(f)), f, "nothing left to flush: same object");
   assert.equal(flushAll(deepFreeze(emptyAnim())).playing, null);
+});
+
+// ---------------------------------------------------------------- restructure-v2.md 5: a jump snaps the field
+test("a jump makes every queued row instant and hurries the one drawing, so the field snaps to where it landed", () => {
+  const q = deepFreeze({ ...enqueue(emptyAnim(), plays(2, 4), POLL), playing: { seq: 1, startedAt: 0, durationMs: 2000 } });
+  const j = markJump(q, "e2", 40);
+  assert.deepEqual(j.jump, { epoch: "e2", n: 40 });
+  assert.ok(j.queue.every((x) => x.instant), "nothing it already holds replays");
+  assert.equal(j.playing.hurry, true);
+  assert.equal(markJump(deepFreeze(j), "e2", 40), j, "the same jump again: same object");
+});
+
+test("rows of the jumped-to game that arrive later draw instantly; rows past it animate as usual", () => {
+  const j = deepFreeze(markJump(emptyAnim(), "e2", 4));
+  const a = enqueue(j, plays(1, 6), { ...POLL, instantThrough: 4 });
+  assert.deepEqual(a.queue.map((q) => [q.seq, q.instant]),
+    [[1, true], [2, true], [3, true], [4, true], [5, false], [6, false]]);
+});
+
+test("a rebuild keeps the jump: rows of the new game that come after the rebuild still snap", () => {
+  const r = rebuild(deepFreeze(markJump(emptyAnim(), "e3", 50)), 30);
+  assert.deepEqual(r.jump, { epoch: "e3", n: 50 });
 });

@@ -1,11 +1,12 @@
 """Helpers for the UI regression suite (package A11; ui-architecture.md sections 5 and 7.2, feature-inventory.md 6.1).
 
 Every test sets its own server state first (FI 6.1) and then loads the page on `WORLD` (`?world=`): neutral by
-default; `SC_E2E_WORLD=under-the-lights` runs the same checklist on Sam's world (v1.4, W6).
+default; `SC_E2E_WORLD=under-the-lights` runs the same checklist on Sam's world (v1.4, W6). On load the page opens its
+game once (restructure-v2.md 9: POST /api/open): a watch session or the live feed already on is left as it is, else a
+finished game opens paused at kickoff, so a test that wants another moment of the saved game seeks there first
+(seek_game, game_at_end).
 Model-dependent numbers are read from GET /api/state and formatted here exactly like model/format.js does, never
 hard-coded. Selectors come only from the contract in ui-architecture.md section 5."""
-import csv
-import io
 import json
 import math
 import os
@@ -25,22 +26,20 @@ from playwright.sync_api import expect
 from helpers import EVENT, ROOT, _free_port  # noqa: F401  (tests/helpers.py: the saved TB at DAL game)
 
 WORLD = os.environ.get("SC_E2E_WORLD", "neutral")      # v1.4 (W6): the world every UI test loads
-# v1.4 (W6): what the checklist reads that differs by world, from each world's look (theme/neutral-look.js and
-# theme/worlds/under-the-lights/look.js): its camera modes (id, label) in V order, the first being the default.
-WORLD_CAMERAS = {"neutral": [("sideline", "Sideline"), ("endzone", "End zone"), ("overhead", "Overhead")],
-                 "under-the-lights": [("wide", "Wide"), ("tight", "Tight"), ("blimp", "Blimp")]}
+# restructure-v2.md 4: each world's two views (id, label) in V order, the first being the default (the neutral world's
+# index.js and theme/worlds/under-the-lights/look.js).
+WORLD_CAMERAS = {"neutral": [("wide", "Wide"), ("blimp", "Blimp")],
+                 "under-the-lights": [("wide", "Wide"), ("blimp", "Blimp")]}
 CAMERAS = WORLD_CAMERAS[WORLD]
-SHOW_WAIT_MS = 500              # show(): how long a target may take to appear before a closed container is opened
+SHOW_WAIT_MS = 500              # how long a target may take to appear on screen
 BOOT_TIMEOUT_MS = 60_000        # three.js in SwiftShader, and a server busy with a replay: room, once per test
 ACTION_TIMEOUT_MS = 10_000      # clicks and fills on an element that never shows fail, in time for a busy machine
 EXPECT_TIMEOUT_MS = 10_000      # 1 s poll + presentation gating (at most 4 s, decision 2), with room on a busy machine
 QUIET_MS = 700                  # a "sends nothing" check waits this long for a request that must never come
 REPLAY_TIMEOUT_S = 90
-REPLAY_TOAST_MS = 45_000        # a replay holds the server about 11 s (DC E6), more on a busy machine
 FEED_GAME_S = 180               # the offline feed applies the whole game in one poll: about 9 s idle, minutes when busy
 SESSION_STATES = ("playing", "paused", "done", "error")
 TOTAL_ROWS = 183                # DC B1: TB@DAL fully applied
-LOG_ROWS = 59                   # DC B7: the engine log after the whole game (55 counted + 4 nullified)
 
 expect.set_options(timeout=EXPECT_TIMEOUT_MS)
 
@@ -82,11 +81,6 @@ def full_timeline(base):
     return api_get(base, "/api/timeline?since=0")
 
 
-def command(base, text):
-    """Run one shorthand line through the API (FI 2.6); it must succeed."""
-    return api_post(base, "/api/command", {"text": text})
-
-
 # ---------------------------------------------------------------- server preconditions (FI 6.1)
 def stop_watch(base):
     """End any Watch session and put the game it backed up back (DC E2.6); /api/reset refuses during one."""
@@ -105,13 +99,6 @@ def reset_game(base):
     api_post(base, "/api/reset")
 
 
-def clear_history(base):
-    """Empty the undo history without changing the game: a watch start backs the game up and clears the history, and
-    the stop with restore puts the same game back with the history still empty (ui-architecture Appendix B v1.2)."""
-    api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 0.5})
-    api_post(base, "/api/watch/stop", {"restore": True})
-
-
 _FINISHED = {}
 
 
@@ -128,6 +115,35 @@ def ensure_finished(base):
     api_post(base, "/api/feed/replay", {"event_id": EVENT})
     v = version(base)
     _FINISHED[base] = (v["epoch"], v["version"])
+
+
+def seek_game(base, idx):
+    """The saved game paused with its first `idx` plays applied, in a watch session (POST /api/watch/seek), so the
+    page's open on load leaves it there."""
+    feed_off(base)
+    return api_post(base, "/api/watch/seek", {"idx": idx})
+
+
+def game_at_end(base):
+    """The saved final game at its end, in a watch session (Go Live on a finished game jumps to its end)."""
+    feed_off(base)
+    return api_post(base, "/api/golive")
+
+
+def watch_paused_at(base, idx, tries=3):
+    """A watch of the saved game, paused with exactly `idx` plays applied one by one (step is exact, DC E2), and its
+    /api/state. The slowest speed leaves the first play's wait between start and pause; should a busy server apply
+    plays past `idx` first, it starts over. (seek_game gets there too, rebuilt at once.)"""
+    for _ in range(tries):
+        stop_watch(base)
+        feed_off(base)
+        api_post(base, "/api/watch/start", {"event_id": EVENT, "speed": 0.5, "from_seq": 0})
+        api_post(base, "/api/watch/pause")
+        while api_get(base, "/api/watch")["idx"] < idx:
+            api_post(base, "/api/watch/step")
+        if api_get(base, "/api/watch")["idx"] == idx:
+            return state(base)
+    raise AssertionError(f"couldn't pause the watch at play {idx}: {api_get(base, '/api/watch')}")
 
 
 def wait_server(base, check, timeout_s=30, what="the server state"):
@@ -155,8 +171,10 @@ def app_url(base, query=""):
 
 
 def wait_ready(page):
-    """The boot finished: the first state is loaded (#app[data-boot="ready"], written by the conductor)."""
+    """The boot finished: the first state is loaded and the page has opened its game (#app[data-boot="ready"], written
+    by the conductor once POST /api/open answered), and the loading screen is gone (it hides on the next frame)."""
     page.wait_for_selector('#app[data-boot="ready"]', state="attached", timeout=BOOT_TIMEOUT_MS)
+    page.wait_for_selector('[data-testid="boot"]', state="hidden", timeout=BOOT_TIMEOUT_MS)
 
 
 def load(page, base, query="", ready=True):
@@ -166,24 +184,14 @@ def load(page, base, query="", ready=True):
 
 
 def fresh(page, base, query=""):
+    """A first visit: no session, the feed off, the game reset; the page then opens the saved game at kickoff."""
     reset_game(base)
-    load(page, base, query)
-
-
-def with_drive(page, base, query="", spot="new D25"):
-    """Drive (FI 6.1): fresh, then `new D25` (1st & 10 at DAL 25), then load."""
-    reset_game(base)
-    command(base, spot)
     load(page, base, query)
 
 
 def finished(page, base, query=""):
-    ensure_finished(base)
-    load(page, base, query)
-
-
-def feed_on(page, base, query=""):
-    feed_on_server(base)
+    """The saved game at its final whistle on the page (game_at_end), every row drawn."""
+    game_at_end(base)
     load(page, base, query)
 
 
@@ -191,9 +199,6 @@ def wait_idle(page, seq=None, timeout=15_000):
     """#field[data-anim-state="idle"], and [data-drawn-seq="seq"] when given (ui-architecture 5.3)."""
     sel = '#field[data-anim-state="idle"]' + (f'[data-drawn-seq="{seq}"]' if seq is not None else "")
     page.wait_for_selector(sel, state="attached", timeout=timeout)
-
-
-CONTAINERS = (("booth-toggle", "data-booth-open"), ("scorecard-toggle", "data-scorecard-open"))
 
 
 def _shows(loc, ms=SHOW_WAIT_MS):
@@ -204,29 +209,10 @@ def _shows(loc, ms=SHOW_WAIT_MS):
         return False
 
 
-def show(page, selector):
-    """The element on screen: when it isn't, opens the closed booth (B) or stat board (G) that holds it and closes
-    again one that didn't help (ui-architecture 7.2; v1.4, W6: Under the Lights keeps the feed's controls in its
-    drawer and the scorecard, tendencies, box and log on its stat board)."""
-    loc = page.locator(selector).first
-    if _shows(loc):
-        return loc
-    for testid, attr in CONTAINERS:
-        toggle = page.locator(f'[data-testid="{testid}"]').first
-        if not page.locator(f'#app[{attr}="false"]').count() or not toggle.count():
-            continue
-        toggle.click()
-        page.wait_for_selector(f'#app[{attr}="true"]', state="attached")
-        if _shows(loc):
-            return loc
-        toggle.click()
-        page.wait_for_selector(f'#app[{attr}="false"]', state="attached")
-    return loc
-
-
 def reveal(page, selector):
-    """The target on screen where a world rolls its region up (v1.4, W6: Under the Lights' ribbons and video board
-    unroll on hover or focus): hover the innermost region that holds it first; scroll only when that wasn't enough."""
+    """The target on screen where a world rolls its region up (v1.4, W6: Under the Lights' lower ribbon unrolls the
+    drive chart on hover or focus): hover the innermost region that holds it first; scroll only when that wasn't
+    enough."""
     loc = page.locator(selector).first
     if _shows(loc, 100):
         return loc
@@ -306,15 +292,6 @@ def blur(page):
                   "document.activeElement.blur(); }")
 
 
-def active_id(page):
-    return page.evaluate("() => document.activeElement ? document.activeElement.id : null")
-
-
-def selection_of(page, selector):
-    """(selectionStart, selectionEnd, value length) of an input."""
-    return tuple(page.locator(selector).evaluate("e => [e.selectionStart, e.selectionEnd, e.value.length]"))
-
-
 def until(page, check, timeout_ms=EXPECT_TIMEOUT_MS, step_ms=100, what="a condition"):
     """Wait for check() while letting Playwright deliver events (request listeners run during page waits)."""
     waited = 0
@@ -329,7 +306,7 @@ def quiet(page, ms=QUIET_MS):
     page.wait_for_timeout(ms)
 
 
-# ---------------------------------------------------------------- requests, dialogs, errors
+# ---------------------------------------------------------------- requests and errors
 def record_requests(page, path, method="POST"):
     """Requests to `path` (exact; a path ending in "/" is a prefix) as {"path", "method", "body"} in send order."""
     seen = []
@@ -347,46 +324,12 @@ def record_requests(page, path, method="POST"):
     return seen
 
 
-def answer_dialogs(page, accept=True):
-    """Answer every confirm; returns the messages in order. `accept` is one answer for all, or a list with one per
-    dialog in order (the last one repeats). Without a handler Playwright dismisses dialogs."""
-    messages = []
-    answers = list(accept) if isinstance(accept, (list, tuple)) else [accept]
-
-    def on_dialog(dialog):
-        messages.append(dialog.message)
-        if answers[min(len(messages), len(answers)) - 1]:
-            dialog.accept()
-        else:
-            dialog.dismiss()
-
-    page.on("dialog", on_dialog)
-    return messages
-
-
 def js_errors(page):
     """Uncaught exceptions only (console network errors are left to the tests that look for them)."""
     return [e for e in page.errors if e.startswith("pageerror")]
 
 
-def no_js_errors(page):
-    assert js_errors(page) == [], js_errors(page)
-
-
-def expect_shows(scope, text, timeout=EXPECT_TIMEOUT_MS):
-    """`text` (a string or a regex) is in `scope` with its exact case (textContent) and inside an element that is on
-    screen: a hidden face that still holds old text doesn't count (innerText would apply CSS text-transform, so the
-    case is checked on textContent and only the visibility on the matched element)."""
-    expect(scope).to_contain_text(text, timeout=timeout)
-    expect(scope.get_by_text(text).first).to_be_visible(timeout=timeout)
-
-
-def expect_off_field(page, team="DAL"):
-    """FI 3.5: the hero's off-field face is on screen."""
-    expect_shows(page.locator("#heroArea"), f"{team} is off the field")
-
-
-# ---------------------------------------------------------------- toast and log table
+# ---------------------------------------------------------------- toasts
 SHOW_RE = re.compile(r"(^|\s)show(\s|$)")
 ERR_RE = re.compile(r"(^|\s)err(\s|$)")
 
@@ -445,8 +388,8 @@ def toasts_shown(page):
 def expect_toast(page, text, error=False, timeout=EXPECT_TIMEOUT_MS):
     """A toast shows `text` (a string, whitespace-normalized and whole, or a regex searched): .show, .err only for
     errors, data-tone mirrored (5.1, FI 4.5). Toasts are taken in order: each call matches the first toast after the
-    one the previous call matched, so two "Undid the last action." in a row need two toasts. `timeout` is how long the
-    toast may take to appear (a replay answers after several seconds, DC E6)."""
+    one the previous call matched, so the same words twice in a row need two toasts. `timeout` is how long the toast
+    may take to appear (a seek or Go Live rebuilds the game first, restructure-v2.md 9)."""
     if toast_log(page) is None:
         _expect_toast_in_dom(page, text, error, timeout)
         return
@@ -480,29 +423,6 @@ def _expect_toast_in_dom(page, text, error, timeout):
     else:
         expect(toast).not_to_have_class(ERR_RE)
     expect(toast).to_have_attribute("data-tone", "error" if error else "info")
-
-
-LOG_COLUMNS = ["#", "Time", "Situation", "His top pick", "Actual", "His % on it", "League %", "Rank", "Yds"]
-COL = {name: i for i, name in enumerate(LOG_COLUMNS)}
-LOG_ROWS_SEL = "#logArea tbody tr"
-
-
-def log_header(page):
-    return page.locator("#logArea thead th").evaluate_all("els => els.map(e => e.innerText.trim())")
-
-
-def log_table(page):
-    """The play log as rows of cell texts, newest first (FI 3.9)."""
-    return page.locator(LOG_ROWS_SEL).evaluate_all(
-        "rows => rows.map(r => [...r.querySelectorAll('th, td')].map(c => c.innerText.trim()))")
-
-
-def expect_log_rows(page, n, timeout=EXPECT_TIMEOUT_MS):
-    expect(page.locator(LOG_ROWS_SEL)).to_have_count(n, timeout=timeout)
-
-
-def csv_rows(text):
-    return list(csv.reader(io.StringIO(text)))
 
 
 # ---------------------------------------------------------------- model/format.js, ported (JS rounding rules)
@@ -542,15 +462,6 @@ def why_habits(pred):
 
 def capitalize(text):
     return text[:1].upper() + text[1:] if text else ""
-
-
-def int_text(n):
-    return f"{n:,}"
-
-
-def actual_text(row):
-    """The log's Actual cell: name, then ", TD" and ", turnover" (vm-log.js)."""
-    return f"{row['name']}{', TD' if row.get('td') else ''}{', turnover' if row.get('turnover') else ''}"
 
 
 # ---------------------------------------------------------------- a second sandbox (Watch mode at test pace)

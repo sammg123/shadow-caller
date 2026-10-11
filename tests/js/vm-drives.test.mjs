@@ -84,15 +84,12 @@ test("an in-progress drive with no drawn rows uses its yards; a drive without a 
   assert.deepEqual({ ...vm.drives[1].span }, { lo: null, hi: null });
 });
 
-// v1.2 (A8, additive): a drive button reviews its first drawn snap; the drive holding the reviewed row is marked.
-test("each drive knows its first drawn snap, and which drive holds the reviewed play", () => {
+// v1.2 (A8, additive): a drive button shows its first drawn snap (restructure-v2.md 5: on the GameCast the game jumps
+// there; the Model Report points it at his first call in its table).
+test("each drive knows its first drawn snap", () => {
   const live = finalVm();
-  assert.equal(live.reviewSeq, null);
   assert.deepEqual(live.drives.slice(0, 3).map((d) => d.firstSeq), [1, 14, 37], "kickoffs draw, so they count");
-  assert.equal(live.drives.some((d) => d.reviewing), false);
-  const vm = drivesVm(makePv({ presented: state.final(), tl: tlOf(timeline.final()), view: { review: { seq: 104 } } }));
-  assert.equal(vm.reviewSeq, 104);
-  assert.deepEqual(vm.drives.filter((d) => d.reviewing).map((d) => d.idx), [12]);
   const early = drivesVm(makePv({ tl: tlOf(timeline.final(), 13) }));
-  assert.equal(early.drives[1].firstSeq, null, "a drive with no drawn row has nothing to review yet");
+  assert.equal(early.drives[1].firstSeq, null, "a drive with no drawn row has nothing to show yet");
+  assert.ok(!("reviewSeq" in live) && live.drives.every((d) => !("reviewing" in d)), "there is no review mode");
 });

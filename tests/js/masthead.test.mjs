@@ -1,12 +1,14 @@
-// ui/masthead.js (owner A9; ui-architecture.md 2.6, 5.1, 5.4; FI 3.1, #1): title, game, who is modelled, the game
-// keys (Undo, Export CSV, Reset) and the view keys (camera V, booth B, scorecard G).
+// ui/masthead.js and ui/view-keys.js (restructure-v2.md 2): the top bar's nameplate, its current game, then the view
+// keys: the camera (V), the Model Report link, the Ask key (hidden until phase 4) and the settings menu's key.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { mount } from "../../static/js/ui/masthead.js";
+import { mount as mountKeys } from "../../static/js/ui/view-keys.js";
 import { mastheadVm } from "../../static/js/model/vm-masthead.js";
-import { chromeCtx, chromePage, click } from "./chrome-ctx.mjs";
+import { viewKeysVm } from "../../static/js/model/vm-view-keys.js";
+import { Copy, chromeCtx, chromePage, click, kids, recordingActions } from "./chrome-ctx.mjs";
 import { withDocument } from "./fake-dom.mjs";
-import { makePv, state } from "./model-fixtures.mjs";
+import { makePv, state, timeline, tlOf } from "./model-fixtures.mjs";
 
 function setup() {
   const doc = chromePage([["header", "rg-masthead"]]);
@@ -16,114 +18,94 @@ function setup() {
   return { doc, root, ctx, calls, component, find: (sel) => root.querySelector(sel) };
 }
 
-const vmOf = (over = {}) => mastheadVm(makePv({ presented: state.final(), ...over }));
+function keysSetup({ reportHref = "/report?world=neutral", settingsId = "sc-settings" } = {}) {
+  const doc = chromePage([["header", "rg-masthead"]]);
+  const { actions, calls } = recordingActions();
+  const ctx = Object.freeze({ actions, engine: () => null, copy: Copy, reportHref, settingsId });
+  const root = doc.getElementById("rg-masthead");
+  const component = withDocument(doc, () => mountKeys(root, ctx));
+  return { doc, root, calls, component, find: (sel) => root.querySelector(sel) };
+}
 
-test("mount builds the masthead once, inside its root only", () => {
-  const { doc, root, find } = setup();
+const vmOf = (over = {}) => mastheadVm(makePv({ presented: state.final(), tl: tlOf(timeline.final()), ...over }));
+
+test("the plate: the title once, who it shadows, and the current game", () => {
+  const { doc, root, component, find } = setup();
+  component.update(vmOf());
   assert.equal(find("h1").textContent, "Shadow Play-Caller");
-  for (const sel of ["#gameLabel", "#whoLabel", "#undoBtn", "#resetBtn", "[data-testid=\"camera-mode\"]",
-    "[data-testid=\"booth-toggle\"]", "[data-testid=\"scorecard-toggle\"]"]) {
-    assert.ok(find(sel), `${sel} is created`);
-  }
-  const link = find("a");
-  assert.equal(link.getAttribute("href"), "/api/export.csv");
-  assert.equal(link.textContent, "Export CSV");
-  assert.equal(doc.getElementById("outsider").textContent, "not yours");
   assert.equal(root.querySelectorAll("h1").length, 1);
-});
-
-test("#1: the game label and who is modelled come from the presented state", () => {
-  const { component, find } = setup();
-  component.update(vmOf());
-  assert.equal(find("#gameLabel").textContent, state.final().game.label);
   assert.equal(find("#whoLabel").textContent, "Shadowing Schottenheimer · DAL");
+  assert.equal(find(".sc-masthead-plate").getAttribute("title"), "Modelling Brian Schottenheimer (DAL offense)");
+  const game = find("[data-testid=\"game-label\"]");
+  assert.equal(game.textContent, "TB at DAL");
+  assert.equal(game.getAttribute("title"), state.final().game.label);
+  assert.equal(game.getAttribute("aria-label"), null, "its words are its name");
+  assert.equal(doc.getElementById("outsider").textContent, "not yours");
 });
 
-test("G4-2: the nameplate's tooltip keeps every word the short line leaves out", () => {
+test("before the first state there is no tooltip and no game", () => {
   const { component, find } = setup();
-  component.update(vmOf());
-  assert.equal(find(".sc-masthead-plate").getAttribute("title"),
-    `${state.final().game.label} · Modelling ${state.final().profile.caller} (DAL offense)`);
   component.update(mastheadVm(makePv()));
-  assert.equal(find(".sc-masthead-plate").hasAttribute("title"), false, "nothing to say, no tooltip");
+  assert.equal(find(".sc-masthead-plate").hasAttribute("title"), false);
+  assert.equal(find("[data-testid=\"game-label\"]").hidden, true);
 });
 
-test("G4-2: the booth and scorecard keys name the letter they print", () => {
-  const { find } = setup();
-  assert.equal(find("[data-testid=\"booth-toggle\"]").querySelector(".sc-key-name").textContent, "Booth (B)");
-  assert.equal(find("[data-testid=\"scorecard-toggle\"]").querySelector(".sc-key-name").textContent, "Scorecard (G)");
-});
-
-test("the keys say what they do and which key does it", () => {
-  const { find } = setup();
-  const undo = find("#undoBtn");
-  assert.equal(undo.getAttribute("title"), "Undo (U)");
-  assert.equal(undo.getAttribute("aria-keyshortcuts"), "U");
-  assert.equal(undo.getAttribute("type"), "button");
-  assert.match(undo.textContent, /Undo/);
-  assert.match(find("#resetBtn").textContent, /Reset game/);
-  const cam = find("[data-testid=\"camera-mode\"]");
-  assert.equal(cam.getAttribute("title"), "Change the camera (V)");
-  assert.equal(cam.getAttribute("aria-keyshortcuts"), "V");
-  assert.equal(find("[data-testid=\"booth-toggle\"]").getAttribute("aria-keyshortcuts"), "B");
-  assert.equal(find("[data-testid=\"scorecard-toggle\"]").getAttribute("aria-keyshortcuts"), "G");
-  assert.equal(find("[data-testid=\"scorecard-toggle\"]").getAttribute("aria-controls"), "rg-score");
-});
-
-test("the camera key names the mode; booth and scorecard keys report aria-expanded", () => {
-  const { component, find } = setup();
-  const modes = [{ id: "wide", label: "Wide" }, { id: "tight", label: "Tight" }];
-  component.update(mastheadVm(makePv({ presented: state.final(), view: { camera: "tight", booth: { open: true },
-    scorecardOpen: false }, cameraModes: modes })));
-  const cam = find("[data-testid=\"camera-mode\"]");
-  assert.equal(cam.getAttribute("data-camera"), "tight");
-  assert.match(cam.textContent, /Tight/);
-  assert.equal(find("[data-testid=\"booth-toggle\"]").getAttribute("aria-expanded"), "true");
-  assert.equal(find("[data-testid=\"scorecard-toggle\"]").getAttribute("aria-expanded"), "false");
-  component.update(mastheadVm(makePv({ presented: state.final(), view: { camera: "wide", booth: { open: false },
-    scorecardOpen: true }, cameraModes: modes })));
-  assert.equal(cam.getAttribute("data-camera"), "wide");
-  assert.match(cam.textContent, /Wide/);
-  assert.equal(find("[data-testid=\"booth-toggle\"]").getAttribute("aria-expanded"), "false");
-  assert.equal(find("[data-testid=\"scorecard-toggle\"]").getAttribute("aria-expanded"), "true");
-});
-
-test("without a camera yet the camera key has no mode", () => {
-  const { component, find } = setup();
-  component.update(mastheadVm(makePv({ presented: state.final() })));
-  const cam = find("[data-testid=\"camera-mode\"]");
-  assert.equal(cam.hasAttribute("data-camera"), false);
-  assert.equal(cam.querySelector(".sc-key-value").textContent, "");
-});
-
-test("every key calls its action and nothing else", () => {
-  const { find, calls } = setup();
-  click(find("#undoBtn"));
-  click(find("#resetBtn"));
-  click(find("[data-testid=\"camera-mode\"]"));
-  click(find("[data-testid=\"booth-toggle\"]"));
-  click(find("[data-testid=\"scorecard-toggle\"]"));
-  assert.deepEqual(calls, [["undo"], ["reset"], ["cycleCamera"], ["toggleBooth"], ["toggleScorecard"]]);
-});
-
-test("a render that changes nothing writes nothing", () => {
-  const { doc, component } = setup();
+test("a render that changes nothing writes nothing; labels are text, never markup (G27)", () => {
+  const { doc, component, find } = setup();
   component.update(vmOf());
   const writes = doc.writes;
   component.update(vmOf());
   assert.equal(doc.writes, writes);
-});
-
-test("labels are text, never markup (G27)", () => {
-  const { component, find } = setup();
   const presented = { ...state.final(), game: { ...state.final().game, label: "<b>Bucs</b> at Cowboys" } };
   component.update(mastheadVm(makePv({ presented })));
-  assert.equal(find("#gameLabel").textContent, "<b>Bucs</b> at Cowboys");
-  assert.equal(find("#gameLabel").children.length, 0);
+  assert.equal(find("[data-testid=\"game-label\"]").getAttribute("title"), "<b>Bucs</b> at Cowboys");
+  assert.equal(find("[data-testid=\"game-label\"]").children.length, 0);
 });
 
-test("destroy takes the masthead out of its root", () => {
+test("destroy takes the plate out of its root", () => {
   const { root, component } = setup();
   component.destroy();
-  assert.equal(root.children.length, 0);
+  assert.equal(kids(root).length, 0);
+});
+
+test("view keys, in order: the camera (V), the Model Report link, Ask (hidden until phase 4), Settings", () => {
+  const { find } = keysSetup();
+  const group = find(".sc-viewkeys");
+  assert.deepEqual([group.getAttribute("role"), group.getAttribute("aria-label")], ["group", "View"]);
+  const order = kids(group).map((n) => n.getAttribute("data-testid"));
+  assert.deepEqual(order, ["camera-mode", "model-report", "ask", "settings-toggle"]);
+  const camera = find("[data-testid=\"camera-mode\"]");
+  assert.deepEqual([camera.getAttribute("aria-keyshortcuts"), camera.getAttribute("title")], ["V", "Wide or Blimp (V)"]);
+  const report = find("[data-testid=\"model-report\"]");
+  assert.deepEqual([report.localName, report.getAttribute("href"), report.querySelector(".sc-key-name").textContent],
+    ["a", "/report?world=neutral", "Model Report"]);
+  assert.equal(find("[data-testid=\"ask\"]").hidden, true);
+  const settings = find("[data-testid=\"settings-toggle\"]");
+  assert.deepEqual([settings.getAttribute("aria-controls"), settings.getAttribute("aria-expanded"), settings.hidden],
+    ["sc-settings", "false", false]);
+});
+
+test("the camera key names the mode; the settings key says whether its menu is open", () => {
+  const { component, find } = keysSetup();
+  const modes = [{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }];
+  component.update(viewKeysVm(makePv({ view: { camera: "blimp", settingsOpen: true }, cameraModes: modes })));
+  const camera = find("[data-testid=\"camera-mode\"]");
+  assert.equal(camera.querySelector(".sc-key-value").textContent, "Blimp");
+  assert.equal(camera.getAttribute("data-camera"), "blimp");
+  assert.equal(find("[data-testid=\"settings-toggle\"]").getAttribute("aria-expanded"), "true");
+});
+
+test("every key calls its action and nothing else; the report is a plain link", () => {
+  const { find, calls } = keysSetup();
+  click(find("[data-testid=\"camera-mode\"]"));
+  click(find("[data-testid=\"settings-toggle\"]"));
+  click(find("[data-testid=\"model-report\"]"));
+  assert.deepEqual(calls, [["cycleCamera"], ["toggleSettings"]]);
+});
+
+test("a world without settings shows no settings key; without a report address the link is /report", () => {
+  const { find } = keysSetup({ reportHref: "", settingsId: null });
+  assert.equal(find("[data-testid=\"settings-toggle\"]").hidden, true);
+  assert.equal(find("[data-testid=\"settings-toggle\"]").hasAttribute("aria-controls"), false);
+  assert.equal(find("[data-testid=\"model-report\"]").getAttribute("href"), "/report");
 });

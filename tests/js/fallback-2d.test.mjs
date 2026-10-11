@@ -5,6 +5,7 @@ import test from "node:test";
 import { CAMERA_MODES, createFallbackEngine } from "../../static/js/field/fallback-2d.js";
 import { buildGhostSet, ghostInputFromPred } from "../../static/js/field/ghosts.js";
 import { situationFromRow } from "../../static/js/field/paths.js";
+import { verdictChipText } from "../../static/js/model/vm-field.js";
 import { resolveLook } from "../../static/js/theme/look-schema.js";
 import { NEUTRAL_LOOK } from "../../static/js/theme/neutral-look.js";
 import { createDocument, withDocument } from "./fake-dom.mjs";
@@ -68,7 +69,7 @@ const presnap = (s, r) => {
   s.engine.showGhosts(ghostsFor(r));
 };
 
-test("the engine implements every Engine method, draws one SVG in the host, and has two cameras, Drive and Top", (t) => {
+test("the engine implements every Engine method, draws one SVG in the host, and has two cameras, Wide and Blimp", (t) => {
   const s = setup(t);
   for (const m of ENGINE_METHODS) assert.equal(typeof s.engine[m], "function", m);
   assert.equal(s.engine.kind, "2d");
@@ -80,11 +81,12 @@ test("the engine implements every Engine method, draws one SVG in the host, and 
   assert.equal(base.getAttribute("aria-hidden"), "true");
   assert.equal(base.nextSibling, s.svg(), "the static field sits under the moving layer");
   assert.match(base.getAttribute("style"), /will-change: transform/);
-  assert.deepEqual(s.engine.cameraModes(), [{ id: "drive", label: "Drive" }, { id: "top", label: "Top" }]);
-  assert.deepEqual(CAMERA_MODES, [{ id: "drive", label: "Drive" }, { id: "top", label: "Top" }]);
+  // restructure-v2.md 4: the 2D field names its two views as the 3D one does (V: Wide, the default, then Blimp)
+  assert.deepEqual(s.engine.cameraModes(), [{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }]);
+  assert.deepEqual(CAMERA_MODES, [{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }]);
   const d = s.engine.debugState();
   assert.equal(d.kind, "2d");
-  assert.equal(d.camera, "drive", "the Drive view is the default");
+  assert.equal(d.camera, "wide", "the Wide view (the drive around the ball) is the default");
   assert.equal(d.animState, "idle");
   assert.deepEqual([d.ready, d.drawCalls, d.triangles, d.geometries, d.textures], [false, 0, 0, 0, 0]);
   assert.ok(layer(s, "field").childNodes.length > 0, "a bare field before the first frame: never blank");
@@ -239,7 +241,8 @@ test("the previous play stays on the field, dimmed with its words, while his sha
   const last = layer(s, "live-last").querySelector(".sc-fb-play");
   assert.equal(last.getAttribute("opacity"), String(NEUTRAL_LOOK.lastPlay.dimOpacity), "dimmed, still there");
   assert.ok(Number(words().getAttribute("opacity")) < 1, "its words dim with it");
-  assert.deepEqual(texts(words()), ["LAST", "Short pass middle · incomplete"], "4b: the LAST plate");
+  assert.deepEqual(texts(words()), ["LAST", "Short pass middle · incomplete", "In his top 3 · #3 Short · 14%"],
+    "4b: the LAST plate, its verdict under it");
   assert.ok([...last.querySelectorAll("path")].filter((n) => n.getAttribute("stroke") && n.getAttribute("stroke") !== "#000000")
     .every((n) => ["#a3adc4", "#4a5571"].includes(n.getAttribute("stroke"))), "4b: in muted steel");
   assert.ok(words().getAttribute("data-box"), "placed in screen space with his predictions' plates");
@@ -248,6 +251,31 @@ test("the previous play stays on the field, dimmed with its words, while his sha
   assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("data-seq"), "3");
   assert.equal(layer(s, "live-last").querySelector(".sc-fb-play").getAttribute("opacity"), "1", "the real play: solid");
   assert.deepEqual(texts(words()), ["Short pass middle · +8"]);
+});
+
+test("4b: a play drawn at once (a jump, a step) keeps its verdict on its LAST plate, in its chip's words", async (t) => {
+  const plate = (s) => texts(layer(s, "live-tagPlay").querySelector('[data-plate="last"]'));
+  const jumped = setup(t);
+  frame(jumped);
+  jumped.engine.drawRowsInstant(rows(1, 126));                  // a jump: the game rebuilt to just after the play
+  presnap(jumped, row(127));
+  assert.deepEqual(plate(jumped), ["LAST", "Short pass left · +11", "Top pick · 19%"]);
+  const stepped = setup(t);
+  frame(stepped);
+  await stepped.engine.playRow(row(151), { durationMs: 0, token: 1 });   // a step: drawn at once, no verdict marked
+  presnap(stepped, row(152));
+  assert.deepEqual(plate(stepped), ["LAST", "Short pass left · +15", "Miss · #4 Intermediate · 10%"]);
+  const watched = setup(t);
+  frame(watched);
+  await watched.engine.playRow(row(151), { durationMs: 0, token: 1 });
+  watched.engine.markVerdict({ seq: 151, key: "miss", text: verdictChipText(row(151).pred, T.meta.leaf_names) });
+  presnap(watched, row(152));
+  assert.deepEqual(plate(watched), plate(stepped), "the words the conductor's verdict gives its chip");
+  const theirs = setup(t);
+  frame(theirs);
+  theirs.engine.drawRowsInstant(rows(1, 37));
+  presnap(theirs, row(38));
+  assert.deepEqual(plate(theirs), ["LAST", "Kickoff · return to DAL 32"], "TB's kickoff has no verdict");
 });
 
 test("4b: after a long play the LAST plate goes where the view shows its path, short of its end, else nowhere", async (t) => {
@@ -429,7 +457,7 @@ const shadowWidthsPx = (s) => [...s.host.querySelectorAll(".sc-fb-shadow")].map(
   return Math.abs(nums.at(-2) - nums[0]);
 });
 
-test("the Drive view frames the snap and his shadows large enough to read; Top shows the whole field", (t) => {
+test("the Wide view frames the snap and his shadows large enough to read; Blimp shows the whole field", (t) => {
   const s = setup(t, { reducedMotion: true });
   s.engine.resize(1440, 900);
   frame(s);
@@ -440,17 +468,17 @@ test("the Drive view frames the snap and his shadows large enough to read; Top s
   const drive = shadowWidthsPx(s);
   assert.equal(drive.length, 2);
   assert.ok(drive.every((w) => w >= 120), `both shadows read: ${drive.map(Math.round)} px wide`);
-  s.engine.setCamera("top");
-  assert.equal(s.engine.debugState().camera, "top");
-  assert.equal(base.getAttribute("viewBox"), "0 0 1440 900", "Top: the whole field");
+  s.engine.setCamera("blimp");
+  assert.equal(s.engine.debugState().camera, "blimp");
+  assert.equal(base.getAttribute("viewBox"), "0 0 1440 900", "Blimp: the whole field");
   const top = shadowWidthsPx(s);
   assert.ok(top.every((w, i) => w < drive[i] / 3), `the whole field draws them small: ${top.map(Math.round)}`);
-  s.engine.setCamera("drive");
+  s.engine.setCamera("wide");
   assert.deepEqual(shadowWidthsPx(s), drive, "back to the drive");
-  assert.deepEqual(s.events.filter(([e]) => e === "camera").map(([, p]) => p), [{ id: "top" }, { id: "drive" }]);
+  assert.deepEqual(s.events.filter(([e]) => e === "camera").map(([, p]) => p), [{ id: "blimp" }, { id: "wide" }]);
 });
 
-test("the Drive view takes in a hovered deep shot whole; a page that comes back from hidden lands where it was going", (t) => {
+test("the Wide view takes in a hovered deep shot whole; a page that comes back from hidden lands where it was going", (t) => {
   const s = setup(t, { reducedMotion: true });
   s.engine.resize(1440, 900);
   frame(s);
@@ -473,7 +501,7 @@ test("the Drive view takes in a hovered deep shot whole; a page that comes back 
   assert.equal(base.getAttribute("viewBox"), landed, "it landed when the page came back, nothing left to ease");
 });
 
-test("the Drive view keeps a reviewed play's words on screen with the play (TB's scramble, the punt, the field goal)", (t) => {
+test("the Wide view keeps a reviewed play's words on screen with the play (TB's scramble, the punt, the field goal)", (t) => {
   const s = setup(t, { reducedMotion: true });
   s.engine.resize(1440, 900);
   frame(s);
@@ -491,7 +519,7 @@ test("the Drive view keeps a reviewed play's words on screen with the play (TB's
   }
 });
 
-test("the Drive view takes in the whole play while it draws, eases between frames, and cuts with reduced motion", (t) => {
+test("the Wide view takes in the whole play while it draws, eases between frames, and cuts with reduced motion", (t) => {
   const s = setup(t);
   s.engine.resize(1440, 900);
   frame(s);
@@ -511,7 +539,7 @@ test("the Drive view takes in the whole play while it draws, eases between frame
   const [x1, , w1] = seen.at(-1).split(" ").map(Number);
   assert.ok(w1 > w0 * 1.8, `zoomed out for the long run (${w0} -> ${w1})`);
   const L = s.engine.debugState();
-  assert.equal(L.camera, "drive");
+  assert.equal(L.camera, "wide");
   const ballLayer = layer(s, "live-ball");
   assert.ok(ballLayer, "the live layers draw on");
   assert.ok(x1 < 1440, "the field's left side is in view");
@@ -520,10 +548,10 @@ test("the Drive view takes in the whole play while it draws, eases between frame
 test("camera, resize, safe area and listeners", (t) => {
   const s = setup(t);
   frame(s);
-  s.engine.setCamera("top");
-  assert.deepEqual(s.events.filter(([e]) => e === "camera").map(([, p]) => p), [{ id: "top" }]);
   s.engine.setCamera("blimp");
-  assert.equal(s.engine.debugState().camera, "top");
+  assert.deepEqual(s.events.filter(([e]) => e === "camera").map(([, p]) => p), [{ id: "blimp" }]);
+  s.engine.setCamera("tight");
+  assert.equal(s.engine.debugState().camera, "blimp", "restructure-v2.md 4: no Tight, an id it doesn't have");
   s.engine.resize(800, 450);
   assert.equal(s.svg().getAttribute("viewBox"), "0 0 800 450");
   assert.equal(s.host.querySelector("[data-sc-fb-static]").getAttribute("viewBox"), "0 0 800 450");

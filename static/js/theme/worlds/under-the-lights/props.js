@@ -4,11 +4,10 @@
 // and the four towers' steel (one draw call), the crowd (one), the LED fascia ribbons (one), the lamp banks (one) and
 // the towers' light shafts (one); by day the lamps are dark glass, the shafts are gone and the rim caster draws the
 // stands' shadow line across the field. The engine's field (turf, paint, end zones, wordmarks, logo, posts, pylons)
-// sits inside it. object.userData.uls hands the moments (moments.js) the parts they drive: the light dip, the
-// ribbons' messages and the camera choreography; update() runs them after the camera rig each frame, and keeps the
-// render loop alive only while something moves (0 frames at rest, ui-architecture 6.1).
+// sits inside it. object.userData.uls hands the moments (moments.js) the parts they drive: the light dip and the
+// ribbons' messages (the camera is the viewer's alone, restructure-v2.md 4); update() runs them each frame, and keeps
+// the render loop alive only while something moves (0 frames at rest, ui-architecture 6.1).
 import { safeLogoUrl } from "../../../core/domain.js";
-import { createChoreo } from "./stadium/choreo.js";
 import { createCrowd } from "./stadium/crowd.js";
 import { createDim } from "./stadium/dim.js";
 import { createRimCaster, createShafts } from "./stadium/air.js";
@@ -66,10 +65,8 @@ function buildParts(ctx, day, lite) {
 }
 
 function controllerOf(parts, look) {
-  const timing = look.world?.uls?.camera ?? {};
   const dim = createDim({ lamps: parts.lamps, shafts: parts.shafts, crowd: parts.crowd, stands: parts.stands });
-  const choreo = createChoreo({ timing, reduced: reducedNow, requestRender: parts.requestRender });
-  return Object.freeze({ dim, choreo, ribbons: parts.ribbons, frame: parts.frame, look, requestRender: parts.requestRender,
+  return Object.freeze({ dim, ribbons: parts.ribbons, frame: parts.frame, look, requestRender: parts.requestRender,
     dip: look.world?.uls?.dip ?? { level: 0.8, ms: 300 } });
 }
 
@@ -97,11 +94,9 @@ export function props(ctx) {
     update(dtMs) {
       const a = parts.ribbons.update(dtMs);
       const b = uls.dim.update(dtMs);
-      const c = uls.choreo.update(dtMs);
-      return a || b || c;
+      return a || b;
     },
     dispose() {
-      uls.choreo.reset();
       uls.dim.restore();
       parts.ribbons.dispose();
       parts.lamps.dispose();

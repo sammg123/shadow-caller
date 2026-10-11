@@ -1,7 +1,8 @@
-// Boot (ui-architecture.md 3.1 and 9.5; owner A0). Wires the store, sync, actions, keyboard, conductor, engine
-// (WebGL with the 2D fallback), components and the world. Core modules are imported statically; components, the
-// engine, dialogs and worlds are imported dynamically, so a missing or broken one leaves a visible notice and boot
-// goes on: the page is never blank. Timers, fetch and the clock are called bare ("Illegal invocation" otherwise).
+// Boot (ui-architecture.md 3.1 and 9.5; restructure-v2.md 9; owner A0). Wires the store, sync, actions, keyboard,
+// conductor, engine (WebGL with the 2D fallback), components and the world, then opens the game once (/api/open).
+// Core modules are imported statically; components, the engine and worlds are imported dynamically, so a missing or
+// broken one leaves a visible notice and boot goes on: the page is never blank. Timers, fetch and the clock are
+// called bare ("Illegal invocation" otherwise).
 import * as Copy from "./model/copy.js";
 import { TOAST_MS, createActions } from "./core/actions.js";
 import { createApi } from "./core/api.js";
@@ -13,7 +14,7 @@ import { createSync } from "./core/sync.js";
 import { fieldVm } from "./model/vm-field.js";
 import { COMPONENTS, SHELL_IDS } from "./shell/bindings.js";
 import { createEngineLoader } from "./shell/engine.js";
-import { createFormHub, loadModules, mountComponents } from "./shell/mount.js";
+import { loadModules, mountComponents } from "./shell/mount.js";
 import { createNotices } from "./shell/notices.js";
 import { STORAGE_KEYS, readBootPrefs } from "./shell/prefs.js";
 import {
@@ -28,6 +29,9 @@ import { createScheduler } from "./ui/scheduler.js";
 const HEARTBEAT_MS = 250;   // while a retry is pending, so "Retrying in N s" counts down on time
 const WORLD_CSS_TIMEOUT_MS = 3000;
 const TOKENS_LISTED = 3;
+const REPORT_PATH = "/report";
+/** The world's settings menu (its arrange marks it; the top bar's Settings key controls it by id). */
+const SETTINGS_MENU = "[data-settings-menu]";
 /** G2-4: what a lost and a restored WebGL context say (a toast: the GPU going away is not a bug). */
 const SCENE_TOASTS = Object.freeze({
   lost: "The 3D field paused (the graphics reset), so the 2D field is showing until it comes back.",
@@ -134,17 +138,13 @@ function arrangeRegions(doc, world, notices) {
   }
 }
 
-// ---------------------------------------------------------------- dialogs, field host, engine (3.1 step 3)
-async function loadDialogs() {
-  try {
-    const mod = await import("./ui/dialogs.js");
-    if (typeof mod.confirmAction === "function") return { confirmAction: (text) => mod.confirmAction(text) };
-  } catch {
-    // ui/dialogs.js is window.confirm behind a promise (2.6); the same stand-in below keeps confirms working.
-  }
-  return { confirmAction: (text) => Promise.resolve(Boolean(globalThis.confirm(String(text)))) };
+/** The Model Report's address, keeping a world the page's own address names (a known id only, never a raw value). */
+function reportHref(boot) {
+  const id = boot.world.query;
+  return id && registry.has(id) ? `${REPORT_PATH}?world=${encodeURIComponent(id)}` : REPORT_PATH;
 }
 
+// ---------------------------------------------------------------- announcer, field host, engine (3.1 step 3)
 /** ui/announcer.js (G2-6), loaded like every component: one that fails leaves a notice, and boot goes on. */
 async function loadAnnouncer(notices) {
   try {
@@ -273,9 +273,9 @@ function shellBindings(doc, look, rt, announcerMod) {
   ];
 }
 
-/** What the announcer hears change: a drawn play, a rebuild, the camera, the watch, flag mode, a review. */
+/** What the announcer hears change: a drawn play, a rebuild, the camera, the watch and the live feed. */
 const announcerDeps = (s, env) => [s.anim.token, s.anim.drawnThrough, s.view.camera, s.version?.watch?.state,
-  s.version?.watch?.speed, s.version?.feed?.on, s.view.flag.open, s.view.review.seq, env.extras?.cameraModes];
+  s.version?.watch?.speed, s.version?.feed?.on, env.extras?.cameraModes];
 
 // ---------------------------------------------------------------- store, sync, actions, components (steps 2 to 4)
 function createCore(doc, boot, theme, notices) {
@@ -290,12 +290,11 @@ function createCore(doc, boot, theme, notices) {
   return { store, api, sync, onError };
 }
 
-function createAppActions({ core, form, dialogs, world, look, rt }) {
+function createAppActions({ core, look, rt }) {
   return createActions({
-    store: core.store, api: core.api, sync: core.sync, form, dialogs, now, timers,
+    store: core.store, api: core.api, sync: core.sync, now, timers,
     cameraModes: () => cameraModesOf(rt, look),
     defaultCamera: () => look.cameras.default,
-    boothHoldsFlags: () => Boolean(world.booth?.holds?.includes("flags")),
     persist: storageSet,
   });
 }
@@ -340,6 +339,24 @@ function startConductor({ doc, look, world, boot, core, loader, notices, rt }) {
   return conductor;
 }
 
+/** The world's events on #app: the HUD insets moved without a resize, the settings menu's room lights switch (it goes
+ * through the store, so prefs.ambient follows) and a press outside the open menu (it closes, like Escape). */
+function listenToWorld(app, { actions, rt }) {
+  app?.addEventListener("sc:hud-insets", () => rt.engine?.setSafeArea?.(null));
+  app?.addEventListener("sc:booth-ambient", (e) => {
+    e.preventDefault();
+    actions.setAmbient(e.detail?.value);
+  });
+  app?.addEventListener("sc:settings-close", () => actions.closeSettings());
+}
+
+/** restructure-v2.md 9: once the first state is in, the page opens the game, once (a live game goes live; a finished
+ * one is a watch paused at kickoff; a session or the live feed already running is left as it is). */
+async function startGame(core, actions) {
+  await core.sync.start();
+  if (core.store.getState().boot.phase === "ready") await actions.open();
+}
+
 // ---------------------------------------------------------------- boot
 async function boot() {
   const doc = globalThis.document;
@@ -348,34 +365,28 @@ async function boot() {
   const modules = loadModules(COMPONENTS);
   const loader = createEngineLoader();
   loader.preloadFallback();
-  const dialogsLoading = loadDialogs();
   const announcerLoading = loadAnnouncer(notices);
   const theme = await loadTheme(doc, prefs, notices);
   const { world, look } = theme;
   arrangeRegions(doc, world, notices);
+  const app = doc.getElementById("app");
   const rt = { engine: null, extras: Object.freeze({ cameraModes: look.cameras.modes, engine: null }), refreshExtras: () => {} };
   const core = createCore(doc, prefs, theme, notices);
-  const formHub = createFormHub();
-  const actions = createAppActions({ core, form: formHub.form, dialogs: await dialogsLoading, world, look, rt });
-  const ctx = Object.freeze({ actions, form: formHub.form, engine: () => rt.engine, copy: Copy });
-  const { bindings } = mountComponents(COMPONENTS, await modules, { doc, ctx, notices, formHub, shellIds: SHELL_IDS });
+  const actions = createAppActions({ core, look, rt });
+  const ctx = Object.freeze({ actions, engine: () => rt.engine, copy: Copy, reportHref: reportHref(prefs),
+    settingsId: app?.querySelector(SETTINGS_MENU)?.id || null });
+  const { bindings } = mountComponents(COMPONENTS, await modules, { doc, ctx, notices, shellIds: SHELL_IDS });
   startScheduler({ doc, core, bindings, look, notices, rt, announcerMod: await announcerLoading });
   await bootEngine({ doc, look, world, boot: prefs, loader, notices, rt });
   rt.refreshExtras();
   startConductor({ doc, look, world, boot: prefs, core, loader, notices, rt });
-  // v1.4 (W3's ask, wired by W1): the HUD insets changed without a resize (mode, drawer): the camera re-reads them
-  doc.getElementById("app")?.addEventListener("sc:hud-insets", () => rt.engine?.setSafeArea?.(null));
-  // v1.4 (W4's ask, wired by W6): the booth's Room lights switch goes through the store, so prefs.ambient follows
-  doc.getElementById("app")?.addEventListener("sc:booth-ambient", (e) => {
-    e.preventDefault();
-    actions.setAmbient(e.detail?.value);
-  });
+  listenToWorld(app, { actions, rt });
   initialCamera(core.store, prefs, look, rt);
   attachKeyboard(doc, { store: core.store, actions, onError: core.onError });
   const matchMedia = typeof globalThis.matchMedia === "function" ? (query) => globalThis.matchMedia(query) : undefined;
   watchMotion(matchMedia, (motion) => core.store.dispatch({ type: "prefs/set", key: "motion", value: motion }));
   if (prefs.debug) globalThis.__shadowDebug = () => rt.engine?.debugState?.() ?? null;
-  core.sync.start().catch(core.onError);
+  startGame(core, actions).catch(core.onError);
 }
 
 /** Boot itself failed (a bug): say so on the loading screen, or in the notice tray once that screen is gone. */

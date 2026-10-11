@@ -5,8 +5,8 @@
 //               the game already on screen are read: the first state and another game (a replay, a watch start, an
 //               undo's new epoch: the presented state's timeline epoch) read nothing out, and a burst (a hidden tab
 //               coming back) only the newest three. The last 20 lines stay.
-//   the status  (role=status, polite) what a key just changed: "Camera: Tight", "Speed 4x", "Paused", "Playing",
-//               "Flag mode. Press a foul letter or Esc", "Back to live".
+//   the status  (role=status, polite) what a key just changed: "Camera: Blimp", "Speed 4x", "Paused", "Playing",
+//               "Live" (the page follows the live feed, restructure-v2.md 5).
 // The board's own call announcement belongs to the prediction panel (G4-2).
 import { keyContext, modeOf } from "../core/keymap.js";
 import { LABEL_SEP, playLabel } from "../field/play-label.js";
@@ -17,7 +17,7 @@ import { el, setText } from "./dom.js";
 const BURST = 3;                      // plays read out at most per update
 const LOG_KEPT = 20;
 const SESSION = new Set(["playing", "paused"]);
-const FLAG_WORDS = "Flag mode. Press a foul letter or Esc";
+const LIVE_WORDS = "Live";
 const FILLER = " ";              // repeated words still change the node, so they are heard again
 
 const sentence = (text) => (/[.!?]$/.test(text) ? text : `${text}.`);
@@ -35,7 +35,7 @@ export function playLine(row) {
 /**
  * What the announcer follows, from the presented view (pv, with the scheduler's extras: cameraModes). Pure.
  * @returns {{ epoch: string | null, drawnThrough: number, rows: object[], camera: string | null,
- *   watch: { state: string, speed: number | null } | null, flag: boolean, reviewing: boolean }}
+ *   watch: { state: string, speed: number | null } | null, live: boolean }}
  */
 export function announcerVm(pv) {
   const ctx = keyContext({ server: pv.presented ?? null, version: pv.version ?? null, view: pv.view });
@@ -46,7 +46,7 @@ export function announcerVm(pv) {
     epoch: pv.presented?.timeline?.epoch ?? null, drawnThrough: pv.anim.drawnThrough, rows: pv.tl?.rows ?? [],
     camera: mode?.label ?? pv.view.camera ?? null,
     watch: watch ? Object.freeze({ state: watch.state ?? "idle", speed: watch.speed ?? null }) : null,
-    flag: modeOf(ctx) === "flag", reviewing: ctx.reviewing,
+    live: modeOf(ctx) === "feed",
   });
 }
 
@@ -72,8 +72,7 @@ function statusWords(prev, next) {
   const words = [
     ...(next.camera && prev.camera && next.camera !== prev.camera ? [`Camera: ${next.camera}`] : []),
     ...watchWords(prev, next),
-    ...(next.flag && !prev.flag ? [FLAG_WORDS] : []),
-    ...(prev.reviewing && !next.reviewing ? ["Back to live"] : []),
+    ...(next.live && !prev.live ? [LIVE_WORDS] : []),
   ];
   return words.length ? words.join(". ") : null;
 }

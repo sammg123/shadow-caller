@@ -521,7 +521,8 @@ def test_watching_again_after_done_or_error_still_restores_the_first_game(make_f
 
 def test_a_restart_mid_watch_can_still_put_the_game_back(make_feed, summary, sandbox, watches):
     """A server restart ends the thread, and the files hold the watched game: the session comes back as an error
-    that Stop can still undo, instead of an idle app that has forgotten where the real game went."""
+    that Stop can still undo, instead of an idle app that has forgotten where the real game went. Its words name the
+    page's own way on (restructure-v2: the top bar has Reset and Go Live, no Stop)."""
     e, feed = make_feed()
     mine = typed_game(e)
     w = watches(feed, 1.0)
@@ -533,7 +534,8 @@ def test_a_restart_mid_watch_can_still_put_the_game_back(make_feed, summary, san
     feed2 = espn_feed.Feed(e2, threading.RLock())
     w2 = watches(feed2, FAST)
     snap = w2.snapshot()
-    assert snap["state"] == "error" and "restart" in snap["error"] and "Stop" in snap["error"]
+    assert snap["state"] == "error" and "restart" in snap["error"]
+    assert "Reset" in snap["error"] and "Go Live" in snap["error"] and "Stop" not in snap["error"]
     assert (snap["backup"], snap["event_id"], snap["feed_was_on"]) == (w.snapshot()["backup"], ESPN_EVENT, False)
     assert conflict(w2.require_idle, "resetting the game").status == 409
     w2.stop(restore=True)
@@ -667,7 +669,8 @@ def test_skipped_plays_are_counted_and_a_run_of_them_stops_the_watch(make_feed, 
     assert wait_for(lambda: w.snapshot()["state"] == "error")
     snap = w.snapshot()
     assert snap["idx"] == snap["skipped"] == wm.MAX_SKIPS_IN_A_ROW < 13
-    assert "in a row" in snap["error"] and "No space left" in snap["error"] and "Stop" in snap["error"]
+    assert "in a row" in snap["error"] and "No space left" in snap["error"]
+    assert "Reset" in snap["error"] and "Stop" not in snap["error"], "the page's keys, never one it doesn't have"
     time.sleep(0.05)
     assert w.idx == wm.MAX_SKIPS_IN_A_ROW                  # the thread stopped applying
 
@@ -690,7 +693,7 @@ def test_idle_watch_object_and_version_brief(make_feed):
     w = Watch(feed, feed.lock)
     assert w.snapshot() == {"state": "idle", "event_id": None, "speed": None, "idx": 0, "total": 0, "next_at": None,
                             "skipped": 0, "next_kind": None, "ff_until": 0, "started_at": None, "feed_was_on": False,
-                            "backup": None, "error": None}
+                            "backup": None, "error": None, "marks": [], "game": None}
     assert w.brief() == {"state": "idle", "event_id": None, "speed": None, "idx": 0, "total": 0, "next_at": None,
                          "next_kind": None, "skipped": 0, "error": None}
     w.set_speed(2)                                           # a speed picked before a session is kept

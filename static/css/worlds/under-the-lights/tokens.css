@@ -163,24 +163,20 @@
   --sc-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --sc-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
-  /* ---- the stadium's geometry (DESIGN.md Layout; exact at 1440x900 and 1920x1080) */
+  /* ---- the stadium's geometry (DESIGN.md Layout; exact at 1440x900 and 1920x1080). restructure-v2.md 1 and 2:
+     the top bar is two ribbon-high rows; the band is one row (72 px at 1440, 92 at 1920); the video board's height
+     is its card's (layout.css). */
   --uls-pitch: 4px;
   --uls-ribbon-h: calc(clamp(44px, calc(2.5vw + 8px), 56px) * var(--uls-hud-scale));
   --uls-lower-h: calc(clamp(40px, calc(3.3333vw - 8px), 56px) * var(--uls-hud-scale));
-  --uls-band-h: calc(clamp(140px, calc(8.3333vw + 20px), 180px) * var(--uls-hud-scale));
+  --uls-band-h: calc(clamp(72px, calc(4.1667vw + 12px), 92px) * var(--uls-hud-scale));
   --uls-band-gap: 4px;
-  --uls-strip-h: calc(clamp(52px, calc(2.5vw + 16px), 64px) * var(--uls-hud-scale));
   --uls-board-w: calc(clamp(416px, calc(30vw - 16px), 560px) * var(--uls-hud-scale));
-  --uls-board-h: calc(clamp(324px, calc(22.0833vw + 6px), 430px) * var(--uls-hud-scale));
   --uls-board-gap: calc(clamp(20px, calc(0.8333vw + 8px), 24px) * var(--uls-hud-scale));
-  --uls-board-open-w: calc(clamp(600px, 41.6667vw, 800px) * var(--uls-hud-scale));
-  --uls-board-open-h: calc(clamp(560px, calc(38.75vw + 2px), 746px) * var(--uls-hud-scale));
   --uls-stack-gap: calc(16px * var(--uls-hud-scale));
   --uls-plate-h: calc(clamp(24px, 1.6667vw, 32px) * var(--uls-hud-scale));
   --uls-frame: calc(8px * var(--uls-hud-scale));
   --uls-face-pad: calc(clamp(14px, calc(1.25vw - 4px), 20px) * var(--uls-hud-scale));
-  --uls-drawer-w: calc(clamp(400px, calc(25vw + 40px), 520px) * var(--uls-hud-scale));
-  --uls-feed-w: calc(clamp(220px, 18.3333vw, 352px) * var(--uls-hud-scale));
   --uls-wp-w: calc(clamp(264px, 18.3333vw, 352px) * var(--uls-hud-scale));
   --uls-key-h: calc(clamp(40px, calc(1.6667vw + 16px), 48px) * var(--uls-hud-scale));
   --uls-lamp: calc(clamp(10px, calc(0.4167vw + 4px), 12px) * var(--uls-hud-scale));

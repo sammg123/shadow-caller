@@ -197,6 +197,11 @@ already say how sure they are, play-drawing.md 5), `.sc-shadow-label` (`.rank-N`
 (A1) passes it as `setGameFrame`'s 4th argument, so day kickoffs light by day (A1's ask in 13 and 14); `main.js` (A0)
 carries W3's one-line ask: `#app` `sc:hud-insets` calls `engine.setSafeArea(null)`.
 
+**Restructure v2 (2026-10-10).** `field/scene.js` calls a third world moment, `placed(ctx, rows)`, whenever rows are
+drawn at once (a jump, a page load, a hidden page; never under reduced motion), oldest first and none at kickoff, so a
+world's boards never keep a call that is gone. Under the Lights brings the lights up and rests the field-wall ribbon on
+the newest play's words (the title when nothing is drawn); an admin row alone changes nothing.
+
 **v1.4 (integration, 2026-10-09, W6).** Details in section 22. Under the Lights is the default world (`?world=neutral`
 still opens neutral); `static/index.html` opens with `docs/design/direction-contract.md`, word for word, as its first
 comment, and links an SVG favicon (no console 404). Decisions taken under `docs/design/play-drawing.md`: at the snap
@@ -2723,7 +2728,7 @@ component selector), so load order decides against the neutral component CSS and
 | File | Skins |
 | --- | --- |
 | `components/masthead.css` | Every key on the page (`.sc-key`: raised steel cap, LED window for the key letter, lit amber when on, dark when disabled) and lamp (`.sc-lamp`); the nameplate and keys on the ribbon. Holds the shared LED primitives (18.2) and the `"ULS LED Pct"` face |
-| `components/prediction.css` | The video board: plate, call name, Doto figure over its unlit `88%`, tilt tag, then-line, LED split bar and family bars with league notches, pixel hot arrows; the open board (two family columns over their plays, why lines, legend); the off-field face with an unlit `88%` |
+| `components/prediction.css` | The video board: plate, call name, Doto figure over its unlit `88%`, tilt tag, then-line, LED split bar and family bars with league notches, pixel hot arrows; the open board (two family columns over their plays, why lines, legend) |
 | `components/scoreboard.css` | Band row one (logo windows, captions in the paint's ink, amber Doto scores and facts over unlit 8s, possession and timeout lamps, EST and FINAL tags) and the shared digit windows (`.sc-digits[data-ghost]`) |
 | `components/scorecard.css` | Band row two (steel SHADOW V LEAGUE plate, three pairs: caption, two amber readouts, `v`, leader lamp, snap count) and tonight's scorecard on the stat board |
 | `components/play-feed.css` | The ribbon's one-line message (time, team, result, verdict glyph, ESPN's text; paging), the unrolled replay board (steel drive plates, LED rows) |

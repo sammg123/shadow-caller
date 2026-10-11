@@ -482,6 +482,13 @@ All bodies are JSON objects read with `request.get_json(silent=True) or {}` and 
 | `POST /api/watch/speed` | `{"speed": 8}` | the change takes effect on the current wait, with the remaining time rescaled |
 | `POST /api/watch/stop` | `{"restore": false}` | ends the session. `restore: true` puts back the pre-watch game (E3) and restarts the live feed if it was on. |
 | `GET /api/watch` | | the `watch` object below (it is also inside `/api/version` and `/api/state`) |
+| `POST /api/open` | (none) | restructure-v2.md 9: what the home page calls once on load. A watch session (playing, paused, done, error) or the live feed already on: nothing changes. Otherwise an ESPN game in progress (or not yet started) goes live (`/api/golive`), and a finished one opens as a watch paused at kickoff (seek 0). |
+| `POST /api/watch/seek` | `{"idx": 104}` | rebuilds the game from kickoff and applies the first `idx` ESPN plays at once (no pacing), then holds: `paused`, or `done` when `idx` equals the total. `idx` is an integer from 0 to the total (not a boolean, not 2.0), else 400. Allowed from any state; Reset is seek 0. A session's first rebuild backs the game up like `start`; later rebuilds keep that session's restore point. A seek to where the session already stands changes nothing. |
+| `POST /api/watch/back` / `forward` | (none) | one drawn play back or forward: a timeline row that is built and is not an admin row (admin rows draw nothing). Back always rebuilds, paused, and at kickoff is 409 "Already at kickoff."; Forward applies on top while playing or paused (a playing session pauses), rebuilds otherwise, and at the end is 409 "Already at the last play.". With no session both work from the game on screen, live mode included. `step` keeps its one-ESPN-play meaning. |
+| `POST /api/golive` | (none) | an ESPN game in progress (or not yet started): applies every play so far (this event's plays already on screen stay; anything else is rebuilt), ends the session keeping the game (no restore) and turns the live feed on through the `/api/feed` path; another matchup is a 400 before anything changes. A final game: seek to the end (`done`). ESPN unreachable when it is needed: 503 with a plain message, and nothing changes. Offline the saved final is used, so it takes the final path. |
+| `GET /report` | | the Model Report page (`static/report.html`), with the same Host gate and headers as `/`; a JSON 404 while the file is missing |
+
+The five calls added for restructure-v2.md 9 (open, seek, back, forward, Go Live) answer with the full state, sit behind the same Host, Origin and Content-Type gate as every other POST, and validate their bodies strictly (400 with a plain reason). A seek holds `LOCK` for up to about 0.8 s (150 plays rebuild in 0.57 s from idle, the first backup included), so the page seeks on release and keeps one request in flight.
 
 ```json
 "watch": {"state": "playing", "event_id": "401872980", "speed": 4.0, "idx": 104, "total": 183,
@@ -496,6 +503,9 @@ All bodies are JSON objects read with `request.get_json(silent=True) or {}` and 
 - `next_at` is server epoch milliseconds for when the next play lands, or null while paused (*illustrative value*).
 - `next_kind` (v1.4, G1-1, also in `/api/version`) is the pace of the row the session waits on: `caller_snap` (a snap of the modelled caller: his next call is up), `snap` (the opponent's), `kick`, `admin` or `admin_end` (end of a quarter, half or game); null unless playing or paused.
 - `ff_until` is set by `from_seq`: rows with `seq <= ff_until` are applied with no delay and drawn without animation.
+- `marks` (restructure-v2.md 9; in `GET /api/watch` and `/api/state`, never in the 250 ms `/api/version` brief): `[{"idx", "kind": "drive" | "quarter" | "score", "team", "label"}]` in idx order, the progress bar's ticks. Drive and quarter marks sit at the idx before their first play ("DAL ball · Q1 15:00", "Q2"); a score mark sits at the idx after the scoring play ("TD DAL"). They follow the game on screen, the live feed after Go Live included (recomputed per poll, cached). The screen shows a score mark only once play has passed it (E5).
+- `game` (the same two places): `{"status": "pre" | "in" | "post" | null, "detail": "Final"}`, ESPN's status for the game on screen, so the page knows a live game from a final one; null when there is no summary.
+- After Go Live on a live game the session is over (`state` is `stopped`), `feed.on` is true and the timeline's `mode` is `live`; `idx` and `total` stay at the plays applied at Go Live, so the page sizes its bar by the timeline while live. A rebuild (seek, back, Go Live's rebuild) gives a new epoch (a full redraw, no animation); a forward applied on top keeps the epoch, so its rows animate.
 
 ### E2. Threading and locking
 
@@ -541,7 +551,7 @@ Invariants (the tests in G pin them):
 4. **The live poller can never race a watch.** `Feed` gets a `gen` counter. `poll_once` reads `gen` before it fetches. `apply(summary, gen)` returns 0 under the lock if `gen` is stale. `watch/start`, `/api/feed/replay` and `/api/reset` call `feed.stop()` and `feed.invalidate()` (`gen += 1`) under `LOCK`. `POST /api/feed {"on": true}` returns 409 while a watch is `playing` or `paused`.
 5. **Back up before the reset, inside the same `LOCK` block.** Copy `live_state.json` to `live_state.backup-<ts>.json`, exactly like `/api/feed/replay` does today. Also copy `feed_seen.json` to `feed_seen.json.backup-<ts>`: without it a restored game re-logs plays it already has. `.gitignore` already covers both names. Then `engine.reset()`, `engine.history = []` (so U can't half-restore the old game), `feed.forget()`, `feed.event_id = eid`, `feed.summary = summary`, `feed.off_team_id = team_id(...)`, bump the epoch, then start a daemon thread with the new `token`.
 6. **Restore** (`stop` with `restore: true`, under `LOCK`): atomically copy both backups back, `engine.state = engine._load() or engine._fresh()`, clear history, reload `feed.applied` and `feed.seen`, restore `feed.event_id`, bump the epoch, `engine._save()`, and restart the feed if `feed_was_on`. With no backup (a fresh install), restore means a fresh game.
-7. **Restarts.** The thread is a daemon, so a server restart ends the session. The partly watched game is still on disk. As built, the restore point is also in `data/watch_session.json`, so the session comes back as `error` ("The app restarted during a watch ... Stop puts your game back.") and Stop still puts the real game back (`idle` here stranded it in a backup nothing pointed at).
+7. **Restarts.** The thread is a daemon, so a server restart ends the session. The partly watched game is still on disk. As built, the restore point is also in `data/watch_session.json`, so the session comes back as `error` ("The app restarted during a watch ... Reset takes it back to kickoff, Go Live to the latest play.", naming the top bar's own keys, since restructure-v2 has no Stop and both rebuild from an error) and Stop (the API's) still puts the real game back (`idle` here stranded it in a backup nothing pointed at).
 8. Manual endpoints (retag, undo, play, flag) stay allowed during a watch. `LOCK` serializes them between plays. Retagging play-action in a watched game is a legitimate demo move. The UI should pause first.
 
 ### E3. Pacing
@@ -603,6 +613,8 @@ In every mode, the server only reads **per-play fields of applied plays**, plus 
 - `boxscore`, `scoringPlays`, `leaders`, `article`, `news`, `videos`
 - `winprobability` entries of unapplied plays
 - `drives[].result`, `yards`, `timeElapsed`, `offensivePlays` or `description` of drives that aren't complete (C3)
+
+Exception (restructure-v2.md section 9): the watch object's `marks` span the whole game, future scores included, and `game` reads `header.competitions[0].status.type` (`state`, `shortDetail`). The screen keeps the rule: the progress bar shows the drive and quarter ticks for the whole game, but a score mark only once play has passed it (`model/vm-transport.js`), never a future score.
 
 ### E6. Related fixes to `/api/feed/replay`
 

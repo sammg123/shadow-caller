@@ -57,7 +57,7 @@ export function viewDrawing(s, entry) {
 }
 
 /** The static field: ground, the bowl (night looks), turf, end zones, paint, posts, the light on the turf. Drawn in
- * the whole-field layout (the camera shows the Drive view through its viewBox). */
+ * the whole-field layout (the camera shows the Wide view through its viewBox). */
 export function renderField(s) {
   const ctx = s.fieldCtx ?? s.ctx;
   const bowl = bowlNodes(ctx);

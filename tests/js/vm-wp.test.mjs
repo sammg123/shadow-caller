@@ -51,14 +51,17 @@ test("points follow ESPN's order even if a play arrived late", () => {
   assert.deepEqual(vm.points.slice(0, 2).map((p) => p.seq), [2, 1]);
 });
 
-test("hand-entered games have no win probability", () => {
+test("at kickoff, before ESPN's first number, the slot says when win probability appears", () => {
   const body = timeline.final();
-  const rows = body.rows.filter((r) => r.pred).slice(0, 3).map((r) => ({ ...r, src: "log", wp: null }));
-  const vm = wpVm(makePv({ presented: state.final(), tl: tlOf(patch(body, { rows, wp_start: null })) }));
+  const kickoff = { ...tlOf(patch(body, { rows: [], wp_start: null })), source: "log" };   // the server: no play yet
+  const vm = wpVm(makePv({ presented: state.final(), tl: kickoff }));
   assert.equal(vm.available, false);
-  assert.equal(vm.note, "Win probability comes from ESPN; hand-entered games don't have it.");
+  assert.equal(vm.note, "Win probability appears after the first play.");
   assert.deepEqual([...vm.points], []);
   assert.equal(wpVm(makePv()).available, false);
+  const rows = body.rows.filter((r) => r.pred).slice(0, 3).map((r) => ({ ...r, src: "log", wp: null }));
+  assert.equal(wpVm(makePv({ tl: tlOf(patch(body, { rows, wp_start: null })) })).available, false,
+    "rows that aren't ESPN's never draw a line");
 });
 
 test("before the first play the line starts at ESPN's opening value", () => {

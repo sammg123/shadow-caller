@@ -1,5 +1,6 @@
-// Under the Lights: the moments and what they drive (owner W1; DESIGN.md motion grammar: "Light dip (20%, 300 ms)",
-// "Camera by altitude"; surface brief #3, #4; ui-architecture.md 2.7, 14.6, 21).
+// Under the Lights: the moments and what they drive (owner W1, the camera by the home frame; DESIGN.md motion grammar:
+// "Light dip (20%, 300 ms)"; surface brief #4; ui-architecture.md 2.7, 14.6, 21; restructure-v2.md 4: the camera is
+// the viewer's alone, so no moment moves it).
 import assert from "node:assert/strict";
 import test from "node:test";
 import { loadThree } from "./three-env.mjs";
@@ -7,23 +8,21 @@ import { loadTimeline } from "./fixtures.mjs";
 
 const THREE = await loadThree();
 const { createDim, isStadiumLight } = await import("../../static/js/theme/worlds/under-the-lights/stadium/dim.js");
-const { createChoreo } = await import("../../static/js/theme/worlds/under-the-lights/stadium/choreo.js");
-const { DRIFT, driftAngle, driftFrame, dollyPose, yawPose } = await import("../../static/js/theme/worlds/under-the-lights/stadium/drift.js");
 const { moments } = await import("../../static/js/theme/worlds/under-the-lights/moments.js");
 const { STADIUM } = await import("../../static/js/theme/worlds/under-the-lights/props.js");
+const { gameMessage, idleMessage, plainMessage, textOf } =
+  await import("../../static/js/theme/worlds/under-the-lights/stadium/messages.js");
 const { buildGhostSet } = await import("../../static/js/field/ghosts.js");
 
 const TL = loadTimeline();
 const light = (name, intensity) => Object.assign(new THREE.SpotLight(0xffffff, intensity), { name });
 const pose = (z, fov = 20) => ({ position: { x: 0, y: 40, z }, target: { x: 0, y: 0, z: 0 }, up: { x: 0, y: 1, z: 0 }, fov });
 
-/** A stand-in camera rig: the shot it was told, the pose it reports, the viewer's mode. */
+/** A stand-in camera rig: records every shot it is told and every pose it is handed (none, now). */
 function fakeRig(mode = "wide") {
   const calls = [];
-  const st = { shot: null, pose: pose(120) };
-  return { calls, st, mode: () => mode, shot(id, opts) { calls.push([id, opts?.instant === true]); st.shot = id;
-    st.pose = id === "tight" ? pose(80, 18) : id === "blimp" ? pose(250, 30) : pose(120); return true; },
-  pose: () => structuredClone(st.pose) };
+  return { calls, mode: () => mode, shot: (id, opts) => { calls.push(["shot", id, opts ?? null]); return true; },
+    setPose: (p) => calls.push(["setPose", p]), pose: () => pose(120) };
 }
 
 test("the dip: the towers' spots, lamps, shafts, stands and crowd fall to 80% and come back; the sky stays", () => {
@@ -48,128 +47,6 @@ test("the dip: the towers' spots, lamps, shafts, stands and crowd fall to 80% an
   assert.equal(lights["tower-home-left"].intensity, 30000);
 });
 
-test("the choreography takes the shot at once in the rig and blends the camera there on its own clock", () => {
-  const rig = fakeRig();
-  const camera = new THREE.PerspectiveCamera(20, 16 / 9, 0.5, 1500);
-  const c = createChoreo({ timing: { pushMs: 600, settleMs: 900 } });
-  c.attach({ rig, camera });
-  c.play(TL.row(2), { viewerMode: "wide", watch: false });
-  assert.deepEqual(rig.calls, [["tight", true]]);
-  assert.equal(c.update(300), true);
-  assert.ok(camera.position.z < 120 && camera.position.z > 80, `half way: ${camera.position.z}`);
-  assert.equal(c.update(400), false);
-  assert.ok(Math.abs(camera.position.z - 80) < 1e-6);
-  assert.equal(c.update(16), false, "at rest the rig owns the camera again");
-  c.landed(TL.row(2), { viewerMode: "wide", watch: false });
-  assert.deepEqual(rig.calls.at(-1), [null, true]);
-  assert.deepEqual(c.state(), { shot: null, drifting: false });
-});
-
-test("in Watch this game a finished drive rises to the blimp and drifts; reduced motion drops the shot at once", () => {
-  const rig = fakeRig();
-  const camera = new THREE.PerspectiveCamera();
-  let reduced = false;
-  const c = createChoreo({ timing: { riseMs: 1000 }, reduced: () => reduced });
-  c.attach({ rig, camera });
-  c.landed(TL.row(43), { viewerMode: "wide", watch: true });   // a punt ends the drive (a score would hold first)
-  assert.deepEqual(c.state(), { shot: "blimp", drifting: true });
-  for (let i = 0; i < 100; i += 1) c.update(50);
-  assert.ok(Math.hypot(camera.position.x, camera.position.y, camera.position.z - 0) > 300, "eased out to the whole bowl");
-  assert.ok(Math.abs(camera.position.x) > 1, "turned about the field's middle");
-  reduced = true;
-  c.update(16);
-  assert.deepEqual(rig.calls.at(-1), [null, true]);
-  assert.deepEqual(c.state(), { shot: null, drifting: false });
-});
-
-/** A hand-cranked timer queue for the choreography's hold (schedule / cancel). */
-function fakeTimers() {
-  const list = [];
-  return { list, live: () => list.filter((t) => t.live),
-    schedule: (fn, ms) => { list.push({ fn, ms, live: true }); return list.length - 1; },
-    cancel: (id) => { if (list[id]) list[id].live = false; },
-    fire() { const t = list.filter((x) => x.live).at(-1); t.live = false; t.fn(); } };
-}
-
-test("G3-4: in Watch a touchdown holds the camera on the play for holdScoreMs, then it rises to the blimp", () => {
-  const rig = fakeRig();
-  const camera = new THREE.PerspectiveCamera(20, 16 / 9, 0.5, 1500);
-  const timers = fakeTimers();
-  let renders = 0;
-  const c = createChoreo({ timing: { pushMs: 600, riseMs: 1000, holdScoreMs: 2000 }, schedule: timers.schedule,
-    cancel: timers.cancel, requestRender: () => { renders += 1; } });
-  const watch = { viewerMode: "wide", watch: true };
-  c.attach({ rig, camera });
-  c.play(TL.row(12), watch);
-  for (let i = 0; i < 20; i += 1) c.update(50);
-  assert.ok(Math.abs(camera.position.z - 80) < 1e-6, "pushed in to tight on the touchdown run");
-  c.landed(TL.row(12), watch);
-  assert.deepEqual(timers.live().map((t) => t.ms), [2000], "the rise waits holdScoreMs");
-  assert.deepEqual(rig.calls.at(-1), ["tight", true], "the rig keeps its shot during the hold");
-  rig.st.pose = pose(140);                     // the rig lets go of the ball and starts to glide away meanwhile
-  assert.equal(c.update(16), false, "a held camera needs no frames of its own");
-  assert.ok(Math.abs(camera.position.z - 80) < 1e-6, "held on the end zone, not gliding");
-  const before = renders;
-  timers.fire();
-  assert.ok(renders > before, "the rise asks for frames");
-  assert.deepEqual(rig.calls.at(-1), ["blimp", true]);
-  assert.deepEqual(c.state(), { shot: "blimp", drifting: true });
-  assert.equal(c.update(500), true);
-  assert.ok(camera.position.z > 80 && camera.position.z < 250, `rising from where it held: ${camera.position.z}`);
-});
-
-test("G3-4: a new play or reduced motion during the hold cancels it; a field goal never holds", () => {
-  const rig = fakeRig();
-  const camera = new THREE.PerspectiveCamera();
-  const timers = fakeTimers();
-  let reduced = false;
-  const c = createChoreo({ timing: { holdScoreMs: 2000 }, schedule: timers.schedule, cancel: timers.cancel,
-    reduced: () => reduced });
-  const watch = { viewerMode: "wide", watch: true };
-  c.attach({ rig, camera });
-  c.landed(TL.row(104), watch);                // the interception: held
-  assert.equal(timers.live().length, 1);
-  c.play(TL.row(1), watch);                    // the next play (a kickoff) comes before the hold is over
-  assert.equal(timers.live().length, 0, "cancelled");
-  assert.deepEqual(rig.calls.at(-1), ["blimp", true], "the kickoff rises from where the camera held");
-  c.presnap(watch);                            // back down to wide for the next call
-  c.landed(TL.row(87), watch);                 // a field goal ends the drive: up at once, no hold
-  assert.equal(timers.live().length, 0);
-  assert.deepEqual(c.state(), { shot: "blimp", drifting: true });
-  c.presnap(watch);
-  c.landed(TL.row(12), watch);                 // a touchdown: held
-  assert.equal(timers.live().length, 1);
-  reduced = true;
-  c.update(16);
-  assert.equal(timers.live().length, 0, "reduced motion drops the hold");
-  assert.deepEqual(c.state(), { shot: null, drifting: false });
-});
-
-test("the drift: at most degPerS, to maxDeg, out to an establishing shot aimed past the field; the target holds", () => {
-  const t = DRIFT;
-  let prev = 0;
-  let fastest = 0;
-  for (let ms = 100; ms <= 20000; ms += 100) {
-    const a = driftAngle(ms, t);
-    fastest = Math.max(fastest, ((a.rad - prev) * 180) / Math.PI / 0.1);
-    prev = a.rad;
-  }
-  assert.ok(fastest <= t.driftDegPerS + 0.01 && fastest <= 3, `fastest ${fastest} deg/s`);
-  assert.ok(Math.abs((prev * 180) / Math.PI - t.driftMaxDeg) < 1e-6);
-  assert.equal(driftAngle(20000, t).moving, false);
-  assert.equal(driftAngle(0, t).k, 0, "it starts exactly at the blimp (no jump)");
-  const blimp = { position: { x: 0, y: 230, z: 108 }, target: { x: 0, y: 0, z: 0 }, up: { x: 0, y: 0.9, z: -0.42 }, fov: 30 };
-  const est = driftFrame(blimp, t);
-  assert.ok(est.target.z < -t.driftLiftYd + 0.01, "aimed past the field's middle, away from the camera");
-  const pitch = (Math.atan2(est.position.y - est.target.y, Math.hypot(est.position.x - est.target.x,
-    est.position.z - est.target.z)) * 180) / Math.PI;
-  assert.ok(Math.abs(pitch - t.driftPitchDeg) < 1e-6);
-  const p = yawPose(dollyPose(pose(100), 1.5), Math.PI / 2);
-  assert.deepEqual(p.target, { x: 0, y: 0, z: 0 });
-  assert.ok(Math.abs(p.position.x + 150) < 1e-9 && Math.abs(p.position.z) < 1e-9);
-  assert.equal(p.position.y, 60);
-});
-
 /** A scene holding a stand-in stadium whose parts record what the moments ask of them. */
 function stage(mode = "wide") {
   const calls = [];
@@ -180,7 +57,6 @@ function stage(mode = "wide") {
   const on = {};
   g.userData.uls = { dip: { level: 0.8, ms: 300 }, frame: { teams: TL.body.teams, field: TL.body.field, teamOrder: ["TB", "DAL"] },
     dim: { to: rec("dim"), flare: rec("flare") },
-    choreo: { attach: () => {}, play: rec("play"), landed: rec("landed"), presnap: rec("presnap") },
     ribbons: { show: (id, msg) => { on[id] = msg; calls.push(["show", id, msg.kind]); },
       revise: (id) => calls.push(["revise", id]), message: (id) => on[id] ?? null, drop: (id) => calls.push(["drop", id]),
       queue: (id, msg, dwellMs) => { on[id] = msg; calls.push(["queue", id, msg.kind, dwellMs]); } } };
@@ -188,31 +64,58 @@ function stage(mode = "wide") {
   return { calls, ctx: { scene, rig: fakeRig(mode), camera: new THREE.PerspectiveCamera(), lights: {}, requestRender: () => {} } };
 }
 
-test("the moments: presnap dips and brings the camera back; the snap and every play bring the lights up", () => {
+const D46 = Object.freeze({ ballX: 46, ltgX: 56, dir: 1, poss: "DAL", kind: "snap", goalToGo: false, down: 1, togo: 10 });
+const NEXT = buildGhostSet({ leaves: [{ leaf: "run_inside", p: 0.24 }, { leaf: "pa_short", p: 0.16 }] }, D46);
+
+test("the moments: presnap dips; the snap and every play bring the lights up", () => {
   const { calls, ctx } = stage();
   moments.presnap(ctx, {});
-  assert.deepEqual(calls, [["presnap"], ["dim", 0.8, 300]], "no app in node: the dip setting defaults to on");
+  assert.deepEqual(calls, [["dim", 0.8, 300]], "no app in node: the dip setting defaults to on");
   calls.length = 0;
   moments.snap(ctx, TL.row(2));
   moments.play(ctx, TL.row(2));
-  assert.deepEqual(calls, [["dim", 1, 300], ["dim", 1, 300], ["play"], ["drop", "A"]]);
+  assert.deepEqual(calls, [["dim", 1, 300], ["dim", 1, 300], ["drop", "A"]]);
+});
+
+test("restructure-v2.md 4: no moment moves the camera, in a live game or a watched one, in either view", () => {
+  for (const mode of ["wide", "blimp"]) {
+    for (const appMode of ["feed", "watch"]) {
+      const { ctx } = stage(mode);
+      const before = ctx.camera.position.clone();
+      const app = { getAttribute: (name) => (name === "data-mode" ? appMode : null) };
+      const had = Object.hasOwn(globalThis, "document");
+      const prior = globalThis.document;
+      globalThis.document = { getElementById: (id) => (id === "app" ? app : null) };
+      try {
+        moments.presnap(ctx, NEXT);
+        moments.snap(ctx, TL.row(2));
+        moments.play(ctx, TL.row(2));
+        moments.landed(ctx, TL.row(12));
+        moments.verdict(ctx, { seq: 12, key: "top1" });
+        moments.possession(ctx, "TB");
+        moments.placed(ctx, [TL.row(12)]);
+      } finally {
+        if (had) globalThis.document = prior;
+        else delete globalThis.document;
+      }
+      assert.deepEqual(ctx.rig.calls, [], `${mode}, ${appMode}: the rig was never told a shot`);
+      assert.ok(ctx.camera.position.equals(before), `${mode}, ${appMode}: the camera never moved`);
+    }
+  }
 });
 
 test("landed steps the play's words onto the ribbons; a touchdown on both; the grade joins the caller's words", () => {
   const { calls, ctx } = stage();
   moments.landed(ctx, TL.row(3));
-  assert.deepEqual(calls, [["landed"], ["show", "A", "play"]]);
+  assert.deepEqual(calls, [["show", "A", "play"]]);
   moments.verdict(ctx, { seq: 3, key: "top3" });
   assert.deepEqual(calls.at(-1), ["revise", "A"]);
   calls.length = 0;
   moments.verdict(ctx, { seq: 99, key: "miss" });
   assert.deepEqual(calls, [], "a grade for another play changes nothing");
   moments.landed(ctx, TL.row(12));
-  assert.deepEqual(calls.slice(1), [["show", "A", "td"], ["show", "B", "td"], ["flare", 1.15, 300]]);
+  assert.deepEqual(calls, [["show", "A", "td"], ["show", "B", "td"], ["flare", 1.15, 300]]);
 });
-
-const D46 = Object.freeze({ ballX: 46, ltgX: 56, dir: 1, poss: "DAL", kind: "snap", goalToGo: false, down: 1, togo: 10 });
-const NEXT = buildGhostSet({ leaves: [{ leaf: "run_inside", p: 0.24 }, { leaf: "pa_short", p: 0.16 }] }, D46);
 
 test("G3-6: presnap puts the next call on the field-wall ribbon after the play's words; the snap drops a queued one", () => {
   const { calls, ctx } = stage();
@@ -226,6 +129,35 @@ test("G3-6: presnap puts the next call on the field-wall ribbon after the play's
   assert.deepEqual(calls.at(-1), ["drop", "A"], "a call still waiting when the ball is snapped is dropped");
   moments.landed(ctx, TL.row(5));
   assert.deepEqual(calls.at(-1), ["show", "A", "play"], "the play's words again once it is down");
+});
+
+/** What a ribbon of the stand-in stadium says now (its words). */
+const said = (ctx, id) => textOf(ctx.scene.getObjectByName(STADIUM).userData.uls.ribbons.message(id));
+const frameOf = (ctx) => ctx.scene.getObjectByName(STADIUM).userData.uls.frame;
+
+test("restructure-v2.md 5: rows drawn at once (a jump) never leave a call that is gone on the ribbon", () => {
+  const { calls, ctx } = stage();
+  moments.landed(ctx, TL.row(4));
+  moments.presnap(ctx, NEXT);                     // his call is up: the lights dipped, NEXT CALL on the field wall
+  calls.length = 0;
+  moments.placed(ctx, [TL.row(5), TL.row(6), TL.row(13)]);
+  assert.deepEqual(calls.slice(0, 3), [["dim", 1, 300], ["drop", "A"], ["show", "A", "play"]],
+    "the lights come up and the call goes: no snap or play moment will come to do it");
+  assert.equal(said(ctx, "A"), textOf(plainMessage(TL.row(6))), "the newest play's words (13 is an admin row)");
+  assert.equal(said(ctx, "B"), textOf(gameMessage(frameOf(ctx))), "the upper ribbon rests on the game");
+  calls.length = 0;
+  moments.placed(ctx, [TL.row(6)]);
+  assert.deepEqual(calls, [["dim", 1, 300], ["drop", "A"]], "the same words again: no second step-in");
+  moments.placed(ctx, []);
+  assert.equal(said(ctx, "A"), textOf(idleMessage()), "a jump to kickoff (nothing drawn): the title");
+});
+
+test("restructure-v2.md 5: an admin row drawn at once (a timeout between his snaps) keeps the call and the dip", () => {
+  const { calls, ctx } = stage();
+  moments.presnap(ctx, NEXT);
+  calls.length = 0;
+  moments.placed(ctx, [TL.row(13)]);
+  assert.deepEqual(calls, []);
 });
 
 test("G3-6: a late grade never pushes the next call off the ribbon (the HUD's ribbon carries it)", () => {
@@ -295,7 +227,7 @@ test("G3-6: while a new game frame's stadium is built beside the old one, the mo
 
 test("without a stadium (another world's props, or none) the moments do nothing and never throw", () => {
   const ctx = { scene: new THREE.Scene(), rig: fakeRig(), lights: {}, requestRender: () => {} };
-  for (const name of ["presnap", "snap", "play", "landed", "verdict", "possession"]) {
+  for (const name of ["presnap", "snap", "play", "landed", "verdict", "possession", "placed"]) {
     assert.doesNotThrow(() => moments[name](ctx, TL.row(2)));
   }
   assert.doesNotThrow(() => moments.presnap(null));

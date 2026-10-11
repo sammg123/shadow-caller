@@ -130,7 +130,7 @@ function skeleton(ctx) {
   const clock = fact("clock", copy.time, GHOST.clock, { testid: "game-clock" });
   const down = fact("down", copy.down, null);
   const ball = fact("ball", copy.ballOn, null);
-  const est = el("span", { cls: "sc-sb-est", text: ctx.copy.STRIP.est, attrs: { title: ctx.copy.STRIP.estTitle } });
+  const est = el("span", { cls: "sc-sb-est", text: copy.est, attrs: { title: copy.estTitle } });
   const final = el("span", { cls: "sc-sb-final", text: copy.final });
   clock.node.appendChild(est);
   qtr.node.appendChild(final);

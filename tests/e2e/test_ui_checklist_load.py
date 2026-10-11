@@ -1,23 +1,30 @@
-"""FI 6.3 checklist #1 to #8: load and layout, on the neutral world (ui-architecture 7.2). Sandboxed server only."""
+"""FI 6.3 checklist #1 to #3, #7 and #8 on the restructured home page (restructure-v2.md 1 and 2): the top bar's
+title, current game and the caller it shadows; no errors on load or at idle; the version poll; the neutral page's
+layout at 1440 and 1040 px; nothing wider than a phone. #4 to #6 went with the situation strip, the entry pad and the
+scorecard (the Model Report shows his scorecard now). Sandboxed server only."""
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import (command, expect_off_field, expect_shows, finished, fresh, load, record_requests, reset_game,
-                        state)
-from ui_helpers import neutral_only, show  # v1.4 (W6): world-aware helpers
+from ui_helpers import api_get, finished, fresh, load, neutral_only, record_requests, seek_game, state
 
 pytestmark = pytest.mark.e2e
 
+MID = 40                        # a paused watch 40 plays in: Dallas has had the ball, the board shows his call
+
 
 def test_01_title_game_label_and_who_label(upage, server):
-    """#1: title "Shadow Play-Caller", #gameLabel = game.label, #whoLabel "Shadowing Schottenheimer · DAL" (v1.5, G4-2:
-    the plate names the caller it shadows; its tooltip keeps "Modelling Brian Schottenheimer (DAL offense)")."""
-    fresh(upage, server["base"])
-    s = state(server["base"])
+    """#1: title "Shadow Play-Caller"; the current game in the top bar, "TB at DAL" with ESPN's status, the game's
+    whole label on its tooltip; the plate names the caller it shadows, "Shadowing Schottenheimer · DAL", its tooltip
+    every word (v1.5, G4-2)."""
+    base = server["base"]
+    fresh(upage, base)
+    s = state(base)
+    detail = api_get(base, "/api/watch")["game"]["detail"]
     expect(upage).to_have_title("Shadow Play-Caller")
-    expect(upage.locator("#gameLabel")).to_have_text(s["game"]["label"])
+    expect(upage.locator("#gameLabel")).to_have_text(f"TB at DAL · {detail}")
+    expect(upage.locator("#gameLabel")).to_have_attribute("title", s["game"]["label"])
     expect(upage.locator("#whoLabel")).to_have_text("Shadowing Schottenheimer · DAL")
     expect(upage.locator(".sc-masthead-plate")).to_have_attribute(
-        "title", f"{s['game']['label']} · Modelling Brian Schottenheimer (DAL offense)")
+        "title", "Modelling Brian Schottenheimer (DAL offense)")
 
 
 def test_02_no_page_or_console_errors_on_load_and_idle(upage, server):
@@ -43,77 +50,29 @@ def test_03_version_polls_without_state_refetch(upage, server):
     assert states == []
 
 
-def test_04_fresh_strip_values(upage, server):
-    """#4: Qtr 1, Clock 15:00, 0 and 0, Down 1, To go 10, side chip DAL, Ball on 25 (its placeholder: no drive yet,
-    G5-3), est. hidden."""
-    fresh(upage, server["base"])
-    for sel, value in (("#iQtr", "1"), ("#iClock", "15:00"), ("#iOff", "0"), ("#iOpp", "0"), ("#iDown", "1"),
-                       ("#iTogo", "10"), ("#iYard", "")):
-        expect(upage.locator(sel)).to_have_value(value)
-    expect(upage.locator("#iYard")).to_have_attribute("placeholder", "25")
-    expect(upage.locator("#sideTxt")).to_have_text("DAL")
-    expect(upage.locator("#clockEst")).to_be_hidden()
-
-
-def _dim_style(page):
-    return page.locator("#entry").evaluate(
-        "e => { const c = getComputedStyle(e); const m = document.querySelector('#manualEntry');"
-        " const cm = m ? getComputedStyle(m) : c; return [c.opacity, c.filter, cm.opacity, cm.filter, cm.color]; }")
-
-
-def test_05_no_drive_off_field_state(upage, server):
-    """#5: no drive: "DAL is off the field", #endRow hidden, #logBtn disabled, the entry panel visibly de-emphasized
-    (#entry[data-dim="true"], and it looks different once a drive starts)."""
-    base = server["base"]
-    fresh(upage, base)
-    expect_off_field(upage)
-    expect(upage.locator("#endRow")).to_be_hidden()
-    expect(upage.locator("#logBtn")).to_be_disabled()
-    expect(upage.locator("#entry")).to_have_attribute("data-dim", "true")
-    dimmed = _dim_style(upage)
-    command(base, "new D25")
-    expect(upage.locator("#entry")).not_to_have_attribute("data-dim", "true")
-    assert _dim_style(upage) != dimmed, "the de-emphasized entry panel looks the same as the active one"
-
-
-def test_06_fresh_scorecard_log_and_tendencies_title(upage, server):
-    """#6: "Scores appear after the first logged snap.", "No snaps yet. ...", "Schottenheimer's tendencies"."""
-    fresh(upage, server["base"])
-    expect_shows(upage.locator("#kpiArea"), "Scores appear after the first logged snap.")
-    show(upage, "#logArea")
-    expect_shows(upage.locator("#logArea"), "No snaps yet. Each logged play shows his top pick next to what he called.")
-    expect(upage.locator("#profTitle")).to_have_text("Schottenheimer's tendencies")
-
-
 def _box(page, sel):
     b = page.locator(sel).first.bounding_box()
     assert b, f"{sel} has no layout box"
     return b
 
 
-@neutral_only("#7 is the neutral layout's rail and family columns; Under the Lights hangs every region in its own "
+@neutral_only("#7 is the neutral layout's main column and rail; Under the Lights hangs every region in its own "
               "fixtures (DESIGN.md Layout, ui-architecture 15)")
-def test_07_rail_stacks_at_1040_and_families_two_columns_at_760(ui_pages, server):
-    """#7: at 1440 the rail sits beside the main column; at 1040 px it stacks under it; at 760 px the five families
-    show in 2 columns."""
+def test_07_the_rail_sits_beside_the_main_column_and_stacks_under_it_at_1040(ui_pages, server):
+    """#7: at 1440 the rail (win probability, drives, plays) sits beside the main column (field and call); at 1040 px
+    it stacks under it; the top bar and the scoreboard run across the top at both."""
     base = server["base"]
-    reset_game(base)
-    command(base, "new D25")
+    seek_game(base, MID)
     wide = ui_pages(1440, 900)
     load(wide, base)
-    expect(wide.locator("#heroArea .fam")).to_have_count(5)
-    call, score = _box(wide, "#rg-call"), _box(wide, "#rg-score")
-    assert score["x"] >= call["x"] + call["width"] - 1, "at 1440 the scorecard rail should sit beside the main column"
+    call, wp, field = _box(wide, "#rg-call"), _box(wide, "#rg-wp"), _box(wide, "#rg-field")
+    assert wp["x"] >= max(call["x"] + call["width"], field["x"] + field["width"]) - 1, "the rail beside the column"
+    top = _box(wide, '[data-testid="transport"]')
+    assert top["y"] + top["height"] <= field["y"] + 1, "the top bar above the field"
     mid = ui_pages(1040, 900)
     load(mid, base)
-    expect(mid.locator("#heroArea .fam")).to_have_count(5)
-    main_bottom = max(_box(mid, sel)["y"] + _box(mid, sel)["height"] for sel in ("#rg-call", "#rg-log"))
-    assert _box(mid, "#rg-score")["y"] >= main_bottom - 1, "at 1040 the rail should stack under the main column"
-    narrow = ui_pages(760, 900)
-    load(narrow, base)
-    expect(narrow.locator("#heroArea .fam")).to_have_count(5)
-    lefts = narrow.locator("#heroArea .fam").evaluate_all("els => els.map(e => Math.round(e.getBoundingClientRect().left))")
-    assert len(set(lefts)) == 2, f"families at 760 px sit in {len(set(lefts))} columns: {lefts}"
+    main_bottom = max(_box(mid, sel)["y"] + _box(mid, sel)["height"] for sel in ("#rg-call", "#rg-field"))
+    assert _box(mid, "#rg-wp")["y"] >= main_bottom - 1, "at 1040 the rail stacks under the main column"
 
 
 def _page_width(page):
@@ -121,17 +80,18 @@ def _page_width(page):
 
 
 def test_08_no_horizontal_scroll_at_390(ui_pages, server):
-    """#8 [fix] (G17): at 390 px the document is no wider than the viewport, with a drive (the full prediction) and
-    after a whole game (the play log, play feed and box score)."""
+    """#8 [fix] (G17): at 390 px the document is no wider than the viewport, mid-game (the top bar, the call) and at
+    the final whistle (every play on the ticker and the drive chart)."""
     base = server["base"]
-    reset_game(base)
-    command(base, "new D25")
+    seek_game(base, MID)
     phone = ui_pages(390, 844)
     load(phone, base)
-    expect(phone.locator("#heroArea .fam")).to_have_count(5)
+    expect(phone.locator('[data-testid="transport"]')).to_be_visible()
     doc, body, view = _page_width(phone)
-    assert doc <= view and body <= view, f"document {doc} px, body {body} px, viewport {view} px (drive)"
+    assert doc <= view and body <= view, f"document {doc} px, body {body} px, viewport {view} px (mid-game)"
     finished(phone, base)
-    expect(phone.locator("#logArea tbody tr")).to_have_count(59)
+    expect(phone.locator('[data-testid="progress-count"]')).to_have_text(f"{state(base)['watch']['total']} / "
+                                                                          f"{state(base)['watch']['total']}")
     doc, body, view = _page_width(phone)
     assert doc <= view and body <= view, f"document {doc} px, body {body} px, viewport {view} px (finished game)"
+    assert phone.errors == [], phone.errors

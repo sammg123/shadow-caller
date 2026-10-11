@@ -1,23 +1,25 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { lastNameOf, mastheadVm } from "../../static/js/model/vm-masthead.js";
-import { makePv, state, isDeepFrozen } from "./model-fixtures.mjs";
+import { viewKeysVm } from "../../static/js/model/vm-view-keys.js";
+import { isDeepFrozen, makePv, state, timeline, tlOf } from "./model-fixtures.mjs";
 
-test("title, game label and who label (#1)", () => {
-  const vm = mastheadVm(makePv({ presented: state.final() }));
+const pv = (over = {}) => makePv({ presented: state.final(), tl: tlOf(timeline.final()), ...over });
+
+test("the plate: the title and who it shadows (restructure-v2.md 2: \"Shadowing Schottenheimer · DAL\")", () => {
+  const vm = mastheadVm(pv());
   assert.equal(vm.title, "Shadow Play-Caller");
-  assert.equal(vm.gameLabel, "Buccaneers at Cowboys, Thursday Night Football, Oct 8");
   assert.equal(vm.whoLabel, "Shadowing Schottenheimer · DAL");
-  assert.deepEqual([vm.boothOpen, vm.scorecardOpen], [false, false]);
+  assert.equal(vm.plateTitle, "Modelling Brian Schottenheimer (DAL offense)");
 });
 
-// v1.5 (G4-2): the plate names the caller it shadows in a line that fits; the full words are its tooltip
-test("the plate's tooltip carries the whole game and who is modelled (G4-2)", () => {
-  const vm = mastheadVm(makePv({ presented: state.final() }));
-  assert.equal(vm.plateTitle,
-    "Buccaneers at Cowboys, Thursday Night Football, Oct 8 · Modelling Brian Schottenheimer (DAL offense)");
-  const noGame = mastheadVm(makePv({ presented: { ...state.final(), game: { ...state.final().game, label: "" } } }));
-  assert.equal(noGame.plateTitle, "Modelling Brian Schottenheimer (DAL offense)");
+test("the current game, where phase 2's game picker goes: away at home, and ESPN's status once it says", () => {
+  assert.equal(mastheadVm(pv()).gameLabel, "TB at DAL");
+  assert.equal(mastheadVm(pv()).gameTitle, "Buccaneers at Cowboys, Thursday Night Football, Oct 8");
+  const final = mastheadVm(pv({ version: { watch: { state: "done", game: { status: "post", detail: "Final" } } } }));
+  assert.equal(final.gameLabel, "TB at DAL · Final");
+  const noTeams = mastheadVm(makePv({ presented: state.final() }));
+  assert.equal(noTeams.gameLabel, "TB at DAL", "from the game when the timeline has no teams yet");
 });
 
 test("the caller's last name comes from the profile, for any caller (G4-2)", () => {
@@ -31,23 +33,20 @@ test("the caller's last name comes from the profile, for any caller (G4-2)", () 
   assert.equal(mastheadVm(makePv({ presented: kc })).whoLabel, "Shadowing Nagy · KC");
 });
 
-test("camera label comes from the engine's modes, else from the id", () => {
-  const modes = [{ id: "sideline", label: "Sideline" }, { id: "endzone", label: "End zone" }];
-  const named = mastheadVm(makePv({ presented: state.final(), view: { camera: "endzone" }, cameraModes: modes }));
-  assert.deepEqual([named.cameraMode, named.cameraLabel], ["endzone", "End zone"]);
-  const bare = mastheadVm(makePv({ presented: state.final(), view: { camera: "overhead" } }));
-  assert.deepEqual([bare.cameraMode, bare.cameraLabel], ["overhead", "Overhead"]);
-  const none = mastheadVm(makePv({ presented: state.final() }));
-  assert.deepEqual([none.cameraMode, none.cameraLabel], ["", ""]);
-});
-
-test("booth and scorecard toggles follow the view", () => {
-  const vm = mastheadVm(makePv({ presented: state.final(), view: { booth: { open: true, auto: false }, scorecardOpen: true } }));
-  assert.deepEqual([vm.boothOpen, vm.scorecardOpen], [true, true]);
-});
-
 test("before the first state the labels are empty", () => {
   const vm = mastheadVm(makePv());
-  assert.deepEqual([vm.title, vm.gameLabel, vm.whoLabel, vm.plateTitle], ["Shadow Play-Caller", "", "", ""]);
+  assert.deepEqual([vm.title, vm.gameLabel, vm.whoLabel, vm.plateTitle, vm.gameTitle],
+    ["Shadow Play-Caller", "", "", "", ""]);
   assert.ok(isDeepFrozen(vm));
+});
+
+test("view keys: the camera's label comes from the engine's modes, else from its id; the settings menu's state", () => {
+  const modes = [{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }];
+  const named = viewKeysVm(makePv({ view: { camera: "blimp", settingsOpen: true }, cameraModes: modes }));
+  assert.deepEqual([named.cameraMode, named.cameraLabel, named.settingsOpen], ["blimp", "Blimp", true]);
+  const bare = viewKeysVm(makePv({ view: { camera: "wide" } }));
+  assert.deepEqual([bare.cameraMode, bare.cameraLabel, bare.settingsOpen], ["wide", "Wide", false]);
+  const none = viewKeysVm(makePv());
+  assert.deepEqual([none.cameraMode, none.cameraLabel], ["", ""]);
+  assert.ok(isDeepFrozen(named));
 });

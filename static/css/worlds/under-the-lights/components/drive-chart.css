@@ -107,22 +107,17 @@
   stroke: color-mix(in srgb, var(--sc-dc-tone) 55%, var(--uls-led-panel));
 }
 :where(:root[data-world="under-the-lights"])
-  .sc-dc-btn:is(:hover, :focus-visible, [aria-pressed="true"]) :is(.sc-dc-bar) {
+  .sc-dc-btn:is(:hover, :focus-visible) :is(.sc-dc-bar) {
   fill: var(--sc-dc-tone);
 }
 :where(:root[data-world="under-the-lights"])
-  .sc-dc-btn:is(:hover, :focus-visible, [aria-pressed="true"]) :is(.sc-dc-end) {
+  .sc-dc-btn:is(:hover, :focus-visible) :is(.sc-dc-end) {
   stroke: var(--sc-dc-tone);
 }
 
-/* Hover: the warm-white frame; the drive shown on the field: an amber frame. */
+/* Hover: the warm-white frame. */
 :where(:root[data-world="under-the-lights"]) .sc-dc-btn:hover:not(:disabled, :focus-visible) {
   outline: var(--sc-border-w) solid var(--sc-ink);
-  outline-offset: -2px;
-  background: none;
-}
-:where(:root[data-world="under-the-lights"]) .sc-dc-btn[aria-pressed="true"] {
-  outline: var(--sc-border-w) solid var(--uls-led-amber);
   outline-offset: -2px;
   background: none;
 }

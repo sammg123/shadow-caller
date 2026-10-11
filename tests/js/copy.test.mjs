@@ -8,48 +8,48 @@ test("every copy group is frozen", () => {
   }
 });
 
-test("header strings match FI 3.1", () => {
+// restructure-v2.md 2: the top bar's clear words: who is shadowed, the current game, the playback and the view keys.
+test("the top bar says who is shadowed and the current game; its keys say what they do", () => {
   assert.equal(Copy.APP.title, "Shadow Play-Caller");
-  assert.equal(Copy.MASTHEAD.undoTitle, "Undo (U)");
-  assert.equal(Copy.MASTHEAD.exportCsv, "Export CSV");
-  assert.equal(Copy.MASTHEAD.reset, "Reset game");
-});
-
-// v1.5 (G4-2): the nameplate names the play-caller it shadows, short enough for the plate; the full words stay in its
-// tooltip. The B and G keys name their letter, so a voice user can say what they see.
-test("the masthead says who is shadowed, and the view keys name their letters (G4-2)", () => {
   assert.equal(Copy.MASTHEAD.whoLabel("Schottenheimer", "DAL"), "Shadowing Schottenheimer · DAL");
   assert.equal(Copy.MASTHEAD.whoTitle("Brian Schottenheimer", "DAL"), "Modelling Brian Schottenheimer (DAL offense)");
-  assert.equal(Copy.MASTHEAD.booth, "Booth (B)");
-  assert.equal(Copy.MASTHEAD.scorecard, "Scorecard (G)");
+  assert.equal(Copy.MASTHEAD.gameDetail(Copy.MASTHEAD.game("TB", "DAL"), "Final"), "TB at DAL · Final");
+  assert.deepEqual([Copy.MASTHEAD.report, Copy.MASTHEAD.settings, Copy.MASTHEAD.cameraTitle],
+    ["Model Report", "Settings", "Wide or Blimp (V)"]);
+  const W = Copy.WATCH;
+  assert.deepEqual([W.back, W.play, W.pause, W.forward, W.reset, W.goLive], ["Back", "Play", "Pause", "Forward", "Reset",
+    "Go Live"]);
+  assert.deepEqual([W.backTitle, W.forwardTitle, W.goLiveTitle], ["One play back (Left arrow)",
+    "One play forward (Right arrow)", "Jump to the latest play (Esc)"]);
+  assert.equal(W.speedTitle(10, "4"), "Play at 10x (4)");
+  assert.deepEqual([W.count(42, 183), W.position(42, 183), W.kickoff, W.final], ["42 / 183", "Play 42 of 183",
+    "Kickoff", "Final"]);
 });
 
-test("feed bar strings match FI 3.2", () => {
-  assert.equal(Copy.FEED.statusOff, "Off: enter plays by hand, or turn it on and plays log themselves.");
-  assert.equal(Copy.FEED.error("timed out"), "Can't reach ESPN (timed out). Still trying every few seconds.");
-  assert.equal(Copy.FEED.eventPlaceholder, "today's game");
-  assert.equal(Copy.FEED.replayTitle, "Rebuild a finished game from ESPN (backs up the current one)");
-});
+test("the page takes no user input into the game: no feed, strip, entry, flag, review or scrub copy (restructure-v2.md 1)",
+  () => {
+    for (const gone of ["FEED", "STRIP", "ENTRY", "FLAGS", "REVIEW", "SCRUB", "CONFIRMS"]) {
+      assert.equal(Object.hasOwn(Copy, gone), false, gone);
+    }
+    for (const gone of ["undo", "exportCsv", "reset", "booth", "scorecard"]) {
+      assert.equal(Object.hasOwn(Copy.MASTHEAD, gone), false, gone);
+    }
+    assert.equal(Copy.SCOREBOARD.est, "est.");
+  });
 
-test("strip strings match FI 2.3 and 3.4", () => {
-  assert.equal(Copy.STRIP.note,
-    "Click any number and type; Enter or Tab saves. Click the team to switch sides of the field. Clock takes 8:41 or 841; G in To go means goal.");
-  assert.equal(Copy.STRIP.driveInfo(1, 1), "Drive 1 · snap 1");                 // v1.5 (G4-12): one strip row
-  assert.equal(Copy.STRIP.driveInfo(9, 32), "Drive 9 · snap 32");
-  assert.equal(Copy.STRIP.offField("DAL"), "DAL off the field. Type where they get the ball in Ball on.");
-  assert.equal(Copy.STRIP.final, "Final. Replay or watch another game from the booth (B).");   // v1.5 (G4-1)
-  assert.equal(Copy.STRIP.estTitle, "Estimated from snaps; type the real clock");
-  assert.equal(Copy.STRIP.scoreAria("Dallas"), "Dallas score");
-});
-
-test("prediction strings match FI 3.5", () => {
+// restructure-v2.md: no user input into the game (a play is shown on the field, never picked), and NEXT CALL says who
+// has the ball while he doesn't, never an instruction to type anything.
+test("prediction strings match FI 3.5, with no user input into the game (restructure-v2.md)", () => {
   assert.equal(Copy.PREDICTION.legend,
-    "▲ ▼ = at least 4 points and 30% above or below the league for this exact situation. Bars are scaled to the top pick. Click a play to pick it as what he called.");
+    "▲ ▼ = at least 4 points and 30% above or below the league for this exact situation. Bars are scaled to the top pick. Point at a play to see its shadow on the field.");
+  assert.equal(Copy.PREDICTION.leafTitle, "Shows this play's shadow on the field");
   assert.equal(Copy.PREDICTION.script(15), "Opening script: memory switches on after snap 15");
-  assert.equal(Copy.PREDICTION.offFieldHeading("DAL"), "DAL is off the field");
-  assert.equal(Copy.PREDICTION.offFieldFeed("DAL"),
-    "When DAL gets the ball, the ESPN feed starts the drive and the next call appears here.");
-  assert.equal(Copy.PREDICTION.offFieldWatch("DAL"), "When DAL gets the ball in this game, the next call appears here.");
+  assert.equal(Copy.PREDICTION.hasBall("TB"), "TB has the ball");
+  assert.equal(Copy.PREDICTION.kicksOff("DAL"), "DAL kicks off");
+  assert.equal(Copy.PREDICTION.waiting("DAL"), "When DAL gets the ball, his next call appears here.");
+  for (const gone of ["offFieldHeading", "offFieldManual", "offFieldFeed", "offFieldWatch"]) {
+    assert.equal(Object.hasOwn(Copy.PREDICTION, gone), false, gone);
+  }
 });
 
 // v1.5 (G4-1, G4-2, G4-4, G4-6): the board's plates, the tilt tag's words, the spoken call, the drive recap and FINAL.
@@ -72,22 +72,21 @@ test("the video board's words (G4-1, G4-2, G4-4, G4-6)", () => {
   assert.equal(P.predicted, "Predicted");
   assert.deepEqual([P.tallyTop1, P.tallyTop3], ["Top pick", "In his top 3"]);
   assert.equal(P.spokenFourth, "Fourth down, if he goes for it.");
-  assert.equal(P.spokenPredicted("Screen", 9), "Predicted Screen, 9 percent");
+  assert.equal(P.spokenPredicted("Screen", "9 percent"), "Predicted Screen, 9 percent");
   assert.equal(P.recentLabel, "Last 6");
+  assert.equal(P.recentTop3(2), "In his top 3 (#2)");
+  assert.equal(P.previousPlate, "Previous play");
+  assert.equal(P.spokenPrevious(34), "Previous play, snap 34:");
+  assert.equal(P.spokenPrevious(null), "Previous play:");
   assert.equal(P.finalPlate, "Final");
   assert.equal(P.finalKey, "Tonight's scorecard");
-  assert.equal(P.finalKeyTitle, "Full scorecard (G)");
+  assert.equal(P.finalKeyTitle, "The full scorecard is in the Model Report");
 });
 
-test("entry, flag-panel and log strings match FI 1.6, 3.6 and 3.9 (flag notes are core/flags.js's)", () => {
-  assert.equal(Copy.ENTRY.hintManual,
-    "Press the play key (tap again to cycle), type yards, Enter. I incomplete, X flag, Esc clears, U undoes. Down, distance and field position advance on their own.");
-  assert.equal(Copy.ENTRY.hintFeed,
-    "ESPN logs each play, down, distance, spot, clock and score. It can't see play-action, screens or RPOs: press A, N or O to fix the last play. P undoes that, J/K/L change the run gap, U undoes.");
-  assert.equal(Copy.FLAGS.hint.startsWith("Flag on the play you picked: that play is wiped out"), true);
-  assert.equal(Copy.LOG.empty, "No snaps yet. Each logged play shows his top pick next to what he called.");
-  assert.deepEqual([...Copy.LOG.columns],
-    ["#", "Time", "Situation", "His top pick", "Actual", "His % on it", "League %", "Rank", "Yds"]);
+test("a logged call's legacy words match FI 3.9; the play log itself is the Model Report's (restructure-v2.md 6)", () => {
+  assert.deepEqual({ ...Copy.LOG.legacyCall }, { R: "Run", P: "Pass", SC: "Scramble", S: "Sack" });
+  assert.deepEqual(Object.keys(Copy.LOG), ["legacyCall"]);
+  for (const gone of ["review", "reviewing"]) assert.equal(Object.hasOwn(Copy.PLAYS, gone), false, gone);
 });
 
 test("scorecard and tendency strings match FI 3.7 and 3.8", () => {
@@ -105,18 +104,10 @@ test("scorecard and tendency strings match FI 3.7 and 3.8", () => {
   assert.equal(Copy.TENDENCIES.plotAria, "His pass-run tendency terms with 90 percent intervals");
 });
 
-test("toasts and confirms name the team, not Dallas (G13)", () => {
-  assert.equal(Copy.TOASTS.noDrive("Dallas"), "No Dallas drive in progress. Type the ball spot first.");
-  assert.equal(Copy.TOASTS.noDrive("Kansas City"), "No Kansas City drive in progress. Type the ball spot first.");
-  // v1.5 (G4-12): a reset backs the game up first (app.py /api/reset, watch.backup_game), and the confirm says so
-  assert.equal(Copy.CONFIRMS.reset, "Clear every snap logged for this game? A copy is kept in data/.");
-  assert.equal(Copy.CONFIRMS.resetFeedOn, "Clear every snap logged for this game? The ESPN feed turns off first, so it "
-    + "doesn't log the game again. A copy is kept in data/.");
-  assert.equal(Copy.CONFIRMS.replay("401872980"),
-    "Rebuild the game log from ESPN game 401872980? The current log is backed up first.");
-  assert.equal(Copy.CONFIRMS.watchStart("401872980"),
-    "Watch ESPN game 401872980 from the start? Your game is backed up first and comes back when you stop.");
-  assert.equal(Copy.CONFIRMS.watchStop, "Stop watching and put your game back?");
+test("toasts: a request that never reached the server moved nothing; nothing names Dallas (G13)", () => {
+  assert.equal(Copy.TOASTS.networkFail, "Can't reach the app server, so the game didn't move. Try again in a moment.");
+  assert.equal(Copy.TOASTS.serverError, "The app server refused that.");
+  assert.doesNotMatch(JSON.stringify(Object.values(Copy.TOASTS)), /Dallas|DAL/);
 });
 
 test("restart and connection strings match FI 3.11 and G11", () => {

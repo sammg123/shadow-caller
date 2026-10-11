@@ -1,0 +1,120 @@
+<!doctype html>
+<!--
+Direction contract: the Model Report (restructure-v2.md section 6), inside Under the Lights (DESIGN.md).
+
+THESIS. The night told call by call: every snap he called, graded against the model and the league, in the order he
+called it. Refuses the KPI-card dashboard and the bare stat sheet.
+
+OWN-WORLD. Under the Lights, unchanged: LED faces showing unlit pixels, warm white, amber and tally red, steel plates
+with a light-catch, Big Shoulders for words, Doto at 40 px and up for numbers, lamps beside words.
+
+STORY. How often the model had his exact call; where by down and distance; where he surprised it; what memory did;
+then the game and every call to check.
+
+FIRST VIEWPORT. The LED ribbon (title, who, score, status, GameCast and CSV keys); the night board: top pick and top-3
+tallies in Doto, his last 6, the call track (a lit bar per call grouped by drive, surprises numbered); his scorecard
+starting under it.
+
+FORM. Candidate 4 of 7 (the game told call by call), with the cutaway staging's numbered leaders; seed d3b028a5.
+-->
+<html lang="en" data-world="under-the-lights" data-motion="full" data-ambient="dark" data-page="report">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Model report · Shadow Play-Caller</title>
+<meta name="description" content="How the shadow model of one NFL play-caller did tonight: every call against the model and the league.">
+<link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
+<!-- Order (as index.html): base, every component this page reuses, the report's own structure, then the active world
+     (swapped by theme/apply.js). The page ships in the default world, Under the Lights: its tokens, its key caps and
+     its boot board, so the first frame is the night sky with the loading board lit before any script runs; report/main.js
+     then loads the world's whole report set (or ?world=neutral) and swaps these out. -->
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/components/masthead.css">
+<link rel="stylesheet" href="/static/css/components/boot-screen.css">
+<link rel="stylesheet" href="/static/css/components/conn-banner.css">
+<link rel="stylesheet" href="/static/css/components/scoreboard.css">
+<link rel="stylesheet" href="/static/css/components/scorecard.css">
+<link rel="stylesheet" href="/static/css/components/tendencies.css">
+<link rel="stylesheet" href="/static/css/components/win-prob.css">
+<link rel="stylesheet" href="/static/css/components/drive-chart.css">
+<link rel="stylesheet" href="/static/css/components/box-score.css">
+<link rel="stylesheet" href="/static/css/report/report.css">
+<link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-text/big-shoulders-text-latin.woff2">
+<link rel="stylesheet" id="world-css" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/tokens.css">
+<link rel="stylesheet" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/components/masthead.css">
+<link rel="stylesheet" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/components/boot-screen.css">
+<link rel="stylesheet" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/report/report.css">
+<script type="module" src="/static/js/report/main.js"></script>
+</head>
+<body>
+<a class="sc-skip" href="#rp-main">Skip to the report</a>
+
+<div id="report" class="rp-page" data-boot="loading">
+  <header id="rp-head" class="rp-ribbon" data-region="head">
+    <div class="rp-nameplate">
+      <p class="rp-app">Shadow Play-Caller</p>
+      <h1 class="rp-title">Model report</h1>
+    </div>
+    <div class="rp-live" data-mount="head"></div>
+    <nav class="rp-keys" aria-label="Report">
+      <a class="sc-key rp-key" id="rp-back" href="/" data-testid="report-back"><span class="sc-key-name">Back to the GameCast</span></a>
+      <a class="sc-key rp-key" id="rp-csv" href="/api/export.csv" download data-testid="report-csv"><span class="sc-key-name">Export CSV</span></a>
+    </nav>
+  </header>
+
+  <main id="rp-main" class="rp-main" tabindex="-1">
+    <section id="rp-night" class="rp-board rp-board-wide" data-region="night" aria-labelledby="rp-night-plate">
+      <h2 class="rp-plate" id="rp-night-plate">His night so far</h2>
+    </section>
+    <section id="rp-league" class="rp-board rp-board-wide" data-region="league" aria-labelledby="rp-league-plate">
+      <h2 class="rp-plate" id="rp-league-plate">Tonight's scorecard</h2>
+    </section>
+    <div class="rp-col">
+      <section id="rp-situations" class="rp-board" data-region="situations" aria-labelledby="rp-situations-plate">
+        <h2 class="rp-plate" id="rp-situations-plate">Hit rate by down and distance</h2>
+      </section>
+      <section id="rp-surprises" class="rp-board" data-region="surprises" aria-labelledby="rp-surprises-plate">
+        <h2 class="rp-plate" id="rp-surprises-plate">His biggest surprises</h2>
+      </section>
+    </div>
+    <div class="rp-col">
+      <section id="rp-tendencies" class="rp-board" data-region="tendencies" aria-labelledby="rp-tendencies-plate">
+        <h2 class="rp-plate" id="rp-tendencies-plate">His tendencies</h2>
+      </section>
+      <section id="rp-memory" class="rp-board" data-region="memory" aria-labelledby="rp-memory-plate">
+        <h2 class="rp-plate" id="rp-memory-plate">In-game memory</h2>
+      </section>
+    </div>
+    <section id="rp-wp" class="rp-board rp-board-wide" data-region="wp" aria-labelledby="rp-wp-plate">
+      <h2 class="rp-plate" id="rp-wp-plate">Win probability</h2>
+    </section>
+    <section id="rp-drives" class="rp-board" data-region="drives" aria-labelledby="rp-drives-plate">
+      <h2 class="rp-plate" id="rp-drives-plate">Drives</h2>
+    </section>
+    <section id="rp-box" class="rp-board" data-region="box" aria-labelledby="rp-box-plate">
+      <h2 class="rp-plate" id="rp-box-plate">Team stats</h2>
+    </section>
+    <section id="rp-calls" class="rp-board rp-board-wide" data-region="calls" aria-labelledby="rp-calls-plate">
+      <h2 class="rp-plate" id="rp-calls-plate">Every call v the model</h2>
+    </section>
+    <!-- The AI analyst's full chat comes here in phase 4 (restructure-v2.md section 7). -->
+    <section id="rp-analyst" class="rp-analyst" data-region="analyst" data-testid="report-analyst" aria-label="Analyst" hidden></section>
+  </main>
+</div>
+<div id="rg-conn" data-region="conn"></div>
+<div id="rg-boot" data-region="boot">
+  <!-- Shown until report/main.js mounts the boot screen, dressed as that screen's board (the same classes, so the
+       world's skin lights it from the first frame); if the scripts never start, the last line appears after 12 s. -->
+  <div class="sc-boot sc-boot-static" data-boot-static="true" data-phase="loading" role="status" aria-live="polite">
+    <div class="sc-boot-board">
+      <p class="sc-boot-plate"><span class="sc-lamp" aria-hidden="true"></span><span class="sc-boot-static-title">Shadow Play-Caller</span></p>
+      <p class="sc-boot-heading sc-boot-static-text">Loading the game…</p>
+      <p class="sc-boot-text sc-boot-static-stuck">This is taking too long. Check the Terminal running bash start.sh, then refresh this page.</p>
+    </div>
+  </div>
+</div>
+<div id="sc-notices" class="sc-notices" data-testid="notices" aria-live="polite"></div>
+<noscript><p class="sc-noscript">Shadow Play-Caller needs JavaScript. Turn it on for this page, then refresh.</p></noscript>
+</body>
+</html>

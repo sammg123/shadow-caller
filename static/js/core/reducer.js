@@ -1,15 +1,14 @@
 // The root reducer and the initial state (ui-architecture.md decision 1 and 2.1; owner A1). Pure.
-// Each event goes to its slice reducer; then the cross-slice rules run: presentation gating with the lag valve
-// (on events that carry `now`), and when the presented state moves on, G7 (no presented drive closes the flag panel)
-// and G12 (a waiting background message shows with it); last, snapshot pruning.
+// Each event goes to its slice reducer; then the cross-slice rules run: presentation gating with the lag valve (on
+// events that carry `now`), then snapshot pruning.
 import { emptyAnim } from "./anim-queue.js";
 import { deepFreeze, own } from "./domain.js";
 import { advancePresented } from "./present.js";
 import { ANIM_EVENTS, reduceAnim } from "./reduce-anim.js";
 import { CONN_EVENTS, initialBoot, initialConn, reduceConn } from "./reduce-conn.js";
-import { SERVER_EVENTS, initialReq, reduceServer, revealBackground } from "./reduce-server.js";
+import { SERVER_EVENTS, initialReq, reduceServer } from "./reduce-server.js";
 import { reduceTimeline } from "./reduce-timeline.js";
-import { VIEW_EVENTS, closeFlagWithoutDrive, initialPrefs, initialView, reduceView } from "./reduce-view.js";
+import { VIEW_EVENTS, initialPrefs, initialView, reduceView } from "./reduce-view.js";
 import { emptyTimeline, pruneSnapshots } from "./timeline-cache.js";
 
 const ROUTE = Object.freeze(Object.fromEntries([
@@ -39,11 +38,7 @@ function pruned(state, prev) {
 }
 
 function settle(prev, next, event) {
-  let state = next;
-  if (PRESENTING.has(event.type) && Number.isFinite(event.now)) state = advancePresented(state, event.now);
-  if (state.presented !== prev.presented) {
-    state = revealBackground(closeFlagWithoutDrive(state), prev.presented, event.now);
-  }
+  const state = PRESENTING.has(event.type) && Number.isFinite(event.now) ? advancePresented(next, event.now) : next;
   return pruned(state, prev);
 }
 

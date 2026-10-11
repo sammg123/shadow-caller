@@ -1,6 +1,7 @@
-/* Under the Lights: the masthead's nameplate and keys, plus the key caps and lamps every component on the page builds
-   with (ui/keycap.js, ui/input-kit.js; DESIGN.md Components "Keys, lamps and LED inputs"; owner W2). W4 and W5 scope
-   their own key rules to the desk, the flag panel and the transport; these are the world's defaults everywhere.
+/* Under the Lights: the top bar's nameplate, current game and view keys (restructure-v2.md 2), plus the key caps and
+   lamps every component on the page builds with (ui/keycap.js; DESIGN.md Components "Keys, lamps and LED inputs";
+   owner W2, then the home frame). The transport scopes its own key rules (watch-transport.css); these are the world's
+   defaults everywhere.
    A key is a raised steel cap with a 1 px light-catch on top and, at its left, a square LED window printing its
    keyboard key; its name is painted on the cap. Hover lights the letter amber; on (pressed or open) lights the whole
    window; disabled darkens the window and the cap stays. A lamp is a circle, lit in its color or unlit but visible,
@@ -52,7 +53,7 @@
   text-transform: uppercase;
   transition: none;
 }
-/* A key with no window (Export CSV, Reset game, Replay this game): its painted name is the whole face. */
+/* A key with no window (Model Report, Settings, Reset): its painted name is the whole face. */
 :where(:root[data-world="under-the-lights"]) .sc-key:not(:has(> .sc-key-cap:not([hidden]))) {
   padding-inline-start: var(--sc-space-3);
   color: var(--sc-ink);
@@ -114,13 +115,6 @@
 }
 :where(:root[data-world="under-the-lights"]) .sc-key:disabled .sc-key-cap { color: var(--uls-segment-unlit); }
 
-/* The danger key (Reset game): a tally-red frame on hover; its words stay legible on the steel. */
-:where(:root[data-world="under-the-lights"]) .sc-key-danger:hover:not(:disabled) {
-  outline: var(--sc-border-w) solid var(--uls-tally-red);
-  outline-offset: -2px;
-  color: var(--sc-ink);
-}
-
 /* ---------------------------------------------------------------- lamps */
 :where(:root[data-world="under-the-lights"]) .sc-lamp {
   width: var(--uls-lamp);
@@ -129,37 +123,26 @@
   background: var(--uls-unlit);
 }
 
-/* ---------------------------------------------------------------- the nameplate on the upper ribbon */
+/* ---------------------------------------------------------------- the nameplate and the current game */
 :where(:root[data-world="under-the-lights"]) .sc-masthead-title {
   color: var(--uls-caption-white);
   font-family: var(--sc-font-display);
   font-weight: var(--sc-weight-display);
 }
 :where(:root[data-world="under-the-lights"]) .sc-masthead-meta { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-masthead-who { font-weight: var(--sc-weight-regular); }
+/* The current game (phase 2's game picker takes this place): an LED caption beside the plate, "TB AT DAL · FINAL". */
 :where(:root[data-world="under-the-lights"]) .sc-masthead-game {
   color: var(--sc-ink);
-  font-weight: var(--sc-weight-strong);
-}
-:where(:root[data-world="under-the-lights"]) .sc-masthead-who { font-weight: var(--sc-weight-regular); }
-/* v1.5 (G4-2): on the ribbon the plate's line names the caller this app shadows ("Shadowing Schottenheimer · DAL");
-   the band under the field names both teams, so the game label steps out of sight. It stays in the page for
-   assistive tech, and the plate's tooltip carries it whole. */
-:where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-game {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+  font: var(--sc-weight-strong) var(--uls-size-plate) / 1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
 }
 
-/* The two key groups sit on the ribbon's LED face, the view keys behind a steel seam. */
-:where(#app[data-layout="uls"]) .sc-masthead-view-keys {
-  padding-inline-start: var(--sc-space-2);
-  border-inline-start: 1px solid var(--uls-steel-seam);
-}
+/* ---------------------------------------------------------------- the view keys and the playback, on the top bar */
 :where(#app[data-layout="uls"] .uls-ribbon) .sc-key {
   gap: 6px;
+  min-height: calc(var(--uls-ribbon-h) - 8px);
   padding-inline-end: var(--sc-space-2);
   font-size: var(--uls-size-plate);
 }
@@ -169,4 +152,10 @@
 :where(#app[data-layout="uls"] .uls-ribbon) .sc-key-cap {
   height: calc(var(--uls-ribbon-h) - 16px);
   min-width: calc(var(--uls-ribbon-h) - 16px);
+}
+/* The camera key prints V and names the mode in its value ("V WIDE"); its own word stays for assistive tech. */
+@media (hover: hover), (pointer: fine) {
+  :where(#app[data-layout="uls"] .uls-ribbon) [data-testid="camera-mode"] .sc-key-name {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+  }
 }

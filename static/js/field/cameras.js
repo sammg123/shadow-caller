@@ -11,7 +11,7 @@
 //   rig.setMode(id, { instant })               the viewer's mode (V); rig.shot(id | null) overrides it for a while
 // The functions below share one rig context `r` = { cfg, camera, st }.
 import * as THREE from "three";
-import { frameBall, frameDrawing, framePresetFor, frameSituation, poseFor, unionFrame } from "./camera-plan.js";
+import { frameBall, frameDrawing, framePresetFor, frameSituation, panFrame, poseFor, unionFrame } from "./camera-plan.js";
 import { toWorld, vecToWorld } from "./coords.js";
 import { dampPose, lerpPose, safeView } from "./stage-math.js";
 import { EASE } from "./timing.js";
@@ -40,17 +40,22 @@ const modeById = (r, id) => r.cfg.modes.find((m) => m.id === id) ?? null;
 const active = (r) => modeById(r, r.st.shot ?? r.st.selected) ?? r.cfg.modes[0];
 
 /**
- * A ball-following mode holds the ball, never the ghosts (full-width pass bands would pull it back out). A review
- * (Left / Right) frames the reviewed row's situation and its whole play, so a long run, a deep shot or a kick ends on
- * screen, clear of the HUD; the live view is the situation's frame alone.
+ * A ball-following mode holds the ball, never the ghosts (full-width pass bands would pull it back out). A panning
+ * mode (Wide, restructure-v2.md 4) keeps its own frame and slides it sideways with the ball while a play runs. A
+ * review frames the reviewed row's situation and its whole play, so a long run, a deep shot or a kick ends on screen,
+ * clear of the HUD; the live view is the situation's frame alone.
  */
 function frameFor(r, mode) {
   const { situation, ghosts, drawing, reviewDrawing } = r.st.ctx;
   if (mode.follow === "ball") return r.st.ball ? frameBall(r.st.ball, situation) : frameSituation(situation, { preset: "tight" });
   if (mode.follow === "drive" && drawing && mode.rig !== "blimp") return frameDrawing(drawing);
   const frame = frameSituation(situation, { preset: framePresetFor(mode), ghosts });
+  if (mode.follow === "pan" && r.st.ball) return panFrame(frame, r.st.ball);
   return reviewDrawing?.bounds ? unionFrame(frame, frameDrawing(reviewDrawing)) : frame;
 }
+
+/** The ball is followed now: by a ball-following mode, or a panning one, while a play runs. */
+const following = (r) => Boolean(r.st.ball) && ["ball", "pan"].includes(active(r).follow);
 
 function desired(r) {
   const mode = active(r);
@@ -103,7 +108,7 @@ function step(r, dtMs) {
     return false;
   }
   if (r.st.tween) return stepTween(r, goal, Math.max(0, dtMs));
-  const lambda = active(r).follow === "ball" && r.st.ball ? DAMP_FOLLOW : DAMP_FRAME;
+  const lambda = following(r) ? DAMP_FOLLOW : DAMP_FRAME;
   const damped = dampPose(r.st.pose, goal, lambda, dtMs);
   r.st.pose = { ...damped.pose, up: { ...goal.up } };
   apply(r, r.st.pose);

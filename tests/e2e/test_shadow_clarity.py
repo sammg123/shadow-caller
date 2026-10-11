@@ -270,3 +270,39 @@ def test_the_2d_field_keeps_the_same_rules(clarity_browser, wsrv):
     t = totals[(1440, 900)]
     assert t["snaps"] == len(SAMPLE_2D)
     assert t["label_label"] == 0 and t["label_ball"] == 0 and t["label_stroke"] == 0, t
+
+
+# ---------------------------------------------------------------- the LAST plate after a jump (4b rule 2)
+JUMPS = (                       # (plays applied, the play on display, its verdict as the plate reads it)
+    (126, "Short pass left · +11", "TOP PICK · 19%"),                 # Q3 2:52, before snap 127 (Sam's first)
+    (151, "Short pass left · +15", "MISS · #4 Intermediate · 10%"),   # before snap 152 (his second)
+)
+LAST_PLATE_JS = """() => {
+  const plate = document.querySelector('#field .sc-field-label > .sc-play-label.is-last');
+  const part = (cls) => plate?.querySelector(cls)?.textContent ?? null;
+  return plate && { tag: part('.sc-label-tag'), body: part('.sc-label-body'), sub: part('.sc-label-sub') };
+}"""
+
+
+def test_a_jump_keeps_the_last_plates_verdict(clarity_browser, wsrv):
+    """4b rule 2 after a progress-bar jump (POST /api/watch/seek, never a step): the field draws the game at once, so
+    no verdict is marked as a play lands, and the previous play's LAST plate still reads its verdict under its words,
+    as a watched play's does. The world's CSS sets the case ("TOP PICK" under the lights)."""
+    base = wsrv["base"]
+    stop_watch(base)
+    api_post(base, "/api/feed", {"on": False})
+    api_post(base, "/api/watch/seek", {"idx": 0})               # Reset: the page opens at kickoff, then jumps
+    page = open_page(clarity_browser, base, SIZES[0], "debug=1")
+    try:
+        for idx, body, sub in JUMPS:
+            api_post(base, "/api/watch/seek", {"idx": idx})
+            assert watch_idx(base) == idx
+            want = " ".join(t["key"] for t in api_get(base, "/api/state")["prediction"]["top"][:2])
+            wait_drawn(page, ROWS[idx - 1]["seq"])
+            settled(page, want)
+            plate = page.evaluate(LAST_PLATE_JS)
+            assert plate and (plate["tag"], plate["body"]) == ("LAST", body), f"idx {idx}: {plate}"
+            assert (plate["sub"] or "").upper() == sub.upper(), f"idx {idx}: the verdict line is missing: {plate}"
+        assert page.errors == [], page.errors
+    finally:
+        page.context.close()

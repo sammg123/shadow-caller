@@ -1,68 +1,62 @@
-/* The last play and its retag keys (#lastPlay inside #entry; ui/last-play.js; owner A7). Structure and token
-   references only; a world skins it in css/worlds/<id>/components/last-play.css (W4). Hooks:
-   #lastPlay[data-kind="waiting" | "play"], #lastPlay[data-fresh="true"] (8 s after each new caller play),
-   [data-retag].cur[aria-current] (the key matching the row's family), data-tone="pass | run | rpo". */
+/* The card's history (#heroArea .sc-prev and .sc-recent; ui/last-play.js; restructure-v2.md section 3): PREVIOUS PLAY
+   (his last call in the field's words, its verdict beside it, and what the board predicted when his call was something
+   else) and LAST 6 (his last six calls as glyphs, then his night so far). The sections and their kickers are
+   prediction.css. Structure and token references only; a world skins this in css/worlds/<id>/components/last-play.css.
+   Hooks: .sc-prev[data-enter], .sc-prev-play[data-lead], .sc-prev-verdict[data-verdict][data-rank],
+   .sc-prev-predicted[data-family], .sc-recent-dot[data-verdict][data-rank]. */
 
-:where(#lastPlay) { display: grid; gap: var(--sc-space-2); min-width: 0; }
-
-.sc-last-heading {
+/* ---------------------------------------------------------------- PREVIOUS PLAY */
+/* His last call in the field's words with its verdict beside it (the verdict steps under it when both don't fit),
+   then what the board predicted when his call was something else. */
+.sc-prev-body {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sc-space-2) var(--sc-space-4);
+  min-width: 0;
+}
+.sc-prev-play { min-width: 0; font-size: var(--sc-size-m); font-weight: var(--sc-weight-strong); }
+.sc-prev-play[data-lead="td"] { color: var(--sc-good); }
+.sc-prev-glyph { display: none; }
+.sc-prev-verdict { font-size: var(--sc-size-m); font-weight: var(--sc-weight-display); }
+.sc-prev-verdict[data-verdict="top1"] { color: var(--sc-good); }
+.sc-prev-verdict[data-verdict="miss"] { color: var(--sc-bad); }
+.sc-prev-verdict[data-verdict="top1"]::before { content: "✓ " / ""; }
+.sc-prev-verdict[data-verdict="miss"]::before { content: "✗ " / ""; }
+.sc-prev-predicted {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sc-space-1) var(--sc-space-2);
+}
+:is(.sc-prev-predlabel, .sc-recent-label) {
   color: var(--sc-ink-muted);
   font-size: var(--sc-size-xs);
   font-weight: var(--sc-weight-strong);
   letter-spacing: var(--sc-tracking-label);
   text-transform: var(--sc-case-label);
 }
-:where(#lastPlay[data-kind="waiting"]) .sc-last-heading {
-  color: var(--sc-ink);
-  font-size: var(--sc-size-m);
-  text-transform: none;
-}
-.sc-last-name {
-  font-family: var(--sc-font-display);
+.sc-prev-predname { font-size: var(--sc-size-l); font-weight: var(--sc-weight-display); }
+.sc-prev-predpct {
+  margin-inline-start: auto;
+  color: var(--sc-tone, var(--sc-ink));
+  font-family: var(--sc-font-num);
   font-size: var(--sc-size-l);
+  font-variant-numeric: tabular-nums;
   font-weight: var(--sc-weight-display);
-  line-height: var(--sc-leading-tight);
-}
-.sc-last-yards { color: var(--sc-ink-muted); font-size: var(--sc-size-s); font-variant-numeric: tabular-nums; }
-.sc-last-text {
-  max-width: 75ch;
-  color: var(--sc-ink);
-  font-size: var(--sc-size-s);
-  line-height: var(--sc-leading-body);
-  overflow-wrap: break-word;
 }
 
-.sc-retag { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); padding-block-start: var(--sc-space-1); }
-.sc-retag .sc-key { --sc-tone: var(--sc-pass); }
-.sc-retag .sc-key[data-tone="run"] { --sc-tone: var(--sc-run); }
-.sc-retag .sc-key[data-tone="rpo"] { --sc-tone: var(--sc-rpo); }
-.sc-retag .sc-key {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sc-space-2);
-  min-height: 2.75rem;
-  padding: var(--sc-space-1) var(--sc-space-3) var(--sc-space-1) var(--sc-space-1);
-  border: var(--sc-border-w) solid var(--sc-rule-strong);
-  border-radius: var(--sc-radius-m);
-  background: var(--sc-surface);
-  color: var(--sc-ink);
-  font-size: var(--sc-size-s);
-  font-weight: var(--sc-weight-strong);
-  white-space: normal;
-  transition: border-color var(--sc-dur-fast) var(--sc-ease-out);
-}
-.sc-retag .sc-key-cap {
-  display: grid;
-  place-items: center;
-  min-width: 2.25rem;
-  height: 2.25rem;
-  border-radius: var(--sc-radius-s);
-  background: var(--sc-surface-2);
-  font-family: var(--sc-font-display);
-  font-weight: var(--sc-weight-display);
-}
-.sc-retag .sc-key:hover { border-color: var(--sc-tone); }
-/* The key matching the row's family: an ink frame (FI 3.6). */
-.sc-retag .sc-key.cur { border-color: var(--sc-ink); box-shadow: inset 0 0 0 var(--sc-border-w) var(--sc-ink); }
-/* Just after a caller play the keys invite a retag. */
-:where(#lastPlay[data-fresh="true"]) .sc-retag .sc-key-cap { background: var(--sc-tone); color: var(--sc-ink-inverse); }
+/* ---------------------------------------------------------------- LAST 6 and his night so far */
+.sc-recent-body { display: grid; gap: var(--sc-space-2); min-width: 0; }
+.sc-recent-row { display: flex; align-items: center; gap: var(--sc-space-2); }
+.sc-recent-glyphs { display: inline-flex; gap: var(--sc-space-1); }
+.sc-recent-dot { min-width: 1.2em; font-weight: var(--sc-weight-display); text-align: center; }
+.sc-recent-dot[data-verdict="top1"]::before { content: "✓" / ""; color: var(--sc-good); }
+.sc-recent-dot[data-verdict="top3"]::before { content: attr(data-rank) / ""; color: var(--sc-ink); }
+.sc-recent-dot[data-verdict="miss"]::before { content: "✗" / ""; color: var(--sc-bad); }
+.sc-recent-tally { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.sc-recent-countvalue { color: var(--sc-ink); }
+/* How his calls split once a flag has wiped one out ("59 calls: 55 snaps and 4 wiped out by flags"). */
+.sc-recent-note { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); line-height: var(--sc-leading-body); }

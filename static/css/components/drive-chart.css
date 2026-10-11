@@ -1,8 +1,7 @@
 /* Drive chart (ui/drive-chart.js; owner A8). Structure and token references only; a world skins it in
    css/worlds/<id>/components/drive-chart.css. Hooks a world styles against:
      .sc-dc-item[data-idx][data-team][data-caller][data-dir="1|-1"][data-result][data-complete][data-current]
-                [data-reviewing]
-     .sc-dc-btn (aria-pressed="true" for the drive holding the play shown on the field; disabled before it is drawn)
+     .sc-dc-btn (jumps the game to the drive's first play, restructure-v2.md 5; disabled before it is drawn)
      svg.sc-dc-track: .sc-dc-field, .sc-dc-yard, .sc-dc-mid, .sc-dc-bar, .sc-dc-end  (x 0 to 100, caller's goal left)
    Bars take the drive team's runtime color (--sc-team-caller / --sc-team-opp). */
 
@@ -53,11 +52,6 @@
 }
 .sc-dc-btn:hover:not(:disabled) { background: var(--sc-surface-2); }
 .sc-dc-btn:disabled { cursor: default; }
-.sc-dc-btn[aria-pressed="true"] {
-  background: var(--sc-surface-2);
-  outline: calc(var(--sc-border-w) * 2) solid var(--sc-ink);
-  outline-offset: -2px;
-}
 .sc-dc-btn:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus); outline-offset: 1px; }
 
 .sc-dc-label { grid-area: label; display: flex; align-items: baseline; gap: var(--sc-space-1); min-width: 0; white-space: nowrap; }
@@ -95,7 +89,7 @@
   white-space: nowrap;
 }
 
-/* A wide region (the rail stacked under the main column, or a world's stat board): one line per drive. */
+/* A wide region (the rail stacked under the main column, or the Model Report): one line per drive. */
 @container sc-drives (min-width: 34rem) {
   .sc-dc-btn {
     grid-template-columns: 10.5em minmax(0, 1fr) 11.5em;

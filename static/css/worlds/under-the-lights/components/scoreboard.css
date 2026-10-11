@@ -198,9 +198,7 @@
    that are on carry a Highlight frame; lamps keep their own system colors (a CanvasText ring, Highlight when lit);
    LED windows and inputs get a 1 px CanvasText frame. System colors only, for the whole world's HUD. */
 @media (forced-colors: active) {
-  :where(:root[data-world="under-the-lights"]) :is(.sc-digits[data-ghost], .sc-call-pct, .sc-recap-pct,
-    .sc-transport-progress)::before,
-  :where(:root[data-world="under-the-lights"]) .sc-offfield::after {
+  :where(:root[data-world="under-the-lights"]) :is(.sc-digits[data-ghost], .sc-call-pct, .sc-recap-pct)::before {
     content: none;
   }
   :where(:root[data-world="under-the-lights"]) .sc-key { border: 1px solid ButtonText; }
@@ -218,13 +216,12 @@
   }
   :root[data-world="under-the-lights"] :is(.sc-sb-poss[data-on="true"], .sc-sb-to[data-on="true"],
     .sc-card-side[data-lead="true"] .sc-card-lamp, .sc-lamp[data-on="true"], .sc-check input[type="checkbox"]:checked,
-    .sc-feed-btn:is([data-feed-state="live"], [data-feed-state="retrying"]) .sc-lamp, .sc-conn .sc-lamp,
-    .sc-toast .sc-lamp, .sc-review .sc-lamp, .sc-transport-error .sc-lamp,
+    .sc-conn .sc-lamp, .sc-toast .sc-lamp, .sc-transport-error .sc-lamp,
     .sc-boot:is([data-phase="loading"], [data-phase="failed"], [data-phase="restart"]) .sc-lamp) {
     background: Highlight;
   }
   :where(:root[data-world="under-the-lights"]) :is(.sc-digits, .sc-sb-fact > .sc-sb-value, .sc-sb-logo,
-    .sc-transport-progress, .sc-recap-pct, .sc-call-pct, input:not([type="checkbox"])) {
+    .sc-progress-track, .sc-recap-pct, .sc-call-pct) {
     border: 1px solid CanvasText;
   }
   /* The board's pixel glyphs are masks over their own fill: keep the fill, in the text's system color. */

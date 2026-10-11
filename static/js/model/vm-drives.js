@@ -47,13 +47,13 @@ function spanOf(x0, x1) {
   return known.length ? { lo: Math.min(...known), hi: Math.max(...known) } : { lo: null, hi: null };
 }
 
-/** v1.2 (A8): the first drawn row of the drive that draws something (core/review.js drawableSeqs), else null. */
+/** v1.2 (A8): the first drawn row of the drive that draws something (an admin row draws nothing), else null. */
 function firstDrawableSeq(rows, idx) {
   const first = rows.find((row) => row.drive === idx && row.kind !== "admin" && Number.isInteger(row.seq));
   return first ? first.seq : null;
 }
 
-function driveEntry(drive, rows, reviewDrive) {
+function driveEntry(drive, rows) {
   const caller = Boolean(drive.offense_is_caller);
   const dir = caller ? 1 : -1;                  // DC A3: the caller attacks +x, everyone else -x
   const x0 = clampX(drive.start && drive.start.x);
@@ -70,28 +70,17 @@ function driveEntry(drive, rows, reviewDrive) {
     summary: driveSummary(drive),
     label: DRIVES.label(drive.team, resultText),
     firstSeq: firstDrawableSeq(rows, drive.idx),
-    reviewing: reviewDrive !== null && drive.idx === reviewDrive,
   };
-}
-
-/** The drive of the reviewed row (view.review.seq), or null at the live edge. */
-function reviewOf(pv, rows) {
-  const seq = pv && pv.view && pv.view.review ? pv.view.review.seq : null;
-  if (!Number.isInteger(seq)) return { reviewSeq: null, reviewDrive: null };
-  const row = rows.find((r) => r.seq === seq);
-  return { reviewSeq: seq, reviewDrive: row && Number.isInteger(row.drive) ? row.drive : null };
 }
 
 /**
  * @param {object} pv  presented view
  * @returns {object} frozen {heading, drives: {idx, team, caller, dir, x0, x1, span: {lo, hi}, result, resultText,
- *   complete, current, plays, yards, time, summary, label, firstSeq, reviewing}[], reviewSeq}
+ *   complete, current, plays, yards, time, summary, label, firstSeq}[]}
  */
 export function drivesVm(pv) {
   const tl = pv && pv.tl;
   const drives = (tl && Array.isArray(tl.drives) ? tl.drives : []).filter((d) => d && Number.isInteger(d.idx));
   const rows = (tl && tl.rows) || [];
-  const { reviewSeq, reviewDrive } = reviewOf(pv, rows);
-  return freezeDeep({ heading: DRIVES.heading, drives: drives.map((drive) => driveEntry(drive, rows, reviewDrive)),
-    reviewSeq });
+  return freezeDeep({ heading: DRIVES.heading, drives: drives.map((drive) => driveEntry(drive, rows)) });
 }

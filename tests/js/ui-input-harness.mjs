@@ -1,6 +1,7 @@
-// Test harness for the A7 input surfaces (ui-architecture.md 2.6, 9.1): mounts one component on the fake DOM with a
-// recording actions stub, a Form stub and the real copy, and builds view models from the real state fixtures.
-// Every call that touches the DOM runs inside withDocument (ui/dom.js creates nodes on globalThis.document).
+// Test harness for components that ask for actions (ui-architecture.md 2.6, 9.1): mounts one component on the fake
+// DOM with a recording actions stub and the real copy. The page takes no user input into the game (restructure-v2.md
+// 1), so there is no form stub. Every call that touches the DOM runs inside withDocument (ui/dom.js creates nodes on
+// globalThis.document).
 import * as Copy from "../../static/js/model/copy.js";
 import { createDocument, withDocument } from "./fake-dom.mjs";
 
@@ -23,41 +24,6 @@ export function stubActions(results = {}) {
   return { actions, calls, named: (name) => calls.filter((c) => c[0] === name).map((c) => c.slice(1)) };
 }
 
-/** A Form stub that records calls; reads return what `values` holds. */
-export function stubForm(values = {}) {
-  const calls = [];
-  const record = (name, fallback) => (...args) => {
-    calls.push([name, ...args]);
-    return values[name] ?? fallback;
-  };
-  return {
-    calls,
-    form: {
-      readYards: record("readYards", "0"), writeYards: record("writeYards"), readTD: record("readTD", false),
-      writeTD: record("writeTD"), readTO: record("readTO", false), writeTO: record("writeTO"),
-      readAutoFirst: record("readAutoFirst", false), writeAutoFirst: record("writeAutoFirst"),
-      focusYards: record("focusYards"),
-    },
-  };
-}
-
-/** A tiny timer queue so tests decide when time passes. */
-export function fakeTimers() {
-  let seq = 0;
-  const pending = new Map();
-  return {
-    setTimeout: (fn, ms) => { seq += 1; pending.set(seq, { fn, ms }); return seq; },
-    clearTimeout: (id) => { pending.delete(id); },
-    runAll() {
-      for (const [id, { fn }] of [...pending]) {
-        pending.delete(id);
-        fn();
-      }
-    },
-    get size() { return pending.size; },
-  };
-}
-
 /**
  * A document with the shell pieces a component needs, built from a spec: [{ tag, id?, attrs?, children? }].
  * Returns { doc, byId(id) }.
@@ -77,14 +43,13 @@ export function shellDocument(spec) {
   return { doc, byId: (id) => doc.getElementById(id) };
 }
 
-/** Mount `mod` on `root` inside withDocument; returns the component plus the stubs. */
-export function mountWith(doc, mod, root, { results = {}, formValues = {}, timers = null } = {}) {
+/** Mount `mod` on `root` inside withDocument; returns the component plus the stub. `ctx` adds to main.js's context
+ * (reportHref, say). */
+export function mountWith(doc, mod, root, { results = {}, ctx: extra = {} } = {}) {
   const act = stubActions(results);
-  const formStub = stubForm(formValues);
-  const ctx = Object.freeze({ actions: act.actions, form: formStub.form, engine: () => null, copy: Copy,
-    ...(timers ? { timers } : {}) });
+  const ctx = Object.freeze({ actions: act.actions, engine: () => null, copy: Copy, ...extra });
   const component = withDocument(doc, () => mod.mount(root, ctx));
-  return { component, ...act, formCalls: formStub.calls, ctx };
+  return { component, ...act, ctx };
 }
 
 /** Run `fn` with this document as globalThis.document (sync or async). */
@@ -101,12 +66,6 @@ export function fire(node, type, extra = {}) {
 export function focusIn(node) {
   node.focus();
   fire(node, "focus");
-}
-
-/** Type into a fake input: set the value and fire `input`. */
-export function typeInto(node, text) {
-  node.value = text;
-  fire(node, "input");
 }
 
 /** Let pending promise callbacks run. */
@@ -127,4 +86,3 @@ export function findAll(node, test) {
 }
 
 export const hasClass = (node, cls) => (node.getAttribute("class") ?? "").split(/\s+/).includes(cls);
-export const text = (node) => (node ? node.textContent : null);

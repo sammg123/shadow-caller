@@ -1,28 +1,7 @@
-/* Under the Lights: team stats on the stat board (ui/box-score.js; DESIGN.md Components "Stat board (G)"; owner W2).
-   An LED table on the board's face: the stat names in dim label type, the figures in warm white, each team's column
-   headed by its abbreviation in amber caps (never a team color on LED), 1 px steel seams between rows, and a line
-   saying which box is showing (ESPN's own, or counted from the plays).
-   Every stat-board panel hangs under a painted steel plate (its title). */
-
-/* ---------------------------------------------------------------- the stat board's plates (every panel's title) */
-:where(#app[data-layout="uls"] .uls-statboard)
-  :is(.sc-scorecard, .sc-boxscore, .sc-tendencies, .sc-playlog) > .sc-panel-title {
-  justify-self: start;
-  width: fit-content;
-  padding: 5px var(--sc-space-3) 4px;
-  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
-  border-radius: var(--sc-radius-m);
-  background: var(--uls-steel-raised);
-  color: var(--uls-caption-white);
-  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
-  letter-spacing: var(--uls-tracking-plate);
-  text-transform: uppercase;
-}
-
-/* On the stat board the panel's row sizes to the panel. layout.css's sideways scroll on #rg-box (which .sc-box-scroll
-   already gives the table) would make the region a scroll container, and its grid row in the fixed-height board would
-   then collapse to 0 px: the box never showed. */
-:where(#app[data-layout="uls"] .uls-statboard) > #rg-box { overflow: visible; }
+/* Under the Lights: team stats (ui/box-score.js; DESIGN.md Components "Stat board (G)"; owner W2). An LED table: the
+   stat names in dim label type, the figures in warm white, each team's column headed by its abbreviation in amber caps
+   (never a team color on LED), 1 px steel seams between rows, and a line saying which box is showing (ESPN's own, or
+   counted from the plays). restructure-v2.md 6: it shows on the Model Report, which hangs it under its own plate. */
 
 /* ---------------------------------------------------------------- the table */
 :where(:root[data-world="under-the-lights"]) .sc-boxscore { gap: var(--sc-space-3); color: var(--sc-ink); }

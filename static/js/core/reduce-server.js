@@ -1,4 +1,4 @@
-// Server bodies and request bookkeeping (ui-architecture.md 2.1, 3.2, 3.3; G12; owner A1). Pure.
+// Server bodies and request bookkeeping (ui-architecture.md 2.1, 3.2, 3.3; owner A1). Pure.
 // `server` is the newest /api/state body; `version` the newest /api/version, refreshed by every state body so its
 // feed and watch stay the freshest copies; `req` counts in-flight actions so stale poll bodies can be dropped.
 import { deepFreeze, isPlainObject, isStateBody, own } from "./domain.js";
@@ -11,30 +11,6 @@ export function initialReq() {
 function bootFor(boot, server) {
   const phase = server.keys ? "ready" : "restart";
   return boot.phase === phase && boot.error === null ? boot : { ...boot, phase, error: null };
-}
-
-/**
- * G12: a poll that brings a new server message (no action in flight, not the first state) is background news. It
- * waits in `view.bgPending` until its state is presented (decision 2): the message often narrates the play that
- * state knows about ("Turnover. Waiting for the next Dallas drive."), so showing it earlier runs ahead of the ball.
- */
-function viewWithBgPending(state, server, origin) {
-  const text = server.message;
-  const isNews = origin === "poll" && state.server !== null && state.req.inflightActions === 0
-    && typeof text === "string" && text !== "" && text !== state.server.message;
-  return isNews ? { ...state.view, bgPending: { text } } : state.view;
-}
-
-/**
- * Once `presented` has moved on (reducer.settle), the waiting background message shows with it, at `now`, unless the
- * previously presented state already carried that same message.
- */
-export function revealBackground(state, prevPresented, now) {
-  const pending = state.view.bgPending;
-  if (!pending) return state;
-  const isNew = pending.text !== prevPresented?.message;
-  const bgMessage = isNew ? { text: pending.text, at: Number.isFinite(now) ? now : null } : state.view.bgMessage;
-  return { ...state, view: { ...state.view, bgMessage, bgPending: null } };
 }
 
 function versionWith(version, server) {
@@ -57,7 +33,6 @@ function stateLoaded(state, { body, origin, reqSeq }) {
     ...state,
     server,
     boot: bootFor(state.boot, server),
-    view: viewWithBgPending(state, server, origin),
     version: versionWith(state.version, server),
     timeline: timelineWith(state.timeline, server.log),
   };

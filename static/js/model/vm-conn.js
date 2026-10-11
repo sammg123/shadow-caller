@@ -31,11 +31,22 @@ const screen = (phase, fields) => freezeDeep({ phase, hidden: false, heading: ""
   ...fields });
 
 /**
+ * The page's boot phase (#app[data-boot]): the boot reducer's, except that a page whose first state is in counts as
+ * booted only once the game is open (restructure-v2.md 9: the page calls /api/open on load): "opening" meanwhile.
+ * @param {{ phase: string } | null | undefined} boot
+ * @param {{ kind: string | null } | null | undefined} playback  view.playback
+ */
+export function bootPhase(boot, playback) {
+  const phase = (boot && boot.phase) || "loading";
+  return phase === "ready" && playback && playback.kind === "open" ? "opening" : phase;
+}
+
+/**
  * @param {object} pv  presented view
  * @returns {object} frozen {phase, hidden, heading, text, body: {text, strong}[], retryLabel}
  */
 export function bootVm(pv) {
-  const phase = (pv && pv.boot && pv.boot.phase) || "loading";
+  const phase = bootPhase(pv && pv.boot, pv && pv.view && pv.view.playback);
   if (phase === "ready") return freezeDeep({ phase, hidden: true, heading: "", text: "", body: [], retryLabel: "" });
   if (phase === "restart") {
     const body = BOOT.restartBody.map((s) => ({ text: s.text, strong: Boolean(s.strong) }));

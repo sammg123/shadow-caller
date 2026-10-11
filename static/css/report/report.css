@@ -1,0 +1,459 @@
+/* The Model Report (static/report.html, static/js/report/; restructure-v2.md section 6). Structure and token references
+   only, so it is the neutral world's look as it stands; a world skins it in css/worlds/<id>/report/report.css.
+   The page: a ribbon across the top (sticky: the GameCast and CSV keys stay in reach), then the boards in reading
+   order, two to a row from 1100 px (the wide ones span both), one column below. A board is a plate (its h2) over a
+   face.
+   Hooks a world styles against:
+     #report[data-boot="loading|failed|restart|ready"]
+     .rp-ribbon, .rp-nameplate (.rp-app, .rp-title), .rp-head (.rp-who, .rp-game, .rp-team[data-team][data-caller],
+       .rp-status[data-tone="final|live|paused|idle"]), .rp-key
+     .rp-board > .rp-plate + .rp-face[data-testid]; .rp-empty, .rp-sub, .rp-note, .rp-label
+     night:     .rp-tally-item[data-tally] .rp-tally-num.sc-digits[data-ghost], .rp-mark[data-verdict],
+                .rp-bar[data-verdict][data-drive-start][data-quarter][data-surprise] (--cells: 1 to 12)
+     hit rate:  .rp-hits tr[data-bucket][data-lead], .rp-cell[data-verdict], .rp-lamp[data-lit]
+     surprises: .rp-surprise[data-seq] .rp-rank.sc-digits[data-ghost]
+     memory:    .rp-memory-row[data-tilt][data-outcome="true|missed"], .rp-tilt, .rp-outcome-lamp
+     calls:     .rp-drive-row[data-drive][data-result], .rp-call-row[data-seq][data-verdict][data-nullified],
+                .rp-top3 li[data-called], .rp-verdict[data-verdict]
+   Verdict tones come from --rp-top1, --rp-top3 and --rp-miss; every tone has its words beside it. */
+
+.rp-page {
+  --rp-top1: var(--sc-good);
+  --rp-top3: var(--sc-warn);
+  --rp-miss: var(--sc-bad);
+  --rp-cell: 4px;                                /* one LED pixel of the bars and cells */
+  --rp-bar-w: calc(3 * var(--rp-cell));
+  --rp-bar-cell: calc(2 * var(--rp-cell));       /* the height of one of a bar's 12 steps (5 points of chance) */
+  --rp-call-cell: var(--rp-cell);                /* the width of one call in a hit-rate strip */
+  --rp-ribbon-h: 3.5rem;
+  min-height: 100vh;
+}
+
+/* ---------------------------------------------------------------- the ribbon */
+.rp-ribbon {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 50;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-4);
+  min-height: var(--rp-ribbon-h);
+  padding: var(--sc-space-1) var(--sc-gutter);
+  border-block-end: var(--sc-border-w) solid var(--sc-rule-strong);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+}
+.rp-nameplate { display: grid; gap: 2px; min-width: 0; }
+.rp-app {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.rp-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.rp-live { flex: 1 1 24rem; min-width: 0; }
+.rp-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-5);
+  min-width: 0;
+}
+.rp-id { display: grid; gap: 2px; flex: 1 1 16rem; min-width: 0; }
+.rp-who { font-weight: var(--sc-weight-strong); }
+.rp-game {
+  overflow: hidden;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rp-teams { display: flex; align-items: center; gap: var(--sc-space-4); }
+.rp-teams:empty { display: none; }
+.rp-team { display: inline-flex; align-items: center; gap: var(--sc-space-2); font-weight: var(--sc-weight-strong); }
+.rp-logo { display: inline-grid; place-items: center; width: 2rem; height: 2rem; flex: none; }
+.rp-logo img { display: block; width: 1.75rem; height: 1.75rem; object-fit: contain; }
+.rp-logo img:not([src]) { visibility: hidden; }
+.rp-team-score { font-size: var(--sc-size-l); font-weight: var(--sc-weight-display); line-height: 1; }
+.rp-status { display: inline-flex; align-items: center; gap: var(--sc-space-2); font-weight: var(--sc-weight-strong); }
+.rp-status:has(.rp-status-text:empty) { display: none; }
+/* The lamp lights while a game plays (live) or waits (paused); final and the plain clock leave it unlit. */
+.rp-status[data-tone="live"] .rp-status-lamp { background: var(--sc-live); }
+.rp-status[data-tone="paused"] .rp-status-lamp { background: var(--sc-warn); }
+.rp-keys { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); margin-inline-start: auto; }
+
+/* The connection banner hangs under the ribbon, so the keys stay in reach while it shows. */
+#rg-conn .sc-conn { inset-block-start: var(--rp-ribbon-h); }
+
+/* ---------------------------------------------------------------- the boards, in reading order */
+.rp-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sc-space-5);
+  max-width: 1840px;
+  margin-inline: auto;
+  padding: var(--sc-space-5) var(--sc-gutter) var(--sc-space-6);
+}
+.rp-main:focus { outline: none; }
+/* A column of two boards (hit rate over surprises; tendencies over memory), so the pair's heights even out. */
+.rp-col { display: grid; align-content: start; gap: var(--sc-space-5); min-width: 0; }
+@media (min-width: 1100px) {
+  .rp-main { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .rp-board-wide { grid-column: 1 / -1; }
+}
+
+.rp-board {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  background: var(--sc-surface);
+  scroll-margin-top: calc(var(--rp-ribbon-h) + var(--sc-space-4));
+}
+.rp-plate {
+  padding: var(--sc-space-3) var(--sc-space-4) 0;
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.rp-face { display: grid; align-content: start; gap: var(--sc-space-4); min-width: 0; padding: var(--sc-space-4); }
+.rp-analyst[hidden] { display: none; }
+
+/* The app's own boards bring their panel chrome and a title; in a report board the board is the panel and its plate
+   is the title, so neither is said twice. */
+.rp-face > :is(.sc-scorecard, .sc-tendencies, .sc-winprob, .sc-drives, .sc-boxscore) {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.rp-face > :is(.sc-scorecard, .sc-tendencies, .sc-winprob, .sc-drives, .sc-boxscore) > .sc-panel-title {
+  display: none;
+}
+
+.rp-empty { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.rp-sub,
+.rp-note {
+  max-width: 72ch;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  line-height: var(--sc-leading-body);
+}
+.rp-label {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+/* Tables scroll sideways inside their board, never the page. Positioned, so what sits in them out of sight (the
+   screen-reader-only words) is clipped with them rather than widening the page. */
+.rp-scroll,
+.rp-face .sc-box-scroll { position: relative; min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; }
+.rp-board-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sc-space-2) var(--sc-space-4);
+}
+.rp-count { font-weight: var(--sc-weight-strong); white-space: nowrap; }
+
+/* ---------------------------------------------------------------- verdict tones (words always beside them) */
+:is(.rp-mark, .rp-bar, .rp-cell, .rp-verdict, .rp-legend li)[data-verdict="top1"] { --rp-tone: var(--rp-top1); }
+:is(.rp-mark, .rp-bar, .rp-cell, .rp-verdict, .rp-legend li)[data-verdict="top3"] { --rp-tone: var(--rp-top3); }
+:is(.rp-mark, .rp-bar, .rp-cell, .rp-verdict, .rp-legend li)[data-verdict="miss"] { --rp-tone: var(--rp-miss); }
+
+/* ---------------------------------------------------------------- his night so far */
+.rp-night-body { display: grid; gap: var(--sc-space-5); min-width: 0; }
+.rp-night-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sc-space-4) var(--sc-space-6); }
+.rp-tally { display: flex; flex-wrap: wrap; gap: var(--sc-space-4) var(--sc-space-6); margin: 0; }
+.rp-tally-item { display: grid; gap: var(--sc-space-1); }
+.rp-tally-label {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.rp-tally-value { display: flex; align-items: baseline; gap: var(--sc-space-2); margin: 0; }
+.rp-tally-num { font-size: var(--sc-size-call); font-weight: var(--sc-weight-display); line-height: 1; }
+.rp-tally-of { color: var(--sc-ink-muted); font-size: var(--sc-size-s); font-weight: var(--sc-weight-strong); }
+.rp-recent { display: grid; gap: var(--sc-space-1); margin-inline-start: auto; }
+.rp-recent-label {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.rp-recent-list { display: flex; gap: var(--sc-space-1); }
+.rp-mark {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  border: var(--sc-border-w) solid var(--rp-tone);
+  border-radius: var(--sc-radius-s);
+  color: var(--rp-tone);
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-m);
+  font-weight: var(--sc-weight-display);
+}
+
+/* The call track: one bar per call, oldest first, as tall as the model's chance on the play he called. */
+.rp-track { display: grid; gap: var(--sc-space-2); min-width: 0; margin: 0; }
+.rp-track-title {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.rp-track-scroll {
+  position: relative;
+  container-type: inline-size;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-block-end: var(--sc-space-1);
+}
+/* The bars fill the board's width: as wide as the calls and the drive gaps leave room for, in whole LED pixels, from
+   3 to 6 of them (--rp-calls and --rp-breaks come from report/ui/night.js); a browser without round() keeps 3. */
+@supports (width: round(down, 10px, 4px)) {
+  .rp-track-bars {
+    --rp-bar-w: clamp(calc(3 * var(--rp-cell)),
+      round(down, calc((100cqi - var(--rp-breaks, 0) * 3 * var(--rp-cell)) / var(--rp-calls, 1) - var(--rp-cell)),
+        var(--rp-cell)),
+      calc(6 * var(--rp-cell)));
+  }
+}
+.rp-track-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--rp-cell);
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rp-bar {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1.5em calc(12 * var(--rp-bar-cell)) 1.5em;
+  justify-items: center;
+  width: var(--rp-bar-w);
+}
+.rp-bar[data-drive-start]:not(:first-child) { margin-inline-start: calc(3 * var(--rp-cell)); }
+.rp-bar-mark {
+  grid-row: 1;
+  align-self: end;
+  color: var(--sc-ink);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-display);
+  line-height: 1.2;
+}
+.rp-bar-socket {
+  grid-row: 2;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  background: var(--sc-surface-2);
+}
+.rp-bar-fill { width: 100%; height: calc(var(--cells, 1) * var(--rp-bar-cell)); background: var(--rp-tone); }
+.rp-bar-q {
+  grid-row: 3;
+  justify-self: start;
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  line-height: 1.5;
+  white-space: nowrap;
+}
+/* Where a quarter begins, a dim rule through the track. */
+.rp-bar[data-quarter]::before {
+  content: "";
+  position: absolute;
+  inset-block: 1.5em 1.5em;
+  inset-inline-start: calc(-1 * var(--rp-cell));
+  width: 1px;
+  background: var(--sc-rule-strong);
+}
+.rp-bar:first-child[data-quarter]::before { content: none; }
+.rp-track-key { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sc-space-1) var(--sc-space-5); }
+.rp-legend { display: flex; flex-wrap: wrap; gap: var(--sc-space-1) var(--sc-space-4); }
+.rp-legend li { display: inline-flex; align-items: center; gap: var(--sc-space-2); font-size: var(--sc-size-xs); }
+.rp-swatch { width: var(--rp-bar-w); height: calc(3 * var(--rp-bar-cell)); background: var(--rp-tone); }
+.rp-legend-note { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+
+/* ---------------------------------------------------------------- hit rate by down and distance */
+.rp-hits { width: 100%; border-collapse: collapse; font-size: var(--sc-size-s); }
+.rp-hits :is(th, td) { padding: var(--sc-space-1) var(--sc-space-2); vertical-align: middle; }
+.rp-hits :is(th, td):first-child { padding-inline-start: 0; }
+.rp-hits :is(th, td):last-child { padding-inline-end: 0; }
+.rp-hits thead th {
+  padding-block-end: var(--sc-space-2);
+  border-block-end: calc(var(--sc-border-w) * 2) solid var(--sc-rule-strong);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-align: end;
+  text-transform: var(--sc-case-label);
+  white-space: nowrap;
+}
+.rp-hits thead th:first-child { text-align: start; }
+.rp-hits tbody tr + tr { border-block-start: var(--sc-border-w) solid var(--sc-rule); }
+.rp-hits tbody th,
+.rp-hits tfoot th { text-align: start; white-space: nowrap; }
+.rp-hits-label { font-weight: var(--sc-weight-strong); }
+.rp-hits-hint { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+.rp-hits td { text-align: end; white-space: nowrap; }
+.rp-hits tfoot tr { border-block-start: calc(var(--sc-border-w) * 2) solid var(--sc-rule-strong); }
+.rp-hits tfoot :is(th, td) { padding-block-start: var(--sc-space-2); font-weight: var(--sc-weight-display); }
+.rp-n { font-weight: var(--sc-weight-display); }
+.rp-cells {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--rp-cell);
+  max-width: calc(20 * (var(--rp-call-cell) + var(--rp-cell)));   /* rows of 20 calls */
+  margin-inline-end: var(--sc-space-2);
+  vertical-align: middle;
+}
+.rp-cell { width: var(--rp-call-cell); height: calc(3 * var(--rp-cell)); background: var(--rp-tone); }
+.rp-lamp { margin-inline-start: var(--sc-space-1); vertical-align: middle; }
+.rp-lamp[data-lit="true"] { background: var(--sc-good); }
+.rp-hits-total .rp-lamp { display: none; }
+
+/* ---------------------------------------------------------------- his biggest surprises */
+.rp-surprises,
+.rp-memory { display: grid; gap: 0; }
+.rp-surprise {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sc-space-3);
+  padding-block: var(--sc-space-3);
+}
+.rp-surprise + .rp-surprise,
+.rp-memory-row + .rp-memory-row { border-block-start: var(--sc-border-w) solid var(--sc-rule); }
+.rp-rank {
+  min-width: 1.4em;
+  font-size: var(--sc-size-xl);
+  font-weight: var(--sc-weight-display);
+  line-height: 1;
+  text-align: center;
+}
+.rp-surprise-body { display: grid; gap: var(--sc-space-1); min-width: 0; }
+.rp-surprise-when,
+.rp-memory-when { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+.rp-surprise-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sc-space-2); }
+.rp-surprise-called { font-weight: var(--sc-weight-display); }
+.rp-surprise-pct { color: var(--rp-miss); font-weight: var(--sc-weight-display); }
+.rp-surprise-rank,
+.rp-surprise-pickpct { color: var(--sc-ink-muted); }
+.rp-surprise-model { font-size: var(--sc-size-xs); }
+
+/* ---------------------------------------------------------------- in-game memory */
+.rp-summary { display: flex; flex-wrap: wrap; gap: var(--sc-space-1) var(--sc-space-5); }
+.rp-summary-item .rp-value { font-weight: var(--sc-weight-display); }
+.rp-memory-row { display: grid; gap: var(--sc-space-1); padding-block: var(--sc-space-3); }
+.rp-memory-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--sc-space-3); }
+.rp-tilt {
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--sc-run);
+  border-radius: var(--sc-radius-s);
+  color: var(--sc-run);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-display);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.rp-memory-row[data-tilt="pass"] .rp-tilt { border-color: var(--sc-pass); color: var(--sc-pass); }
+.rp-pulls,
+.rp-parts { display: flex; flex-wrap: wrap; gap: 0 var(--sc-space-4); }
+.rp-pull .rp-value,
+.rp-part .rp-value { font-weight: var(--sc-weight-display); }
+.rp-memory-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--sc-space-2); }
+.rp-memory-called { margin-inline-end: var(--sc-space-2); }
+.rp-memory-name { font-weight: var(--sc-weight-display); }
+.rp-memory-row[data-outcome="true"] .rp-outcome-lamp { background: var(--sc-good); }
+.rp-memory-row[data-outcome="missed"] .rp-outcome-lamp { background: var(--sc-bad); }
+.rp-outcome { font-weight: var(--sc-weight-strong); }
+
+/* ---------------------------------------------------------------- the app's boards at report size */
+.rp-face .sc-wp-svg { height: clamp(14rem, 22vw, 26rem); }
+.rp-face .sc-wp-evenlabel { inset-block-start: calc(clamp(14rem, 22vw, 26rem) / 2 - 0.6em); }
+
+/* ---------------------------------------------------------------- every call v the model */
+.rp-calls { width: 100%; min-width: 62rem; border-collapse: collapse; font-size: var(--sc-size-xs); }
+.rp-calls :is(th, td) { padding: var(--sc-space-1) var(--sc-space-2); text-align: start; vertical-align: baseline; }
+.rp-calls :is(th, td):first-child { padding-inline-start: 0; }
+.rp-calls :is(th, td):last-child { padding-inline-end: 0; }
+.rp-calls thead th {
+  padding-block-end: var(--sc-space-2);
+  border-block-end: calc(var(--sc-border-w) * 2) solid var(--sc-rule-strong);
+  color: var(--sc-ink-muted);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+  white-space: nowrap;
+}
+.rp-calls [data-num] { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rp-drive-row th {
+  padding-block: var(--sc-space-4) var(--sc-space-1);
+  border-block-end: var(--sc-border-w) solid var(--sc-rule-strong);
+  font-weight: var(--sc-weight-display);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.rp-call-row { scroll-margin-top: calc(var(--rp-ribbon-h) + var(--sc-space-6)); }
+.rp-call-row + .rp-call-row { border-block-start: var(--sc-border-w) solid var(--sc-rule); }
+.rp-call-row:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus); outline-offset: -2px; }
+.rp-call-row :is(td:nth-child(2), td:nth-child(3)) { white-space: nowrap; }
+.rp-call-row[data-nullified="true"] { color: var(--sc-ink-muted); }
+.rp-top3 { display: inline; margin: 0; padding: 0; list-style: none; }
+.rp-top3 li { display: inline; }
+.rp-top3 li + li::before { content: " · " / ""; color: var(--sc-ink-muted); }
+.rp-top3 li[data-called="true"] .rp-top3-name {
+  font-weight: var(--sc-weight-display);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.rp-top3-pct,
+.rp-called-pct { color: var(--sc-ink-muted); }
+.rp-called { font-weight: var(--sc-weight-strong); }
+.rp-noplay {
+  padding: 0 var(--sc-space-1);
+  border: var(--sc-border-w) solid var(--sc-warn);
+  border-radius: var(--sc-radius-s);
+  color: var(--sc-warn);
+  font-weight: var(--sc-weight-strong);
+  white-space: nowrap;
+}
+.rp-verdict {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sc-space-1);
+  color: var(--rp-tone);
+  font-weight: var(--sc-weight-display);
+  white-space: nowrap;
+}
+.rp-verdict-glyph { display: none; }
+
+/* ---------------------------------------------------------------- narrow screens: one column, nothing wider */
+@media (max-width: 720px) {
+  .rp-ribbon { position: static; }
+  #rg-conn .sc-conn { inset-block-start: 0; }
+  .rp-keys { margin-inline-start: 0; }
+  .rp-recent { margin-inline-start: 0; }
+}

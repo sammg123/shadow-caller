@@ -1,0 +1,232 @@
+/* Under the Lights: the Model Report's page (static/report.html; css/report/report.css; restructure-v2.md
+   section 6; DESIGN.md Components). The GameCast's own hardware, hung on a page: the LED ribbon across the top (the
+   steel nameplate, the live line, the keys) and every board an LED face in a steel cabinet under its painted plate,
+   built like the boot board (DESIGN.md Shapes: 2 px corners, an 8 px frame, the plate's light-catch), then the night
+   board: the tallies in Doto over their unlit 8s (40 px and up), his last six in pixel glyphs, the call track on the
+   LED pitch. Verdicts take the ribbon's own light (warm white top pick, amber in his top 3, tally red miss) with
+   glyphs and words; lamps sit beside words; the caller is warm white where the opponent is amber. Flat hardware: no
+   shadow, glass or gradient but the LED pixel grid. The boards' contents are in boards.css. */
+
+/* ---------------------------------------------------------------- the page */
+:where(:root[data-world="under-the-lights"]) .rp-page {
+  --rp-top1: var(--sc-ink);
+  --rp-top3: var(--uls-led-amber);
+  --rp-miss: var(--uls-tally-red);
+  --rp-cell: var(--uls-cell, 4px);
+  --rp-ribbon-h: var(--uls-ribbon-h);
+  color: var(--sc-ink);
+}
+@media (min-width: 1700px) {
+  :where(:root[data-world="under-the-lights"]) .rp-page {
+    --rp-bar-w: calc(4 * var(--rp-cell));
+    --rp-bar-cell: calc(3 * var(--rp-cell));
+    --rp-call-cell: calc(2 * var(--rp-cell));
+  }
+}
+/* The world's focus ring: warm white with its 2 px night-sky gutter (DESIGN.md: the one spread-ring). */
+:root[data-world="under-the-lights"][data-page="report"] :where(:focus-visible) {
+  outline: var(--sc-focus-w) solid var(--sc-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--sc-bg);
+}
+
+/* ---------------------------------------------------------------- the LED ribbon */
+:where(:root[data-world="under-the-lights"]) .rp-ribbon {
+  align-items: stretch;
+  gap: var(--sc-space-1) var(--sc-space-5);
+  padding: 0 var(--sc-gutter) 0 0;
+  border-bottom: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .rp-nameplate {
+  align-content: center;
+  padding: var(--sc-space-1) var(--sc-space-4) var(--sc-space-1) var(--sc-gutter);
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  background: var(--uls-steel);
+}
+:where(:root[data-world="under-the-lights"]) .rp-app {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-title {
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-live { align-self: center; }
+:where(:root[data-world="under-the-lights"]) .rp-who {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1.1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-game {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.15 var(--sc-font-text);
+}
+/* On LED the caller is warm white and the opponent amber; the logos are ESPN's dark-background variant. */
+:where(:root[data-world="under-the-lights"]) .rp-team {
+  gap: var(--sc-space-2);
+  color: var(--uls-led-amber);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-team[data-caller="true"] { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .rp-logo {
+  width: calc(var(--uls-ribbon-h) - 12px);
+  height: calc(var(--uls-ribbon-h) - 12px);
+}
+:where(:root[data-world="under-the-lights"]) .rp-logo img { width: 100%; height: 100%; }
+:where(:root[data-world="under-the-lights"]) .rp-team-score { font: inherit; }
+:where(:root[data-world="under-the-lights"]) .rp-status {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-plate) / 1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-status-lamp { background: var(--uls-unlit); }
+/* The lamp: the on-air tally while a game plays or the feed is live, amber while a watch is paused, else unlit. */
+:where(:root[data-world="under-the-lights"]) .rp-status[data-tone="live"] .rp-status-lamp {
+  background: var(--uls-tally-red);
+}
+:where(:root[data-world="under-the-lights"]) .rp-status[data-tone="paused"] .rp-status-lamp {
+  background: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .rp-keys { align-self: center; flex-wrap: nowrap; gap: var(--sc-space-2); }
+:where(:root[data-world="under-the-lights"]) .rp-ribbon .sc-key {
+  min-height: calc(var(--uls-ribbon-h) - 8px);
+  padding-inline: var(--sc-space-3);
+  font-size: var(--uls-size-plate);
+}
+
+/* ---------------------------------------------------------------- a board: steel cabinet, painted plate, LED face */
+:where(:root[data-world="under-the-lights"]) .rp-board {
+  border: var(--uls-frame) solid var(--uls-steel);
+  border-top: 0;
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .rp-plate {
+  display: flex;
+  align-items: center;
+  min-height: var(--uls-plate-h);
+  margin-inline: calc(-1 * var(--uls-frame));
+  padding: 0 var(--sc-space-3);
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-bottom: 1px solid var(--uls-steel-seam);
+  background: var(--uls-steel-raised);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-face { padding: var(--uls-face-pad); color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) :is(.rp-sub, .rp-note) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / var(--sc-leading-body) var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) :is(.rp-label, .rp-tally-label, .rp-recent-label, .rp-track-title) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-label { font-size: var(--sc-size-xs); }
+/* Before his first snap: one LED tag says so, in dim caps (the scorecard's own empty line, DESIGN.md). */
+:where(:root[data-world="under-the-lights"]) .rp-empty {
+  justify-self: start;
+  padding: 6px var(--sc-space-3) 5px;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-panel);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--uls-size-ribbon) / 1.1 var(--sc-font-text);
+  letter-spacing: var(--uls-tracking-ribbon);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-count {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- his night so far */
+:where(:root[data-world="under-the-lights"]) .rp-tally { gap: var(--sc-space-4) var(--sc-space-6); }
+:where(:root[data-world="under-the-lights"]) .rp-tally-value { gap: var(--sc-space-3); }
+:where(:root[data-world="under-the-lights"]) .rp-tally-num {
+  --uls-win-x: 0px;
+  --uls-win-y: 0px;
+  color: var(--uls-segment-lit);
+  font-family: var(--uls-led-num);
+  font-size: var(--sc-size-call);
+  font-weight: var(--sc-weight-display);
+  font-variation-settings: var(--uls-led-variation);
+  line-height: var(--uls-leading-figure);
+}
+:where(:root[data-world="under-the-lights"]) .rp-tally-of {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+/* His last six: a pixel check, the rank in his top 3, a pixel X, each in its light on an LED window. */
+:where(:root[data-world="under-the-lights"]) .rp-recent-list { gap: var(--sc-space-1); }
+:where(:root[data-world="under-the-lights"]) .rp-mark {
+  min-width: calc(var(--uls-glyph) * 2 + 8px);
+  height: calc(var(--uls-glyph) * 2 + 8px);
+  border: 0;
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-panel);
+  color: var(--rp-tone);
+  font: var(--sc-weight-display) var(--uls-size-key) / 1 var(--sc-font-display);
+}
+:where(:root[data-world="under-the-lights"]) .rp-mark:is([data-verdict="top1"], [data-verdict="miss"]) .rp-mark-glyph {
+  display: block;
+  width: calc(var(--uls-glyph) * 1.5);
+  height: calc(var(--uls-glyph) * 1.5);
+  overflow: hidden;
+  background: currentColor;
+  color: var(--rp-tone);
+  font-size: 0;
+  -webkit-mask: url("/static/img/worlds/under-the-lights/check.svg") center / contain no-repeat;
+  mask: url("/static/img/worlds/under-the-lights/check.svg") center / contain no-repeat;
+}
+:where(:root[data-world="under-the-lights"]) .rp-mark[data-verdict="miss"] .rp-mark-glyph {
+  -webkit-mask-image: url("/static/img/worlds/under-the-lights/x.svg");
+  mask-image: url("/static/img/worlds/under-the-lights/x.svg");
+}
+
+/* The call track: a socket of unlit cells per call, lit from the bottom on the LED pitch. */
+:where(:root[data-world="under-the-lights"]) .rp-bar-socket {
+  background: var(--uls-segment-unlit);
+  -webkit-mask: var(--uls-lit);
+  mask: var(--uls-lit);
+}
+:where(:root[data-world="under-the-lights"]) .rp-bar-mark {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--sc-size-xs) / 1.2 var(--sc-font-display);
+}
+:where(:root[data-world="under-the-lights"]) .rp-bar-q {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.5 var(--sc-font-text);
+  letter-spacing: 0.04em;
+}
+:where(:root[data-world="under-the-lights"]) .rp-bar[data-quarter]::before {
+  width: 2px;
+  background: color-mix(in srgb, var(--uls-led-dim) 38%, var(--uls-led-panel));
+}
+:where(:root[data-world="under-the-lights"]) .rp-swatch { -webkit-mask: var(--uls-lit); mask: var(--uls-lit); }
+:where(:root[data-world="under-the-lights"]) .rp-legend li {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-legend-note {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.3 var(--sc-font-text);
+}

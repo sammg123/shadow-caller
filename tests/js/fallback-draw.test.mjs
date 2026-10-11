@@ -51,7 +51,7 @@ test("insets that leave too little room, and missing sizes, fall back to the who
   assert.deepEqual(N.free, { x: 0, y: 0, w: 800, h: 450 });
 });
 
-test("the Drive view: a field box fitted to the free area's aspect, centered on it; the whole field without one", () => {
+test("the Wide view: a field box fitted to the free area's aspect, centered on it; the whole field without one", () => {
   const box = { x0: 22, x1: 50, y0: 15, y1: 35 };
   const L = layoutPlane({ width: 1440, height: 900, insets: { right: 456, bottom: 140 }, frame: box });
   near(L.px, Math.min(984 / 28, 760 / 20), "the box fills the free area one way");
@@ -90,7 +90,7 @@ test("driveFrame: the snap with his shadows and their words, never smaller than 
   assert.deepEqual(half, { x0: 5, x1: 20, y0: 5, y1: 20 });
 });
 
-test("the static field shows the Drive view through a viewBox over its whole-field drawing", () => {
+test("the static field shows the Wide view through a viewBox over its whole-field drawing", () => {
   const top = layoutPlane({ width: 1440, height: 900 });
   const view = layoutPlane({ width: 1440, height: 900, frame: { x0: 22, x1: 50, y0: 15, y1: 35 } });
   const [x, y, w, h] = viewBoxFor(top, view).split(" ").map(Number);

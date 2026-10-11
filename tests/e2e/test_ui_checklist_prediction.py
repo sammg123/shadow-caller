@@ -1,20 +1,43 @@
-"""FI 6.3 checklist #29 to #37 and #122: the next call (FI 3.5; G18, G23, G24). Every number comes from /api/state."""
+"""FI 6.3 checklist #29 to #37 and #122: the next call (FI 3.5; G18, G23), on the restructured board (restructure-v2.md
+section 3). Every number comes from /api/state. The page opens a watch on load and takes no user input into the game,
+so every state is a pre-snap of the saved TB at DAL game in Watch, paused with N plays applied (indices probed on that
+game: the flags and arrows each check needs are asserted before the page is read)."""
 import re
 
 import pytest
 from playwright.sync_api import expect
-from ui_helpers import (EVENT, api_post, capitalize, command, ensure_finished, expect_off_field, expect_shows,
-                        feed_on, fresh, load, pct, pct1, reset_game, signed1, state, stop_watch, why_habits,
-                        with_drive)
-from ui_helpers import click_at  # v1.4 (W6): world-aware helpers
+from ui_helpers import (BOOT_TIMEOUT_MS, app_url, capitalize, click_at, pct, pct1, record_requests, signed1,
+                        stop_watch, wait_ready, watch_paused_at, why_habits)
 
 pytestmark = pytest.mark.e2e
 
-HOT_STATE = "new D25 | Q1 10:00 | DAL 0 TB 0 | PP 12"      # after the whole game: ▲ and ▼ both show (probed)
 PLATE = "Schottenheimer's next call"                       # v1.5 (G4-2): the plate names the caller it shadows
 # v1.5 (G4-6): the tilt tag's words for the server's flag (his pass rate here against the league's)
 TAG_TEXT = {"no edge": "Like the league", "lean pass": "Leans pass", "lean run": "Leans run", "tilt pass": "Tilts pass",
             "tilt run": "Tilts run"}
+FIRST_SNAP_IDX = 1          # the opening kickoff applied: his first snap is next (opening script, no edge)
+LEAN_IDX = 3                # his third snap is next: lean pass
+TILT_IDX = 81               # snap 24 is next: TILT RUN
+LATE_IDX = 126              # snap 35 is next (Sam's capture): lean run, memory terms, both a ▲ and a ▼
+TB_DRIVE_IDX = 20           # Dallas scored on its first drive; Tampa Bay has the ball
+TOTAL_PLAYS = 183
+
+
+@pytest.fixture
+def wsrv(watch_server):
+    yield watch_server
+    stop_watch(watch_server["base"])
+
+
+def load(page, base):
+    page.goto(app_url(base), wait_until="domcontentloaded", timeout=BOOT_TIMEOUT_MS)
+    wait_ready(page)
+
+
+def at(page, base, idx):
+    s = watch_paused_at(base, idx)
+    load(page, base)
+    return s
 
 
 def tag_text(flag):
@@ -25,23 +48,17 @@ def hero(page):
     return page.locator("#heroArea")
 
 
-def chosen(page):
-    return page.locator("#chosen")
-
-
-def test_29_most_likely_call_and_runners_up(upage, server):
-    """#29: the plate (v1.5, G4-2: "Schottenheimer's next call") with top[0] and pct, then top[1] and top[2] with their
-    percentages."""
-    base = server["base"]
-    with_drive(upage, base)
-    top = state(base)["prediction"]["top"]
+def test_29_most_likely_call_and_runners_up(upage, wsrv):
+    """#29: the plate with top[0] and its pct, then top[1] and top[2] with theirs."""
+    top = at(upage, wsrv["base"], LATE_IDX)["prediction"]["top"]
     h = hero(upage)
-    expect(h).to_contain_text(PLATE)
     expect(h).to_contain_text(re.compile(
         re.escape(PLATE) + r".*?" + re.escape(top[0]["name"]) + r"\s*" + re.escape(pct(top[0]["p"])), re.S))
     expect(h).to_contain_text(re.compile(
         r"Then.*?" + re.escape(top[1]["name"]) + r"\s*" + re.escape(pct(top[1]["p"])) + r".*?"
         + re.escape(top[2]["name"]) + r"\s*" + re.escape(pct(top[2]["p"])), re.S))
+    for item in upage.locator("#heroArea .sc-then-item").all():
+        expect(item).to_be_visible()                       # #2 and #3 both on screen, never clipped
 
 
 def _pill_style(page):
@@ -50,30 +67,24 @@ def _pill_style(page):
         " c.borderTopWidth, c.fontWeight].join('|'); }")
 
 
-def test_30_pill_text_and_distinct_styles(upage, server):
-    """#30: the tag says what prediction.flag measures (v1.5, G4-6: "Like the league", "Leans run", "Tilts pass");
-    TILT, lean and no edge look different."""
-    base = server["base"]
+def test_30_pill_text_and_distinct_styles(upage, wsrv):
+    """#30: the tag says what prediction.flag measures (G4-6); TILT, lean and no edge look different."""
+    base = wsrv["base"]
     styles = {}
-    for line in ("new D25", "new D25 | 3&2 D25", "new D25 | Q1 15:00 | DAL 0 TB 14 | 3&2 T20"):
-        reset_game(base)
-        flag = command(base, line)["prediction"]["flag"]
-        load(upage, base)
+    for idx in (FIRST_SNAP_IDX, LEAN_IDX, TILT_IDX):
+        flag = at(upage, base, idx)["prediction"]["flag"]
         pill = upage.locator("#heroArea .pill")
         expect(pill).to_have_text(tag_text(flag))
-        cls = flag.replace(" ", "").lower()
-        expect(pill).to_have_class(re.compile(rf"(^|\s){cls}(\s|$)"))
+        expect(pill).to_have_class(re.compile(rf"(^|\s){flag.replace(' ', '').lower()}(\s|$)"))
         expect(pill).to_have_attribute("data-flag", re.compile(r"\S"))
         styles[flag.split()[0].lower()] = _pill_style(upage)
-    assert set(styles) == {"no", "lean", "tilt"}, f"the probed lines no longer give no edge, lean and TILT: {styles}"
+    assert set(styles) == {"no", "lean", "tilt"}, f"the probed pre-snaps no longer give no edge, lean and TILT: {styles}"
     assert len(set(styles.values())) == 3, f"TILT, lean and No edge must look different: {styles}"
 
 
-def test_31_pass_run_bar_labels(upage, server):
+def test_31_pass_run_bar_labels(upage, wsrv):
     """#31: "Ball thrown or dropback {pct(p)}", "League {pct(p_league)} (dashed)", "Handed off or kept {pct(1-p)}"."""
-    base = server["base"]
-    with_drive(upage, base)
-    p = state(base)["prediction"]
+    p = at(upage, wsrv["base"], LATE_IDX)["prediction"]
     for text in (f"Ball thrown or dropback {pct(p['p'])}", f"League {pct(p['p_league'])} (dashed)",
                  f"Handed off or kept {pct(1 - p['p'])}"):
         expect(hero(upage)).to_contain_text(text)
@@ -81,11 +92,9 @@ def test_31_pass_run_bar_labels(upage, server):
     expect(upage.locator("#heroArea .lgmark")).to_have_count(1)
 
 
-def test_32_five_families_in_descending_order(upage, server):
-    """#32: five family columns in descending p, each with pct(p) and "League {pct(p_league)}"."""
-    base = server["base"]
-    with_drive(upage, base)
-    families = state(base)["prediction"]["families"]
+def test_32_five_families_in_descending_order(upage, wsrv):
+    """#32: five families in descending p, each with pct(p) and "League {pct(p_league)}"."""
+    families = at(upage, wsrv["base"], LATE_IDX)["prediction"]["families"]
     assert [f["p"] for f in families] == sorted((f["p"] for f in families), reverse=True)
     fams = upage.locator("#heroArea .fam")
     expect(fams).to_have_count(5)
@@ -95,11 +104,9 @@ def test_32_five_families_in_descending_order(upage, server):
         expect(fams.nth(i)).to_contain_text(f"League {pct(f['p_league'])}")
 
 
-def test_33_leaves_in_descending_order_with_pct1(upage, server):
+def test_33_leaves_in_descending_order_with_pct1(upage, wsrv):
     """#33: each family lists its leaves in descending p with pct1 values (one decimal under 10%)."""
-    base = server["base"]
-    with_drive(upage, base)
-    families = state(base)["prediction"]["families"]
+    families = at(upage, wsrv["base"], LATE_IDX)["prediction"]["families"]
     leaves = [leaf for f in families for leaf in f["leaves"]]
     for f in families:
         assert [x["p"] for x in f["leaves"]] == sorted((x["p"] for x in f["leaves"]), reverse=True)
@@ -115,18 +122,14 @@ UP = '#heroArea .up[title="Well above the league"]'
 DOWN = '#heroArea .down[title="Well below the league"]'
 
 
-def test_34_hot_arrows_only_where_hot(upage, server):
+def test_34_hot_arrows_only_where_hot(upage, wsrv):
     """#34: every hot "up" item shows ▲ titled "Well above the league", every "down" ▼ titled "Well below the
     league", and nothing else shows an arrow."""
-    base = server["base"]
-    ensure_finished(base)
-    pred = command(base, HOT_STATE)["prediction"]
-    load(upage, base)
+    pred = at(upage, wsrv["base"], LATE_IDX)["prediction"]
     items = [f for f in pred["families"]] + [leaf for f in pred["families"] for leaf in f["leaves"]]
     ups = [x["key"] for x in items if x["hot"] == "up"]
     downs = [x["key"] for x in items if x["hot"] == "down"]
-    assert ups and downs, f"{HOT_STATE!r} no longer gives both arrows: up {ups}, down {downs}"
-    expect(upage.locator("#heroArea .fam")).to_have_count(5)
+    assert ups and downs, f"play {LATE_IDX} no longer gives both arrows: up {ups}, down {downs}"
     expect(upage.locator(UP)).to_have_count(len(ups))
     expect(upage.locator(DOWN)).to_have_count(len(downs))
     for arrow in upage.locator(UP).all():
@@ -140,81 +143,70 @@ def test_34_hot_arrows_only_where_hot(upage, server):
             expect(row.locator('.down[title="Well below the league"]')).to_have_count(1 if leaf["hot"] == "down" else 0)
 
 
-def test_35_why_line_starts_with_his_habits(upage, server):
+def test_35_why_line_starts_with_his_habits(upage, wsrv):
     """#35 (G23): the why line starts with "{x} pass pts from his habits here", one decimal, "+" when 0 or more."""
-    base = server["base"]
-    with_drive(upage, base)
-    first = upage.locator("#heroArea .why").first
-    expect(first).to_have_text(re.compile(
-        r"^\s*" + re.escape(why_habits(state(base)["prediction"])) + r"\s*pass pts from his habits here"))
+    pred = at(upage, wsrv["base"], LATE_IDX)["prediction"]
+    expect(upage.locator("#heroArea .why").first).to_have_text(re.compile(
+        r"^\s*" + re.escape(why_habits(pred)) + r"\s*pass pts from his habits here"))
 
 
-def test_36_opening_script_then_memory_terms(upage, server):
-    """#36: snaps 1 to 15 show "Opening script: memory switches on after snap 15"; after a whole game plus
-    `new D25` the why line lists each memory_parts term with its points instead."""
-    base = server["base"]
-    with_drive(upage, base)
-    expect(upage.locator("#heroArea .why").first).to_contain_text(
-        "Opening script: memory switches on after snap 15")
-    ensure_finished(base)
-    pred = command(base, "new D25")["prediction"]
+def test_36_opening_script_then_memory_terms(upage, wsrv):
+    """#36: his opening snaps show "Opening script: memory switches on after snap 15"; late in the game the why line
+    lists each memory term with its points instead."""
+    base = wsrv["base"]
+    assert at(upage, base, FIRST_SNAP_IDX)["prediction"]["script"]
+    expect(upage.locator("#heroArea .why").first).to_contain_text("Opening script: memory switches on after snap 15")
+    pred = at(upage, base, LATE_IDX)["prediction"]
     assert pred["memory_parts"] and not pred["script"]
-    load(upage, base)
-    expect(upage.locator("#heroArea .why").first).to_be_visible()
     for part in pred["memory_parts"]:
         expect(hero(upage)).to_contain_text(
             re.compile(re.escape(signed1(part["pts"])) + r"\s*" + re.escape(part["term"])))
     expect(hero(upage)).not_to_contain_text("Opening script")
 
 
-def test_37_clicking_a_prediction_row_picks_it(upage, server):
-    """#37: clicking "Outside left (edge)" picks it and focuses Yards, the same as pressing J twice."""
-    with_drive(upage, server["base"])
+def test_37_clicking_a_prediction_row_shows_it_and_picks_nothing(upage, wsrv):
+    """#37, restructure-v2.md (no user input into the game): clicking a play lights its shadow on the field and sends
+    nothing to the server; the board never offers to log it."""
+    base = wsrv["base"]
+    at(upage, base, LATE_IDX)
+    sent = record_requests(upage, "/api/", method="POST")
     click_at(upage, '#heroArea .leaf[data-leaf="run_edge_left"]')
-    expect(chosen(upage)).to_contain_text("Outside left (edge)")
-    expect(upage.locator("#yards")).to_be_focused()
-    expect(upage.locator('.key[data-k="J"]')).to_have_attribute("aria-pressed", "true")
-    by_click = " ".join(chosen(upage).text_content().split())   # v1.4 (W6): as written; a world may set it in caps
-    upage.keyboard.press("Escape")
-    expect(chosen(upage)).to_have_text("Pick the play")
-    upage.keyboard.press("j")
-    upage.keyboard.press("j")
-    expect(chosen(upage)).to_have_text(by_click)
+    expect(upage.locator("#field")).to_have_attribute("data-ghost-highlight", "run_edge_left")
+    upage.wait_for_timeout(700)
+    assert [r for r in sent if r["path"] != "/api/open"] == [], sent
+    expect(hero(upage)).not_to_contain_text(re.compile(r"click|pick it|log this", re.I))
 
 
-def test_122_prediction_rows_are_buttons_enter_and_space_pick(upage, server):
-    """#122 [fix] (G18): prediction rows are keyboard-focusable buttons; Enter or Space picks them."""
-    with_drive(upage, server["base"])
-    edge = upage.locator('#heroArea .leaf[data-leaf="run_edge_left"]')
-    assert edge.evaluate("e => e.tagName") == "BUTTON"
-    assert edge.evaluate("e => e.tabIndex") >= 0
-    edge.focus()
+def test_122_prediction_rows_are_buttons_in_the_tab_order(upage, wsrv):
+    """#122 [fix] (G18): the plays are keyboard-focusable buttons, in the board's order; focus lights a play's shadow,
+    and Enter on it sends nothing."""
+    base = wsrv["base"]
+    families = at(upage, base, LATE_IDX)["prediction"]["families"]
+    order = [leaf["key"] for f in families for leaf in f["leaves"]]
+    first = upage.locator(f'#heroArea .leaf[data-leaf="{order[0]}"]')
+    assert first.evaluate("e => e.tagName") == "BUTTON"
+    assert first.evaluate("e => e.tabIndex") >= 0
+    first.focus()
+    expect(upage.locator("#field")).to_have_attribute("data-ghost-highlight", order[0])
+    for key in order[1:3]:
+        upage.keyboard.press("Tab")
+        assert upage.evaluate("() => document.activeElement.dataset.leaf") == key
+    sent = record_requests(upage, "/api/", method="POST")
     upage.keyboard.press("Enter")
-    expect(chosen(upage)).to_contain_text("Outside left (edge)")
-    mid = upage.locator('#heroArea .leaf[data-leaf="pa_mid"]')
-    mid.focus()
-    upage.keyboard.press("Space")
-    expect(chosen(upage)).to_contain_text("PA intermediate (10–19)")
+    upage.wait_for_timeout(700)
+    assert sent == [], sent
 
 
-def test_g24_off_field_copy_follows_the_input_mode(upage, server, watch_server):
-    """ui-architecture 4.6 G24: the off-field panel's copy by mode: manual, then watch before his first snap. The
-    offline feed applies the whole game at once, so with the feed on the board is at FINAL (v1.5, G4-1)."""
-    base = server["base"]
-    fresh(upage, base)
-    expect_off_field(upage)
-    expect_shows(hero(upage),
-        "When DAL gets the ball, click Ball on above and type the spot, like D 25. The drive starts and predictions "
-        "come back. Update the score and clock the same way.")
-    feed_on(upage, base)
+def test_g24_next_call_off_the_field_says_who_has_the_ball(upage, wsrv):
+    """ui-architecture 4.6 G24, restructured: NEXT CALL off the field never asks for input. Before kickoff it says when
+    his call comes; on Tampa Bay's drive "TB has the ball"; at the final whistle it is FINAL."""
+    base = wsrv["base"]
+    at(upage, base, 0)
+    expect(hero(upage).locator(".sc-offfield-body")).to_have_text("When DAL gets the ball, his next call appears here.")
+    at(upage, base, TB_DRIVE_IDX)
+    expect(hero(upage)).to_have_attribute("data-kind", "offfield")
+    expect(hero(upage).locator(".sc-offfield-heading")).to_have_text("TB has the ball")
+    at(upage, base, TOTAL_PLAYS)
     expect(hero(upage)).to_have_attribute("data-kind", "final")
     expect(hero(upage).locator(".sc-offfield")).to_be_hidden()
-    wbase = watch_server["base"]
-    reset_game(wbase)
-    api_post(wbase, "/api/watch/start", {"event_id": EVENT, "speed": 0.5})
-    api_post(wbase, "/api/watch/pause")                         # nothing applied yet: DAL hasn't had the ball
-    try:
-        load(upage, wbase)
-        expect_shows(hero(upage), "When DAL gets the ball in this game, the next call appears here.")
-    finally:
-        stop_watch(wbase)
+    expect(hero(upage)).not_to_contain_text("Ball on")

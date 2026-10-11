@@ -4,7 +4,7 @@ import test from "node:test";
 
 import {
   CAMERA_PRESETS, FRAME_PRESETS, RIGS, fitDistance, frameBall, frameDrawing, frameDrive, framePoints,
-  framePresetFor, frameSituation, nextMode, poseFor, projectToNdc, unionFrame,
+  framePresetFor, frameSituation, nextMode, panFrame, poseFor, projectToNdc, unionFrame,
 } from "../../static/js/field/camera-plan.js";
 import { buildGhostSet, ghostInputFromPred } from "../../static/js/field/ghosts.js";
 import { buildDrawing, situationFromRow } from "../../static/js/field/paths.js";
@@ -113,8 +113,24 @@ test("frameBall follows the ball and keeps the line when it is close", () => {
   assert.ok(contains(far, 95) && !contains(far, 30));
 });
 
+test("restructure-v2.md 4: a panning frame slides sideways with the ball, its size and depth unchanged", () => {
+  const f = frameSituation(situation());
+  assert.equal(panFrame(f, { x: f.center.x, y: C, h: 0 }), f, "the ball well inside: the frame stays");
+  const ahead = panFrame(f, { x: hi(f) + 20, y: 50, h: 9 });
+  assert.deepEqual([ahead.spanX, ahead.spanY, ahead.center.y, ahead.maxH], [f.spanX, f.spanY, f.center.y, f.maxH],
+    "only sideways: no push-in, no rise, no tilt toward the ball's side or height");
+  assert.ok(contains(ahead, hi(f) + 20) && hi(ahead) >= hi(f) + 20 + 4, "the ball stays at least 4 yd inside");
+  const behind = panFrame(f, { x: lo(f) - 10, y: C, h: 0 });
+  assert.ok(lo(behind) <= lo(f) - 10 - 4);
+  const end = panFrame(f, { x: 118, y: C, h: 0 });
+  assert.ok(hi(end) <= 120 + 1e-9, "never past the end line");
+  assert.equal(panFrame(f, null), f);
+  assert.equal(panFrame(null, { x: 3, y: C }), null);
+});
+
 test("a camera mode picks its frame: ball-following modes frame tight, the blimp frames the field", () => {
   assert.equal(framePresetFor({ rig: "sideline", follow: "ball" }), "tight");
+  assert.equal(framePresetFor({ rig: "sideline", follow: "pan" }), "standard", "Wide pans at its own size");
   assert.equal(framePresetFor({ rig: "blimp", follow: "none" }), "wide");
   assert.equal(framePresetFor({ rig: "endzone", follow: "none" }), "standard");
   assert.equal(framePresetFor(null), "standard");
@@ -161,7 +177,8 @@ test("rig geometry: broadcast on the near side, end zone behind the offense, ove
   const top = poseFor(f, byId.overhead, { aspect: 16 / 9 });
   assert.ok(Math.abs(top.position.x - top.target.x) < 1e-6 && Math.abs(top.position.y - top.target.y) < 1e-6);
   assert.deepEqual([top.up.x, top.up.y].map((v) => Math.round(v * 1e6) / 1e6), [0, 1], "far sideline at the top");
-  assert.ok(byId.tight && byId.high && byId.broadcast);
+  assert.ok(byId.high && byId.broadcast);
+  assert.equal(byId.tight, undefined, "restructure-v2.md 4: no Tight anywhere");
 });
 
 test("a narrow screen pushes the camera back or widens the lens", () => {

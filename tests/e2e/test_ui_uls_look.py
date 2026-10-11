@@ -5,9 +5,10 @@ play-drawing.md 4). Always on Sam's world, whatever SC_E2E_WORLD says: the look 
         "NEXT 2" on LED warm white (the strokes are drawn in the same); crops of the first Dallas snap and of one at
         midfield (over the star) at 1440 and 1920, GPU renders, are written to test-results/visual/uls-look/ to be
         looked at
-  G3-2  no flat slab under the near sideline: on the wide and tight cameras at both sizes no 41 rows of the free area
-        in a row are flat and dark (the finish gate's flat.py: luminance range under 36 and mean under 40), none is one
-        flat color, and every 60-row band of it has a luminance range of 6 or more (GPU renders)
+  G3-2  no flat slab under the near sideline: on the Wide camera (restructure-v2.md 4: the one sideline view left) at
+        both sizes no 41 rows of the free area in a row are flat and dark (the finish gate's flat.py: luminance range
+        under 36 and mean under 40), none is one flat color, and every 60-row band of it has a luminance range of 6 or
+        more (GPU renders)
   G3-8  on a phone every field label plate sits inside the screen, wrapped and a size down when it must
 
 Every test sets its own server state (FI 6.1) on the scaled-pace watch sandbox and leaves no session running."""
@@ -206,7 +207,7 @@ def test_no_flat_slab_below_the_near_sideline(gpu_browser, wsrv):
             page = gpu_page(gpu_browser, base, size)
             freeze(page)
             run(page, 9_008)
-            for mode in ("wide", "tight"):
+            for mode in ("wide",):
                 camera_to(page, mode)
                 style = page.add_style_tag(content=HUD_HIDDEN)
                 page.wait_for_timeout(200)

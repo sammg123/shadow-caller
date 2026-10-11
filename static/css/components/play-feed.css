@@ -2,8 +2,8 @@
    css/worlds/<id>/components/play-feed.css. Hooks a world styles against:
      .sc-pf-group[data-drive][data-team][data-caller][data-complete]   a drive and its header (.sc-pf-ghead)
      .sc-pf-row[data-seq][data-kind][data-team][data-caller][data-verdict="top1|top3|miss|none"][data-nullified]
-               [data-retagged][data-scoring][data-reviewing][data-newest]
-     .sc-pf-btn  the row's button (a div on admin rows); aria-pressed="true" on the play shown on the field
+               [data-retagged][data-scoring][data-newest]
+     .sc-pf-btn  the row's face (a div: the ticker only reads, restructure-v2.md 1)
    Team colors come from the runtime tokens --sc-team-caller / --sc-team-opp. */
 
 .sc-plays {
@@ -78,16 +78,8 @@
   color: inherit;
   font: inherit;
   text-align: start;
-  transition: background-color var(--sc-dur-fast) var(--sc-ease-out);
 }
 .sc-pf-row[data-caller="true"] .sc-pf-btn { border-inline-start-color: var(--sc-pf-team); }
-button.sc-pf-btn:hover { background: var(--sc-surface-2); }
-button.sc-pf-btn[aria-pressed="true"] {
-  background: var(--sc-surface-2);
-  outline: calc(var(--sc-border-w) * 2) solid var(--sc-ink);
-  outline-offset: -2px;
-}
-button.sc-pf-btn:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus); outline-offset: 1px; }
 
 .sc-pf-meta {
   grid-area: meta;

@@ -1,38 +1,47 @@
-/* The next call (#heroArea; ui/prediction.js; owner A7). Structure and token references only: every color, font,
-   size and duration is a --sc-* token, and a world skins this in css/worlds/<id>/components/prediction.css.
-   Data the component writes for geometry and tone:
+/* The video board (#heroArea; ui/prediction.js; restructure-v2.md section 3): one card, every section at once, top to
+   bottom: PREVIOUS PLAY (.sc-prev), NEXT CALL (one of .sc-offfield, .sc-call, .sc-final, named by #heroArea[data-kind])
+   and LAST 6 (.sc-recent), each under a kicker (.sc-call-head, .sc-face-head); the insides of PREVIOUS PLAY and LAST 6
+   are last-play.css. Structure and token references only: every color, font, size and duration is a --sc-* token, and
+   a world skins this in css/worlds/<id>/components/prediction.css and board.css. Data the components write for
+   geometry and tone:
      --sc-share, --sc-league-share  bar shares, "0%" to "100%" (split bar, family bars, play bars)
      data-family                    run | dropback | pa | screen | rpo, turned into --sc-tone below
-     data-hot, data-picked, data-highlighted, data-flag, .sc-call[data-enter="a" | "b"] (a new call)
-     v1.5: .sc-call[data-fourth] (4th down, G4-4); the recap (.sc-recap: .sc-recap-lead[data-lead="td|int|fumble|
-     turnover"], .sc-recap-call[data-family], .sc-recap-verdict[data-verdict], .sc-recap-dot[data-verdict]) and FINAL
-     (.sc-final: .sc-final-team[data-team][data-caller], .sc-final-line[data-pair][data-leader]) faces, each under
-     a .sc-face-head plate (G4-1)
+     data-hot, data-highlighted, data-flag, .sc-call[data-enter="a" | "b"] (a new call), .sc-call[data-fourth]
+     .sc-prev[data-enter], .sc-prev-play[data-lead="td|int|fumble|turnover"], .sc-prev-verdict[data-verdict][data-rank],
+     .sc-prev-predicted[data-family], .sc-recent-dot[data-verdict][data-rank], .sc-final-team[data-team][data-caller]
    Families sit in five columns, two at 760 px and below (#7). */
 
-:where(#heroArea) { min-width: 0; }
+/* ---------------------------------------------------------------- the card: one surface, sections parted by rules */
+:where(#heroArea) {
+  display: grid;
+  min-width: 0;
+  background: var(--sc-surface);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  color: var(--sc-ink);
+}
+:where(#heroArea[data-kind="empty"]) { border-color: transparent; background: none; }
+:where(#heroArea) > :not([hidden]) ~ :not([hidden], .sr-only) { border-block-start: var(--sc-border-w) solid var(--sc-rule); }
 
 /* ---------------------------------------------------------------- tone: run amber, passes blue, RPO purple (FI 0) */
 :where(#heroArea) [data-family] { --sc-tone: var(--sc-pass); }
 :where(#heroArea) [data-family="run"] { --sc-tone: var(--sc-run); }
 :where(#heroArea) [data-family="rpo"] { --sc-tone: var(--sc-rpo); }
 
-/* ---------------------------------------------------------------- the faces */
+/* ---------------------------------------------------------------- the sections */
+.sc-prev,
 .sc-offfield,
 .sc-call,
-.sc-recap,
-.sc-final {
+.sc-final,
+.sc-recent {
   display: grid;
   gap: var(--sc-space-4);
   min-width: 0;
   padding: var(--sc-space-5);
-  background: var(--sc-surface);
-  border: var(--sc-border-w) solid var(--sc-rule);
-  border-radius: var(--sc-radius-l);
   color: var(--sc-ink);
 }
 
-.sc-offfield { gap: var(--sc-space-3); }
+:is(.sc-prev, .sc-offfield, .sc-recent) { gap: var(--sc-space-3); }
 .sc-offfield-heading {
   font-family: var(--sc-font-display);
   font-size: var(--sc-size-xl);
@@ -46,7 +55,6 @@
   font-size: var(--sc-size-m);
   line-height: var(--sc-leading-body);
 }
-.sc-offfield-body strong { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
 
 /* ---------------------------------------------------------------- head: the kicker */
 .sc-call-head,
@@ -59,7 +67,7 @@
   letter-spacing: var(--sc-tracking-label);
   text-transform: var(--sc-case-label);
 }
-.sc-call-snap { font-variant-numeric: tabular-nums; }
+:is(.sc-call-snap, .sc-face-snap) { font-variant-numeric: tabular-nums; }
 .sc-call[data-fourth="true"] .sc-call-label { color: var(--sc-warn); }   /* v1.5 (G4-4): a conditional call */
 
 /* ---------------------------------------------------------------- the top pick: name, figure, pill */
@@ -239,11 +247,6 @@
 }
 .leaf:hover,
 .leaf[data-highlighted="true"] { border-color: var(--sc-rule-strong); background: var(--sc-surface-2); }
-.leaf[aria-pressed="true"] {
-  border-color: var(--sc-tone);
-  background: color-mix(in srgb, var(--sc-tone) 12%, var(--sc-surface));
-}
-.leaf[aria-pressed="true"] .sc-leaf-name { font-weight: var(--sc-weight-strong); }
 
 /* ---------------------------------------------------------------- hot arrows (#34): green above, red below */
 .sc-hot { font-size: var(--sc-size-xs); line-height: 1; }
@@ -281,51 +284,9 @@
   line-height: var(--sc-leading-body);
 }
 
-/* ---------------------------------------------------------------- v1.5 (G4-1): his night so far */
-.sc-recap-body,
+/* ---------------------------------------------------------------- FINAL (NEXT CALL at the final whistle): the score and
+   the way to the Model Report (no Shadow v League numbers on the GameCast) */
 .sc-final-body { display: grid; gap: var(--sc-space-2); min-width: 0; }
-.sc-recap-lead {
-  display: flex;
-  align-items: center;
-  gap: var(--sc-space-2);
-  font-family: var(--sc-font-display);
-  font-size: var(--sc-size-xl);
-  font-weight: var(--sc-weight-display);
-  line-height: var(--sc-leading-tight);
-}
-.sc-recap-lead[data-lead="td"] { color: var(--sc-good); }
-.sc-recap-call { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--sc-space-1) var(--sc-space-2); }
-.sc-recap-label {
-  color: var(--sc-ink-muted);
-  font-size: var(--sc-size-xs);
-  font-weight: var(--sc-weight-strong);
-  letter-spacing: var(--sc-tracking-label);
-  text-transform: var(--sc-case-label);
-}
-.sc-recap-name { font-size: var(--sc-size-l); font-weight: var(--sc-weight-display); }
-.sc-recap-pct {
-  margin-inline-start: auto;
-  color: var(--sc-tone, var(--sc-ink));
-  font-family: var(--sc-font-num);
-  font-size: var(--sc-size-l);
-  font-variant-numeric: tabular-nums;
-  font-weight: var(--sc-weight-display);
-}
-.sc-recap-happened { font-size: var(--sc-size-m); font-weight: var(--sc-weight-strong); }
-.sc-recap-verdict { font-size: var(--sc-size-m); font-weight: var(--sc-weight-display); }
-.sc-recap-verdict[data-verdict="top1"] { color: var(--sc-good); }
-.sc-recap-verdict[data-verdict="miss"] { color: var(--sc-bad); }
-.sc-recap-tally { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
-.sc-recap-countvalue { color: var(--sc-ink); }
-.sc-recap-recent { display: flex; align-items: center; gap: var(--sc-space-2); }
-.sc-recap-glyphs { display: inline-flex; gap: var(--sc-space-1); }
-.sc-recap-dot { min-width: 1.2em; font-weight: var(--sc-weight-display); text-align: center; }
-.sc-recap-dot[data-verdict="top1"]::before { content: "✓" / ""; color: var(--sc-good); }
-.sc-recap-dot[data-verdict="top3"]::before { content: "3" / ""; color: var(--sc-ink); }
-.sc-recap-dot[data-verdict="miss"]::before { content: "✗" / ""; color: var(--sc-bad); }
-.sc-recap-off { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
-
-/* ---------------------------------------------------------------- v1.5 (G4-1): FINAL */
 .sc-final-score { display: flex; flex-wrap: wrap; gap: var(--sc-space-2) var(--sc-space-5); margin: 0; padding: 0; list-style: none; }
 .sc-final-team { display: inline-flex; align-items: baseline; gap: var(--sc-space-2); }
 .sc-final-abbr { font-size: var(--sc-size-s); font-weight: var(--sc-weight-strong); letter-spacing: var(--sc-tracking-label); }
@@ -336,14 +297,6 @@
   font-weight: var(--sc-weight-display);
   line-height: 1;
 }
-.sc-final-lines { display: grid; gap: var(--sc-space-1); margin: 0; padding: 0; list-style: none; }
-.sc-final-line { display: flex; align-items: baseline; gap: var(--sc-space-2); font-size: var(--sc-size-s); }
-.sc-final-label { margin-inline-end: auto; color: var(--sc-ink-muted); }
-.sc-final-value { font-variant-numeric: tabular-nums; font-weight: var(--sc-weight-strong); }
-.sc-final-line[data-leader="shadow"] [data-side="shadow"],
-.sc-final-line[data-leader="league"] [data-side="league"] { font-weight: var(--sc-weight-display); }
-.sc-final-vs { color: var(--sc-ink-muted); }
-.sc-final-empty { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
 .sc-final-key { justify-self: start; }
 
 /* ---------------------------------------------------------------- a new call steps in (instant, reduced motion) */
@@ -354,6 +307,6 @@
 
 /* ---------------------------------------------------------------- 760 px and below: two family columns (#7) */
 @media (max-width: 760px) {
-  .sc-offfield, .sc-call, .sc-recap, .sc-final { padding: var(--sc-space-4); }
+  .sc-prev, .sc-offfield, .sc-call, .sc-final, .sc-recent { padding: var(--sc-space-4); }
   .sc-fams { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }

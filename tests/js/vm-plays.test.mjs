@@ -17,12 +17,11 @@ test("every applied row, newest first; 64 caller snaps, 59 graded (DC G1)", () =
 
 test("the first DAL snap reads like the contract row (DC B2)", () => {
   const row = bySeq(playsVm(finalPv()), 2);
-  assert.deepEqual({ ...row, retag: null }, {
+  assert.deepEqual({ ...row }, {
     seq: 2, id: "40187298068", kind: "play", team: "DAL", caller: true, drive: 1, time: "Q1 14:54",
     situation: "1st & 10 at DAL 30", text: "D.Prescott pass incomplete short middle to B.Spann-Ford (C.Rozeboom).",
     result: "INC", call: "Short (0–9 air yds), incomplete", verdict: "top3", verdictText: "In his top 3",
-    nullified: false, retagged: false, scoring: false, retag: null, reviewable: true, reviewing: false,
-    face: "Short pass middle · B.Spann-Ford",
+    nullified: false, retagged: false, scoring: false, face: "Short pass middle · B.Spann-Ford",
   });
 });
 
@@ -74,32 +73,6 @@ test("rows group by drive, newest drive first, with ESPN's result", () => {
   assert.equal(vm.groups.reduce((n, g) => n + g.rows.length, 0), 183);
 });
 
-test("the row a retag edits gets the retag keys (G19)", () => {
-  const vm = playsVm(finalPv());
-  assert.equal(vm.retagSeq, 176);
-  const row = bySeq(vm, 176);
-  assert.deepEqual(row.retag.map((b) => [b.key, b.label, b.current]), [
-    ["A", "Play-action", false], ["N", "Screen", false], ["O", "RPO, thrown", false], ["P", "Plain dropback", true],
-  ]);
-  assert.equal(vm.rows.filter((r) => r.retag).length, 1);
-});
-
-test("a hand-entered newest row is not on the field, so no row offers a retag", () => {
-  const final = state.final();
-  const typed = { ...final.log[0], seq: 60, snap: 56, espn_id: null, source: "manual" };
-  const vm = playsVm(finalPv({ presented: patch(final, { log: [typed, ...final.log] }) }));
-  assert.equal(vm.retagSeq, null);
-  assert.equal(vm.rows.some((r) => r.retag), false);
-});
-
-test("a nullified newest row passes the retag to the newest row that stands", () => {
-  const final = state.final();
-  const log = [{ ...final.log[0], nullified: true }, ...final.log.slice(1)];
-  const vm = playsVm(finalPv({ presented: patch(final, { log }) }));
-  const target = timeline.final().rows.find((r) => r.pred && r.pred.log_seq === final.log[1].seq);
-  assert.equal(vm.retagSeq, target.seq);
-});
-
 test("hand-entered plays that are not on the field get a note (DC C1)", () => {
   const body = timeline.final();
   const one = playsVm(finalPv({ tl: tlOf(patch(body, { unlinked: [60] })) }));
@@ -117,19 +90,12 @@ test("only rows already drawn appear (no spoilers on screen)", () => {
 
 test("nothing presented yet gives an empty feed, deep-frozen", () => {
   const vm = playsVm(makePv());
-  assert.deepEqual([vm.rows.length, vm.groups.length, vm.retagSeq, vm.unlinkedNote], [0, 0, null, ""]);
+  assert.deepEqual([vm.rows.length, vm.groups.length, vm.unlinkedNote], [0, 0, ""]);
   assert.ok(isDeepFrozen(playsVm(finalPv())));
 });
 
-// v1.2 (A8, additive): rows that draw something can be reviewed on the field; the reviewed row is marked.
-test("every drawn row except admin rows can be reviewed; the reviewed row is marked", () => {
-  const live = playsVm(finalPv());
-  assert.equal(live.reviewSeq, null);
-  assert.equal(live.rows.filter((r) => r.reviewable).length, 183 - 27, "27 admin rows draw nothing");
-  assert.deepEqual([bySeq(live, 13).reviewable, bySeq(live, 2).reviewable, bySeq(live, 1).reviewable], [false, true, true]);
-  assert.equal(live.rows.some((r) => r.reviewing), false);
-  const reviewing = playsVm(finalPv({ view: { review: { seq: 104 } } }));
-  assert.equal(reviewing.reviewSeq, 104);
-  assert.deepEqual(reviewing.rows.filter((r) => r.reviewing).map((r) => r.seq), [104]);
-  assert.equal(reviewing.groups.flatMap((g) => g.rows).filter((r) => r.reviewing).length, 1);
+test("the feed is read only (restructure-v2.md 1): no row offers a retag or a review", () => {
+  const vm = playsVm(finalPv());
+  for (const key of ["retag", "reviewable", "reviewing"]) assert.ok(vm.rows.every((r) => !(key in r)), key);
+  assert.ok(!("retagSeq" in vm) && !("reviewSeq" in vm));
 });

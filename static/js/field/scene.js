@@ -180,6 +180,7 @@ function playRow(c, row, { durationMs = 0, token = null } = {}) {
   if (!drawing) return Promise.resolve({ seq: row.seq, token, completed: false });
   if (!(durationMs > 0) || c.st.reduced || !c.stage.visible() || !drawing.steps.length) {
     c.layers.player.placeAll?.([{ row, drawing }]);
+    moment(c, "placed", [row]);
     c.stage.requestRender();
     return Promise.resolve({ seq: row.seq, token, completed: true });
   }
@@ -290,10 +291,12 @@ function highlightGhost(c, leaf) {
   changed(c);
 }
 
+/** The field redrawn at once (a rebuild: a jump, a page load): the world's placed moment gets every row on it. */
 function drawRowsInstant(c, rows) {
-  const items = (Array.isArray(rows) ? rows : []).filter((row) => Number.isFinite(row?.seq))
-    .map((row) => ({ row, drawing: drawingOf(c, row) })).filter((item) => item.drawing);
+  const list = (Array.isArray(rows) ? rows : []).filter((row) => Number.isFinite(row?.seq));
+  const items = list.map((row) => ({ row, drawing: drawingOf(c, row) })).filter((item) => item.drawing);
   c.layers.player.placeAll?.(items);
+  moment(c, "placed", list);
   c.stage.requestRender();
 }
 

@@ -1,10 +1,11 @@
-/* Layout (ui-architecture.md 1.1; owner A0). Two layers, both at zero specificity so a world's layout.css wins:
-   1. Baseline for every world: regions never force the page wider than the viewport (#8, G17), wide tables
-      scroll inside their own region, the field host keeps the world's --sc-field-aspect.
-   2. The neutral grid (#app[data-layout="neutral"], set by the neutral world's arrange): header, feed bar and
-      scoreboard across the top, then the main column (situation, field, transport, call, entry, flags, log) and a
-      right rail (scorecard, tendencies, win probability, drives, box score, plays). Breakpoints: 1040 px stacks
-      the rail under the main column (#7), 760 px tightens the spacing, 390 px is a phone with a 16 px gutter. */
+/* Layout (ui-architecture.md 1.1; restructure-v2.md 1 and 2; owner: home frame). Two layers, both at zero
+   specificity so a world's layout.css wins:
+   1. Baseline for every world: regions never force the page wider than the viewport (#8, G17), long lists scroll
+      inside their own region, the field host keeps the world's --sc-field-aspect.
+   2. The neutral grid (#app[data-layout="neutral"], set by the neutral world's arrange): the top bar (nameplate,
+      current game, view keys, playback) and the scoreboard across the top, then the main column (field, call) and a
+      right rail (win probability, drives, plays). Breakpoints: 1040 px stacks the rail under the main column (#7),
+      760 px tightens the spacing, 390 px is a phone with a 16 px gutter. */
 
 /* ---------------------------------------------------------------- baseline (every world) */
 :where(#app) {
@@ -18,8 +19,8 @@
 
 :where(#app [data-region], #app .sc-col) { min-width: 0; max-width: 100%; }
 
-/* Regions that hold tables or long rows scroll sideways inside themselves, never the page. */
-:where(#rg-log, #rg-box, #rg-plays, #rg-drives) { overflow-x: auto; overscroll-behavior-x: contain; }
+/* Regions that hold long rows scroll sideways inside themselves, never the page. */
+:where(#rg-plays, #rg-drives) { overflow-x: auto; overscroll-behavior-x: contain; }
 
 :where(#rg-field) { position: relative; }
 :where(#rg-field #field) {
@@ -39,7 +40,6 @@
   grid-template-columns: minmax(0, 1fr) var(--sc-layout-rail, 22rem);
   grid-template-areas:
     "masthead   masthead"
-    "feed       feed"
     "scoreboard scoreboard"
     "main       rail";
   align-items: start;
@@ -50,7 +50,6 @@
 }
 
 :where(#app[data-layout="neutral"] > #rg-masthead) { grid-area: masthead; }
-:where(#app[data-layout="neutral"] > #rg-feed) { grid-area: feed; }
 :where(#app[data-layout="neutral"] > #rg-scoreboard) { grid-area: scoreboard; }
 :where(#app[data-layout="neutral"] > .sc-col-main) { grid-area: main; }
 :where(#app[data-layout="neutral"] > .sc-col-rail) { grid-area: rail; }
@@ -69,7 +68,7 @@
 @media (max-width: 1040px) {
   :where(#app[data-layout="neutral"]) {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "masthead" "feed" "scoreboard" "main" "rail";
+    grid-template-areas: "masthead" "scoreboard" "main" "rail";
   }
   :where(#app[data-layout="neutral"] .sc-col-rail > #rg-plays) { max-height: none; overflow-y: visible; }
 }

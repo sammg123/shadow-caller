@@ -2,8 +2,8 @@
 // pairs the model and the league baseline both compute (never a league top-pick or tilt count), each with a lamp on
 // the side that leads; then the FI groups (specific play, play type, pass vs run), each value with its label, log
 // loss styled better or worse (.better/.worse and data-tone, #111); then the note. Before the first logged snap it
-// shows the empty line only. data-pair and data-leader let a world hang chosen pairs on its scoreboard band, and
-// data-expanded follows the G toggle (the full stat board). Text only (G27).
+// shows the empty line only. data-pair and data-leader name each pair and its leader, and data-expanded marks the full
+// size the Model Report shows it at (restructure-v2.md 6). Text only (G27).
 // v1.5 (G4-3): the SHADOW v LEAGUE caption sits on a plate (.sc-card-plate) with the basis said once under it
 // (.sc-card-basisline, "his model v league baseline · 59 snaps"); .sc-card-pairs[data-basis-shared] says whether every
 // pair counts those snaps, so the per-pair counts can step aside.
@@ -108,7 +108,7 @@ function skeleton(copy) {
 }
 
 /**
- * @param {HTMLElement} root  #kpiArea (region score)
+ * @param {HTMLElement} root  the Model Report's Shadow v League board (report/bindings.js)
  * @param {{ copy: object }} ctx
  * @returns {{ update(vm: object): void, destroy(): void }}
  */

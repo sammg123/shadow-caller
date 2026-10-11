@@ -31,13 +31,23 @@ function fakeTimers() {
 
 const kindOf = async (p) => p.then(() => "resolved", (e) => (e instanceof ApiError ? `${e.kind}:${e.status}` : e.name));
 
-test("the timeouts and the POST allowlist (3.3, DC E1, FI 2.1)", () => {
+test("the timeouts and the POST allowlist: playback only, never a manual-entry endpoint (restructure-v2.md 1, 9)", () => {
   assert.deepEqual({ ...TIMEOUTS }, { version: 4000, state: 8000, timeline: 8000, post: 30000 });
-  assert.deepEqual([...POST_PATHS].sort(), ["/api/command", "/api/drive", "/api/feed", "/api/feed/replay", "/api/penalty",
-    "/api/play", "/api/reset", "/api/retag", "/api/score", "/api/situation", "/api/undo", "/api/watch/pause",
-    "/api/watch/resume", "/api/watch/speed", "/api/watch/start", "/api/watch/step", "/api/watch/stop"]);
-  assert.equal(ROUTES.replay, "/api/feed/replay");
-  assert.equal(ROUTES.watchStep, "/api/watch/step");
+  assert.deepEqual([...POST_PATHS].sort(), ["/api/golive", "/api/open", "/api/watch/back", "/api/watch/forward",
+    "/api/watch/pause", "/api/watch/resume", "/api/watch/seek", "/api/watch/speed"]);
+  assert.equal(ROUTES.open, "/api/open");
+  assert.equal(ROUTES.seek, "/api/watch/seek");
+  assert.equal(ROUTES.golive, "/api/golive");
+  for (const manual of ["/api/play", "/api/penalty", "/api/situation", "/api/command", "/api/undo", "/api/retag",
+    "/api/reset", "/api/feed", "/api/feed/replay"]) {
+    assert.ok(!POST_PATHS.includes(manual), `${manual}: the page never sends user input into the game`);
+  }
+});
+
+test("Go Live's 503 (ESPN unreachable) resolves with its plain message, like a 409 (restructure-v2.md 9)", async () => {
+  const { fetchImpl } = stubFetch(() => response(503, { error: "ESPN can't be reached right now." }));
+  const api = createApi({ fetchImpl });
+  assert.deepEqual(await api.post("/api/golive", {}), { status: 503, body: { error: "ESPN can't be reached right now." } });
 });
 
 test("GETs return the parsed body and never cache", async () => {
@@ -64,34 +74,36 @@ test("getTimeline builds since and the URI-encoded epoch, and validates since", 
 });
 
 test("post sends JSON and resolves 200, 400 and 409 with their bodies", async () => {
-  const replies = { "/api/play": response(200, { message: "Logged." }), "/api/situation": response(400, { error: "Down must be 1 to 4", sit: {} }),
-    "/api/watch/step": response(409, { error: "Pause first" }) };
+  const replies = { "/api/watch/seek": response(200, { message: "Seeked." }),
+    "/api/watch/speed": response(400, { error: "Speed must be 0.5 to 10", sit: {} }),
+    "/api/watch/back": response(409, { error: "Already at kickoff." }) };
   const { fetchImpl, calls } = stubFetch((url) => replies[url]);
   const api = createApi({ fetchImpl });
-  assert.deepEqual(await api.post("/api/play", { yards: 3 }), { status: 200, body: { message: "Logged." } });
-  assert.deepEqual(await api.post("/api/situation", { down: "7" }), { status: 400, body: { error: "Down must be 1 to 4", sit: {} } });
-  assert.deepEqual(await api.post("/api/watch/step", {}), { status: 409, body: { error: "Pause first" } });
+  assert.deepEqual(await api.post("/api/watch/seek", { idx: 3 }), { status: 200, body: { message: "Seeked." } });
+  assert.deepEqual(await api.post("/api/watch/speed", { speed: 99 }),
+    { status: 400, body: { error: "Speed must be 0.5 to 10", sit: {} } });
+  assert.deepEqual(await api.post("/api/watch/back", {}), { status: 409, body: { error: "Already at kickoff." } });
   assert.equal(calls[0].init.method, "POST");
   assert.equal(calls[0].init.headers["Content-Type"], "application/json");
-  assert.equal(calls[0].init.body, '{"yards":3}');
+  assert.equal(calls[0].init.body, '{"idx":3}');
 });
 
 test("an unknown POST path or a non-object body throws before any request", () => {
   const { fetchImpl, calls } = stubFetch(() => response(200, {}));
   const api = createApi({ fetchImpl });
   assert.throws(() => api.post("/api/nope", {}), TypeError);
-  assert.throws(() => api.post("/api/play", null), TypeError);
-  assert.throws(() => api.post("/api/play", [1]), TypeError);
+  assert.throws(() => api.post("/api/open", null), TypeError);
+  assert.throws(() => api.post("/api/open", [1]), TypeError);
   assert.equal(calls.length, 0);
 });
 
 test("an HTML 500, a 404, a bad JSON body or a JSON array reject with ApiError (#121)", async () => {
   const api = (r) => createApi({ fetchImpl: stubFetch(() => r).fetchImpl });
-  assert.equal(await kindOf(api(response(500, "<html>boom</html>", { json: false })).post("/api/play", {})), "http:500");
+  assert.equal(await kindOf(api(response(500, "<html>boom</html>", { json: false })).post("/api/open", {})), "http:500");
   assert.equal(await kindOf(api(response(500, "<html>boom</html>", { json: false })).getState()), "http:500");
   assert.equal(await kindOf(api(response(404, { error: "x" })).getVersion()), "http:404");
   assert.equal(await kindOf(api(response(200, "Unexpected <", { json: false })).getState()), "bad-json:200");
-  assert.equal(await kindOf(api(response(400, "<p>x</p>", { json: false })).post("/api/play", {})), "bad-json:400");
+  assert.equal(await kindOf(api(response(400, "<p>x</p>", { json: false })).post("/api/open", {})), "bad-json:400");
   assert.equal(await kindOf(api(response(200, [1, 2])).getVersion()), "bad-json:200");
   const err = await api(response(503, "down", { json: false })).getState().catch((e) => e);
   assert.equal(err.path, "/api/state");
@@ -102,7 +114,7 @@ test("a network failure rejects with kind network", async () => {
   const api = createApi({ fetchImpl: () => Promise.reject(new TypeError("Failed to fetch")) });
   assert.equal(await kindOf(api.getVersion()), "network:null");
   const thrower = createApi({ fetchImpl: () => { throw new TypeError("sync failure"); } });
-  assert.equal(await kindOf(thrower.post("/api/undo", {})), "network:null");
+  assert.equal(await kindOf(thrower.post("/api/open", {})), "network:null");
 });
 
 test("a request past its timeout aborts and rejects with kind timeout", async () => {
@@ -120,7 +132,7 @@ test("a request past its timeout aborts and rejects with kind timeout", async ()
 test("a finished request clears its timer", async () => {
   const timers = fakeTimers();
   const api = createApi({ fetchImpl: stubFetch(() => response(200, {})).fetchImpl, timers });
-  await api.post("/api/undo", {});
+  await api.post("/api/open", {});
   assert.equal(timers.pending.size, 0);
   assert.throws(() => createApi({}), TypeError, "fetchImpl is required");
 });
@@ -130,7 +142,7 @@ test("fetch and the timers are called bare (Chromium throws 'Illegal invocation'
   const { fetchImpl, calls } = stubFetch(() => response(200, { version: 3 }));
   const api = createApi({ fetchImpl: browserLike(fetchImpl), timers });
   assert.deepEqual(await api.getVersion(), { version: 3 });
-  assert.deepEqual(await api.post("/api/undo", {}), { status: 200, body: { version: 3 } });
+  assert.deepEqual(await api.post("/api/open", {}), { status: 200, body: { version: 3 } });
   assert.equal(calls.length, 2);
   assert.equal(timers.pending.size, 0, "each request cleared its timer");
 });

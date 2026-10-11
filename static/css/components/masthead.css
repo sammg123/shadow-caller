@@ -1,5 +1,6 @@
-/* Masthead (ui/masthead.js; owner A9), plus the key caps and lamps every A9 component builds with ui/keycap.js.
-   Structure and token references only: a world skins these in css/worlds/<id>/components/masthead.css. */
+/* The top bar's nameplate and view keys (ui/masthead.js, ui/view-keys.js; restructure-v2.md 2), plus the key caps and
+   lamps every component builds with ui/keycap.js. Structure and token references only: a world skins these in
+   css/worlds/<id>/components/masthead.css. The playback row is watch-transport.css. */
 
 /* ---------------------------------------------------------------- key caps (ui/keycap.js), shared */
 .sc-key {
@@ -79,13 +80,14 @@
   .sc-key-cap { display: none; }
 }
 
-/* ---------------------------------------------------------------- masthead */
-.sc-masthead {
+/* ---------------------------------------------------------------- the top bar: nameplate, game, view keys, playback */
+/* One wrapping row: the plate and the current game at the left, the view keys at the right, the playback on its own
+   line under them (a world may lay these out as rows of its own). */
+:where(#rg-masthead) {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--sc-space-3) var(--sc-space-5);
+  gap: var(--sc-space-3) var(--sc-space-4);
   min-width: 0;
 }
 
@@ -98,41 +100,23 @@
   line-height: var(--sc-leading-tight);
 }
 
-.sc-masthead-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--sc-space-2);
-  color: var(--sc-ink-muted);
+.sc-masthead-meta { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+
+/* The current game (phase 2 puts the game picker here). */
+.sc-masthead-game {
+  min-width: 0;
+  color: var(--sc-ink);
   font-size: var(--sc-size-s);
-}
-.sc-masthead-game { color: var(--sc-ink); font-weight: var(--sc-weight-strong); }
-/* The dot rides on the game label, so a wrapped line never starts with it. */
-.sc-masthead-game:not(:empty):has(+ .sc-masthead-who:not(:empty))::after {
-  content: "·" / "";
-  margin-inline-start: var(--sc-space-2);
-  color: var(--sc-ink-muted);
-  font-weight: var(--sc-weight-regular);
+  font-weight: var(--sc-weight-strong);
+  white-space: nowrap;
 }
 
-.sc-masthead-controls {
+/* The view keys: the camera, the Model Report link, Ask (phase 4) and Settings, at the row's right end. */
+.sc-viewkeys {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sc-space-2) var(--sc-space-4);
-  min-width: 0;
+  gap: var(--sc-space-2);
+  margin-inline-start: auto;
 }
-.sc-masthead-keys { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); }
-.sc-masthead-view-keys {
-  padding-inline-start: var(--sc-space-4);
-  border-inline-start: var(--sc-border-w) solid var(--sc-rule);
-}
-.sc-key-danger:hover:not(:disabled) { border-color: var(--sc-bad); color: var(--sc-bad); }
-
-@media (max-width: 760px) {
-  .sc-masthead-view-keys { padding-inline-start: 0; border-inline-start: 0; }
-}
-/* Narrow: the game and the modelled caller stack, so the dot between them goes. */
-@media (max-width: 520px) {
-  .sc-masthead-meta { flex-direction: column; }
-  .sc-masthead-game:not(:empty):has(+ .sc-masthead-who:not(:empty))::after { content: none; }
-}
+.sc-key-link { text-decoration: none; }

@@ -1,14 +1,13 @@
 /* Under the Lights: motion (DESIGN.md Motion grammar; owner W3). Motion is what stadium hardware does between
    states, never a crawl, a crossfade, a bounce or a pulse:
    - LED steps (12 fps): copy steps in from the right in 5 discrete frames of 83 ms (--uls-step, 415 ms) and holds.
-   - Scanline fade-up: the video board's call, an unrolled board and the expanded board appear row by row, top to
-     bottom, in 10 steps over 400 ms (--uls-scan). An unrolling drive list scans bottom to top, as it rises.
+   - Scanline fade-up: the video board's call appears row by row, top to bottom, in 10 steps over 400 ms
+     (--uls-scan). An unrolling drive list scans bottom to top, as it rises.
    - Segment snap: digits change with no tween (--uls-segment-snap: 0ms); a leader lamp relights with one 83 ms blink.
-   - Hardware: the control-room drawer runs out on rails in 240 ms (--uls-rail-ms, --sc-ease-out); steel never
-     bounces, fades or scales.
-   The light dip (20% for 300 ms) and the camera moves belong to the scene (W1 moments, the engine); their timings are
-   here as tokens so the HUD and the bowl keep one clock. Every item is an instant state change under reduced motion
-   (prefers-reduced-motion or html[data-motion="reduced"]), and the engine skips world moments there. */
+   - Hardware: steel never bounces, fades or scales; the settings menu is simply there or put away.
+   The light dip (20% for 300 ms) belongs to the scene (the world's moments); its timing is here as a token so the HUD
+   and the bowl keep one clock. Every item is an instant state change under reduced motion (prefers-reduced-motion or
+   html[data-motion="reduced"]), and the engine skips world moments there. */
 
 :root[data-world="under-the-lights"] {
   --uls-frame-ms: 83ms;
@@ -19,10 +18,8 @@
   --uls-scan-ms: 400ms;
   --uls-segment-snap: 0ms;
   --uls-blink-ms: 83ms;
-  --uls-rail-ms: 240ms;
   --uls-dip-ms: 300ms;
   --uls-dip-level: 0.8;
-  --uls-settle-ms: 1100ms;
 }
 
 /* ---------------------------------------------------------------- keyframes */
@@ -42,10 +39,6 @@
 @keyframes uls-scan-up {
   from { clip-path: inset(100% 0 0 0); }
   to { clip-path: inset(0 0 0 0); }
-}
-@keyframes uls-rails-in {          /* v1.4 (W6): by translate, on the compositor, never by relaying the drawer out */
-  from { translate: calc(-1 * var(--uls-drawer-w)) 0; }
-  to { translate: 0 0; }
 }
 /* One LED frame dark, then lit: a lamp that changes meaning relights (component skins apply it). */
 @keyframes uls-blink {
@@ -67,27 +60,9 @@
   animation: uls-scan-down-b var(--uls-scan-ms) var(--uls-scan) both;
 }
 
-/* The play feed unrolls down from the ribbon; the drive chart unrolls up from the lower ribbon. */
-#app[data-layout="uls"] .uls-ribbon #rg-plays:is(:hover, [data-open="true"]) > * {
-  animation: uls-scan-down-a var(--uls-scan-ms) var(--uls-scan) both;
-}
+/* The drive chart unrolls up from the lower ribbon. */
 #app[data-layout="uls"] .uls-lower #rg-drives:is(:hover, [data-open="true"]) > * {
   animation: uls-scan-up var(--uls-scan-ms) var(--uls-scan) both;
-}
-
-/* The drawer runs out on its rails (closing is instant: the cabinet is simply put away). The run leaves no translate
-   behind (fill backwards, G5-1): a drawer with a translate is the containing block of anything fixed inside it. */
-#app[data-layout="uls"][data-booth-open="true"] .uls-drawer {
-  animation: uls-rails-in var(--uls-rail-ms) var(--sc-ease-out) backwards;
-}
-/* Manual entry and flag mode: the scorer's strip hangs under the ribbon (position: fixed) from the drawer's SITUATION
-   rack, so the cabinet stays put and its other racks run out instead; the strip never leaves the ribbon. */
-#app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"]) .uls-drawer {
-  animation: none;
-}
-#app[data-layout="uls"][data-booth-open="true"]:is([data-mode="normal"], [data-mode="flag"])
-  .uls-drawer > :not([data-rack="situation"]) {
-  animation: uls-rails-in var(--uls-rail-ms) var(--sc-ease-out) backwards;
 }
 
 /* Digits snap: a ticking number never tweens (The Ticking Number Rule). */
@@ -97,18 +72,12 @@
 
 /* ---------------------------------------------------------------- reduced motion: instant state changes */
 @media (prefers-reduced-motion: reduce) {
-  #app[data-layout="uls"] .uls-drawer,
-  #app[data-layout="uls"] .uls-drawer > *,
-  #app[data-layout="uls"] .uls-ribbon #rg-plays > *,
   #app[data-layout="uls"] .uls-lower #rg-drives > *,
   #app[data-layout="uls"] .uls-ribbon .sc-pf-btn,
   #app[data-layout="uls"] .uls-board .sc-call-top {
     animation: none !important;
   }
 }
-:root[data-motion="reduced"] #app[data-layout="uls"] .uls-drawer,
-:root[data-motion="reduced"] #app[data-layout="uls"] .uls-drawer > *,
-:root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon #rg-plays > *,
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-lower #rg-drives > *,
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-ribbon .sc-pf-btn,
 :root[data-motion="reduced"] #app[data-layout="uls"] .uls-board .sc-call-top {

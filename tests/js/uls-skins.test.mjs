@@ -1,5 +1,6 @@
 // Under the Lights: the HUD component skins and pixel glyphs (owner W2; DESIGN.md Components, Named Rules; ui-architecture
-// v1.4). Every skin is registered after W3's sheets; the HUD stays flat hardware (no shadows, glass, blur or decorative
+// v1.4; restructure-v2.md 1). Every GameCast skin is registered after W3's sheets (the four the Model Report still
+// shows are on disk, unregistered, under the same rules); the HUD stays flat hardware (no shadows, glass, blur or decorative
 // gradients; radii from tokens); no neon and no team color ever lights an LED; Doto only at 40 px and up; every
 // animation is a hardware step with a reduced-motion state; every url() resolves; the glyphs are clean 9 x 9 masks.
 import assert from "node:assert/strict";
@@ -14,11 +15,20 @@ const ROOT = join(fileURLToPath(new URL("../..", import.meta.url)));
 const ID = "under-the-lights";
 const SKIN_DIR = join(ROOT, "static", "css", "worlds", ID, "components");
 const IMG_DIR = join(ROOT, "static", "img", "worlds", ID);
-const W2_SKINS = ["masthead", "prediction", "board", "scoreboard", "scorecard", "play-feed", "drive-chart", "win-prob",
-  "situation-strip", "feed-bar", "toast", "conn-banner", "boot-screen", "review-banner", "field-host", "box-score",
-  "tendencies", "play-log"];
-const GLYPHS = ["check", "three", "x", "td", "inc", "first", "flag", "turnover", "hot-up", "hot-down", "ref-touchdown",
-  "ref-turnover"];
+/** The GameCast's HUD skins, in their cascade order (restructure-v2.md 1: only what the home page shows). */
+const W2_SKINS = ["masthead", "prediction", "board", "scoreboard", "play-feed", "drive-chart", "win-prob", "toast",
+  "conn-banner", "boot-screen", "field-host"];
+/** The board's PREVIOUS PLAY and LAST 6 (restructure-v2.md 3), which the world loads after the settings menu. */
+const CARD_SKINS = ["last-play"];
+/** Skins the GameCast no longer shows that the Model Report still links itself (restructure-v2.md 6). */
+const SHARED_SKINS = ["scorecard", "box-score", "tendencies"];
+/** Skins whose feature is gone everywhere (restructure-v2.md 1): the situation strip, the feed bar, the review banner,
+ * and the play log (the Model Report's calls table replaces it). */
+const GONE_SKINS = ["situation-strip", "feed-bar", "review-banner", "play-log"];
+/** Every skin on disk the world's rules hold. */
+const SKINS = [...W2_SKINS, ...CARD_SKINS, ...SHARED_SKINS];
+const GLYPHS = ["check", "two", "three", "x", "td", "inc", "first", "flag", "turnover", "hot-up", "hot-down",
+  "ref-touchdown", "ref-turnover"];
 const MAX_LINES = 400;
 const stripComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, "");
 const skin = (name) => stripComments(readFileSync(join(SKIN_DIR, `${name}.css`), "utf8"));
@@ -37,18 +47,20 @@ function rules(css) {
 test("every W2 skin exists, under 400 lines, and loads after W3's sheets with the shared keys first", () => {
   const listed = world.css.map((href) => href.replace(`/static/css/worlds/${ID}/`, "").replace(/\.css$/, ""));
   const mine = listed.filter((n) => W2_SKINS.includes(n.replace(/^components\//, "")));
-  assert.deepEqual(mine, W2_SKINS.map((n) => `components/${n}`), "W2's skins in their cascade order");
+  assert.deepEqual(mine, W2_SKINS.map((n) => `components/${n}`), "the GameCast's skins in their cascade order");
+  for (const name of CARD_SKINS) assert.ok(listed.includes(`components/${name}`), `the GameCast loads ${name}.css`);
   assert.ok(listed.indexOf("components/masthead") > listed.indexOf("motion"));
-  for (const name of W2_SKINS) {
+  for (const name of SKINS) {
     const lines = raw(name).split("\n").length;
     assert.ok(lines <= MAX_LINES, `${name}.css has ${lines} lines`);
   }
   const onDisk = readdirSync(SKIN_DIR).filter((f) => f.endsWith(".css")).map((f) => f.replace(/\.css$/, ""));
-  for (const name of W2_SKINS) assert.ok(onDisk.includes(name), `${name}.css`);
+  for (const name of SKINS) assert.ok(onDisk.includes(name), `${name}.css`);
+  for (const name of GONE_SKINS) assert.ok(!onDisk.includes(name), `${name}.css is gone with its feature`);
 });
 
 test("the Flat Hardware Rule: no shadow, glass, blur or decorative gradient; radii from tokens", () => {
-  for (const name of W2_SKINS) {
+  for (const name of SKINS) {
     const css = skin(name);
     assert.doesNotMatch(css, /backdrop-filter|filter:\s*blur|drop-shadow|text-shadow/, `${name}: glass, blur or glow`);
     const shadows = [...css.matchAll(/box-shadow:\s*([^;]+);/g)].map((m) => m[1].trim());
@@ -62,7 +74,7 @@ test("the Flat Hardware Rule: no shadow, glass, blur or decorative gradient; rad
 });
 
 test("no neon and no team color on LED: colors are the world's tokens, never raw hues or --sc-team-*", () => {
-  for (const name of W2_SKINS) {
+  for (const name of SKINS) {
     const css = skin(name);
     assert.deepEqual([...css.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map((m) => m[0]), [], `${name}: raw hex`);
     assert.doesNotMatch(css, /var\(--sc-team-/, `${name}: the team color is paint (layout.css), never a skin's light`);
@@ -74,7 +86,7 @@ test("no neon and no team color on LED: colors are the world's tokens, never raw
 test("Doto only at 40 px and up: every LED-numeral rule sets an LED size (The 40 Pixel Rule)", () => {
   const LED_SIZES = /font-size:\s*var\(--(sc-size-call|sc-size-xl|uls-size-led-readout)\)/;
   let checked = 0;
-  for (const name of W2_SKINS) {
+  for (const name of SKINS) {
     for (const [selector, body] of rules(skin(name))) {
       if (!/font-family:\s*var\(--uls-led-(num|font)\)/.test(body)) continue;
       checked += 1;
@@ -84,8 +96,16 @@ test("Doto only at 40 px and up: every LED-numeral rule sets an LED size (The 40
   assert.ok(checked >= 4, "the call figure, the scores, the facts and the SHADOW v LEAGUE readouts are Doto");
 });
 
+test("NEXT CALL's empty face (TB HAS THE BALL, before kickoff) draws no unlit 88% readout: it has no number", () => {
+  const offField = SKINS.flatMap((name) => rules(skin(name)).filter(([selector]) => selector.includes(".sc-offfield"))
+    .map(([selector, body]) => [`${name}: ${selector}`, body]));
+  assert.ok(offField.length > 0, "the board skins the empty face");
+  assert.deepEqual(offField.filter(([, body]) => /content:\s*"8/.test(body)).map(([where]) => where), [],
+    "an unlit 88% there reads like a number to a first-time viewer");
+});
+
 test("every url() resolves to the world's own glyphs or fonts", () => {
-  for (const name of W2_SKINS) {
+  for (const name of SKINS) {
     for (const m of skin(name).matchAll(/url\("([^"]+)"\)/g)) {
       assert.match(m[1], new RegExp(`^/static/(img/worlds|fonts)/${ID}/`), `${name}: ${m[1]}`);
       assert.ok(existsSync(join(ROOT, ...m[1].split("/").filter(Boolean))), `${name}: ${m[1]} exists`);
@@ -94,7 +114,7 @@ test("every url() resolves to the world's own glyphs or fonts", () => {
 });
 
 test("motion: hardware steps only, never a loop, each with its reduced-motion state", () => {
-  for (const name of W2_SKINS) {
+  for (const name of SKINS) {
     const css = skin(name);
     const uses = [...css.matchAll(/animation:\s*([a-z0-9-]+)[^;]*;/g)].filter((m) => m[1] !== "none");
     if (!uses.length) continue;

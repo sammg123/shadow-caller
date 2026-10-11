@@ -1,103 +1,130 @@
-// The last play and its retag keys (FI 1.7, 2.8, 3.6; ui-architecture.md 2.6, G19; checklist #96, #97, #100, #103;
-// owner A7). DOM side, text only (G27: ESPN's play text is external data). Shown with the feed on and during a watch:
-// the row a retag edits (newest standing row of any source), its yards, ESPN's text, and the retag keys, the one
-// matching the row's family marked current (.cur, aria-current). A retag key clicked while a watched game plays
-// pauses it first (DC E2.8). World hooks: #lastPlay[data-kind="waiting" | "play"], and #lastPlay[data-fresh="true"]
-// for RETAG_FRESH_MS after each new caller play (DESIGN.md: the retag keys light amber for 8 s, then rest).
-import { el, reconcile, setAttr, setClass, setData, setHidden, setText } from "./dom.js";
-import { act, keyCap, setKeyCap } from "./input-kit.js";
+// The card's history (restructure-v2.md section 3; DOM side, text only, G27: ESPN's words are external data):
+// PREVIOUS PLAY (his most recent call in the field's words, the verdict, and what the board predicted when his call
+// was something else; ESPN's own text on its tooltip) and LAST 6 (his last six calls as glyphs and his night so far).
+// Folded in from the last-play panel and the board's recap face: ui/prediction.js mounts them above and below NEXT
+// CALL, each under its painted plate (.sc-face-head). Neither lights a shadow on the field: the shadows are the next
+// call's. World hooks: .sc-prev[data-enter="a" | "b"] (flips on every new previous play, so a world's entrance
+// replays), .sc-prev-play[data-lead="td | int | fumble | turnover"], .sc-prev-verdict[data-verdict][data-rank],
+// .sc-prev-predicted[data-family], .sc-recent-dot[data-verdict][data-rank] (the rank on a top-3 hit only),
+// .sc-recent-count[data-tally] and .sc-recent-note (how his calls split once a flag has wiped one out).
+import { el, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
 
-export const RETAG_FRESH_MS = 8000;
+const SEPARATOR = " · ";
 
-const browserTimers = Object.freeze({
-  setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
-  clearTimeout: (id) => globalThis.clearTimeout(id),
-});
-
-function build(onRetag) {
-  const heading = el("h2", { cls: "sc-last-heading" });
-  const name = el("p", { cls: "sc-last-name" });
-  const yards = el("p", { cls: ["sc-last-yards", "sc-num"] });
-  const text = el("p", { cls: "sc-last-text" });
-  const keys = el("div", { cls: "sc-retag", attrs: { role: "group" } });
-  return { nodes: [heading, name, yards, text, keys], heading, name, yards, text, keys, onRetag };
+/**
+ * A new key flips node[data-enter] between "a" and "b", so a world's entrance replays on every new item; the same
+ * key (a background render, a hover) changes nothing.
+ * @param {HTMLElement} node
+ * @param {{ key: unknown, phase: "a" | "b" }} enter  the last state
+ * @param {unknown} key
+ * @returns {{ key: unknown, phase: "a" | "b" }} the new state
+ */
+export function entranceOf(node, enter, key) {
+  if (key === enter.key) return enter;
+  const phase = enter.phase === "a" ? "b" : "a";
+  setData(node, "enter", phase);
+  return { key, phase };
 }
 
-function renderKeys(view, buttons) {
-  setHidden(view.keys, buttons.length === 0);
-  reconcile(view.keys, buttons, {
-    key: (b) => b.key,
-    create: (b) => keyCap({ key: b.key, name: b.label, cls: ["sc-retag-key"], data: { retag: b.key },
-      on: { click: () => view.onRetag(b.key) } }),
-    update: (node, b) => {
-      setKeyCap(node, { key: b.key, name: b.label });
-      setData(node, "tone", b.tone);
-      setClass(node, "cur", Boolean(b.current));
-      setAttr(node, "aria-current", b.current ? "true" : null);
+/** A section's painted plate: its caption, then " · Snap 34" when it names a snap. */
+export function facePlate() {
+  const title = el("span", { cls: "sc-face-title" });
+  const sep = el("span", { cls: "sc-face-sep", attrs: { "aria-hidden": "true" } });
+  const snap = el("span", { cls: "sc-face-snap" });
+  const kicker = el("p", { cls: "sc-face-kicker" }, [title, sep, snap]);
+  return { node: el("header", { cls: "sc-face-head" }, [kicker]), kicker, title, sep, snap };
+}
+
+/** The plate's words; with no snap there is no separator either, so the caption reads whole. */
+export function renderPlate(plate, title, snapText = "") {
+  setText(plate.title, title);
+  setText(plate.sep, snapText ? SEPARATOR : "");
+  setText(plate.snap, snapText);
+}
+
+// ---------------------------------------------------------------- PREVIOUS PLAY
+export function buildPrevious() {
+  const head = facePlate();
+  const label = el("span", { cls: "sc-prev-label" });
+  const play = el("p", { cls: "sc-prev-play" },
+    [el("span", { cls: "sc-prev-glyph", attrs: { "aria-hidden": "true" } }), label]);
+  const verdict = el("p", { cls: "sc-prev-verdict" });
+  const guess = { label: el("span", { cls: "sc-prev-predlabel" }), name: el("span", { cls: "sc-prev-predname" }),
+    pct: el("span", { cls: ["sc-prev-predpct", "sc-num"] }) };
+  const predicted = el("p", { cls: "sc-prev-predicted" }, [guess.label, " ", guess.name, " ", guess.pct]);
+  const body = el("div", { cls: "sc-prev-body" }, [play, verdict, predicted]);
+  return { node: el("section", { cls: "sc-prev" }, [head.node, body]), head, play, label, verdict, predicted, guess,
+    enter: { key: null, phase: "b" } };
+}
+
+function renderPredicted(view, guess) {
+  setHidden(view.predicted, !guess);
+  setData(view.predicted, "family", guess?.family ?? null);
+  setText(view.guess.label, guess?.label ?? "");
+  setText(view.guess.name, guess?.name ?? "");
+  setText(view.guess.pct, guess?.pct ?? "");
+}
+
+/** @param {object | null} prev  predictionVm(pv).previous; null hides the section (no placeholder) */
+export function renderPrevious(view, prev) {
+  setHidden(view.node, !prev);
+  if (!prev) return;
+  renderPlate(view.head, prev.plate, prev.snap.text);
+  setData(view.play, "lead", prev.lead?.kind ?? null);
+  setAttr(view.play, "title", prev.espn || null);
+  setText(view.label, prev.label);
+  setData(view.verdict, "verdict", prev.verdict.key);
+  setData(view.verdict, "rank", prev.verdict.rank ?? null);
+  setText(view.verdict, prev.verdict.text);
+  setHidden(view.verdict, !prev.verdict.text);
+  renderPredicted(view, prev.predicted);
+  view.enter = entranceOf(view.node, view.enter, prev.seq);
+}
+
+// ---------------------------------------------------------------- LAST 6
+export function buildRecent() {
+  const head = facePlate();
+  const label = el("span", { cls: "sc-recent-label", attrs: { "aria-hidden": "true" } });
+  const glyphs = el("span", { cls: "sc-recent-glyphs", attrs: { role: "img" } });
+  const row = el("p", { cls: "sc-recent-row" }, [label, glyphs]);
+  const tally = el("p", { cls: "sc-recent-tally" });
+  const note = el("p", { cls: "sc-recent-note" });
+  return { node: el("section", { cls: "sc-recent" },
+    [head.node, el("div", { cls: "sc-recent-body" }, [row, tally, note])]), head, row, label, glyphs, tally, note };
+}
+
+function renderTally(node, tally) {
+  reconcile(node, tally, {
+    key: (t) => t.id,
+    create: () => el("span", { cls: "sc-recent-count" }, [el("span", { cls: "sc-recent-sep" }),
+      el("span", { cls: "sc-recent-countlabel" }), " ", el("b", { cls: "sc-recent-countvalue" })]),
+    update: (span, t, i) => {
+      setData(span, "tally", t.id);
+      setText(span.querySelector(".sc-recent-sep"), i === 0 ? "" : SEPARATOR);
+      setText(span.querySelector(".sc-recent-countlabel"), t.label);
+      setText(span.querySelector(".sc-recent-countvalue"), t.value);
     },
   });
 }
 
-/** data-fresh: true for RETAG_FRESH_MS after the row becomes a newer play; the play shown at load, a retag (same row)
- * and an undo (an older row) are not news. */
-function createFreshness(root, timers) {
-  const s = { seq: undefined, timer: null };
-  const stop = () => {
-    if (s.timer !== null) timers.clearTimeout(s.timer);
-    s.timer = null;
-  };
-  return {
-    see(seq) {
-      const first = s.seq === undefined;
-      const newer = !first && seq !== null && (s.seq === null || seq > s.seq);
-      s.seq = seq;
-      if (!newer) {
-        if (s.timer === null) setData(root, "fresh", false);   // a lit window runs out on its own
-        return;
-      }
-      stop();
-      setData(root, "fresh", true);
-      s.timer = timers.setTimeout(() => {
-        s.timer = null;
-        setData(root, "fresh", false);
-      }, RETAG_FRESH_MS);
+/** @param {object | null} recent  predictionVm(pv).recent; null hides the section */
+export function renderRecent(view, recent) {
+  setHidden(view.node, !recent);
+  if (!recent) return;
+  renderPlate(view.head, recent.plate);
+  setText(view.label, recent.label);
+  setAttr(view.glyphs, "aria-label", recent.aria || null);
+  reconcile(view.glyphs, recent.items, {
+    key: (_, i) => i,
+    create: () => el("span", { cls: "sc-recent-dot" }),
+    update: (dot, item) => {
+      setData(dot, "verdict", item.key);
+      setData(dot, "rank", item.key === "top3" ? item.rank : null);
     },
-    stop,
-  };
-}
-
-/**
- * @param {HTMLElement} root  #lastPlay
- * @param {{ actions: object, timers?: { setTimeout: Function, clearTimeout: Function } }} ctx
- *   timers: injected by tests; the page uses the browser's, called bare
- * @returns {{ update(vm: object | null): void, destroy(): void }}
- */
-export function mount(root, ctx) {
-  const state = { pauseFirst: false, ariaLabel: "" };
-  const view = build((key) => act(() => ctx.actions.retag(key, { pauseFirst: state.pauseFirst })));
-  for (const node of view.nodes) root.appendChild(node);
-  setAttr(root, "role", "region");
-  const fresh = createFreshness(root, ctx.timers ?? browserTimers);
-  return {
-    update(vm) {
-      const v = vm ?? { hidden: true, kind: "waiting", buttons: [] };
-      state.pauseFirst = Boolean(v.pauseFirst);
-      setHidden(root, v.hidden !== false);
-      setData(root, "kind", v.kind === "play" ? "play" : "waiting");
-      setText(view.heading, v.heading ?? "");
-      setText(view.name, v.name ?? "");
-      setHidden(view.name, !v.name);
-      setText(view.yards, v.yardsText ?? "");
-      setHidden(view.yards, !v.yardsText);
-      setText(view.text, v.text ?? "");
-      setHidden(view.text, !v.text);
-      setAttr(root, "aria-label", v.heading || null);
-      renderKeys(view, Array.isArray(v.buttons) ? v.buttons : []);
-      if (v.hidden === false) fresh.see(Number.isInteger(v.seq) ? v.seq : null);
-    },
-    destroy() {
-      fresh.stop();
-      for (const node of view.nodes) node.remove();
-    },
-  };
+  });
+  setHidden(view.row, recent.items.length === 0);
+  renderTally(view.tally, recent.tally);
+  setHidden(view.tally, recent.tally.length === 0);
+  setText(view.note, recent.note ?? "");
+  setHidden(view.note, !recent.note);
 }

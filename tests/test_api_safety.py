@@ -63,7 +63,7 @@ def own_server(data):
                     time.sleep(0.25)
             else:
                 raise RuntimeError("sandbox server did not start:\n" + log_path.read_text())
-            yield {"base": base, "proc": proc, "data": data, "log": log_path}
+            yield {"base": base, "proc": proc, "data": data, "log": log_path, "port": port}
         finally:
             if proc.poll() is None:
                 proc.terminate()
@@ -264,7 +264,7 @@ def head_of(base, path, headers=None):
         return e.code, dict(e.headers)
 
 
-@pytest.mark.parametrize("path", ["/", "/static/js/main.js", "/api/state", "/api/version", "/api/logo/ZZZ"])
+@pytest.mark.parametrize("path", ["/", "/report", "/static/js/main.js", "/api/state", "/api/version", "/api/logo/ZZZ"])
 def test_no_other_site_can_frame_the_page(srv, path):
     """G1-7: a page on another site could frame the app invisibly and click 'ESPN live'. Only this machine's own
     pages may frame it now, and nothing may be sniffed into another type."""
@@ -274,7 +274,8 @@ def test_no_other_site_can_frame_the_page(srv, path):
         assert headers.get(name) == value, (path, name)
 
 
-@pytest.mark.parametrize("path", ["/", "/static/js/main.js", "/api/logo/DAL", "/api/export.csv", "/api/state"])
+@pytest.mark.parametrize("path", ["/", "/report", "/static/js/main.js", "/api/logo/DAL", "/api/export.csv",
+                                  "/api/state"])
 def test_a_rebound_dns_name_gets_nothing(srv, path):
     status, raw = call(srv["base"], path, "GET", headers={"Host": f"evil.example:{srv['port']}"})
     assert status == 400 and b"export" not in raw and b"<html" not in raw.lower(), path
