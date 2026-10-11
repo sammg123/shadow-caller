@@ -1,0 +1,244 @@
+{
+  "caller": "Bobby Slowik",
+  "seasons": [
+    2024,
+    2026
+  ],
+  "n_snaps": 1385,
+  "n_games": 23,
+  "alpha": 0.1,
+  "lambda": 3.0,
+  "q0": 0.41588447653429605,
+  "coefs": {
+    "intercept": {
+      "est": 0.5907735455137997,
+      "lo": 0.29418404186143293,
+      "hi": 0.9048082849674857,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.5465387194941558,
+      "lo": -0.8731053260660824,
+      "hi": -0.23614670214454633,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.19797759594682285,
+      "lo": -0.5292367771749266,
+      "hi": 0.22914259001927542,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.059407607348411204,
+      "lo": -0.43941019481546767,
+      "hi": 0.27989750622958437,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.30904575605794177,
+      "lo": -0.5283303179370785,
+      "hi": -0.037177638682083805,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.7627379995660645,
+      "lo": 0.33536027242013583,
+      "hi": 1.1835984398946675,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.1162487625234474,
+      "lo": -0.3252237683901109,
+      "hi": 0.07027173473072,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.2791868040982644,
+      "lo": 0.0695027170392176,
+      "hi": 0.4996447316650919,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.3342375846567172,
+      "lo": -0.13945263472974456,
+      "hi": 0.8016384401107508,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.38013651646683205,
+      "lo": -0.8082281112889433,
+      "hi": 0.10335699531211763,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5307504778283829,
+    "habits": 0.5308370183688339,
+    "habits_plus_memory": 0.5307102431799979,
+    "nflfastr_xpass_reference": 0.5370650271607958
+  },
+  "dropback_rate": {
+    "actual": 0.6274368231046932,
+    "league_expected": 0.6167820353645372
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 593,
+      "actual": 0.5143338954468802,
+      "league_expected": 0.49146645571328157
+    },
+    {
+      "down": 2,
+      "n": 455,
+      "actual": 0.6,
+      "league_expected": 0.6314544646300566
+    },
+    {
+      "down": 3,
+      "n": 311,
+      "actual": 0.8778135048231511,
+      "league_expected": 0.832162619393359
+    },
+    {
+      "down": 4,
+      "n": 26,
+      "actual": 0.6923076923076923,
+      "league_expected": 0.6418905655345241
+    }
+  ],
+  "team": "MIA",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32353,
+    "logloss_ours": 0.527099800139055,
+    "logloss_nflfastr_xpass": 0.5365080801902092,
+    "logloss_constant": 0.6715284847431877
+  },
+  "granular": {
+    "n_snaps": 1385,
+    "family_rates": {
+      "run": {
+        "his": 0.35306859205776175,
+        "league_expected": 0.35147789081789244
+      },
+      "dropback": {
+        "his": 0.44404332129963897,
+        "league_expected": 0.44297778102249064
+      },
+      "pa": {
+        "his": 0.1256317689530686,
+        "league_expected": 0.1083141173739644
+      },
+      "screen": {
+        "his": 0.05198555956678701,
+        "league_expected": 0.04939123899168836
+      },
+      "rpo": {
+        "his": 0.02527075812274368,
+        "league_expected": 0.04783897179396417
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0106955002798668,
+        "his": 1.0064330899988718,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.3656683306074078,
+        "his": 1.3653980072117144,
+        "lambda": 100.0,
+        "n": 485
+      },
+      "pass_depth": {
+        "league": 0.9188322166854276,
+        "his": 0.9134766575634315,
+        "lambda": 30.0,
+        "n": 653
+      },
+      "specific_play": {
+        "n": 1245,
+        "logloss_league": 2.06031098070923,
+        "logloss_his": 2.055941544082696,
+        "top1_his": 0.321285140562249,
+        "top1_league": 0.3253012048192771,
+        "top3_his": 0.6024096385542169
+      }
+    },
+    "rpo_throw": {
+      "his": 0.25682044903934603,
+      "league": 0.3062562348582015,
+      "his_n": 35
+    }
+  },
+  "built_at": "2026-10-10T21:17:12",
+  "sklearn": "1.9.1",
+  "slug": "bobby-slowik",
+  "teams": [
+    "HOU",
+    "MIA"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "HOU",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.cbssports.com/nfl/news/texans-fire-bobby-slowik-houston-offensive-coordinator-out-as-c-j-strouds-play-caller-after-two-seasons"
+    },
+    {
+      "season": 2026,
+      "team": "MIA",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.miamidolphins.com/news/transcript-oc-bobby-slowik-press-conference-october-8"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "HOU",
+      "MIA"
+    ],
+    "n_train": 267043,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "e83dc9afc1ead104",
+    "seconds": {
+      "own": 0.6,
+      "shared": 11.9,
+      "shared_by": 1
+    }
+  }
+}

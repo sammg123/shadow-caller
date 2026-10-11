@@ -1,0 +1,244 @@
+{
+  "caller": "Mike LaFleur",
+  "seasons": [
+    2024,
+    2026
+  ],
+  "n_snaps": 324,
+  "n_games": 5,
+  "alpha": 0.3,
+  "lambda": 30.0,
+  "q0": 0.49382716049382713,
+  "coefs": {
+    "intercept": {
+      "est": 0.12538717775122366,
+      "lo": 0.017561403111383336,
+      "hi": 0.2518504750495618,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.005088986028707714,
+      "lo": -0.054018899142674964,
+      "hi": 0.0523959594404728,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.02320844266855005,
+      "lo": -0.025512010114903023,
+      "hi": 0.05582230563782955,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.006145573268898992,
+      "lo": -0.06484563819991382,
+      "hi": 0.06878658666510425,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.04398449706444731,
+      "lo": -0.021424680698530166,
+      "hi": 0.11288321586050118,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.04586341583387085,
+      "lo": -0.008730403764747999,
+      "hi": 0.0993883671784188,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.09744761505445701,
+      "lo": -0.19126127966751924,
+      "hi": -0.0009180117302088351,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.09703193727539522,
+      "lo": -0.1945443208196432,
+      "hi": -0.015233705141840203,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.013209411885747426,
+      "lo": -0.029515224666236173,
+      "hi": 0.061618821595473224,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.010387174708935618,
+      "lo": 0.0,
+      "hi": 0.021046900572685875,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.469007093991238,
+    "habits": 0.4684720561395457,
+    "habits_plus_memory": 0.4675536033286553,
+    "nflfastr_xpass_reference": 0.4781882910338427
+  },
+  "dropback_rate": {
+    "actual": 0.6388888888888888,
+    "league_expected": 0.6038709046785744
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 138,
+      "actual": 0.5434782608695652,
+      "league_expected": 0.5270078463658406
+    },
+    {
+      "down": 2,
+      "n": 110,
+      "actual": 0.6272727272727273,
+      "league_expected": 0.5876736242579557
+    },
+    {
+      "down": 3,
+      "n": 69,
+      "actual": 0.8260869565217391,
+      "league_expected": 0.7732723143692759
+    },
+    {
+      "down": 4,
+      "n": 7,
+      "actual": 0.8571428571428571,
+      "league_expected": 0.7038859939309893
+    }
+  ],
+  "team": "ARI",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32172,
+    "logloss_ours": 0.5263122944121386,
+    "logloss_nflfastr_xpass": 0.5354545217348731,
+    "logloss_constant": 0.6731400086563588
+  },
+  "granular": {
+    "n_snaps": 324,
+    "family_rates": {
+      "run": {
+        "his": 0.35185185185185186,
+        "league_expected": 0.35761326583303976
+      },
+      "dropback": {
+        "his": 0.4691358024691358,
+        "league_expected": 0.4375273783184661
+      },
+      "pa": {
+        "his": 0.12037037037037036,
+        "league_expected": 0.11158232268847776
+      },
+      "screen": {
+        "his": 0.04938271604938271,
+        "league_expected": 0.04349377342937553
+      },
+      "rpo": {
+        "his": 0.009259259259259259,
+        "league_expected": 0.04978325973064096
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9145205538073015,
+        "his": 0.9164150722490279,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2691141701698994,
+        "his": 1.2667183088598706,
+        "lambda": 30.0,
+        "n": 114
+      },
+      "pass_depth": {
+        "league": 0.7296936533905996,
+        "his": 0.721391465613543,
+        "lambda": 10.0,
+        "n": 176
+      },
+      "specific_play": {
+        "n": 309,
+        "logloss_league": 1.8028467393241252,
+        "logloss_his": 1.7988598598519006,
+        "top1_his": 0.44660194174757284,
+        "top1_league": 0.45307443365695793,
+        "top3_his": 0.7087378640776699
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2713281681316568,
+      "league": 0.31202739335140534,
+      "his_n": 3
+    }
+  },
+  "built_at": "2026-10-10T21:17:51",
+  "sklearn": "1.9.1",
+  "slug": "mike-lafleur",
+  "teams": [
+    "ARI",
+    "LA"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "LA",
+      "first_week": 18,
+      "last_week": 18,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://nbclosangeles.com/news/sports/shorthanded-rams-lose-to-seahawks-30-25-fall-to-fourth-seed-in-the-nfc-playoffs/3594852"
+    },
+    {
+      "season": 2026,
+      "team": "ARI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.azcardinals.com/news/why-mike-lafleur-is-a-dream-for-cardinals-wide-receivers"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "ARI",
+      "LA"
+    ],
+    "n_train": 266126,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "a0ae4064ee3d4818",
+    "seconds": {
+      "own": 0.2,
+      "shared": 13.0,
+      "shared_by": 1
+    }
+  }
+}

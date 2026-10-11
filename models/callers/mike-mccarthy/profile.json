@@ -1,0 +1,244 @@
+{
+  "caller": "Mike McCarthy",
+  "seasons": [
+    2024,
+    2026
+  ],
+  "n_snaps": 1340,
+  "n_games": 21,
+  "alpha": 0.1,
+  "lambda": 100.0,
+  "q0": 0.45298507462686566,
+  "coefs": {
+    "intercept": {
+      "est": 0.008244045493996937,
+      "lo": -0.05132847079658156,
+      "hi": 0.07447680101354733,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.055169831121771186,
+      "lo": 0.011937724014498934,
+      "hi": 0.09424284008428412,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.04265661148748963,
+      "lo": -0.0952459209084571,
+      "hi": 0.010251427417125775,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.04075323499129956,
+      "lo": -0.11368062737213333,
+      "hi": 0.03392154641866293,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.010751818187048737,
+      "lo": -0.03773276901576836,
+      "hi": 0.0557029953926614,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.016226270889542024,
+      "lo": -0.009657536693423821,
+      "hi": 0.041708554952852896,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.0327217533592565,
+      "lo": -0.09596862838791922,
+      "hi": 0.02148552789434697,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.021330751588393506,
+      "lo": -0.09317589580611683,
+      "hi": 0.05434694059289231,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.014579874344091496,
+      "lo": -0.02337894735642292,
+      "hi": 0.05248342379293079,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.015349086569041997,
+      "lo": -0.042521611742426385,
+      "hi": 0.006833925876477585,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5394130679284735,
+    "habits": 0.5408991147718177,
+    "habits_plus_memory": 0.5411926135510098,
+    "nflfastr_xpass_reference": 0.5445411272804512
+  },
+  "dropback_rate": {
+    "actual": 0.6373134328358209,
+    "league_expected": 0.6290554154713293
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 584,
+      "actual": 0.5633561643835616,
+      "league_expected": 0.531041369574378
+    },
+    {
+      "down": 2,
+      "n": 449,
+      "actual": 0.6258351893095768,
+      "league_expected": 0.6310442672969301
+    },
+    {
+      "down": 3,
+      "n": 276,
+      "actual": 0.7971014492753623,
+      "league_expected": 0.8232364937764157
+    },
+    {
+      "down": 4,
+      "n": 31,
+      "actual": 0.7741935483870968,
+      "league_expected": 0.7178693097268412
+    }
+  ],
+  "team": "PIT",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32372,
+    "logloss_ours": 0.5262455706454926,
+    "logloss_nflfastr_xpass": 0.5359262513548388,
+    "logloss_constant": 0.6723193142668367
+  },
+  "granular": {
+    "n_snaps": 1340,
+    "family_rates": {
+      "run": {
+        "his": 0.3358208955223881,
+        "league_expected": 0.33930159350725875
+      },
+      "dropback": {
+        "his": 0.47313432835820896,
+        "league_expected": 0.45373558004618936
+      },
+      "pa": {
+        "his": 0.10373134328358209,
+        "league_expected": 0.10900958368742665
+      },
+      "screen": {
+        "his": 0.05223880597014925,
+        "league_expected": 0.04906919098367917
+      },
+      "rpo": {
+        "his": 0.03507462686567164,
+        "league_expected": 0.0488840517754461
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0595583586609187,
+        "his": 1.0628641849018634,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2582844901490164,
+        "his": 1.253829026212311,
+        "lambda": 30.0,
+        "n": 442
+      },
+      "pass_depth": {
+        "league": 0.8319060401741443,
+        "his": 0.8271706003440545,
+        "lambda": 10.0,
+        "n": 707
+      },
+      "specific_play": {
+        "n": 1266,
+        "logloss_league": 2.0033341357177847,
+        "logloss_his": 2.002192962689627,
+        "top1_his": 0.3570300157977883,
+        "top1_league": 0.3609794628751975,
+        "top3_his": 0.6627172195892576
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2577977392930224,
+      "league": 0.31362242663162504,
+      "his_n": 47
+    }
+  },
+  "built_at": "2026-10-10T21:17:12",
+  "sklearn": "1.9.1",
+  "slug": "mike-mccarthy",
+  "teams": [
+    "DAL",
+    "PIT"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "DAL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.dallascowboys.com/news/schotty-on-calling-plays-vs-rams-it-was-fun"
+    },
+    {
+      "season": 2026,
+      "team": "PIT",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.baltimoreravens.com/news/todd-monken-mike-tomlin-trade-barbs-browns-first-win-mike-mccarthy-aaron-rodgers-play-calling-woes-bengals-strong-defense-week-2-around-afc-north"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "DAL",
+      "PIT"
+    ],
+    "n_train": 266162,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "8d5f6c3c40cb2b75",
+    "seconds": {
+      "own": 0.4,
+      "shared": 11.4,
+      "shared_by": 1
+    }
+  }
+}

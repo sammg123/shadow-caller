@@ -1,0 +1,252 @@
+{
+  "caller": "Kyle Shanahan",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2338,
+  "n_games": 39,
+  "alpha": 0.7,
+  "lambda": 100.0,
+  "q0": 0.5213857998289136,
+  "coefs": {
+    "intercept": {
+      "est": -0.0014793344885213775,
+      "lo": -0.057079104871813495,
+      "hi": 0.05627609217752307,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.023433840549399544,
+      "lo": -0.04305915629228652,
+      "hi": 0.09025161092250314,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.008522395747423717,
+      "lo": -0.048008964814530465,
+      "hi": 0.06450061137523948,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.025070972471460604,
+      "lo": -0.09990601779655879,
+      "hi": 0.03624495834057488,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.016881920541845608,
+      "lo": -0.07378279208480035,
+      "hi": 0.05131980211678803,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.09035671886353469,
+      "lo": 0.015182718685572874,
+      "hi": 0.15445471942945632,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.1043661525803858,
+      "lo": -0.1572907482792318,
+      "hi": -0.03924831816737952,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.07349278961645636,
+      "lo": -0.14296353657899574,
+      "hi": -0.015040757843636688,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.04386737753420321,
+      "lo": -0.08562717640877748,
+      "hi": -0.0008471318741957379,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.013913809251160121,
+      "lo": -0.0042661653993746875,
+      "hi": 0.030264203690690262,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5171806773655938,
+    "habits": 0.5177648579098583,
+    "habits_plus_memory": 0.5164478589763382,
+    "nflfastr_xpass_reference": 0.5219853985473056
+  },
+  "dropback_rate": {
+    "actual": 0.5923866552609067,
+    "league_expected": 0.5889498573223789
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1071,
+      "actual": 0.5023342670401494,
+      "league_expected": 0.4897687960932374
+    },
+    {
+      "down": 2,
+      "n": 772,
+      "actual": 0.6036269430051814,
+      "league_expected": 0.6079479693353861
+    },
+    {
+      "down": 3,
+      "n": 454,
+      "actual": 0.7863436123348018,
+      "league_expected": 0.7913464718280893
+    },
+    {
+      "down": 4,
+      "n": 41,
+      "actual": 0.5853658536585366,
+      "league_expected": 0.5808598845608306
+    }
+  ],
+  "team": "SF",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33327,
+    "logloss_ours": 0.5276305869463616,
+    "logloss_nflfastr_xpass": 0.5362032698096507,
+    "logloss_constant": 0.6718539550134295
+  },
+  "granular": {
+    "n_snaps": 2338,
+    "family_rates": {
+      "run": {
+        "his": 0.40290846877673225,
+        "league_expected": 0.3817255301454762
+      },
+      "dropback": {
+        "his": 0.4375534644995723,
+        "league_expected": 0.40599685324365503
+      },
+      "pa": {
+        "his": 0.1146278870829769,
+        "league_expected": 0.11893112306531939
+      },
+      "screen": {
+        "his": 0.037639007698887936,
+        "league_expected": 0.04420870661781287
+      },
+      "rpo": {
+        "his": 0.007271171941830625,
+        "league_expected": 0.049137786927736495
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9364495250435653,
+        "his": 0.9122476693143087,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.280969754664734,
+        "his": 1.2789171655199534,
+        "lambda": 30.0,
+        "n": 939
+      },
+      "pass_depth": {
+        "league": 0.8466138422468323,
+        "his": 0.8352998576538962,
+        "lambda": 1.0,
+        "n": 1137
+      },
+      "specific_play": {
+        "n": 2181,
+        "logloss_league": 1.9339665132818995,
+        "logloss_his": 1.9034004543132874,
+        "top1_his": 0.37734983952315454,
+        "top1_league": 0.3718477762494269,
+        "top3_his": 0.657496561210454
+      }
+    },
+    "rpo_throw": {
+      "his": 0.3299728794538483,
+      "league": 0.31044982698961937,
+      "his_n": 17
+    }
+  },
+  "built_at": "2026-10-10T21:16:12",
+  "sklearn": "1.9.1",
+  "slug": "kyle-shanahan",
+  "teams": [
+    "SF"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "SF",
+      "first_week": 1,
+      "last_week": 17,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://nbcsportsbayarea.com/nfl/san-francisco-49ers/klay-kubiak-kyle-shanahan-play-calling-duties/1819012"
+    },
+    {
+      "season": 2025,
+      "team": "SF",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.49ers.com/news/john-lynch-kyle-shanahan-talk-offseason-coaching-changes"
+    },
+    {
+      "season": 2026,
+      "team": "SF",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://sfstandard.com/2026/09/27/brock-purdy-kyle-shanahan-49ers-offense/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "SF"
+    ],
+    "n_train": 275172,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "a4c88275a3123cc0",
+    "seconds": {
+      "own": 0.6,
+      "shared": 10.6,
+      "shared_by": 1
+    }
+  }
+}

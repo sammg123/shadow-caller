@@ -1,0 +1,232 @@
+{
+  "caller": "Kevin Patullo",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 1064,
+  "n_games": 18,
+  "alpha": 0.3,
+  "lambda": 10.0,
+  "q0": 0.4642857142857143,
+  "coefs": {
+    "intercept": {
+      "est": -0.27376828700184125,
+      "lo": -0.47178101703654546,
+      "hi": -0.05502240881798144,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.26721833866943834,
+      "lo": 0.0911649622885506,
+      "hi": 0.3950928920480508,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.38013557808333176,
+      "lo": -0.5808840885882353,
+      "hi": -0.1086743123424996,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.2625098841470426,
+      "lo": -0.02004159762417374,
+      "hi": 0.5360532185636261,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.2674438665149795,
+      "lo": -0.4505879512142542,
+      "hi": -0.05740642393539849,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.4373753045026502,
+      "lo": 0.11785870111772646,
+      "hi": 0.7249113830352863,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.1488668570252933,
+      "lo": -0.013643172083668751,
+      "hi": 0.2983477973761969,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.2241993920098233,
+      "lo": -0.4414872769798348,
+      "hi": -0.015456846454303362,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.025999475333051008,
+      "lo": -0.2719472071950037,
+      "hi": 0.3105209904919665,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.18507122611350052,
+      "lo": -0.44676800699788694,
+      "hi": 0.08920496509261878,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.564780180026161,
+    "habits": 0.560341009507564,
+    "habits_plus_memory": 0.5573205575467524,
+    "nflfastr_xpass_reference": 0.5664339708076644
+  },
+  "dropback_rate": {
+    "actual": 0.5733082706766918,
+    "league_expected": 0.5916726909644414
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 453,
+      "actual": 0.46357615894039733,
+      "league_expected": 0.4739528977544593
+    },
+    {
+      "down": 2,
+      "n": 363,
+      "actual": 0.5977961432506887,
+      "league_expected": 0.5909317923786358
+    },
+    {
+      "down": 3,
+      "n": 223,
+      "actual": 0.757847533632287,
+      "league_expected": 0.8286105882061179
+    },
+    {
+      "down": 4,
+      "n": 25,
+      "actual": 0.56,
+      "league_expected": 0.6220271479994599
+    }
+  ],
+  "team": "PHI",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33438,
+    "logloss_ours": 0.5260744441589357,
+    "logloss_nflfastr_xpass": 0.5347464942491433,
+    "logloss_constant": 0.6715900142959671
+  },
+  "granular": {
+    "n_snaps": 1064,
+    "family_rates": {
+      "run": {
+        "his": 0.3768796992481203,
+        "league_expected": 0.37695550978898446
+      },
+      "dropback": {
+        "his": 0.4201127819548872,
+        "league_expected": 0.4158367971108432
+      },
+      "pa": {
+        "his": 0.11278195488721804,
+        "league_expected": 0.11547970161523546
+      },
+      "screen": {
+        "his": 0.022556390977443608,
+        "league_expected": 0.04753400656192176
+      },
+      "rpo": {
+        "his": 0.06766917293233082,
+        "league_expected": 0.04419398492301507
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0445414421393464,
+        "his": 1.0385135290115866,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.3252259639051498,
+        "his": 1.3263563074989597,
+        "lambda": 100.0,
+        "n": 399
+      },
+      "pass_depth": {
+        "league": 0.8752791085594047,
+        "his": 0.8797720601708018,
+        "lambda": 100.0,
+        "n": 488
+      },
+      "specific_play": {
+        "n": 983,
+        "logloss_league": 2.0795228562720314,
+        "logloss_his": 2.07705208590076,
+        "top1_his": 0.34791454730417093,
+        "top1_league": 0.34893184130213634,
+        "top3_his": 0.602238046795524
+      }
+    },
+    "rpo_throw": {
+      "his": 0.272622783791093,
+      "league": 0.3040648054390279,
+      "his_n": 72
+    }
+  },
+  "built_at": "2026-10-10T21:17:23",
+  "sklearn": "1.9.1",
+  "slug": "kevin-patullo",
+  "teams": [
+    "PHI"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "PHI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.inquirer.com/eagles/kevin-patullo-out-eagles-offensive-coordinator-20260113.html"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "PHI"
+    ],
+    "n_train": 274791,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "6df0f78c5fe6fa20",
+    "seconds": {
+      "own": 0.4,
+      "shared": 10.3,
+      "shared_by": 1
+    }
+  }
+}

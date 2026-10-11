@@ -1,0 +1,232 @@
+{
+  "caller": "John Morton",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 480,
+  "n_games": 8,
+  "alpha": 0.9,
+  "lambda": 10.0,
+  "q0": 0.4875,
+  "coefs": {
+    "intercept": {
+      "est": -0.1789666819802886,
+      "lo": -0.26069362503626414,
+      "hi": -0.08277745589978747,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.3061865278843555,
+      "lo": -0.43273574897134864,
+      "hi": -0.18445402815452544,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.1394963852614111,
+      "lo": -0.364225021272363,
+      "hi": 0.06688453162492704,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.22168797099658302,
+      "lo": 0.03387432792221187,
+      "hi": 0.4732181302824106,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.1644143409342963,
+      "lo": -0.37353240727311193,
+      "hi": 0.020582555079917006,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.3345160049789899,
+      "lo": 0.15064673687554292,
+      "hi": 0.5439232809131599,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.00412723110481393,
+      "lo": -0.16948757906143155,
+      "hi": 0.16810373155721703,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.1297277392304795,
+      "lo": -0.314750552699099,
+      "hi": 0.062131386063904705,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.03717895317355022,
+      "lo": -0.1763206088026155,
+      "hi": 0.09353929033405953,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.12316067754541576,
+      "lo": -0.2704554138617326,
+      "hi": 0.03180497202421811,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.553960871757733,
+    "habits": 0.5371933659299284,
+    "habits_plus_memory": 0.534218167166361,
+    "nflfastr_xpass_reference": 0.5446167480836983
+  },
+  "dropback_rate": {
+    "actual": 0.5479166666666667,
+    "league_expected": 0.6213966843949594
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 209,
+      "actual": 0.4354066985645933,
+      "league_expected": 0.49769457722501476
+    },
+    {
+      "down": 2,
+      "n": 154,
+      "actual": 0.512987012987013,
+      "league_expected": 0.6507152537711077
+    },
+    {
+      "down": 3,
+      "n": 101,
+      "actual": 0.801980198019802,
+      "league_expected": 0.8166462553592059
+    },
+    {
+      "down": 4,
+      "n": 16,
+      "actual": 0.75,
+      "league_expected": 0.7225513123451246
+    }
+  ],
+  "team": "DET",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33452,
+    "logloss_ours": 0.5263867837087486,
+    "logloss_nflfastr_xpass": 0.5348428446985423,
+    "logloss_constant": 0.6718708111758526
+  },
+  "granular": {
+    "n_snaps": 480,
+    "family_rates": {
+      "run": {
+        "his": 0.4083333333333333,
+        "league_expected": 0.33647661189395456
+      },
+      "dropback": {
+        "his": 0.37916666666666665,
+        "league_expected": 0.4410214402483859
+      },
+      "pa": {
+        "his": 0.10833333333333334,
+        "league_expected": 0.12632692485735614
+      },
+      "screen": {
+        "his": 0.052083333333333336,
+        "league_expected": 0.04383769227848863
+      },
+      "rpo": {
+        "his": 0.052083333333333336,
+        "league_expected": 0.05233733072181481
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0649691262049392,
+        "his": 1.0470586927957124,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.5185315936217465,
+        "his": 1.487349385419599,
+        "lambda": 10.0,
+        "n": 195
+      },
+      "pass_depth": {
+        "league": 0.8202457054958421,
+        "his": 0.8196647287398289,
+        "lambda": 100.0,
+        "n": 212
+      },
+      "specific_play": {
+        "n": 457,
+        "logloss_league": 2.1370480968051884,
+        "logloss_his": 2.0988167121359256,
+        "top1_his": 0.30196936542669583,
+        "top1_league": 0.30196936542669583,
+        "top3_his": 0.5864332603938731
+      }
+    },
+    "rpo_throw": {
+      "his": 0.22872734601491404,
+      "league": 0.31463652853355656,
+      "his_n": 25
+    }
+  },
+  "built_at": "2026-10-10T21:17:36",
+  "sklearn": "1.9.1",
+  "slug": "john-morton",
+  "teams": [
+    "DET"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "DET",
+      "first_week": 1,
+      "last_week": 9,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/lions/onsi/news/dan-campbell-possibly-took-over-play-calling-john-morton"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "DET"
+    ],
+    "n_train": 275446,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "07c3968f584dae7c",
+    "seconds": {
+      "own": 0.3,
+      "shared": 12.8,
+      "shared_by": 2
+    }
+  }
+}

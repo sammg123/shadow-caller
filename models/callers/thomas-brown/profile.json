@@ -1,0 +1,241 @@
+{
+  "caller": "Thomas Brown",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 485,
+  "n_games": 8,
+  "alpha": 0.7,
+  "lambda": 100.0,
+  "q0": 0.44123711340206184,
+  "coefs": {
+    "intercept": {
+      "est": 0.026496817262906935,
+      "lo": -0.024526868049053043,
+      "hi": 0.07720840869218147,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.007018509713865259,
+      "lo": -0.046157737871831965,
+      "hi": 0.03709770200686331,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.0133903111768526,
+      "lo": -0.014738581510421392,
+      "hi": 0.038912803063381546,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.023545892527097177,
+      "lo": -0.03466386630089505,
+      "hi": 0.08994032040944458,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.003315433667109218,
+      "lo": -0.05648751497860827,
+      "hi": 0.04995000790165209,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.05488385965689739,
+      "lo": 0.0231963156561458,
+      "hi": 0.0810877632951391,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.00833924630083544,
+      "lo": -0.06558439791214973,
+      "hi": 0.08985803040062094,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.042529152053347355,
+      "lo": -0.08075746418685147,
+      "hi": -0.003542434757219367,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.019843944109713338,
+      "lo": -0.00017672870549184912,
+      "hi": 0.044466698826701574,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.008700794408498318,
+      "lo": -0.0038418080602271036,
+      "hi": 0.019772028778730112,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.46883374960688046,
+    "habits": 0.4706698448154683,
+    "habits_plus_memory": 0.47039494223760914,
+    "nflfastr_xpass_reference": 0.465512347234833
+  },
+  "dropback_rate": {
+    "actual": 0.6721649484536083,
+    "league_expected": 0.66128168655436
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 198,
+      "actual": 0.5505050505050505,
+      "league_expected": 0.5564025180418947
+    },
+    {
+      "down": 2,
+      "n": 160,
+      "actual": 0.66875,
+      "league_expected": 0.6513948347272842
+    },
+    {
+      "down": 3,
+      "n": 109,
+      "actual": 0.8715596330275229,
+      "league_expected": 0.8461782570032105
+    },
+    {
+      "down": 4,
+      "n": 18,
+      "actual": 0.8333333333333334,
+      "league_expected": 0.7831842131585608
+    }
+  ],
+  "team": "CHI",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33254,
+    "logloss_ours": 0.524855478990678,
+    "logloss_nflfastr_xpass": 0.5332166582011465,
+    "logloss_constant": 0.6718036720130379
+  },
+  "granular": {
+    "n_snaps": 485,
+    "family_rates": {
+      "run": {
+        "his": 0.31958762886597936,
+        "league_expected": 0.30130329270452055
+      },
+      "dropback": {
+        "his": 0.4845360824742268,
+        "league_expected": 0.4968953668586384
+      },
+      "pa": {
+        "his": 0.07422680412371134,
+        "league_expected": 0.10113164213912806
+      },
+      "screen": {
+        "his": 0.10103092783505155,
+        "league_expected": 0.04649355924619595
+      },
+      "rpo": {
+        "his": 0.020618556701030927,
+        "league_expected": 0.054176139051517004
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9750546264200183,
+        "his": 0.9576800005951023,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.4575245432082602,
+        "his": 1.4314119912386225,
+        "lambda": 10.0,
+        "n": 153
+      },
+      "pass_depth": {
+        "league": 0.9174677662957417,
+        "his": 0.9073867482767335,
+        "lambda": 30.0,
+        "n": 214
+      },
+      "specific_play": {
+        "n": 426,
+        "logloss_league": 2.018806663330293,
+        "logloss_his": 1.9755068457153055,
+        "top1_his": 0.3427230046948357,
+        "top1_league": 0.3380281690140845,
+        "top3_his": 0.6314553990610329
+      }
+    },
+    "rpo_throw": {
+      "his": 0.4100611189468735,
+      "league": 0.3150916784203103,
+      "his_n": 10
+    }
+  },
+  "built_at": "2026-10-10T21:17:37",
+  "sklearn": "1.9.1",
+  "slug": "thomas-brown",
+  "teams": [
+    "CHI"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "CHI",
+      "first_week": 11,
+      "last_week": 13,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.shawlocal.com/bears/2024/12/02/heres-what-chicago-bears-interim-head-coach-thomas-brown-said-monday/"
+    },
+    {
+      "season": 2024,
+      "team": "CHI",
+      "first_week": 14,
+      "last_week": 22,
+      "role": "Interim HC",
+      "confidence": "high",
+      "source": "https://www.nbcsports.com/nfl/profootballtalk/rumor-mill/news/bears-promote-chris-beatty-to-interim-offensive-coordinator"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "CHI"
+    ],
+    "n_train": 275483,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "28dd80c1aa6a08d8",
+    "seconds": {
+      "own": 0.2,
+      "shared": 12.0,
+      "shared_by": 2
+    }
+  }
+}

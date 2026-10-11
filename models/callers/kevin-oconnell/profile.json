@@ -1,0 +1,252 @@
+{
+  "caller": "Kevin O'Connell",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2270,
+  "n_games": 39,
+  "alpha": 0.2,
+  "lambda": 3.0,
+  "q0": 0.4577092511013216,
+  "coefs": {
+    "intercept": {
+      "est": 0.45039090386279856,
+      "lo": 0.23451944788406429,
+      "hi": 0.7140719814426443,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.4001027659605549,
+      "lo": -0.6337626903708896,
+      "hi": -0.17407213281103107,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.47839091766162917,
+      "lo": 0.1022329730312873,
+      "hi": 0.8126541352032255,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.04637636798253495,
+      "lo": -0.2287660125412852,
+      "hi": 0.12235759705524028,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.3859827418470621,
+      "lo": 0.17010973469124324,
+      "hi": 0.575982995460458,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.3991238248491648,
+      "lo": 0.037140165496128016,
+      "hi": 0.7112962536848821,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.04734089329884193,
+      "lo": -0.1568519518446544,
+      "hi": 0.0785051957286654,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.4653161124339909,
+      "lo": -0.6385549133335724,
+      "hi": -0.3010325272909879,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.3404360244098739,
+      "lo": -0.5990684121837104,
+      "hi": -0.05270464546006218,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.5801871180229203,
+      "lo": 0.07698144962419645,
+      "hi": 0.9708188661343357,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5086029089889227,
+    "habits": 0.5030350519703561,
+    "habits_plus_memory": 0.4980893445487008,
+    "nflfastr_xpass_reference": 0.5002972613257873
+  },
+  "dropback_rate": {
+    "actual": 0.6066079295154185,
+    "league_expected": 0.5802298266825613
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1000,
+      "actual": 0.465,
+      "league_expected": 0.47065771876686907
+    },
+    {
+      "down": 2,
+      "n": 758,
+      "actual": 0.6358839050131926,
+      "league_expected": 0.5935711961056026
+    },
+    {
+      "down": 3,
+      "n": 468,
+      "actual": 0.8611111111111112,
+      "league_expected": 0.7909511867573197
+    },
+    {
+      "down": 4,
+      "n": 44,
+      "actual": 0.6136363636363636,
+      "league_expected": 0.599360585274381
+    }
+  ],
+  "team": "MIN",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33563,
+    "logloss_ours": 0.5267766903278789,
+    "logloss_nflfastr_xpass": 0.5366792486716759,
+    "logloss_constant": 0.6720432657677706
+  },
+  "granular": {
+    "n_snaps": 2270,
+    "family_rates": {
+      "run": {
+        "his": 0.3682819383259912,
+        "league_expected": 0.38790904988895814
+      },
+      "dropback": {
+        "his": 0.4079295154185022,
+        "league_expected": 0.4039141088833382
+      },
+      "pa": {
+        "his": 0.13832599118942732,
+        "league_expected": 0.1127852975957235
+      },
+      "screen": {
+        "his": 0.046255506607929514,
+        "league_expected": 0.04604948052844847
+      },
+      "rpo": {
+        "his": 0.039207048458149776,
+        "league_expected": 0.049342063103531675
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0158103721420324,
+        "his": 1.006650638951796,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.3739018524126856,
+        "his": 1.37455059004021,
+        "lambda": 100.0,
+        "n": 828
+      },
+      "pass_depth": {
+        "league": 0.8631375993889508,
+        "his": 0.8613313917596678,
+        "lambda": 30.0,
+        "n": 1045
+      },
+      "specific_play": {
+        "n": 2067,
+        "logloss_league": 2.047117039619216,
+        "logloss_his": 2.040835934233874,
+        "top1_his": 0.3584905660377358,
+        "top1_league": 0.35462022254475084,
+        "top3_his": 0.5955491049830672
+      }
+    },
+    "rpo_throw": {
+      "his": 0.3509543674015795,
+      "league": 0.31270130233860804,
+      "his_n": 89
+    }
+  },
+  "built_at": "2026-10-10T21:16:26",
+  "sklearn": "1.9.1",
+  "slug": "kevin-oconnell",
+  "teams": [
+    "MIN"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "MIN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.vikings.com/news/kevin-o-connell-sam-darnold-play-calls-meetings-2024"
+    },
+    {
+      "season": 2025,
+      "team": "MIN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.vikings.com/news/kevin-oconnell-jj-mccarthy-packers-takeaways-seahawks"
+    },
+    {
+      "season": 2026,
+      "team": "MIN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.vikings.com/news/kevin-o-connell-bears-week-2-win-unsung-heroes-run-game-defense"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "MIN"
+    ],
+    "n_train": 275703,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "3e7fa31d4ef103a9",
+    "seconds": {
+      "own": 0.8,
+      "shared": 11.9,
+      "shared_by": 1
+    }
+  }
+}

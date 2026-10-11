@@ -1,0 +1,242 @@
+{
+  "caller": "Arthur Smith",
+  "seasons": [
+    2024,
+    2025
+  ],
+  "n_snaps": 2137,
+  "n_games": 36,
+  "alpha": 0.5,
+  "lambda": 100.0,
+  "q0": 0.4590547496490407,
+  "coefs": {
+    "intercept": {
+      "est": -0.009939970822626687,
+      "lo": -0.06689168392858437,
+      "hi": 0.05993484124544146,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.06291113288868562,
+      "lo": -0.12742504480817754,
+      "hi": 0.0012981643827572901,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.06160429326044538,
+      "lo": 0.005367073716897483,
+      "hi": 0.12417461734523962,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.1095741511968437,
+      "lo": -0.19180919722269468,
+      "hi": -0.010992548754974782,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.04568448162534795,
+      "lo": -0.04707129834421133,
+      "hi": 0.1338395707070303,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.08112083600057646,
+      "lo": 0.0090856403361826,
+      "hi": 0.1559873301415329,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.0352430349118247,
+      "lo": -0.10640596893322964,
+      "hi": 0.04344883395166939,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.08220088634595192,
+      "lo": -0.1403206855179662,
+      "hi": -0.02940495631805537,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.015963125265705917,
+      "lo": -0.06536207197970349,
+      "hi": 0.033479672067386154,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.011164469680979661,
+      "lo": -0.042263097263790315,
+      "hi": 0.016773835892904678,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5317112492028997,
+    "habits": 0.5318284248451499,
+    "habits_plus_memory": 0.531211625326265,
+    "nflfastr_xpass_reference": 0.537694261978721
+  },
+  "dropback_rate": {
+    "actual": 0.5844642021525503,
+    "league_expected": 0.5974519005850629
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 907,
+      "actual": 0.4652701212789416,
+      "league_expected": 0.49137499984505306
+    },
+    {
+      "down": 2,
+      "n": 725,
+      "actual": 0.5917241379310345,
+      "league_expected": 0.6053621451010286
+    },
+    {
+      "down": 3,
+      "n": 460,
+      "actual": 0.8173913043478261,
+      "league_expected": 0.797735270097116
+    },
+    {
+      "down": 4,
+      "n": 45,
+      "actual": 0.4888888888888889,
+      "league_expected": 0.5607068277310512
+    }
+  ],
+  "team": "PIT",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33473,
+    "logloss_ours": 0.527772176823367,
+    "logloss_nflfastr_xpass": 0.5361918501755923,
+    "logloss_constant": 0.6720902329435284
+  },
+  "granular": {
+    "n_snaps": 2137,
+    "family_rates": {
+      "run": {
+        "his": 0.3696771174543753,
+        "league_expected": 0.3676223811329856
+      },
+      "dropback": {
+        "his": 0.4089845577912962,
+        "league_expected": 0.4247507289669057
+      },
+      "pa": {
+        "his": 0.10996724379971923,
+        "league_expected": 0.1124264995429136
+      },
+      "screen": {
+        "his": 0.05194197473093121,
+        "league_expected": 0.04656904153642068
+      },
+      "rpo": {
+        "his": 0.05942910622367805,
+        "league_expected": 0.04863134882077434
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.06648754252129,
+        "his": 1.0661190032678085,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.4307426244863906,
+        "his": 1.426725531527042,
+        "lambda": 30.0,
+        "n": 783
+      },
+      "pass_depth": {
+        "league": 0.7793782533712765,
+        "his": 0.7644981084231067,
+        "lambda": 30.0,
+        "n": 969
+      },
+      "specific_play": {
+        "n": 1990,
+        "logloss_league": 2.0536907153579294,
+        "logloss_his": 2.0421252691845972,
+        "top1_his": 0.3527638190954774,
+        "top1_league": 0.350251256281407,
+        "top3_his": 0.6040201005025125
+      }
+    },
+    "rpo_throw": {
+      "his": 0.24011730295983127,
+      "league": 0.31486217675475986,
+      "his_n": 127
+    }
+  },
+  "built_at": "2026-10-10T21:16:36",
+  "sklearn": "1.9.1",
+  "slug": "arthur-smith",
+  "teams": [
+    "PIT"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "PIT",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://abc7ny.com/post/calls-plays-every-nfl-team-2024-what-know/15246862/"
+    },
+    {
+      "season": 2025,
+      "team": "PIT",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/steelers/onsi/news/blame-three-people-pittsburgh-steelers-embarrassment-browns"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "PIT"
+    ],
+    "n_train": 275567,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "8e2be49cc1104431",
+    "seconds": {
+      "own": 0.6,
+      "shared": 10.0,
+      "shared_by": 1
+    }
+  }
+}

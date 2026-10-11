@@ -1,0 +1,252 @@
+{
+  "caller": "Joe Brady",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2625,
+  "n_games": 43,
+  "alpha": 0.2,
+  "lambda": 10.0,
+  "q0": 0.5253333333333333,
+  "coefs": {
+    "intercept": {
+      "est": -0.24001279345042417,
+      "lo": -0.4230076797262318,
+      "hi": -0.07078487179394213,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.21379084136085266,
+      "lo": 0.04677262889437913,
+      "hi": 0.39330123934444844,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.37593903554214264,
+      "lo": 0.15476553326873685,
+      "hi": 0.6442840690281334,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.1005180268668674,
+      "lo": -0.27306100069940736,
+      "hi": 0.10095578009389057,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.23046153653684634,
+      "lo": -0.44335554261253285,
+      "hi": -0.0190934599332987,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.5698775368338619,
+      "lo": 0.27936404919386554,
+      "hi": 0.8172161006926543,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.10221563197887686,
+      "lo": -0.2229070937897423,
+      "hi": 0.04029419438235638,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.19234589977329877,
+      "lo": -0.38458276656651086,
+      "hi": -0.027517851629088673,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.01689542065118616,
+      "lo": -0.29683674769734897,
+      "hi": 0.22349000240635283,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.265601163441777,
+      "lo": 0.0640267444919781,
+      "hi": 0.4542860538865054,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5151838990964248,
+    "habits": 0.5146020535316473,
+    "habits_plus_memory": 0.5116355127339505,
+    "nflfastr_xpass_reference": 0.5286911064474434
+  },
+  "dropback_rate": {
+    "actual": 0.5615238095238095,
+    "league_expected": 0.5824459405453691
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1169,
+      "actual": 0.4234388366124893,
+      "league_expected": 0.48055245579414435
+    },
+    {
+      "down": 2,
+      "n": 871,
+      "actual": 0.642939150401837,
+      "league_expected": 0.6081558511122703
+    },
+    {
+      "down": 3,
+      "n": 515,
+      "actual": 0.7339805825242719,
+      "league_expected": 0.7684615754210713
+    },
+    {
+      "down": 4,
+      "n": 70,
+      "actual": 0.5857142857142857,
+      "league_expected": 0.5956187921085677
+    }
+  ],
+  "team": "BUF",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33308,
+    "logloss_ours": 0.5271772242606151,
+    "logloss_nflfastr_xpass": 0.5357548741694644,
+    "logloss_constant": 0.6713441651567835
+  },
+  "granular": {
+    "n_snaps": 2625,
+    "family_rates": {
+      "run": {
+        "his": 0.3881904761904762,
+        "league_expected": 0.38538633752268076
+      },
+      "dropback": {
+        "his": 0.38247619047619047,
+        "league_expected": 0.4014572412312915
+      },
+      "pa": {
+        "his": 0.11733333333333333,
+        "league_expected": 0.12277058852746077
+      },
+      "screen": {
+        "his": 0.046857142857142854,
+        "league_expected": 0.04214700825253062
+      },
+      "rpo": {
+        "his": 0.06514285714285714,
+        "league_expected": 0.048238824466036355
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0566279148855116,
+        "his": 1.0546188508904784,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.2625518894856114,
+        "his": 1.250838001895879,
+        "lambda": 100.0,
+        "n": 1011
+      },
+      "pass_depth": {
+        "league": 0.8864199453763367,
+        "his": 0.8855913595265934,
+        "lambda": 100.0,
+        "n": 1126
+      },
+      "specific_play": {
+        "n": 2431,
+        "logloss_league": 2.0488687123046914,
+        "logloss_his": 2.0369763644545817,
+        "top1_his": 0.3735088440970794,
+        "top1_league": 0.36939531057178115,
+        "top3_his": 0.6157959687371453
+      }
+    },
+    "rpo_throw": {
+      "his": 0.23718035834554074,
+      "league": 0.31507242219991394,
+      "his_n": 171
+    }
+  },
+  "built_at": "2026-10-10T21:15:26",
+  "sklearn": "1.9.1",
+  "slug": "joe-brady",
+  "teams": [
+    "BUF"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "BUF",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.buffalobills.com/news/bills-oc-joe-brady-explains-trick-play-rationale-hc-sean-mcdermott-provides-injury-updates-heading-into-week-5"
+    },
+    {
+      "season": 2025,
+      "team": "BUF",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/bills/onsi/joe-brady-stubborn-play-calls-cost-slumping-bills-two-weeks-in-a-row-jet-sweep-james-cook"
+    },
+    {
+      "season": 2026,
+      "team": "BUF",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.buffalobills.com/news/something-special-about-this-guy-why-pete-carmichael-waited-seven-years-to-get-back-with-joe-brady"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "BUF"
+    ],
+    "n_train": 274845,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "103082af53b5da75",
+    "seconds": {
+      "own": 0.9,
+      "shared": 10.5,
+      "shared_by": 1
+    }
+  }
+}

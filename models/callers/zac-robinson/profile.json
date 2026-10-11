@@ -1,0 +1,254 @@
+{
+  "caller": "Zac Robinson",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2402,
+  "n_games": 39,
+  "alpha": 0.1,
+  "lambda": 100.0,
+  "q0": 0.49250624479600336,
+  "coefs": {
+    "intercept": {
+      "est": -0.10764798506653007,
+      "lo": -0.15484923873798234,
+      "hi": -0.05493653944887495,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.13671345313984434,
+      "lo": -0.18557053370277193,
+      "hi": -0.08810500902123942,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.04668158640947066,
+      "lo": -0.005338654146013696,
+      "hi": 0.09730206024136183,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.02392033323850861,
+      "lo": -0.09017292047100593,
+      "hi": 0.03904505685545618,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.0970616311776968,
+      "lo": -0.1726766432998734,
+      "hi": -0.03227574643699065,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.05394822731654003,
+      "lo": 0.0043539309908464776,
+      "hi": 0.10706514491291343,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.09053377042280338,
+      "lo": 0.028846044195099594,
+      "hi": 0.15204308289174898,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.050729599009355746,
+      "lo": -0.010022665960980101,
+      "hi": 0.10649500490865418,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.011182745120428838,
+      "lo": -0.04311712997526198,
+      "hi": 0.061960521721407424,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.00738532121346614,
+      "lo": -0.037032546887807154,
+      "hi": 0.017071993848552996,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.49991315871625575,
+    "habits": 0.49301623292322394,
+    "habits_plus_memory": 0.49230164619952527,
+    "nflfastr_xpass_reference": 0.5168155711615814
+  },
+  "dropback_rate": {
+    "actual": 0.5686927560366362,
+    "league_expected": 0.618158665267138
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1065,
+      "actual": 0.4328638497652582,
+      "league_expected": 0.5239719889262365
+    },
+    {
+      "down": 2,
+      "n": 791,
+      "actual": 0.6042983565107459,
+      "league_expected": 0.627590417721649
+    },
+    {
+      "down": 3,
+      "n": 480,
+      "actual": 0.7895833333333333,
+      "league_expected": 0.7982683182679255
+    },
+    {
+      "down": 4,
+      "n": 66,
+      "actual": 0.7272727272727273,
+      "league_expected": 0.7150626148302242
+    }
+  ],
+  "team": "TB",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32413,
+    "logloss_ours": 0.5287135529432059,
+    "logloss_nflfastr_xpass": 0.537001605815825,
+    "logloss_constant": 0.6714923494878293
+  },
+  "granular": {
+    "n_snaps": 2402,
+    "family_rates": {
+      "run": {
+        "his": 0.40174854288093254,
+        "league_expected": 0.3504195688875098
+      },
+      "dropback": {
+        "his": 0.43130724396336384,
+        "league_expected": 0.43940066547493495
+      },
+      "pa": {
+        "his": 0.08867610324729393,
+        "league_expected": 0.11552415919924623
+      },
+      "screen": {
+        "his": 0.044962531223980015,
+        "league_expected": 0.0456091042599128
+      },
+      "rpo": {
+        "his": 0.03330557868442964,
+        "league_expected": 0.04904650217839627
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9108765364767168,
+        "his": 0.9002517953992362,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.6298172869808676,
+        "his": 1.5382949398091879,
+        "lambda": 10.0,
+        "n": 954
+      },
+      "pass_depth": {
+        "league": 0.8801236284544561,
+        "his": 0.8786055137007395,
+        "lambda": 100.0,
+        "n": 1131
+      },
+      "specific_play": {
+        "n": 2273,
+        "logloss_league": 2.0662457613543808,
+        "logloss_his": 2.0104820529586123,
+        "top1_his": 0.31588209414870216,
+        "top1_league": 0.3185217773867136,
+        "top3_his": 0.6000879894412671
+      }
+    },
+    "rpo_throw": {
+      "his": 0.153106376853318,
+      "league": 0.3155318842665899,
+      "his_n": 80
+    }
+  },
+  "built_at": "2026-10-10T21:15:49",
+  "sklearn": "1.9.1",
+  "slug": "zac-robinson",
+  "teams": [
+    "ATL",
+    "TB"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "ATL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/41018846/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-nathaniel-hackett"
+    },
+    {
+      "season": 2025,
+      "team": "ATL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.atlantafalcons.com/news/zac-robinson-call-plays-sideline-week-4-change"
+    },
+    {
+      "season": 2026,
+      "team": "TB",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.buccaneers.com/news/bucs-get-three-receivers-going-in-zac-robinson-play-calling-debut"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "ATL",
+      "TB"
+    ],
+    "n_train": 266315,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "b1c7c792b76339f7",
+    "seconds": {
+      "own": 0.6,
+      "shared": 10.2,
+      "shared_by": 1
+    }
+  }
+}

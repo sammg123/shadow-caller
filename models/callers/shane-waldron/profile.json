@@ -1,0 +1,232 @@
+{
+  "caller": "Shane Waldron",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 564,
+  "n_games": 9,
+  "alpha": 0.1,
+  "lambda": 100.0,
+  "q0": 0.4397163120567376,
+  "coefs": {
+    "intercept": {
+      "est": -0.011234013381727855,
+      "lo": -0.06478408623542152,
+      "hi": 0.03601900296570324,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.012751006471034339,
+      "lo": -0.06392029561056121,
+      "hi": 0.032533726856250625,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.0023989484954102585,
+      "lo": -0.026137803541680382,
+      "hi": 0.019825528623775658,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.010587224817005378,
+      "lo": -0.03975431307434163,
+      "hi": 0.012899849907458925,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.007212061833591345,
+      "lo": -0.04233630190343107,
+      "hi": 0.05364251868621631,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.011690022505915368,
+      "lo": -0.008518920705893404,
+      "hi": 0.028563908662997975,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.08733258319297238,
+      "lo": -0.18700286589897125,
+      "hi": -0.008009913360412945,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.01680873257987893,
+      "lo": -0.06286624788828649,
+      "hi": 0.023230012560779712,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.00038442150107142364,
+      "lo": -0.0284249931459542,
+      "hi": 0.034920880453056566,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.012594410302674079,
+      "lo": -0.006395976923739253,
+      "hi": 0.029981165564773562,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5120182845699366,
+    "habits": 0.5134980106938071,
+    "habits_plus_memory": 0.5125270416381329,
+    "nflfastr_xpass_reference": 0.5153033258456017
+  },
+  "dropback_rate": {
+    "actual": 0.6276595744680851,
+    "league_expected": 0.6350958286257016
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 232,
+      "actual": 0.5,
+      "league_expected": 0.5257901397568987
+    },
+    {
+      "down": 2,
+      "n": 193,
+      "actual": 0.6373056994818653,
+      "league_expected": 0.6271690710791749
+    },
+    {
+      "down": 3,
+      "n": 119,
+      "actual": 0.8403361344537815,
+      "league_expected": 0.8550295103277733
+    },
+    {
+      "down": 4,
+      "n": 20,
+      "actual": 0.75,
+      "league_expected": 0.6709296237004685
+    }
+  ],
+  "team": "CHI",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33254,
+    "logloss_ours": 0.524855478990678,
+    "logloss_nflfastr_xpass": 0.5332166582011465,
+    "logloss_constant": 0.6718036720130379
+  },
+  "granular": {
+    "n_snaps": 564,
+    "family_rates": {
+      "run": {
+        "his": 0.32092198581560283,
+        "league_expected": 0.33573446665264617
+      },
+      "dropback": {
+        "his": 0.4627659574468085,
+        "league_expected": 0.46466098993512756
+      },
+      "pa": {
+        "his": 0.09574468085106383,
+        "league_expected": 0.10719684500066319
+      },
+      "screen": {
+        "his": 0.051418439716312055,
+        "league_expected": 0.04620715965091704
+      },
+      "rpo": {
+        "his": 0.06914893617021277,
+        "league_expected": 0.04620053876064609
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0554621916706932,
+        "his": 1.0567962361342431,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.4791471027838194,
+        "his": 1.458594088937047,
+        "lambda": 30.0,
+        "n": 180
+      },
+      "pass_depth": {
+        "league": 0.8485263091574419,
+        "his": 0.8537504540422672,
+        "lambda": 100.0,
+        "n": 254
+      },
+      "specific_play": {
+        "n": 502,
+        "logloss_league": 2.114664944623089,
+        "logloss_his": 2.110276512559431,
+        "top1_his": 0.31274900398406374,
+        "top1_league": 0.3187250996015936,
+        "top3_his": 0.5896414342629482
+      }
+    },
+    "rpo_throw": {
+      "his": 0.27630226387129164,
+      "league": 0.3150916784203103,
+      "his_n": 39
+    }
+  },
+  "built_at": "2026-10-10T21:17:37",
+  "sklearn": "1.9.1",
+  "slug": "shane-waldron",
+  "teams": [
+    "CHI"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "CHI",
+      "first_week": 1,
+      "last_week": 10,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.nbcchicago.com/news/sports/nfl/chicago-bears/shane-waldron-fired-as-chicago-bears-offensive-coordinator-reports/3598528/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "CHI"
+    ],
+    "n_train": 275483,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "4e87a8dafe50e658",
+    "seconds": {
+      "own": 0.2,
+      "shared": 12.0,
+      "shared_by": 2
+    }
+  }
+}

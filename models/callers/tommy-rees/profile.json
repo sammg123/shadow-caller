@@ -1,0 +1,244 @@
+{
+  "caller": "Tommy Rees",
+  "seasons": [
+    2025,
+    2026
+  ],
+  "n_snaps": 758,
+  "n_games": 13,
+  "alpha": 0.5,
+  "lambda": 100.0,
+  "q0": 0.420844327176781,
+  "coefs": {
+    "intercept": {
+      "est": -0.040854437755034716,
+      "lo": -0.10605992903341421,
+      "hi": 0.025874749214984914,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.004612816196524134,
+      "lo": -0.06921128429707886,
+      "hi": 0.0682732074662432,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.0053787461930461244,
+      "lo": -0.031578314515517195,
+      "hi": 0.041955844953696586,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.012311154113948586,
+      "lo": -0.06993235781655391,
+      "hi": 0.05988647098921368,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.05479186546556006,
+      "lo": -0.11919257260070111,
+      "hi": 0.008965882654712013,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.09266931729386774,
+      "lo": 0.044411572387012155,
+      "hi": 0.13167495814577904,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.019570194180789913,
+      "lo": -0.06659831479669646,
+      "hi": 0.09822128020474294,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.018356020723294054,
+      "lo": -0.08635613678364168,
+      "hi": 0.030641463534134765,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.0040947379759267155,
+      "lo": -0.03290577516115902,
+      "hi": 0.02504522412308707,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.004702326430363743,
+      "lo": -0.024739809368140853,
+      "hi": 0.013039640084983012,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.4988565237653571,
+    "habits": 0.501092919584875,
+    "habits_plus_memory": 0.5006652515638591,
+    "nflfastr_xpass_reference": 0.5212556648623925
+  },
+  "dropback_rate": {
+    "actual": 0.5567282321899736,
+    "league_expected": 0.5721387941132717
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 331,
+      "actual": 0.459214501510574,
+      "league_expected": 0.4649098589196865
+    },
+    {
+      "down": 2,
+      "n": 252,
+      "actual": 0.5436507936507936,
+      "league_expected": 0.5647805447352778
+    },
+    {
+      "down": 3,
+      "n": 163,
+      "actual": 0.7668711656441718,
+      "league_expected": 0.7968427516260288
+    },
+    {
+      "down": 4,
+      "n": 12,
+      "actual": 0.6666666666666666,
+      "league_expected": 0.6321647372592489
+    }
+  ],
+  "team": "ATL",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32446,
+    "logloss_ours": 0.5295469871111845,
+    "logloss_nflfastr_xpass": 0.5373227981373674,
+    "logloss_constant": 0.6717628226233241
+  },
+  "granular": {
+    "n_snaps": 758,
+    "family_rates": {
+      "run": {
+        "his": 0.4182058047493404,
+        "league_expected": 0.3776268737204371
+      },
+      "dropback": {
+        "his": 0.37467018469656993,
+        "league_expected": 0.4006625626881661
+      },
+      "pa": {
+        "his": 0.11345646437994723,
+        "league_expected": 0.10701807492473552
+      },
+      "screen": {
+        "his": 0.06464379947229551,
+        "league_expected": 0.052207599840673524
+      },
+      "rpo": {
+        "his": 0.029023746701846966,
+        "league_expected": 0.06248488882598782
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.010865136299697,
+        "his": 1.0038137382778227,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.3709245048934335,
+        "his": 1.372255366424113,
+        "lambda": 100.0,
+        "n": 316
+      },
+      "pass_depth": {
+        "league": 0.8515625580189089,
+        "his": 0.8524811533123204,
+        "lambda": 1.0,
+        "n": 303
+      },
+      "specific_play": {
+        "n": 690,
+        "logloss_league": 2.0625856496654293,
+        "logloss_his": 2.0491859491489817,
+        "top1_his": 0.3695652173913043,
+        "top1_league": 0.36231884057971014,
+        "top3_his": 0.5869565217391305
+      }
+    },
+    "rpo_throw": {
+      "his": 0.22205607221380091,
+      "league": 0.31631775164898196,
+      "his_n": 22
+    }
+  },
+  "built_at": "2026-10-10T21:17:51",
+  "sklearn": "1.9.1",
+  "slug": "tommy-rees",
+  "teams": [
+    "ATL",
+    "CLE"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "CLE",
+      "first_week": 10,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.clevelandbrowns.com/news/offensive-coordinator-tommy-rees-to-call-plays-for-the-browns-team-coverage"
+    },
+    {
+      "season": 2026,
+      "team": "ATL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.atlantafalcons.com/news/tommy-rees-offensive-play-caller-kevin-stefanski"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "ATL",
+      "CLE"
+    ],
+    "n_train": 266951,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "686f57bacf875e5f",
+    "seconds": {
+      "own": 0.3,
+      "shared": 13.2,
+      "shared_by": 1
+    }
+  }
+}

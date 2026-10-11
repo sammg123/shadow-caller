@@ -1,0 +1,232 @@
+{
+  "caller": "Josh Grizzard",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 1057,
+  "n_games": 17,
+  "alpha": 0.9,
+  "lambda": 100.0,
+  "q0": 0.4503311258278146,
+  "coefs": {
+    "intercept": {
+      "est": -0.06411010809650126,
+      "lo": -0.1540906365356249,
+      "hi": 0.020222182357714176,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.06700527921923081,
+      "lo": -0.14332921876508198,
+      "hi": 0.0111194469194191,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.03274693198578328,
+      "lo": 0.009344978203044044,
+      "hi": 0.05511654823885397,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.05499420226740915,
+      "lo": -0.024196415644107624,
+      "hi": 0.12416317105981726,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.019255629448251228,
+      "lo": -0.027452933769575836,
+      "hi": 0.07203970078484578,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.032531891294488566,
+      "lo": -0.038708716229929344,
+      "hi": 0.10086314208269179,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.08685987246957465,
+      "lo": -0.16031565695797675,
+      "hi": -0.01975738640221376,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.02973861426158712,
+      "lo": -0.07307358034991311,
+      "hi": 0.0027524063303758445,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.0050419037655455275,
+      "lo": -0.027442084339319276,
+      "hi": 0.03584234469052143,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.0008985354551614799,
+      "lo": -0.017556570524564878,
+      "hi": 0.016422049085721677,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.49240361513371395,
+    "habits": 0.4923292130710062,
+    "habits_plus_memory": 0.4916126363137639,
+    "nflfastr_xpass_reference": 0.5075903352810199
+  },
+  "dropback_rate": {
+    "actual": 0.6035950804162725,
+    "league_expected": 0.6282275660500463
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 454,
+      "actual": 0.460352422907489,
+      "league_expected": 0.5238516549849981
+    },
+    {
+      "down": 2,
+      "n": 347,
+      "actual": 0.6484149855907781,
+      "league_expected": 0.6379924646093501
+    },
+    {
+      "down": 3,
+      "n": 227,
+      "actual": 0.8105726872246696,
+      "league_expected": 0.8150162282226493
+    },
+    {
+      "down": 4,
+      "n": 29,
+      "actual": 0.6896551724137931,
+      "league_expected": 0.683304031921509
+    }
+  ],
+  "team": "TB",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33445,
+    "logloss_ours": 0.5276360510237442,
+    "logloss_nflfastr_xpass": 0.5366128280834257,
+    "logloss_constant": 0.6719925901107348
+  },
+  "granular": {
+    "n_snaps": 1057,
+    "family_rates": {
+      "run": {
+        "his": 0.32355723746452225,
+        "league_expected": 0.34136813603448485
+      },
+      "dropback": {
+        "his": 0.4503311258278146,
+        "league_expected": 0.4537779608627994
+      },
+      "pa": {
+        "his": 0.08987701040681173,
+        "league_expected": 0.1154844151828855
+      },
+      "screen": {
+        "his": 0.05581835383159887,
+        "league_expected": 0.042895767269044774
+      },
+      "rpo": {
+        "his": 0.0804162724692526,
+        "league_expected": 0.04647372065078552
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.03944117275414,
+        "his": 1.0248253693532883,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.309000624283584,
+        "his": 1.3091095323743085,
+        "lambda": 100.0,
+        "n": 340
+      },
+      "pass_depth": {
+        "league": 0.8895532688236988,
+        "his": 0.8830773227073987,
+        "lambda": 30.0,
+        "n": 490
+      },
+      "specific_play": {
+        "n": 974,
+        "logloss_league": 2.0208955216821853,
+        "logloss_his": 1.985203097736829,
+        "top1_his": 0.37474332648870634,
+        "top1_league": 0.3737166324435318,
+        "top3_his": 0.6293634496919918
+      }
+    },
+    "rpo_throw": {
+      "his": 0.1359855334538879,
+      "league": 0.3139240506329114,
+      "his_n": 85
+    }
+  },
+  "built_at": "2026-10-10T21:17:25",
+  "sklearn": "1.9.1",
+  "slug": "josh-grizzard",
+  "teams": [
+    "TB"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "TB",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.nfl.com/news/buccaneers-fire-josh-grizzard-one-season-offensive-coordinator"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "TB"
+    ],
+    "n_train": 274878,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "3f56211d6c8d92da",
+    "seconds": {
+      "own": 0.4,
+      "shared": 12.0,
+      "shared_by": 1
+    }
+  }
+}

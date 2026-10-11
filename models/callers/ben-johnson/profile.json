@@ -1,0 +1,254 @@
+{
+  "caller": "Ben Johnson",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2702,
+  "n_games": 41,
+  "alpha": 0.5,
+  "lambda": 10.0,
+  "q0": 0.5129533678756477,
+  "coefs": {
+    "intercept": {
+      "est": -0.25795456420079566,
+      "lo": -0.4080507836105335,
+      "hi": -0.1061058255953779,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.1516397377522581,
+      "lo": 0.007629150734357348,
+      "hi": 0.29863600902833,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.49592023683585246,
+      "lo": -0.7115428776085893,
+      "hi": -0.26374355302230457,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.06470119850277756,
+      "lo": -0.1130330394348708,
+      "hi": 0.27069659632733983,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.32909454759450757,
+      "lo": -0.47190877028103656,
+      "hi": -0.20887132018224946,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.4502864313878154,
+      "lo": 0.21911534934131055,
+      "hi": 0.6896401754775994,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.12275368830775676,
+      "lo": -0.23656156265034192,
+      "hi": -0.015838335286192416,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.16526928504777175,
+      "lo": -0.017888364171780385,
+      "hi": 0.3627701525666916,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.01578656849695817,
+      "lo": -0.2089021005265997,
+      "hi": 0.24489244362860638,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.12817252808146867,
+      "lo": -0.05828314955711467,
+      "hi": 0.3034290099667297,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.6025914388182287,
+    "habits": 0.5947451349496831,
+    "habits_plus_memory": 0.593669798716149,
+    "nflfastr_xpass_reference": 0.6104073057086158
+  },
+  "dropback_rate": {
+    "actual": 0.5651369356032568,
+    "league_expected": 0.6020640789775118
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1197,
+      "actual": 0.4928989139515455,
+      "league_expected": 0.4953529261850223
+    },
+    {
+      "down": 2,
+      "n": 884,
+      "actual": 0.5576923076923077,
+      "league_expected": 0.6230209984179255
+    },
+    {
+      "down": 3,
+      "n": 535,
+      "actual": 0.7233644859813084,
+      "league_expected": 0.7987209664993327
+    },
+    {
+      "down": 4,
+      "n": 86,
+      "actual": 0.6627906976744186,
+      "league_expected": 0.648528012502046
+    }
+  ],
+  "team": "CHI",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32204,
+    "logloss_ours": 0.5239656995213607,
+    "logloss_nflfastr_xpass": 0.5322199283640033,
+    "logloss_constant": 0.6716857091922321
+  },
+  "granular": {
+    "n_snaps": 2702,
+    "family_rates": {
+      "run": {
+        "his": 0.4015544041450777,
+        "league_expected": 0.36324549967424696
+      },
+      "dropback": {
+        "his": 0.34974093264248707,
+        "league_expected": 0.4223954687388306
+      },
+      "pa": {
+        "his": 0.16136195410806808,
+        "league_expected": 0.11681087433843516
+      },
+      "screen": {
+        "his": 0.049592894152479645,
+        "league_expected": 0.04375728101925245
+      },
+      "rpo": {
+        "his": 0.03774981495188749,
+        "league_expected": 0.05379087622923475
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.1148229311903015,
+        "his": 1.0870223883757801,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.502343688150463,
+        "his": 1.477068177760981,
+        "lambda": 30.0,
+        "n": 1076
+      },
+      "pass_depth": {
+        "league": 0.8558424501347612,
+        "his": 0.8539107722967414,
+        "lambda": 100.0,
+        "n": 1235
+      },
+      "specific_play": {
+        "n": 2547,
+        "logloss_league": 2.1930360236999853,
+        "logloss_his": 2.147536163451536,
+        "top1_his": 0.2995681193561052,
+        "top1_league": 0.29367883784844917,
+        "top3_his": 0.5571260306242638
+      }
+    },
+    "rpo_throw": {
+      "his": 0.15038012412986473,
+      "league": 0.3173187571921749,
+      "his_n": 102
+    }
+  },
+  "built_at": "2026-10-10T21:15:26",
+  "sklearn": "1.9.1",
+  "slug": "ben-johnson",
+  "teams": [
+    "CHI",
+    "DET"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "DET",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.nfl.com/news/bears-coach-ben-johnson-leaving-juggernaut-lions-that-runway-has-been-built"
+    },
+    {
+      "season": 2025,
+      "team": "CHI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/bears/onsi/surprise-play-calls-ben-johnson-regrets-from-bears-loss-to-49ers"
+    },
+    {
+      "season": 2026,
+      "team": "CHI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.chicagobears.com/news/5-things-we-learned-from-bears-coach-ben-johnson-in-week-4-win-jets-2026"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "CHI",
+      "DET"
+    ],
+    "n_train": 266581,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "be83faee4292d726",
+    "seconds": {
+      "own": 0.9,
+      "shared": 9.9,
+      "shared_by": 1
+    }
+  }
+}

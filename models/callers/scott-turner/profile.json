@@ -1,0 +1,232 @@
+{
+  "caller": "Scott Turner",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 507,
+  "n_games": 8,
+  "alpha": 0.5,
+  "lambda": 10.0,
+  "q0": 0.47337278106508873,
+  "coefs": {
+    "intercept": {
+      "est": -0.0008756566072741101,
+      "lo": -0.1979932966037872,
+      "hi": 0.17113058097746187,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.32572494815390285,
+      "lo": 0.23595028536474985,
+      "hi": 0.42584261609540996,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.24643202603041897,
+      "lo": -0.4147120726017182,
+      "hi": -0.061553271734155396,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.3313918989008354,
+      "lo": 0.10511805584063863,
+      "hi": 0.5246905071668969,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.05822265227439908,
+      "lo": -0.3158043009416216,
+      "hi": 0.18539499925938674,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.16947950994883515,
+      "lo": -0.022621761657565746,
+      "hi": 0.40124558380625447,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.29725378476260983,
+      "lo": -0.5331455293772286,
+      "hi": -0.06473896186411357,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.12567974265881104,
+      "lo": -0.29638832990745984,
+      "hi": 0.06963602443308244,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.16104314292629307,
+      "lo": -0.331898712137863,
+      "hi": 0.004506716420149303,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.0007536085781268211,
+      "lo": -0.09422354832638614,
+      "hi": 0.09884367674283699,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.48950444360357387,
+    "habits": 0.48098789243569323,
+    "habits_plus_memory": 0.47679524421894115,
+    "nflfastr_xpass_reference": 0.49782118062531705
+  },
+  "dropback_rate": {
+    "actual": 0.6785009861932939,
+    "league_expected": 0.632232417332366
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 220,
+      "actual": 0.6545454545454545,
+      "league_expected": 0.5345424857240691
+    },
+    {
+      "down": 2,
+      "n": 168,
+      "actual": 0.6428571428571429,
+      "league_expected": 0.6326000640115075
+    },
+    {
+      "down": 3,
+      "n": 107,
+      "actual": 0.7850467289719626,
+      "league_expected": 0.8288155831448673
+    },
+    {
+      "down": 4,
+      "n": 12,
+      "actual": 0.6666666666666666,
+      "league_expected": 0.6652008814816933
+    }
+  ],
+  "team": "LV",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33563,
+    "logloss_ours": 0.5268254477908831,
+    "logloss_nflfastr_xpass": 0.5355281704664937,
+    "logloss_constant": 0.6723760119965501
+  },
+  "granular": {
+    "n_snaps": 507,
+    "family_rates": {
+      "run": {
+        "his": 0.3136094674556213,
+        "league_expected": 0.3353801323362131
+      },
+      "dropback": {
+        "his": 0.5088757396449705,
+        "league_expected": 0.467951517447479
+      },
+      "pa": {
+        "his": 0.13609467455621302,
+        "league_expected": 0.10281955425976007
+      },
+      "screen": {
+        "his": 0.027613412228796843,
+        "league_expected": 0.0456083525861192
+      },
+      "rpo": {
+        "his": 0.013806706114398421,
+        "league_expected": 0.04824044337042861
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9066022657039517,
+        "his": 0.8791257152758755,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.0787600941491755,
+        "his": 1.0440119142612176,
+        "lambda": 10.0,
+        "n": 155
+      },
+      "pass_depth": {
+        "league": 0.7649100806199524,
+        "his": 0.7593702805399776,
+        "lambda": 100.0,
+        "n": 296
+      },
+      "specific_play": {
+        "n": 472,
+        "logloss_league": 1.7539139930801493,
+        "logloss_his": 1.7152246950562733,
+        "top1_his": 0.4745762711864407,
+        "top1_league": 0.4724576271186441,
+        "top3_his": 0.7436440677966102
+      }
+    },
+    "rpo_throw": {
+      "his": 0.34180834541845373,
+      "league": 0.31144126631491253,
+      "his_n": 7
+    }
+  },
+  "built_at": "2026-10-10T21:17:00",
+  "sklearn": "1.9.1",
+  "slug": "scott-turner",
+  "teams": [
+    "LV"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "LV",
+      "first_week": 10,
+      "last_week": 22,
+      "role": "Interim OC",
+      "confidence": "high",
+      "source": "https://africa.espn.com/nfl/story/_/id/43669619/new-york-jets-add-scott-turner-charles-london-staff"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LV"
+    ],
+    "n_train": 275948,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "6904ddd10baf45fc",
+    "seconds": {
+      "own": 0.3,
+      "shared": 11.3,
+      "shared_by": 4
+    }
+  }
+}

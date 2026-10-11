@@ -1,0 +1,242 @@
+{
+  "caller": "Kevin Stefanski",
+  "seasons": [
+    2024,
+    2025
+  ],
+  "n_snaps": 950,
+  "n_games": 15,
+  "alpha": 0.2,
+  "lambda": 3.0,
+  "q0": 0.3757894736842105,
+  "coefs": {
+    "intercept": {
+      "est": -0.4517812270644469,
+      "lo": -0.634712782381404,
+      "hi": -0.2675904820654071,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.7357475634743946,
+      "lo": 0.488183414947691,
+      "hi": 0.9561289338971823,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.9616528177731283,
+      "lo": 0.34131303938024543,
+      "hi": 1.4856208955349737,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.01668032527421297,
+      "lo": -0.3103261029450664,
+      "hi": 0.35016522048456644,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.07168483730349579,
+      "lo": -0.32499789543898605,
+      "hi": 0.17200161387046997,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.5597828521519985,
+      "lo": 0.22408029347349476,
+      "hi": 0.9320099332700454,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.07877475100373203,
+      "lo": -0.12725089433842693,
+      "hi": 0.2625454153803241,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.23834157815247636,
+      "lo": -0.49180173942728994,
+      "hi": 0.0032854385650524774,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.3362368154472877,
+      "lo": -0.11898572093942168,
+      "hi": 0.7837638244742409,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.164934347938003,
+      "lo": -0.48769361025340857,
+      "hi": 0.18005039142807544,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5047647849001163,
+    "habits": 0.49941687218727715,
+    "habits_plus_memory": 0.49854037777056964,
+    "nflfastr_xpass_reference": 0.5150506827672799
+  },
+  "dropback_rate": {
+    "actual": 0.6694736842105263,
+    "league_expected": 0.63828229688063
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 378,
+      "actual": 0.5714285714285714,
+      "league_expected": 0.527516103212822
+    },
+    {
+      "down": 2,
+      "n": 323,
+      "actual": 0.6996904024767802,
+      "league_expected": 0.6396887073948064
+    },
+    {
+      "down": 3,
+      "n": 212,
+      "actual": 0.8207547169811321,
+      "league_expected": 0.8336129909187681
+    },
+    {
+      "down": 4,
+      "n": 37,
+      "actual": 0.5405405405405406,
+      "league_expected": 0.6384240124013596
+    }
+  ],
+  "team": "CLE",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33478,
+    "logloss_ours": 0.5291219521113414,
+    "logloss_nflfastr_xpass": 0.5369245024884061,
+    "logloss_constant": 0.6722511433141667
+  },
+  "granular": {
+    "n_snaps": 950,
+    "family_rates": {
+      "run": {
+        "his": 0.29368421052631577,
+        "league_expected": 0.33054175245545403
+      },
+      "dropback": {
+        "his": 0.48105263157894734,
+        "league_expected": 0.4694392475813516
+      },
+      "pa": {
+        "his": 0.13263157894736843,
+        "league_expected": 0.10059554311229264
+      },
+      "screen": {
+        "his": 0.049473684210526316,
+        "league_expected": 0.05077318014468151
+      },
+      "rpo": {
+        "his": 0.0431578947368421,
+        "league_expected": 0.04865027670622016
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0695980451974825,
+        "his": 1.0683337340273424,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2704268577474633,
+        "his": 1.2700181326383617,
+        "lambda": 100.0,
+        "n": 277
+      },
+      "pass_depth": {
+        "league": 0.7760899672636833,
+        "his": 0.7755936657330321,
+        "lambda": 100.0,
+        "n": 501
+      },
+      "specific_play": {
+        "n": 866,
+        "logloss_league": 1.9623429676104036,
+        "logloss_his": 1.9640432586881484,
+        "top1_his": 0.3856812933025404,
+        "top1_league": 0.3833718244803695,
+        "top3_his": 0.6720554272517321
+      }
+    },
+    "rpo_throw": {
+      "his": 0.20154034505015422,
+      "league": 0.31469805240297044,
+      "his_n": 41
+    }
+  },
+  "built_at": "2026-10-10T21:17:00",
+  "sklearn": "1.9.1",
+  "slug": "kevin-stefanski",
+  "teams": [
+    "CLE"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "CLE",
+      "first_week": 1,
+      "last_week": 7,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/41960286/browns-start-qb-jameis-winston-vs-ravens-sources-confirm"
+    },
+    {
+      "season": 2025,
+      "team": "CLE",
+      "first_week": 1,
+      "last_week": 9,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.clevelandbrowns.com/news/kevin-stefanski-to-assume-play-calling-duties-again-in-2025"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "CLE"
+    ],
+    "n_train": 275514,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "5c573f735e4041ee",
+    "seconds": {
+      "own": 0.4,
+      "shared": 11.0,
+      "shared_by": 2
+    }
+  }
+}

@@ -1,0 +1,232 @@
+{
+  "caller": "Chip Kelly",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 637,
+  "n_games": 11,
+  "alpha": 0.1,
+  "lambda": 100.0,
+  "q0": 0.4411302982731554,
+  "coefs": {
+    "intercept": {
+      "est": 0.05039791766754102,
+      "lo": -0.053048124769149316,
+      "hi": 0.15040741194212642,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.039841680744601156,
+      "lo": -0.029327629469346046,
+      "hi": 0.10756733812695299,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.004599066003431553,
+      "lo": -0.03961334659962047,
+      "hi": 0.03172327009065705,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.0015781783988791953,
+      "lo": -0.06792087232891539,
+      "hi": 0.06674442833916461,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.019840210229553665,
+      "lo": -0.018109734861856255,
+      "hi": 0.06469336842104838,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": -0.011352978992332764,
+      "lo": -0.03347188332151116,
+      "hi": 0.010313497626780794,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.023081771158000773,
+      "lo": -0.07409527358060311,
+      "hi": 0.031203417776375506,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.08019248433754905,
+      "lo": -0.14688559556365716,
+      "hi": -0.00443811989287441,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.04428564846805142,
+      "lo": 0.017721619858067403,
+      "hi": 0.07036126699704294,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.03114805154195707,
+      "lo": -0.05318415689188496,
+      "hi": -0.009012683438703055,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5495059462991514,
+    "habits": 0.5512551539040628,
+    "habits_plus_memory": 0.5509188582591907,
+    "nflfastr_xpass_reference": 0.5473962882076142
+  },
+  "dropback_rate": {
+    "actual": 0.6452119309262166,
+    "league_expected": 0.622284092567614
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 275,
+      "actual": 0.5890909090909091,
+      "league_expected": 0.5352852092698756
+    },
+    {
+      "down": 2,
+      "n": 202,
+      "actual": 0.6237623762376238,
+      "league_expected": 0.633673106344663
+    },
+    {
+      "down": 3,
+      "n": 141,
+      "actual": 0.7801418439716312,
+      "league_expected": 0.7808810892254672
+    },
+    {
+      "down": 4,
+      "n": 19,
+      "actual": 0.6842105263157895,
+      "league_expected": 0.5834385975758704
+    }
+  ],
+  "team": "LV",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33563,
+    "logloss_ours": 0.5268254477908831,
+    "logloss_nflfastr_xpass": 0.5355281704664937,
+    "logloss_constant": 0.6723760119965501
+  },
+  "granular": {
+    "n_snaps": 637,
+    "family_rates": {
+      "run": {
+        "his": 0.33124018838304553,
+        "league_expected": 0.3429511373127289
+      },
+      "dropback": {
+        "his": 0.42700156985871274,
+        "league_expected": 0.4524282813626579
+      },
+      "pa": {
+        "his": 0.16012558869701726,
+        "league_expected": 0.10644312397385002
+      },
+      "screen": {
+        "his": 0.05180533751962323,
+        "league_expected": 0.05006735089122965
+      },
+      "rpo": {
+        "his": 0.029827315541601257,
+        "league_expected": 0.0481101064595335
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0673957570194392,
+        "his": 1.0586927377974706,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.0457555575675952,
+        "his": 0.9755269218117517,
+        "lambda": 10.0,
+        "n": 209
+      },
+      "pass_depth": {
+        "league": 0.7724146259280736,
+        "his": 0.7729346951960459,
+        "lambda": 100.0,
+        "n": 317
+      },
+      "specific_play": {
+        "n": 578,
+        "logloss_league": 1.921582156460755,
+        "logloss_his": 1.8907318346641533,
+        "top1_his": 0.4083044982698962,
+        "top1_league": 0.4013840830449827,
+        "top3_his": 0.7058823529411765
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2622775724691859,
+      "league": 0.31144126631491253,
+      "his_n": 19
+    }
+  },
+  "built_at": "2026-10-10T21:16:59",
+  "sklearn": "1.9.1",
+  "slug": "chip-kelly",
+  "teams": [
+    "LV"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "LV",
+      "first_week": 1,
+      "last_week": 12,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.raiders.com/news/quick-hits-pete-carroll-addresses-chip-kelly-greg-olson-raiders-loss-to-browns"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LV"
+    ],
+    "n_train": 275948,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "ef0cab052dd572d9",
+    "seconds": {
+      "own": 0.3,
+      "shared": 11.3,
+      "shared_by": 4
+    }
+  }
+}

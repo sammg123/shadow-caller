@@ -1,0 +1,242 @@
+{
+  "caller": "Kliff Kingsbury",
+  "seasons": [
+    2024,
+    2025
+  ],
+  "n_snaps": 2272,
+  "n_games": 37,
+  "alpha": 0.1,
+  "lambda": 10.0,
+  "q0": 0.5057218309859155,
+  "coefs": {
+    "intercept": {
+      "est": 0.29308803035156106,
+      "lo": 0.10890275227237041,
+      "hi": 0.451783525689044,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.20361436058063204,
+      "lo": -0.3603250648325835,
+      "hi": -0.019926347195699128,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.0663411090984873,
+      "lo": -0.28808667974878926,
+      "hi": 0.16207581089826376,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.35659843969684446,
+      "lo": -0.5574158896828508,
+      "hi": -0.11710121983519252,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.48639137018687645,
+      "lo": -0.6436881363555131,
+      "hi": -0.30530111439918817,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.06920935142532637,
+      "lo": -0.15956662254076692,
+      "hi": 0.30256727957664503,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.20701773307879617,
+      "lo": -0.3165926313634643,
+      "hi": -0.10720850595899889,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.06713454194473738,
+      "lo": -0.2055633802920758,
+      "hi": 0.09480351614983054,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.021136522768009362,
+      "lo": -0.32726082653399047,
+      "hi": 0.27071806982629815,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.09104180587044977,
+      "lo": -0.16152989719190824,
+      "hi": 0.3636515081143336,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5283923705634045,
+    "habits": 0.5229906200606391,
+    "habits_plus_memory": 0.5220303086146932,
+    "nflfastr_xpass_reference": 0.5393510168716275
+  },
+  "dropback_rate": {
+    "actual": 0.5919894366197183,
+    "league_expected": 0.6006598760583746
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 993,
+      "actual": 0.4511581067472306,
+      "league_expected": 0.504006055245543
+    },
+    {
+      "down": 2,
+      "n": 766,
+      "actual": 0.6462140992167101,
+      "league_expected": 0.6124108257339113
+    },
+    {
+      "down": 3,
+      "n": 449,
+      "actual": 0.7928730512249443,
+      "league_expected": 0.783250083833822
+    },
+    {
+      "down": 4,
+      "n": 64,
+      "actual": 0.71875,
+      "league_expected": 0.6786757092537644
+    }
+  ],
+  "team": "WAS",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33530,
+    "logloss_ours": 0.5265238608037943,
+    "logloss_nflfastr_xpass": 0.5351524741150688,
+    "logloss_constant": 0.6717090111422336
+  },
+  "granular": {
+    "n_snaps": 2272,
+    "family_rates": {
+      "run": {
+        "his": 0.3670774647887324,
+        "league_expected": 0.3701264717870498
+      },
+      "dropback": {
+        "his": 0.3882042253521127,
+        "league_expected": 0.4227849867277964
+      },
+      "pa": {
+        "his": 0.1329225352112676,
+        "league_expected": 0.11506151538663925
+      },
+      "screen": {
+        "his": 0.047975352112676055,
+        "league_expected": 0.044483931797163465
+      },
+      "rpo": {
+        "his": 0.06382042253521127,
+        "league_expected": 0.04754309430135101
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0932233532032953,
+        "his": 1.0817275345656967,
+        "lambda": 3.0
+      },
+      "run_gap": {
+        "league": 1.3988497103535371,
+        "his": 1.4000932136993103,
+        "lambda": 100.0,
+        "n": 830
+      },
+      "pass_depth": {
+        "league": 0.862440915081043,
+        "his": 0.8577856130376781,
+        "lambda": 30.0,
+        "n": 945
+      },
+      "specific_play": {
+        "n": 2029,
+        "logloss_league": 2.1201143568693026,
+        "logloss_his": 2.104822868221168,
+        "top1_his": 0.33661902414982753,
+        "top1_league": 0.3405618531296205,
+        "top3_his": 0.5672745194677181
+      }
+    },
+    "rpo_throw": {
+      "his": 0.3527092228123156,
+      "league": 0.3098510882016037,
+      "his_n": 145
+    }
+  },
+  "built_at": "2026-10-10T21:16:23",
+  "sklearn": "1.9.1",
+  "slug": "kliff-kingsbury",
+  "teams": [
+    "WAS"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "WAS",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.foxsports.com/stories/nfl/washington-dynamic-duo-jayden-daniels-kliff-kingsbury"
+    },
+    {
+      "season": 2025,
+      "team": "WAS",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.nbcwashington.com/news/sports/changes-coming-for-commanders-coaching-staff-but-there-is-no-scapegoat/4036734/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "WAS"
+    ],
+    "n_train": 275638,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "926f4bfc6d253584",
+    "seconds": {
+      "own": 0.7,
+      "shared": 10.8,
+      "shared_by": 1
+    }
+  }
+}

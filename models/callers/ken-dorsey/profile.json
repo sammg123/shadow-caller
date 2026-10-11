@@ -1,0 +1,232 @@
+{
+  "caller": "Ken Dorsey",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 671,
+  "n_games": 10,
+  "alpha": 0.9,
+  "lambda": 30.0,
+  "q0": 0.4172876304023845,
+  "coefs": {
+    "intercept": {
+      "est": 0.0665546217081033,
+      "lo": -0.022388965960330708,
+      "hi": 0.15026461037554034,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.04793394268679902,
+      "lo": -0.043139484176796326,
+      "hi": 0.1267014209030728,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.057606645550485294,
+      "lo": -0.023543325653679816,
+      "hi": 0.13769333908963705,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.03230330232219091,
+      "lo": -0.04447799636055836,
+      "hi": 0.11676858340889777,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.11666225016294889,
+      "lo": -0.24573048446157822,
+      "hi": -0.013912561031880663,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.1406940371333628,
+      "lo": -0.044882005652191796,
+      "hi": 0.2856265867237291,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.011805749209881906,
+      "lo": -0.07217843881567344,
+      "hi": 0.08736622710606713,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.16196447844341655,
+      "lo": -0.3009058849849951,
+      "hi": -0.0353045820046859,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.06745747923672055,
+      "lo": 0.007316910661739552,
+      "hi": 0.12520401258120584,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.013549763640577335,
+      "lo": -0.06087813831808272,
+      "hi": 0.02069800966622795,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.48656809473128376,
+    "habits": 0.48602981844695947,
+    "habits_plus_memory": 0.48501435162872164,
+    "nflfastr_xpass_reference": 0.48628845960785827
+  },
+  "dropback_rate": {
+    "actual": 0.676602086438152,
+    "league_expected": 0.6544404448982154
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 288,
+      "actual": 0.6145833333333334,
+      "league_expected": 0.5484530644131032
+    },
+    {
+      "down": 2,
+      "n": 217,
+      "actual": 0.631336405529954,
+      "league_expected": 0.6571225632367196
+    },
+    {
+      "down": 3,
+      "n": 140,
+      "actual": 0.8714285714285714,
+      "league_expected": 0.8671890753967191
+    },
+    {
+      "down": 4,
+      "n": 26,
+      "actual": 0.6923076923076923,
+      "league_expected": 0.6604995845315405
+    }
+  ],
+  "team": "CLE",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33478,
+    "logloss_ours": 0.5291219521113414,
+    "logloss_nflfastr_xpass": 0.5369245024884061,
+    "logloss_constant": 0.6722511433141667
+  },
+  "granular": {
+    "n_snaps": 671,
+    "family_rates": {
+      "run": {
+        "his": 0.2995529061102832,
+        "league_expected": 0.3130837296953615
+      },
+      "dropback": {
+        "his": 0.5156482861400894,
+        "league_expected": 0.48510308104857375
+      },
+      "pa": {
+        "his": 0.10879284649776454,
+        "league_expected": 0.10513126529212542
+      },
+      "screen": {
+        "his": 0.040238450074515646,
+        "league_expected": 0.045679611476112665
+      },
+      "rpo": {
+        "his": 0.03576751117734724,
+        "league_expected": 0.051002312487826496
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9631242377359752,
+        "his": 0.961949285660376,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.3836042552876762,
+        "his": 1.3628274060486973,
+        "lambda": 3.0,
+        "n": 201
+      },
+      "pass_depth": {
+        "league": 0.8567219428134184,
+        "his": 0.8589377709700442,
+        "lambda": 100.0,
+        "n": 373
+      },
+      "specific_play": {
+        "n": 625,
+        "logloss_league": 1.9482010262366054,
+        "logloss_his": 1.9439729871143672,
+        "top1_his": 0.3904,
+        "top1_league": 0.4,
+        "top3_his": 0.6464
+      }
+    },
+    "rpo_throw": {
+      "his": 0.32486275109225926,
+      "league": 0.31469805240297044,
+      "his_n": 24
+    }
+  },
+  "built_at": "2026-10-10T21:16:59",
+  "sklearn": "1.9.1",
+  "slug": "ken-dorsey",
+  "teams": [
+    "CLE"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "CLE",
+      "first_week": 8,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.clevelandbrowns.com/news/ken-dorsey-discusses-calling-plays-for-the-browns"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "CLE"
+    ],
+    "n_train": 275514,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "ba04193bcf3c21d6",
+    "seconds": {
+      "own": 0.3,
+      "shared": 11.0,
+      "shared_by": 2
+    }
+  }
+}

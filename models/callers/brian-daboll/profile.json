@@ -1,0 +1,244 @@
+{
+  "caller": "Brian Daboll",
+  "seasons": [
+    2024,
+    2026
+  ],
+  "n_snaps": 1259,
+  "n_games": 21,
+  "alpha": 0.1,
+  "lambda": 3.0,
+  "q0": 0.44241461477362987,
+  "coefs": {
+    "intercept": {
+      "est": -0.20962635526917894,
+      "lo": -0.49677963434839906,
+      "hi": 0.14559351239110863,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.12020641374618603,
+      "lo": -0.18864723001890288,
+      "hi": 0.368527910340183,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.4196457473197649,
+      "lo": -0.08754646936865085,
+      "hi": 0.9939262198801644,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.16441864510870607,
+      "lo": -0.1283197704807996,
+      "hi": 0.493414150849909,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.2874616111762912,
+      "lo": -0.7012341139986014,
+      "hi": 0.16470129555847093,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.5892531868694261,
+      "lo": 0.09535602774679597,
+      "hi": 1.019239964327793,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.08300947514829991,
+      "lo": -0.20060072679501142,
+      "hi": 0.026999503682294423,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.21226943954944072,
+      "lo": -0.48677616383389866,
+      "hi": 0.028478811039436752,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.23433180595663433,
+      "lo": -0.7845176504838625,
+      "hi": 0.2947530255098915,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.5098142138677544,
+      "lo": -0.8131869413018648,
+      "hi": -0.08268053545358765,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5242752839711929,
+    "habits": 0.5257944121994755,
+    "habits_plus_memory": 0.5240837264389578,
+    "nflfastr_xpass_reference": 0.5250782426353813
+  },
+  "dropback_rate": {
+    "actual": 0.6338363780778395,
+    "league_expected": 0.6513177774663562
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 533,
+      "actual": 0.574108818011257,
+      "league_expected": 0.5522784072607978
+    },
+    {
+      "down": 2,
+      "n": 407,
+      "actual": 0.5823095823095823,
+      "league_expected": 0.6529186283363311
+    },
+    {
+      "down": 3,
+      "n": 278,
+      "actual": 0.8345323741007195,
+      "league_expected": 0.8390542986714621
+    },
+    {
+      "down": 4,
+      "n": 41,
+      "actual": 0.5609756097560976,
+      "league_expected": 0.64999302430693
+    }
+  ],
+  "team": "TEN",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32432,
+    "logloss_ours": 0.5276807724547427,
+    "logloss_nflfastr_xpass": 0.5352112096264766,
+    "logloss_constant": 0.6722696974649258
+  },
+  "granular": {
+    "n_snaps": 1259,
+    "family_rates": {
+      "run": {
+        "his": 0.33915806195393167,
+        "league_expected": 0.32028573461703114
+      },
+      "dropback": {
+        "his": 0.4527402700555997,
+        "league_expected": 0.47686288871447574
+      },
+      "pa": {
+        "his": 0.11596505162827642,
+        "league_expected": 0.10414451200219033
+      },
+      "screen": {
+        "his": 0.046068308181096106,
+        "league_expected": 0.047627950597598945
+      },
+      "rpo": {
+        "his": 0.046068308181096106,
+        "league_expected": 0.05107891406870377
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0170168468459804,
+        "his": 1.021408339488661,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2367805122377127,
+        "his": 1.2085843441011546,
+        "lambda": 3.0,
+        "n": 426
+      },
+      "pass_depth": {
+        "league": 0.7890494404615458,
+        "his": 0.7873512861115448,
+        "lambda": 100.0,
+        "n": 623
+      },
+      "specific_play": {
+        "n": 1165,
+        "logloss_league": 1.9501402801882504,
+        "logloss_his": 1.9420391657458576,
+        "top1_his": 0.41030042918454934,
+        "top1_league": 0.40772532188841204,
+        "top3_his": 0.6506437768240343
+      }
+    },
+    "rpo_throw": {
+      "his": 0.38774509803921564,
+      "league": 0.31220588235294117,
+      "his_n": 58
+    }
+  },
+  "built_at": "2026-10-10T21:17:13",
+  "sklearn": "1.9.1",
+  "slug": "brian-daboll",
+  "teams": [
+    "NYG",
+    "TEN"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "NYG",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://amp.nfl.com/news/giants-head-coach-brian-daboll-to-take-over-play-calling-role-in-2024-season"
+    },
+    {
+      "season": 2026,
+      "team": "TEN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.nbcsports.com/nfl/profootballtalk/rumor-mill/news/robert-saleh-will-call-the-titans-defensive-plays"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NYG",
+      "TEN"
+    ],
+    "n_train": 267339,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "4d9d3bf0f631ad49",
+    "seconds": {
+      "own": 0.6,
+      "shared": 10.5,
+      "shared_by": 1
+    }
+  }
+}

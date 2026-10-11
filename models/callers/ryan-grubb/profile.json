@@ -1,0 +1,232 @@
+{
+  "caller": "Ryan Grubb",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 1015,
+  "n_games": 17,
+  "alpha": 0.5,
+  "lambda": 30.0,
+  "q0": 0.4719211822660099,
+  "coefs": {
+    "intercept": {
+      "est": 0.08272300696682262,
+      "lo": -0.033803024560879164,
+      "hi": 0.20791649092396386,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.0747400296006451,
+      "lo": -0.03755813157689436,
+      "hi": 0.18905155204568316,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.07644512559459916,
+      "lo": -0.1644532737826996,
+      "hi": 0.01972446988823735,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.04293255215668247,
+      "lo": -0.05139381250660662,
+      "hi": 0.12621760917050648,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.027755919208038774,
+      "lo": -0.21426088851341504,
+      "hi": 0.13988900684899364,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.17940249795649893,
+      "lo": 0.04381988973858346,
+      "hi": 0.32376438011312036,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.11307069366541622,
+      "lo": 0.006131951596213523,
+      "hi": 0.2128794990178896,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.1383161794460183,
+      "lo": -0.2402835807993861,
+      "hi": -0.0507977569210241,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.012414753266349074,
+      "lo": -0.10786614500220958,
+      "hi": 0.085334434561348,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.05163724304799373,
+      "lo": -0.15290142384935881,
+      "hi": 0.03661480946976192,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5110883801741001,
+    "habits": 0.5099787137989293,
+    "habits_plus_memory": 0.5086494733479295,
+    "nflfastr_xpass_reference": 0.505807257482796
+  },
+  "dropback_rate": {
+    "actual": 0.6600985221674877,
+    "league_expected": 0.6279751362111933
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 456,
+      "actual": 0.6008771929824561,
+      "league_expected": 0.5342274675780105
+    },
+    {
+      "down": 2,
+      "n": 332,
+      "actual": 0.6475903614457831,
+      "league_expected": 0.6456034560125586
+    },
+    {
+      "down": 3,
+      "n": 208,
+      "actual": 0.8269230769230769,
+      "league_expected": 0.8149402989057469
+    },
+    {
+      "down": 4,
+      "n": 19,
+      "actual": 0.47368421052631576,
+      "league_expected": 0.5231109721170232
+    }
+  ],
+  "team": "SEA",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33320,
+    "logloss_ours": 0.5253586830811624,
+    "logloss_nflfastr_xpass": 0.5332910092652533,
+    "logloss_constant": 0.6707732319905606
+  },
+  "granular": {
+    "n_snaps": 1015,
+    "family_rates": {
+      "run": {
+        "his": 0.30640394088669953,
+        "league_expected": 0.3413724909087117
+      },
+      "dropback": {
+        "his": 0.48669950738916257,
+        "league_expected": 0.45488296155832425
+      },
+      "pa": {
+        "his": 0.10344827586206896,
+        "league_expected": 0.11151727379618932
+      },
+      "screen": {
+        "his": 0.059113300492610835,
+        "league_expected": 0.046767692132751525
+      },
+      "rpo": {
+        "his": 0.04433497536945813,
+        "league_expected": 0.04545958160402323
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0999475898919684,
+        "his": 1.100998186115452,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2098208133831454,
+        "his": 1.2006952946393843,
+        "lambda": 30.0,
+        "n": 304
+      },
+      "pass_depth": {
+        "league": 0.8090921528680372,
+        "his": 0.8095471300179937,
+        "lambda": 100.0,
+        "n": 520
+      },
+      "specific_play": {
+        "n": 929,
+        "logloss_league": 1.9891235179674298,
+        "logloss_his": 1.988816455435464,
+        "top1_his": 0.37351991388589884,
+        "top1_league": 0.38105489773950485,
+        "top3_his": 0.6490850376749193
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2661973347111886,
+      "league": 0.315141337811363,
+      "his_n": 45
+    }
+  },
+  "built_at": "2026-10-10T21:17:37",
+  "sklearn": "1.9.1",
+  "slug": "ryan-grubb",
+  "teams": [
+    "SEA"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "SEA",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://seahawks.com/news/seahawks-offensive-coordinator-ryan-grubb-lack-of-run-game-is-100-percent-on-me"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "SEA"
+    ],
+    "n_train": 275655,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "a120e492148f2d05",
+    "seconds": {
+      "own": 0.4,
+      "shared": 11.8,
+      "shared_by": 1
+    }
+  }
+}

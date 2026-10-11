@@ -1,0 +1,232 @@
+{
+  "caller": "Todd Downing",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 691,
+  "n_games": 12,
+  "alpha": 0.1,
+  "lambda": 3.0,
+  "q0": 0.46888567293777134,
+  "coefs": {
+    "intercept": {
+      "est": 0.4738006755392709,
+      "lo": 0.13061583791155879,
+      "hi": 0.812431846505098,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.34129277154066473,
+      "lo": -0.6640849282124286,
+      "hi": -0.03405285299303815,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.2697353870194112,
+      "lo": -0.05080207793554571,
+      "hi": 0.7240910968410401,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.033820378844723456,
+      "lo": -0.15857804959191976,
+      "hi": 0.3106754561181249,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.7734220237618123,
+      "lo": 0.492076249803824,
+      "hi": 0.9865219770872901,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": -0.20459530025779077,
+      "lo": -0.5902881333161631,
+      "hi": 0.26879513930777743,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.4278343685993674,
+      "lo": -0.6128855800219878,
+      "hi": -0.27858222010622763,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.07358293948851269,
+      "lo": -0.17979648319737004,
+      "hi": 0.3704848337868709,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.007508877492686243,
+      "lo": -0.42805953063597924,
+      "hi": 0.3521953575375445,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.0015561229509566783,
+      "lo": -0.10546957664356206,
+      "hi": 0.16504926687811033,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5347227282191537,
+    "habits": 0.5237895276592393,
+    "habits_plus_memory": 0.5172316989222957,
+    "nflfastr_xpass_reference": 0.5302966051034615
+  },
+  "dropback_rate": {
+    "actual": 0.6555716353111433,
+    "league_expected": 0.6082910613386249
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 302,
+      "actual": 0.5264900662251656,
+      "league_expected": 0.4932619622555061
+    },
+    {
+      "down": 2,
+      "n": 229,
+      "actual": 0.6724890829694323,
+      "league_expected": 0.6213940169648712
+    },
+    {
+      "down": 3,
+      "n": 139,
+      "actual": 0.8920863309352518,
+      "league_expected": 0.8230697819321345
+    },
+    {
+      "down": 4,
+      "n": 21,
+      "actual": 0.7619047619047619,
+      "league_expected": 0.6980038671573673
+    }
+  ],
+  "team": "NYJ",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33501,
+    "logloss_ours": 0.5269905820183516,
+    "logloss_nflfastr_xpass": 0.5356457027210341,
+    "logloss_constant": 0.6720389724638256
+  },
+  "granular": {
+    "n_snaps": 691,
+    "family_rates": {
+      "run": {
+        "his": 0.3125904486251809,
+        "league_expected": 0.3585423125270435
+      },
+      "dropback": {
+        "his": 0.447178002894356,
+        "league_expected": 0.4316079920592246
+      },
+      "pa": {
+        "his": 0.14327062228654125,
+        "league_expected": 0.11379645120014276
+      },
+      "screen": {
+        "his": 0.053545586107091175,
+        "league_expected": 0.04715718028557426
+      },
+      "rpo": {
+        "his": 0.04341534008683068,
+        "league_expected": 0.04889606392801488
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.1030705382284676,
+        "his": 1.097716741540235,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.5435411626655506,
+        "his": 1.5214870452139169,
+        "lambda": 30.0,
+        "n": 214
+      },
+      "pass_depth": {
+        "league": 0.7676776211715174,
+        "his": 0.7637962531472483,
+        "lambda": 100.0,
+        "n": 372
+      },
+      "specific_play": {
+        "n": 653,
+        "logloss_league": 2.106940493097976,
+        "logloss_his": 2.092746204080371,
+        "top1_his": 0.31546707503828486,
+        "top1_league": 0.3124042879019908,
+        "top3_his": 0.5926493108728943
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2850070641424131,
+      "league": 0.3125176603560328,
+      "his_n": 30
+    }
+  },
+  "built_at": "2026-10-10T21:16:48",
+  "sklearn": "1.9.1",
+  "slug": "todd-downing",
+  "teams": [
+    "NYJ"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "NYJ",
+      "first_week": 6,
+      "last_week": 22,
+      "role": "Pass game coord/QB coach",
+      "confidence": "high",
+      "source": "https://www.ksat.com/sports/2024/10/10/jets-interim-jeff-ulbrich-replaces-nathaniel-hackett-with-todd-downing-as-the-offenses-play-caller/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NYJ"
+    ],
+    "n_train": 276147,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "9a4515d946261464",
+    "seconds": {
+      "own": 0.4,
+      "shared": 9.5,
+      "shared_by": 3
+    }
+  }
+}

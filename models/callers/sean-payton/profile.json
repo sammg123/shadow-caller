@@ -1,0 +1,251 @@
+{
+  "caller": "Sean Payton",
+  "seasons": [
+    2024,
+    2025
+  ],
+  "n_snaps": 2276,
+  "n_games": 37,
+  "alpha": 0.1,
+  "lambda": 3.0,
+  "q0": 0.47056239015817225,
+  "coefs": {
+    "intercept": {
+      "est": 0.3655443847133217,
+      "lo": 0.2010326103833329,
+      "hi": 0.5334333753894879,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.16565285193686938,
+      "lo": -0.3497390499052607,
+      "hi": 0.03312756608268032,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.46640231657744696,
+      "lo": 0.20566940975361936,
+      "hi": 0.756411355438384,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.1893045350702518,
+      "lo": -0.30913222640948895,
+      "hi": -0.032439709143131705,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.20999545313613868,
+      "lo": 0.002604791012068874,
+      "hi": 0.3968635794816703,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.7292017143348456,
+      "lo": 0.18797685125204722,
+      "hi": 1.1663689263452572,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.09776030088186426,
+      "lo": -0.215142382708794,
+      "hi": 0.021232191467358743,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.23032367034177537,
+      "lo": -0.37155336027901986,
+      "hi": -0.07118125921859851,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.49249070255076915,
+      "lo": 0.18628773321680625,
+      "hi": 0.8032120383197429,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.47413714199111473,
+      "lo": -1.0794788429154332,
+      "hi": 0.20853884649682677,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.511627985360889,
+    "habits": 0.5067967466381549,
+    "habits_plus_memory": 0.5040315803416189,
+    "nflfastr_xpass_reference": 0.5070055537299123
+  },
+  "dropback_rate": {
+    "actual": 0.6278558875219684,
+    "league_expected": 0.5866212262941712
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 973,
+      "actual": 0.5282631038026722,
+      "league_expected": 0.48122370213048293
+    },
+    {
+      "down": 2,
+      "n": 758,
+      "actual": 0.6134564643799473,
+      "league_expected": 0.5844931775358294
+    },
+    {
+      "down": 3,
+      "n": 499,
+      "actual": 0.8396793587174348,
+      "league_expected": 0.7938410116404984
+    },
+    {
+      "down": 4,
+      "n": 46,
+      "actual": 0.6739130434782609,
+      "league_expected": 0.6031903367784018
+    }
+  ],
+  "team": "DEN",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33305,
+    "logloss_ours": 0.5278131907397229,
+    "logloss_nflfastr_xpass": 0.5367089838887096,
+    "logloss_constant": 0.6724229714490034
+  },
+  "granular": {
+    "n_snaps": 2276,
+    "family_rates": {
+      "run": {
+        "his": 0.3308435852372584,
+        "league_expected": 0.3773481497323281
+      },
+      "dropback": {
+        "his": 0.4178383128295255,
+        "league_expected": 0.42042921602672656
+      },
+      "pa": {
+        "his": 0.13093145869947276,
+        "league_expected": 0.11027076682222861
+      },
+      "screen": {
+        "his": 0.05140597539543058,
+        "league_expected": 0.046269594877841096
+      },
+      "rpo": {
+        "his": 0.06898066783831283,
+        "league_expected": 0.04568227254087552
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.11244393629545,
+        "his": 1.1040422403244978,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.339157497950324,
+        "his": 1.3391075333578348,
+        "lambda": 100.0,
+        "n": 749
+      },
+      "pass_depth": {
+        "league": 0.829230514463651,
+        "his": 0.8254825494518364,
+        "lambda": 100.0,
+        "n": 1101
+      },
+      "specific_play": {
+        "n": 2124,
+        "logloss_league": 2.0745447786934634,
+        "logloss_his": 2.0642957652299456,
+        "top1_his": 0.3432203389830508,
+        "top1_league": 0.3479284369114878,
+        "top3_his": 0.6148775894538606
+      }
+    },
+    "rpo_throw": {
+      "his": 0.39098835577664776,
+      "league": 0.3102469486233324,
+      "his_n": 157
+    }
+  },
+  "built_at": "2026-10-10T21:16:25",
+  "sklearn": "1.9.1",
+  "slug": "sean-payton",
+  "teams": [
+    "DEN"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "DEN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/49035483/broncos-first-year-offensive-coordinator-davis-webb-playcaller-sean-payton"
+    },
+    {
+      "season": 2025,
+      "team": "DEN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.denver7.com/sports/broncos/broncos-fire-offensive-coordinator-joe-lombardi-days-after-afc-championship-loss"
+    },
+    {
+      "season": 2026,
+      "team": "DEN",
+      "first_week": 5,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "medium",
+      "source": "https://www.denver7.com/sports/broncos/sean-payton-reclaims-broncos-play-calling-duties-in-a-bid-to-jolt-a-sputtering-offense"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "DEN"
+    ],
+    "n_train": 275793,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "626d4be3aca1e915",
+    "seconds": {
+      "own": 0.8,
+      "shared": 12.7,
+      "shared_by": 1
+    }
+  }
+}

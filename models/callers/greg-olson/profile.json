@@ -1,0 +1,232 @@
+{
+  "caller": "Greg Olson",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 302,
+  "n_games": 6,
+  "alpha": 0.7,
+  "lambda": 100.0,
+  "q0": 0.38741721854304634,
+  "coefs": {
+    "intercept": {
+      "est": 0.008386142598260113,
+      "lo": -0.06674786326319578,
+      "hi": 0.08138905954817714,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.021199361482549892,
+      "lo": -0.07558633304421583,
+      "hi": 0.03502291890486598,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.0023415762804359975,
+      "lo": -0.00935698383241337,
+      "hi": 0.004829904376286472,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.015365011988043903,
+      "lo": -0.07379193246959334,
+      "hi": 0.09002075912793493,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.021417345244623028,
+      "lo": -0.0018669653880208003,
+      "hi": 0.04631645701156387,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.03473373387834732,
+      "lo": 0.0062959703219928,
+      "hi": 0.06761589719182315,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.0005193090394305697,
+      "lo": -0.04448151932624102,
+      "hi": 0.04029847292026202,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.007176860917644132,
+      "lo": -0.061348684782822314,
+      "hi": 0.04700742808361833,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.007244145048886837,
+      "lo": -0.011873237498721677,
+      "hi": 0.02605132575812391,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.019916401383754306,
+      "lo": -0.03878101926810242,
+      "hi": 0.0009891529796601615,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5265321311939095,
+    "habits": 0.5296491872534687,
+    "habits_plus_memory": 0.5304916651884477,
+    "nflfastr_xpass_reference": 0.5328331082351989
+  },
+  "dropback_rate": {
+    "actual": 0.6192052980132451,
+    "league_expected": 0.6161254008743207
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 118,
+      "actual": 0.5084745762711864,
+      "league_expected": 0.49782052231387897
+    },
+    {
+      "down": 2,
+      "n": 99,
+      "actual": 0.5757575757575758,
+      "league_expected": 0.6101413232220356
+    },
+    {
+      "down": 3,
+      "n": 72,
+      "actual": 0.8611111111111112,
+      "league_expected": 0.7968228932286697
+    },
+    {
+      "down": 4,
+      "n": 13,
+      "actual": 0.6153846153846154,
+      "league_expected": 0.7347546245816443
+    }
+  ],
+  "team": "LV",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33563,
+    "logloss_ours": 0.5268254477908831,
+    "logloss_nflfastr_xpass": 0.5355281704664937,
+    "logloss_constant": 0.6723760119965501
+  },
+  "granular": {
+    "n_snaps": 302,
+    "family_rates": {
+      "run": {
+        "his": 0.3344370860927152,
+        "league_expected": 0.3531577167552004
+      },
+      "dropback": {
+        "his": 0.4503311258278146,
+        "league_expected": 0.42594671314606497
+      },
+      "pa": {
+        "his": 0.11589403973509933,
+        "league_expected": 0.11069595960084544
+      },
+      "screen": {
+        "his": 0.033112582781456956,
+        "league_expected": 0.05485921118177467
+      },
+      "rpo": {
+        "his": 0.06622516556291391,
+        "league_expected": 0.05534039931611445
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0420866762884733,
+        "his": 1.048810590728904,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2694485553956112,
+        "his": 1.2620348042686476,
+        "lambda": 10.0,
+        "n": 101
+      },
+      "pass_depth": {
+        "league": 0.7499320226289912,
+        "his": 0.7414171386481168,
+        "lambda": 30.0,
+        "n": 142
+      },
+      "specific_play": {
+        "n": 273,
+        "logloss_league": 1.9840949207851555,
+        "logloss_his": 1.98512553058646,
+        "top1_his": 0.38461538461538464,
+        "top1_league": 0.38095238095238093,
+        "top3_his": 0.6336996336996337
+      }
+    },
+    "rpo_throw": {
+      "his": 0.3057206331574563,
+      "league": 0.31144126631491253,
+      "his_n": 20
+    }
+  },
+  "built_at": "2026-10-10T21:16:59",
+  "sklearn": "1.9.1",
+  "slug": "greg-olson",
+  "teams": [
+    "LV"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "LV",
+      "first_week": 13,
+      "last_week": 22,
+      "role": "Interim OC (QB coach)",
+      "confidence": "high",
+      "source": "https://abc7news.com/post/did-raiders-offense-improve-first-game-post-chip-kelly/18234028/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LV"
+    ],
+    "n_train": 275948,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "c4f9ba8a0719d13b",
+    "seconds": {
+      "own": 0.2,
+      "shared": 11.3,
+      "shared_by": 4
+    }
+  }
+}

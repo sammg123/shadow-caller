@@ -1,0 +1,232 @@
+{
+  "caller": "Bo Hardegree",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 811,
+  "n_games": 14,
+  "alpha": 0.9,
+  "lambda": 100.0,
+  "q0": 0.406905055487053,
+  "coefs": {
+    "intercept": {
+      "est": -0.011067080445461532,
+      "lo": -0.08396751431015936,
+      "hi": 0.0555477082904606,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.014516588552809956,
+      "lo": -0.05501058877492661,
+      "hi": 0.02791146047323363,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.014348636394957173,
+      "lo": -0.05884776031420949,
+      "hi": 0.02080945348477888,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.04037356766390296,
+      "lo": -0.013964503833110242,
+      "hi": 0.09860808785146787,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.0528388596810471,
+      "lo": 0.021262259139893692,
+      "hi": 0.08664863062414184,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.08041337006897364,
+      "lo": 0.03995466139166873,
+      "hi": 0.12063143483338222,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.07820771339011721,
+      "lo": -0.15334922102546458,
+      "hi": -0.003247313729469752,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.09450234958966174,
+      "lo": -0.14456995644814905,
+      "hi": -0.04846310020838766,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.007902842645564278,
+      "lo": -0.05035853521780792,
+      "hi": 0.03101369904829903,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.0037061531887895294,
+      "lo": -0.017218193000504967,
+      "hi": 0.007408739460975104,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.4884923407166478,
+    "habits": 0.4910675811729529,
+    "habits_plus_memory": 0.488885769462688,
+    "nflfastr_xpass_reference": 0.5008246052344026
+  },
+  "dropback_rate": {
+    "actual": 0.6485819975339088,
+    "league_expected": 0.6524488236716561
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 330,
+      "actual": 0.5151515151515151,
+      "league_expected": 0.5444383754127459
+    },
+    {
+      "down": 2,
+      "n": 261,
+      "actual": 0.6781609195402298,
+      "league_expected": 0.6521758088615787
+    },
+    {
+      "down": 3,
+      "n": 189,
+      "actual": 0.8148148148148148,
+      "league_expected": 0.822118081116403
+    },
+    {
+      "down": 4,
+      "n": 31,
+      "actual": 0.8064516129032258,
+      "league_expected": 0.7701009247624158
+    }
+  ],
+  "team": "TEN",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33507,
+    "logloss_ours": 0.5281128970004748,
+    "logloss_nflfastr_xpass": 0.5364818126867871,
+    "logloss_constant": 0.6725516004958987
+  },
+  "granular": {
+    "n_snaps": 811,
+    "family_rates": {
+      "run": {
+        "his": 0.2786683107274969,
+        "league_expected": 0.3141783953999518
+      },
+      "dropback": {
+        "his": 0.4636251541307028,
+        "league_expected": 0.4859002510225882
+      },
+      "pa": {
+        "his": 0.10110974106041924,
+        "league_expected": 0.10106604071837748
+      },
+      "screen": {
+        "his": 0.05425400739827373,
+        "league_expected": 0.048006644882398496
+      },
+      "rpo": {
+        "his": 0.10234278668310727,
+        "league_expected": 0.05084866797668396
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0842299308460948,
+        "his": 1.0751962417182188,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.3703143464792285,
+        "his": 1.37173183255152,
+        "lambda": 100.0,
+        "n": 225
+      },
+      "pass_depth": {
+        "league": 0.8460594143615862,
+        "his": 0.8463911750825446,
+        "lambda": 100.0,
+        "n": 401
+      },
+      "specific_play": {
+        "n": 753,
+        "logloss_league": 2.0352667781883973,
+        "logloss_his": 2.02433654206149,
+        "top1_his": 0.350597609561753,
+        "top1_league": 0.34926958831341304,
+        "top3_his": 0.6069057104913679
+      }
+    },
+    "rpo_throw": {
+      "his": 0.29351680411032843,
+      "league": 0.3116115411681914,
+      "his_n": 83
+    }
+  },
+  "built_at": "2026-10-10T21:16:47",
+  "sklearn": "1.9.1",
+  "slug": "bo-hardegree",
+  "teams": [
+    "TEN"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "TEN",
+      "first_week": 4,
+      "last_week": 22,
+      "role": "QB coach",
+      "confidence": "high",
+      "source": "https://www.cbssports.com/nfl/news/brian-callahan-gives-up-play-calling-duties-as-titans-look-to-dig-out-of-0-3-hole"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "TEN"
+    ],
+    "n_train": 275896,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "6fbd4d0bebbda8d6",
+    "seconds": {
+      "own": 0.3,
+      "shared": 10.7,
+      "shared_by": 2
+    }
+  }
+}

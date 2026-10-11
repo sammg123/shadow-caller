@@ -1,0 +1,241 @@
+{
+  "caller": "Mike Kafka",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 1075,
+  "n_games": 17,
+  "alpha": 0.1,
+  "lambda": 100.0,
+  "q0": 0.4586046511627907,
+  "coefs": {
+    "intercept": {
+      "est": -0.05844634819545292,
+      "lo": -0.14624222539441833,
+      "hi": 0.02156947400289314,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.019707669221482094,
+      "lo": -0.0806859176030212,
+      "hi": 0.02868702404421054,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.012879653299357,
+      "lo": -0.07582930967729834,
+      "hi": 0.03794101673143994,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.08632696292674646,
+      "lo": -0.17654718916230963,
+      "hi": -0.009446407866281847,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.08433728495452272,
+      "lo": -0.16777599074652777,
+      "hi": -0.019164978121138036,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.017864118285599383,
+      "lo": -0.02262231180737487,
+      "hi": 0.05675898813065792,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.05739675419818511,
+      "lo": -0.02581939844981676,
+      "hi": 0.1257559062208418,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.05480307800526137,
+      "lo": -0.13238930264653295,
+      "hi": 0.014565814818441864,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.031934204669918004,
+      "lo": 0.006425201083895177,
+      "hi": 0.061553511259928056,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.008555185414481178,
+      "lo": -0.011045423268886091,
+      "hi": 0.029425776546535727,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5584660943954339,
+    "habits": 0.5585394635042272,
+    "habits_plus_memory": 0.5585670454040255,
+    "nflfastr_xpass_reference": 0.5748150205491008
+  },
+  "dropback_rate": {
+    "actual": 0.5804651162790697,
+    "league_expected": 0.6039500775965889
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 455,
+      "actual": 0.5098901098901099,
+      "league_expected": 0.48254257110117665
+    },
+    {
+      "down": 2,
+      "n": 358,
+      "actual": 0.5167597765363129,
+      "league_expected": 0.6048055903553625
+    },
+    {
+      "down": 3,
+      "n": 223,
+      "actual": 0.7892376681614349,
+      "league_expected": 0.820721153338819
+    },
+    {
+      "down": 4,
+      "n": 39,
+      "actual": 0.7948717948717948,
+      "league_expected": 0.7730319236800332
+    }
+  ],
+  "team": "NYG",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33427,
+    "logloss_ours": 0.5256577617272553,
+    "logloss_nflfastr_xpass": 0.5344665352126103,
+    "logloss_constant": 0.6716823804775786
+  },
+  "granular": {
+    "n_snaps": 1075,
+    "family_rates": {
+      "run": {
+        "his": 0.31906976744186044,
+        "league_expected": 0.36346387412207815
+      },
+      "dropback": {
+        "his": 0.40930232558139534,
+        "league_expected": 0.4317994523476039
+      },
+      "pa": {
+        "his": 0.12186046511627907,
+        "league_expected": 0.10860789028560658
+      },
+      "screen": {
+        "his": 0.029767441860465118,
+        "league_expected": 0.046708172097010545
+      },
+      "rpo": {
+        "his": 0.12,
+        "league_expected": 0.04942061114770083
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.1778104023202474,
+        "his": 1.1480968627357258,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.424787579514757,
+        "his": 1.4137833700679014,
+        "lambda": 30.0,
+        "n": 342
+      },
+      "pass_depth": {
+        "league": 0.8551975936439227,
+        "his": 0.8547040409355743,
+        "lambda": 10.0,
+        "n": 473
+      },
+      "specific_play": {
+        "n": 976,
+        "logloss_league": 2.1725065928193064,
+        "logloss_his": 2.1280841773378687,
+        "top1_his": 0.30020491803278687,
+        "top1_league": 0.30020491803278687,
+        "top3_his": 0.5727459016393442
+      }
+    },
+    "rpo_throw": {
+      "his": 0.18297219558964525,
+      "league": 0.31314285714285717,
+      "his_n": 129
+    }
+  },
+  "built_at": "2026-10-10T21:17:25",
+  "sklearn": "1.9.1",
+  "slug": "mike-kafka",
+  "teams": [
+    "NYG"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "NYG",
+      "first_week": 1,
+      "last_week": 10,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/46157629/mike-kafka-giants-play-caller-brian-daboll-says"
+    },
+    {
+      "season": 2025,
+      "team": "NYG",
+      "first_week": 11,
+      "last_week": 22,
+      "role": "Interim HC",
+      "confidence": "high",
+      "source": "https://www.giants.com/news/te-coach-tim-kelly-to-serve-as-giants-new-oc-mike-kafka-to-continue-calling-plays"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NYG"
+    ],
+    "n_train": 275791,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "a2a9558789eaec7c",
+    "seconds": {
+      "own": 0.4,
+      "shared": 12.3,
+      "shared_by": 1
+    }
+  }
+}

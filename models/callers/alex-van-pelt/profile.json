@@ -1,0 +1,232 @@
+{
+  "caller": "Alex Van Pelt",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 1017,
+  "n_games": 17,
+  "alpha": 0.3,
+  "lambda": 100.0,
+  "q0": 0.46607669616519176,
+  "coefs": {
+    "intercept": {
+      "est": 0.021548440425832073,
+      "lo": -0.039539314548353646,
+      "hi": 0.07801382135866552,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.014099680798237728,
+      "lo": -0.06404176862803065,
+      "hi": 0.037162962262530234,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.03814313475590042,
+      "lo": 0.008061470911053033,
+      "hi": 0.06487539573191943,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.0539322355706293,
+      "lo": -0.11114950183285499,
+      "hi": 0.00624115664478024,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.032604164476635666,
+      "lo": -0.005330042259845303,
+      "hi": 0.07560532224754883,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.06540029232418201,
+      "lo": 0.008927232926987806,
+      "hi": 0.12197994845128593,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.07388352847776203,
+      "lo": -0.163477565705734,
+      "hi": 0.0021642480923484224,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.02483079362450393,
+      "lo": -0.08246783609857786,
+      "hi": 0.030986269014266862,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.009562377914754151,
+      "lo": -0.0474653389781577,
+      "hi": 0.02854654139378111,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.00510142347388309,
+      "lo": -0.02406868290296721,
+      "hi": 0.012284998661641464,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.544153147544632,
+    "habits": 0.5446727762250191,
+    "habits_plus_memory": 0.54425411349205,
+    "nflfastr_xpass_reference": 0.5372868028517155
+  },
+  "dropback_rate": {
+    "actual": 0.6243854473942969,
+    "league_expected": 0.6230306085403602
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 434,
+      "actual": 0.49078341013824883,
+      "league_expected": 0.5260659667517165
+    },
+    {
+      "down": 2,
+      "n": 345,
+      "actual": 0.6492753623188405,
+      "league_expected": 0.6122096383470177
+    },
+    {
+      "down": 3,
+      "n": 214,
+      "actual": 0.8551401869158879,
+      "league_expected": 0.8295200822425102
+    },
+    {
+      "down": 4,
+      "n": 24,
+      "actual": 0.625,
+      "league_expected": 0.6908281869034568
+    }
+  ],
+  "team": "NE",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33238,
+    "logloss_ours": 0.5281430197913135,
+    "logloss_nflfastr_xpass": 0.5365482314082953,
+    "logloss_constant": 0.6720586702173015
+  },
+  "granular": {
+    "n_snaps": 1017,
+    "family_rates": {
+      "run": {
+        "his": 0.3225172074729597,
+        "league_expected": 0.34786659081853405
+      },
+      "dropback": {
+        "his": 0.47984267453294,
+        "league_expected": 0.45075887242754975
+      },
+      "pa": {
+        "his": 0.0855457227138643,
+        "league_expected": 0.10504497362637805
+      },
+      "screen": {
+        "his": 0.04523107177974434,
+        "league_expected": 0.04764428011739013
+      },
+      "rpo": {
+        "his": 0.06686332350049164,
+        "league_expected": 0.048685283010147976
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0536544499878393,
+        "his": 1.051802036545949,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.3298864606380099,
+        "his": 1.3120062952457285,
+        "lambda": 10.0,
+        "n": 322
+      },
+      "pass_depth": {
+        "league": 0.7699503866985555,
+        "his": 0.7710497233985393,
+        "lambda": 100.0,
+        "n": 467
+      },
+      "specific_play": {
+        "n": 903,
+        "logloss_league": 1.9873164007178403,
+        "logloss_his": 1.9782469425450797,
+        "top1_his": 0.3842746400885936,
+        "top1_league": 0.3853820598006645,
+        "top3_his": 0.6489479512735327
+      }
+    },
+    "rpo_throw": {
+      "his": 0.23018959649975693,
+      "league": 0.31283422459893045,
+      "his_n": 68
+    }
+  },
+  "built_at": "2026-10-10T21:15:38",
+  "sklearn": "1.9.1",
+  "slug": "alex-van-pelt",
+  "teams": [
+    "NE"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "NE",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.cbsnews.com/amp/boston/news/jerod-mayo-says-alex-van-pelt-will-keep-his-offensive-play-calling-duties"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NE"
+    ],
+    "n_train": 275341,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "40ff18c78ede8814",
+    "seconds": {
+      "own": 0.3,
+      "shared": 11.1,
+      "shared_by": 2
+    }
+  }
+}

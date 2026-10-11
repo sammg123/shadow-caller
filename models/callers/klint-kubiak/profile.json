@@ -1,0 +1,256 @@
+{
+  "caller": "Klint Kubiak",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2461,
+  "n_games": 41,
+  "alpha": 0.1,
+  "lambda": 10.0,
+  "q0": 0.4681023973994311,
+  "coefs": {
+    "intercept": {
+      "est": -0.2948135435588855,
+      "lo": -0.48154136492123234,
+      "hi": -0.12070029589186701,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.16850895171506858,
+      "lo": -0.016195121242391683,
+      "hi": 0.3700540011010903,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.4364350353664595,
+      "lo": -0.6119933329040946,
+      "hi": -0.27003301692330506,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.28925085694627917,
+      "lo": 0.10472545917472763,
+      "hi": 0.44616197156119064,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.26626075185979076,
+      "lo": -0.48427238079097923,
+      "hi": -0.07224418141709461,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.3244501007493478,
+      "lo": 0.05128403157255582,
+      "hi": 0.5771839549634804,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.11890309357025583,
+      "lo": -0.25050456379884034,
+      "hi": 0.0015595602339718744,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.24679050201022731,
+      "lo": -0.43633973424568345,
+      "hi": -0.10595805971004045,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.1377133413336913,
+      "lo": -0.060977419464928,
+      "hi": 0.3779007864724581,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.22534278134845173,
+      "lo": -0.4921870854049316,
+      "hi": 0.06448859846639762,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5548175838322693,
+    "habits": 0.547457601283397,
+    "habits_plus_memory": 0.5440925162023229,
+    "nflfastr_xpass_reference": 0.5710560488119464
+  },
+  "dropback_rate": {
+    "actual": 0.5607476635514018,
+    "league_expected": 0.5956425149127726
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1085,
+      "actual": 0.4838709677419355,
+      "league_expected": 0.48649261698965807
+    },
+    {
+      "down": 2,
+      "n": 824,
+      "actual": 0.5594660194174758,
+      "league_expected": 0.6135058399274934
+    },
+    {
+      "down": 3,
+      "n": 507,
+      "actual": 0.7258382642998028,
+      "league_expected": 0.8034911735630782
+    },
+    {
+      "down": 4,
+      "n": 45,
+      "actual": 0.5777777777777777,
+      "league_expected": 0.5585089482182071
+    }
+  ],
+  "team": "LV",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 31320,
+    "logloss_ours": 0.5254704105481531,
+    "logloss_nflfastr_xpass": 0.5340910354791569,
+    "logloss_constant": 0.6715484803434404
+  },
+  "granular": {
+    "n_snaps": 2461,
+    "family_rates": {
+      "run": {
+        "his": 0.42177976432344577,
+        "league_expected": 0.3707661297178639
+      },
+      "dropback": {
+        "his": 0.4002438033319789,
+        "league_expected": 0.4211190834146997
+      },
+      "pa": {
+        "his": 0.11946363266964649,
+        "league_expected": 0.10929307493212131
+      },
+      "screen": {
+        "his": 0.03657049979683056,
+        "league_expected": 0.047858053693158494
+      },
+      "rpo": {
+        "his": 0.021942299878098336,
+        "league_expected": 0.0509636582421567
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9720276041141426,
+        "his": 0.9497943236259763,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.3981899501903066,
+        "his": 1.393026057677064,
+        "lambda": 100.0,
+        "n": 1030
+      },
+      "pass_depth": {
+        "league": 0.8501761203993409,
+        "his": 0.850367595461951,
+        "lambda": 100.0,
+        "n": 1158
+      },
+      "specific_play": {
+        "n": 2332,
+        "logloss_league": 2.0277384080518797,
+        "logloss_his": 2.000854319732988,
+        "top1_his": 0.3606346483704974,
+        "top1_league": 0.35763293310463123,
+        "top3_his": 0.6123499142367067
+      }
+    },
+    "rpo_throw": {
+      "his": 0.23376789014947863,
+      "league": 0.314941193553071,
+      "his_n": 54
+    }
+  },
+  "built_at": "2026-10-10T21:15:48",
+  "sklearn": "1.9.1",
+  "slug": "klint-kubiak",
+  "teams": [
+    "LV",
+    "NO",
+    "SEA"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "NO",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.neworleanssaints.com/news/darren-rizzi-talks-stepping-in-as-interim-head-coach-coaching-roles-rest-of-season-wwl-coaches-show-five-takeways"
+    },
+    {
+      "season": 2025,
+      "team": "SEA",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.espn.in/nfl/story/_/id/43576493/source-seahawks-hiring-klint-kubiak-offensive-coordinator"
+    },
+    {
+      "season": 2026,
+      "team": "LV",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://abc7.com/post/evaluating-3-0-raiders-strong-offensive-start/19903877/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LV",
+      "NO",
+      "SEA"
+    ],
+    "n_train": 258434,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "7cbffc1e8293baaf",
+    "seconds": {
+      "own": 0.8,
+      "shared": 10.6,
+      "shared_by": 1
+    }
+  }
+}

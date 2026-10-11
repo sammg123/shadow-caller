@@ -1,0 +1,252 @@
+{
+  "caller": "Zac Taylor",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2357,
+  "n_games": 38,
+  "alpha": 0.5,
+  "lambda": 10.0,
+  "q0": 0.5044548154433602,
+  "coefs": {
+    "intercept": {
+      "est": 0.3884509544301213,
+      "lo": 0.18495143294137054,
+      "hi": 0.5465537924250479,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.02755545049740524,
+      "lo": -0.16475512238390635,
+      "hi": 0.13544708829642743,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.06461594787772355,
+      "lo": -0.3684775681415044,
+      "hi": 0.20513174851091812,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.1728297182939613,
+      "lo": -0.3715874733099601,
+      "hi": 0.05192992875133515,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.1753938173518273,
+      "lo": -0.019730685459609373,
+      "hi": 0.39189936072938636,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.5256679630960428,
+      "lo": 0.3360733027989,
+      "hi": 0.7036828307013732,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.36052348661064204,
+      "lo": -0.45447565472839474,
+      "hi": -0.2759430388147106,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.30738818994780476,
+      "lo": 0.15139390507767037,
+      "hi": 0.4622487872026659,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.07195573813231862,
+      "lo": -0.2775666179611654,
+      "hi": 0.41984213240808976,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.029279784697100422,
+      "lo": -0.2136946295941393,
+      "hi": 0.12494994227769014,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5169810624363947,
+    "habits": 0.5065251423746969,
+    "habits_plus_memory": 0.5023389223955134,
+    "nflfastr_xpass_reference": 0.5087298088369155
+  },
+  "dropback_rate": {
+    "actual": 0.669919389053882,
+    "league_expected": 0.6085683371331844
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1051,
+      "actual": 0.5699333967649858,
+      "league_expected": 0.5145561854225706
+    },
+    {
+      "down": 2,
+      "n": 778,
+      "actual": 0.6953727506426736,
+      "league_expected": 0.6125754968040863
+    },
+    {
+      "down": 3,
+      "n": 485,
+      "actual": 0.8329896907216495,
+      "league_expected": 0.7951350538710984
+    },
+    {
+      "down": 4,
+      "n": 43,
+      "actual": 0.813953488372093,
+      "league_expected": 0.7295995837844657
+    }
+  ],
+  "team": "CIN",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33458,
+    "logloss_ours": 0.5273449764048906,
+    "logloss_nflfastr_xpass": 0.5365999834247789,
+    "logloss_constant": 0.6726928811346204
+  },
+  "granular": {
+    "n_snaps": 2357,
+    "family_rates": {
+      "run": {
+        "his": 0.27025880356385235,
+        "league_expected": 0.3631614814557007
+      },
+      "dropback": {
+        "his": 0.5243954179041154,
+        "league_expected": 0.4240327448549122
+      },
+      "pa": {
+        "his": 0.103097157403479,
+        "league_expected": 0.1187010586688157
+      },
+      "screen": {
+        "his": 0.03097157403478999,
+        "league_expected": 0.045450339681134044
+      },
+      "rpo": {
+        "his": 0.07127704709376326,
+        "league_expected": 0.048654375339437284
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0666955878822637,
+        "his": 1.022170134244178,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.1736919500676695,
+        "his": 1.1407233776353047,
+        "lambda": 30.0,
+        "n": 635
+      },
+      "pass_depth": {
+        "league": 0.775561562498975,
+        "his": 0.773574334116991,
+        "lambda": 100.0,
+        "n": 1346
+      },
+      "specific_play": {
+        "n": 2222,
+        "logloss_league": 1.930118503197866,
+        "logloss_his": 1.8743517385178268,
+        "top1_his": 0.387038703870387,
+        "top1_league": 0.38793879387938796,
+        "top3_his": 0.6944194419441945
+      }
+    },
+    "rpo_throw": {
+      "his": 0.177315407727552,
+      "league": 0.31676483263898864,
+      "his_n": 168
+    }
+  },
+  "built_at": "2026-10-10T21:16:01",
+  "sklearn": "1.9.1",
+  "slug": "zac-taylor",
+  "teams": [
+    "CIN"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "CIN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/bengals/gameday/zac-taylor-explains-late-playcalling-in-bengals-overtime-loss-to-ravens-01j9hsjsdmmw"
+    },
+    {
+      "season": 2025,
+      "team": "CIN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/bengals/news/zac-taylor-explains-why-continue-call-plays-despite-bengals-struggles-offense"
+    },
+    {
+      "season": 2026,
+      "team": "CIN",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.tsn.ca/nfl/article/breaking-down-every-teams-playcaller-and-strategy-ahead-of-nfl-kickoff-next-week-on-tsn/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "CIN"
+    ],
+    "n_train": 275475,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "248a8d681be4ace7",
+    "seconds": {
+      "own": 0.7,
+      "shared": 11.1,
+      "shared_by": 1
+    }
+  }
+}

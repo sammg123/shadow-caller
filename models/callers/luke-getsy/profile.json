@@ -1,0 +1,232 @@
+{
+  "caller": "Luke Getsy",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 542,
+  "n_games": 9,
+  "alpha": 0.1,
+  "lambda": 1.0,
+  "q0": 0.4132841328413284,
+  "coefs": {
+    "intercept": {
+      "est": -0.1493715206828817,
+      "lo": -0.49022447487994,
+      "hi": 0.20411729838016904,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.22210966950861846,
+      "lo": -0.15574964975674604,
+      "hi": 0.6143803571200886,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.08327384814683648,
+      "lo": -0.5336513151524228,
+      "hi": 0.5144115726017158,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.09802258580765538,
+      "lo": -0.611585352771185,
+      "hi": 0.41258709703607566,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.31121132793528317,
+      "lo": -0.7069313204734698,
+      "hi": 0.0903743693921144,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 1.3140250224066639,
+      "lo": 0.5559284081722866,
+      "hi": 1.8941714184969072,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.06180092717339826,
+      "lo": -0.16957077002951348,
+      "hi": 0.3607915107187369,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.29628120779501654,
+      "lo": -0.1223992742147131,
+      "hi": 0.8230891435500693,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.5075715095383462,
+      "lo": -0.044675658139332115,
+      "hi": 1.2080654085426765,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.39451489052142497,
+      "lo": -1.093383042989526,
+      "hi": 0.5388418331371859,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5079843960861126,
+    "habits": 0.5091241779456036,
+    "habits_plus_memory": 0.5071287681544308,
+    "nflfastr_xpass_reference": 0.5170565480853229
+  },
+  "dropback_rate": {
+    "actual": 0.6568265682656826,
+    "league_expected": 0.6480972463274565
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 235,
+      "actual": 0.5659574468085107,
+      "league_expected": 0.5406472398056953
+    },
+    {
+      "down": 2,
+      "n": 179,
+      "actual": 0.659217877094972,
+      "league_expected": 0.6533127520864945
+    },
+    {
+      "down": 3,
+      "n": 115,
+      "actual": 0.8260869565217391,
+      "league_expected": 0.8487137272525338
+    },
+    {
+      "down": 4,
+      "n": 13,
+      "actual": 0.7692307692307693,
+      "league_expected": 0.7439649921245527
+    }
+  ],
+  "team": "LV",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33563,
+    "logloss_ours": 0.5268254477908831,
+    "logloss_nflfastr_xpass": 0.5355281704664937,
+    "logloss_constant": 0.6723760119965501
+  },
+  "granular": {
+    "n_snaps": 542,
+    "family_rates": {
+      "run": {
+        "his": 0.32656826568265684,
+        "league_expected": 0.3180379434752739
+      },
+      "dropback": {
+        "his": 0.5018450184501845,
+        "league_expected": 0.4785627223371653
+      },
+      "pa": {
+        "his": 0.08671586715867159,
+        "league_expected": 0.1047093342159275
+      },
+      "screen": {
+        "his": 0.04797047970479705,
+        "league_expected": 0.050251015063553596
+      },
+      "rpo": {
+        "his": 0.03690036900369004,
+        "league_expected": 0.048438984908079685
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9883536928303058,
+        "his": 0.989997693247599,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.1164950638953384,
+        "his": 1.0829870112535958,
+        "lambda": 10.0,
+        "n": 176
+      },
+      "pass_depth": {
+        "league": 0.767288624785539,
+        "his": 0.7688355073021814,
+        "lambda": 100.0,
+        "n": 280
+      },
+      "specific_play": {
+        "n": 502,
+        "logloss_league": 1.8610202735106705,
+        "logloss_his": 1.8483438053054335,
+        "top1_his": 0.43824701195219123,
+        "top1_league": 0.43824701195219123,
+        "top3_his": 0.6872509960159362
+      }
+    },
+    "rpo_throw": {
+      "his": 0.43072063315745623,
+      "league": 0.31144126631491253,
+      "his_n": 20
+    }
+  },
+  "built_at": "2026-10-10T21:17:00",
+  "sklearn": "1.9.1",
+  "slug": "luke-getsy",
+  "teams": [
+    "LV"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "LV",
+      "first_week": 1,
+      "last_week": 9,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://africa.espn.com/nfl/story/_/id/42096623/pierce-raiders-clean-playcalling-offensive-issues"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LV"
+    ],
+    "n_train": 275948,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "8275cf5f4a522e29",
+    "seconds": {
+      "own": 0.4,
+      "shared": 11.3,
+      "shared_by": 4
+    }
+  }
+}

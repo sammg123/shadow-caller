@@ -1,0 +1,254 @@
+{
+  "caller": "Mike McDaniel",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2255,
+  "n_games": 38,
+  "alpha": 0.1,
+  "lambda": 1.0,
+  "q0": 0.46430155210643015,
+  "coefs": {
+    "intercept": {
+      "est": -0.10067514234992594,
+      "lo": -0.4757274103469708,
+      "hi": 0.1999237169600174,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.08594359193489483,
+      "lo": -0.3680631047618002,
+      "hi": 0.29023690834775484,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.13326121979531136,
+      "lo": -0.5746998732235605,
+      "hi": 0.30417087643251706,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.22175995977442603,
+      "lo": -0.10713665821206551,
+      "hi": 0.5554992310297869,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.08539016825891685,
+      "lo": -0.2767904562354187,
+      "hi": 0.10665649092157493,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 1.6537144093602087,
+      "lo": 0.8579394799324935,
+      "hi": 2.1699881708973443,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.13552313511908867,
+      "lo": -0.31703697858678564,
+      "hi": 0.028990089065091058,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.05345732040572691,
+      "lo": -0.22262310374865787,
+      "hi": 0.14629515623112468,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.09131163030659051,
+      "lo": -0.5672231405645318,
+      "hi": 0.4022019780486461,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.02663495455532852,
+      "lo": -0.6964151455587,
+      "hi": 0.8097169929415664,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5496723906649232,
+    "habits": 0.548920028507327,
+    "habits_plus_memory": 0.5462868132182693,
+    "nflfastr_xpass_reference": 0.5558169765992151
+  },
+  "dropback_rate": {
+    "actual": 0.5898004434589801,
+    "league_expected": 0.61804128020099
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 994,
+      "actual": 0.46177062374245476,
+      "league_expected": 0.5088125598572723
+    },
+    {
+      "down": 2,
+      "n": 747,
+      "actual": 0.6157965194109772,
+      "league_expected": 0.6285109959097765
+    },
+    {
+      "down": 3,
+      "n": 454,
+      "actual": 0.7951541850220264,
+      "league_expected": 0.8192383939174707
+    },
+    {
+      "down": 4,
+      "n": 60,
+      "actual": 0.8333333333333334,
+      "league_expected": 0.7748576261994845
+    }
+  ],
+  "team": "LAC",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32425,
+    "logloss_ours": 0.5277051811663862,
+    "logloss_nflfastr_xpass": 0.5370755742199673,
+    "logloss_constant": 0.6720242362134167
+  },
+  "granular": {
+    "n_snaps": 2255,
+    "family_rates": {
+      "run": {
+        "his": 0.38181818181818183,
+        "league_expected": 0.35051806078721615
+      },
+      "dropback": {
+        "his": 0.38004434589800445,
+        "league_expected": 0.4442199855005699
+      },
+      "pa": {
+        "his": 0.13348115299334812,
+        "league_expected": 0.11114420474518812
+      },
+      "screen": {
+        "his": 0.06740576496674058,
+        "league_expected": 0.04634791584656337
+      },
+      "rpo": {
+        "his": 0.03725055432372506,
+        "league_expected": 0.04776983312046247
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.1072242470617277,
+        "his": 1.0911638474471237,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.468731035193538,
+        "his": 1.4400169188610534,
+        "lambda": 30.0,
+        "n": 847
+      },
+      "pass_depth": {
+        "league": 0.845071700443067,
+        "his": 0.8398859614784804,
+        "lambda": 30.0,
+        "n": 1012
+      },
+      "specific_play": {
+        "n": 2095,
+        "logloss_league": 2.1516632791335044,
+        "logloss_his": 2.1189572923535436,
+        "top1_his": 0.3045346062052506,
+        "top1_league": 0.3093078758949881,
+        "top3_his": 0.5689737470167064
+      }
+    },
+    "rpo_throw": {
+      "his": 0.25100278891987693,
+      "league": 0.30521450238335984,
+      "his_n": 84
+    }
+  },
+  "built_at": "2026-10-10T21:16:36",
+  "sklearn": "1.9.1",
+  "slug": "mike-mcdaniel",
+  "teams": [
+    "LAC",
+    "MIA"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "MIA",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://abc7ny.com/post/calls-plays-every-nfl-team-2024-what-know/15246862/"
+    },
+    {
+      "season": 2025,
+      "team": "MIA",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://abc7ny.com/post/calls-plays-every-nfl-team-2025-what-know/17777918/"
+    },
+    {
+      "season": 2026,
+      "team": "LAC",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.chargers.com/news/what-mike-mcdaniel-hopes-to-see-from-chargers-offense-in-preseason-opener"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LAC",
+      "MIA"
+    ],
+    "n_train": 267016,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "84b322d8fe26045a",
+    "seconds": {
+      "own": 0.8,
+      "shared": 11.4,
+      "shared_by": 1
+    }
+  }
+}

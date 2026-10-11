@@ -1,0 +1,232 @@
+{
+  "caller": "Dan Campbell",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 570,
+  "n_games": 9,
+  "alpha": 0.1,
+  "lambda": 100.0,
+  "q0": 0.4807017543859649,
+  "coefs": {
+    "intercept": {
+      "est": -0.08731975995668292,
+      "lo": -0.20821736660515608,
+      "hi": 0.01758836049572712,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.0184264638857055,
+      "lo": -0.08488677681646215,
+      "hi": 0.041591461633051455,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.0362336793899067,
+      "lo": -0.07860048463474442,
+      "hi": 0.0026126829904958657,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.04521722317694134,
+      "lo": -0.1208534000643403,
+      "hi": 0.04385439195749672,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.026130450051809008,
+      "lo": -0.07901462254315525,
+      "hi": 0.02643561953830753,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.0001102795052812356,
+      "lo": -0.01932413201211539,
+      "hi": 0.02168368767774365,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.02946751579403982,
+      "lo": -0.05119800609824679,
+      "hi": 0.11296213718635942,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.05825779108905139,
+      "lo": -0.004136765807077887,
+      "hi": 0.11507444978355115,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.022355899691253744,
+      "lo": -0.03964896683379149,
+      "hi": -0.008567144478749705,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.007647165465203052,
+      "lo": 0.0026282980254920887,
+      "hi": 0.015465635208841751,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5636301514434943,
+    "habits": 0.5655862780170055,
+    "habits_plus_memory": 0.5649963705713781,
+    "nflfastr_xpass_reference": 0.5799300696603422
+  },
+  "dropback_rate": {
+    "actual": 0.6333333333333333,
+    "league_expected": 0.6674540404727363
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 255,
+      "actual": 0.5764705882352941,
+      "league_expected": 0.5697047826301455
+    },
+    {
+      "down": 2,
+      "n": 188,
+      "actual": 0.6170212765957447,
+      "league_expected": 0.6872432476279514
+    },
+    {
+      "down": 3,
+      "n": 112,
+      "actual": 0.7767857142857143,
+      "league_expected": 0.8577329518694123
+    },
+    {
+      "down": 4,
+      "n": 15,
+      "actual": 0.7333333333333333,
+      "league_expected": 0.6604174890229025
+    }
+  ],
+  "team": "DET",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33452,
+    "logloss_ours": 0.5263867837087486,
+    "logloss_nflfastr_xpass": 0.5348428446985423,
+    "logloss_constant": 0.6718708111758526
+  },
+  "granular": {
+    "n_snaps": 570,
+    "family_rates": {
+      "run": {
+        "his": 0.34210526315789475,
+        "league_expected": 0.2960585845574091
+      },
+      "dropback": {
+        "his": 0.4192982456140351,
+        "league_expected": 0.4949891924022071
+      },
+      "pa": {
+        "his": 0.15087719298245614,
+        "league_expected": 0.11681338701542099
+      },
+      "screen": {
+        "his": 0.05789473684210526,
+        "league_expected": 0.044140203131758565
+      },
+      "rpo": {
+        "his": 0.02982456140350877,
+        "league_expected": 0.047998632893204274
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.101245434294933,
+        "his": 1.087873284106923,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.4583592400787264,
+        "his": 1.4240835033282748,
+        "lambda": 10.0,
+        "n": 192
+      },
+      "pass_depth": {
+        "league": 0.7558872430261925,
+        "his": 0.7407916592063793,
+        "lambda": 10.0,
+        "n": 303
+      },
+      "specific_play": {
+        "n": 545,
+        "logloss_league": 2.0584807130018725,
+        "logloss_his": 2.0216585174299135,
+        "top1_his": 0.3577981651376147,
+        "top1_league": 0.3486238532110092,
+        "top3_his": 0.6128440366972477
+      }
+    },
+    "rpo_throw": {
+      "his": 0.251154880288409,
+      "league": 0.31463652853355656,
+      "his_n": 17
+    }
+  },
+  "built_at": "2026-10-10T21:17:36",
+  "sklearn": "1.9.1",
+  "slug": "dan-campbell",
+  "teams": [
+    "DET"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "DET",
+      "first_week": 10,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/46912993/lions-offense-rolls-dan-campbell-takes-play-calling"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "DET"
+    ],
+    "n_train": 275446,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "881b23ff0ebd80ef",
+    "seconds": {
+      "own": 0.3,
+      "shared": 12.8,
+      "shared_by": 2
+    }
+  }
+}

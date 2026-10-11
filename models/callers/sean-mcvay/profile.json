@@ -1,0 +1,279 @@
+{
+  "caller": "Sean McVay",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2606,
+  "n_games": 42,
+  "alpha": 0.9,
+  "lambda": 100.0,
+  "q0": 0.532233307751343,
+  "coefs": {
+    "intercept": {
+      "est": -0.014050315682244189,
+      "lo": -0.06473321662535339,
+      "hi": 0.048451573958729593,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.06805972084315555,
+      "lo": 0.01715988562019594,
+      "hi": 0.1244834954682352,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.05238883742836963,
+      "lo": -0.1020728794350725,
+      "hi": 0.0010621327178569051,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.019382302721994104,
+      "lo": -0.11490337412169699,
+      "hi": 0.08585774452383468,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.04529595743282374,
+      "lo": -0.03981895070753164,
+      "hi": 0.12824840317529124,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.09897159820906618,
+      "lo": 0.021721373760677936,
+      "hi": 0.16884762377449203,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.03770195421472943,
+      "lo": -0.042150211168709914,
+      "hi": 0.11920773225488636,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.03300902823446309,
+      "lo": -0.030196524050240415,
+      "hi": 0.09530833201167571,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.009462918761436736,
+      "lo": -0.07617291301026667,
+      "hi": 0.05508029288668704,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.039073779400219735,
+      "lo": -0.07538111487467399,
+      "hi": -0.0033944518789773893,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5513290633752456,
+    "habits": 0.5520732613844022,
+    "habits_plus_memory": 0.5519633845557405,
+    "nflfastr_xpass_reference": 0.5532875900761873
+  },
+  "dropback_rate": {
+    "actual": 0.5947812739831159,
+    "league_expected": 0.5855280751743891
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1183,
+      "actual": 0.5105663567202029,
+      "league_expected": 0.4966939008278981
+    },
+    {
+      "down": 2,
+      "n": 876,
+      "actual": 0.615296803652968,
+      "league_expected": 0.596453789529181
+    },
+    {
+      "down": 3,
+      "n": 483,
+      "actual": 0.7701863354037267,
+      "league_expected": 0.7804338313670027
+    },
+    {
+      "down": 4,
+      "n": 64,
+      "actual": 0.546875,
+      "league_expected": 0.6070971726129627
+    }
+  ],
+  "team": "LA",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33242,
+    "logloss_ours": 0.5257512129175066,
+    "logloss_nflfastr_xpass": 0.5352310468680641,
+    "logloss_constant": 0.67186350195276
+  },
+  "granular": {
+    "n_snaps": 2606,
+    "family_rates": {
+      "run": {
+        "his": 0.40138142747505756,
+        "league_expected": 0.382478915931264
+      },
+      "dropback": {
+        "his": 0.39370683039140447,
+        "league_expected": 0.4050964085617959
+      },
+      "pa": {
+        "his": 0.15924788948580199,
+        "league_expected": 0.11821065283058854
+      },
+      "screen": {
+        "his": 0.03875671527244819,
+        "league_expected": 0.04301149616025308
+      },
+      "rpo": {
+        "his": 0.006907137375287797,
+        "league_expected": 0.05120252651609851
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.988162748754934,
+        "his": 0.9538685991126437,
+        "lambda": 3.0
+      },
+      "run_gap": {
+        "league": 1.2522781747980196,
+        "his": 1.2402634700048636,
+        "lambda": 100.0,
+        "n": 1040
+      },
+      "pass_depth": {
+        "league": 0.8461340692755849,
+        "his": 0.8423005949443243,
+        "lambda": 10.0,
+        "n": 1354
+      },
+      "specific_play": {
+        "n": 2513,
+        "logloss_league": 1.970923198121108,
+        "logloss_his": 1.9301570639059988,
+        "top1_his": 0.36450457620374055,
+        "top1_league": 0.3668921607640271,
+        "top3_his": 0.6609629924393156
+      }
+    },
+    "rpo_throw": {
+      "his": 0.37498630717212067,
+      "league": 0.3124739836270293,
+      "his_n": 18
+    }
+  },
+  "built_at": "2026-10-10T21:15:37",
+  "sklearn": "1.9.1",
+  "slug": "sean-mcvay",
+  "teams": [
+    "LA"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "LA",
+      "first_week": 1,
+      "last_week": 17,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.therams.com/news/from-the-podium-sean-mcvay-and-jimmy-garoppolo-discuss-week-18-loss-to-seahawks-upcoming-playoff-matchup"
+    },
+    {
+      "season": 2024,
+      "team": "LA",
+      "first_week": 19,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://arizonasports.com/nfl/arizona-cardinals/mike-lafleur-call-plays/3610387"
+    },
+    {
+      "season": 2025,
+      "team": "LA",
+      "first_week": 1,
+      "last_week": 13,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/rams/onsi/los-angeles-why-mike-lafleur-primed-next-coaching-opportunity"
+    },
+    {
+      "season": 2025,
+      "team": "LA",
+      "first_week": 14,
+      "last_week": 14,
+      "role": "HC (shared with OC)",
+      "confidence": "low",
+      "source": "https://www.therams.com/news/what-was-more-cool-was-watching-the-guys-do-their-thing-and-play-at-a-really-high-clip-mike-lafleur-talks-offensive-staff-stepping-up-for-ill-sean-mcvay-in-week-14"
+    },
+    {
+      "season": 2025,
+      "team": "LA",
+      "first_week": 15,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://arizonasports.com/nfl/arizona-cardinals/mike-lafleur-call-plays/3610387"
+    },
+    {
+      "season": 2026,
+      "team": "LA",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.therams.com/news/top-takeaways-from-sean-mcvay-s-post-2026-nfl-combine-press-conference-finalized-coaching-staff-pending-free-agents-and-more"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "LA"
+    ],
+    "n_train": 274779,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "e27e0c1f0fdb0d90",
+    "seconds": {
+      "own": 0.8,
+      "shared": 9.9,
+      "shared_by": 1
+    }
+  }
+}

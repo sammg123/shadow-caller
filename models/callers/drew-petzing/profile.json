@@ -1,0 +1,254 @@
+{
+  "caller": "Drew Petzing",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2361,
+  "n_games": 38,
+  "alpha": 0.3,
+  "lambda": 10.0,
+  "q0": 0.49512918254976707,
+  "coefs": {
+    "intercept": {
+      "est": -0.1823010109919719,
+      "lo": -0.29887875718474144,
+      "hi": -0.05313057896547784,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.3650607116241076,
+      "lo": 0.2062969767415648,
+      "hi": 0.5059131750229463,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.2724494768957202,
+      "lo": -0.5275019875180362,
+      "hi": 0.0469512099436422,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.025313656201299394,
+      "lo": -0.20499214014595896,
+      "hi": 0.22453052871064633,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.13550989688396753,
+      "lo": -0.020526503023190205,
+      "hi": 0.2813561309648525,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.3035016248204113,
+      "lo": 0.0886449859666063,
+      "hi": 0.5799611212579029,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.2475409508849065,
+      "lo": -0.3581795454102807,
+      "hi": -0.13889335985865137,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.07879188517977274,
+      "lo": -0.2491205421349707,
+      "hi": 0.13310083788604207,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.012229873172570157,
+      "lo": -0.2847696751943511,
+      "hi": 0.2541187589319074,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.17821600528652348,
+      "lo": -0.42445516602480815,
+      "hi": 0.09195017722082566,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5373796248890861,
+    "habits": 0.5331923732116585,
+    "habits_plus_memory": 0.5296153176482181,
+    "nflfastr_xpass_reference": 0.5488490096740821
+  },
+  "dropback_rate": {
+    "actual": 0.6488775942397289,
+    "league_expected": 0.6286887721620346
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1054,
+      "actual": 0.5768500948766604,
+      "league_expected": 0.5334886498291317
+    },
+    {
+      "down": 2,
+      "n": 792,
+      "actual": 0.6704545454545454,
+      "league_expected": 0.6396276221625777
+    },
+    {
+      "down": 3,
+      "n": 462,
+      "actual": 0.7705627705627706,
+      "league_expected": 0.8165781465027068
+    },
+    {
+      "down": 4,
+      "n": 53,
+      "actual": 0.6981132075471698,
+      "league_expected": 0.7206221456159695
+    }
+  ],
+  "team": "DET",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32382,
+    "logloss_ours": 0.5264200404162261,
+    "logloss_nflfastr_xpass": 0.5350520429288429,
+    "logloss_constant": 0.6731391776989725
+  },
+  "granular": {
+    "n_snaps": 2361,
+    "family_rates": {
+      "run": {
+        "his": 0.3350275307073274,
+        "league_expected": 0.34027966469605114
+      },
+      "dropback": {
+        "his": 0.4498094027954257,
+        "league_expected": 0.45324656082930864
+      },
+      "pa": {
+        "his": 0.1490893689114782,
+        "league_expected": 0.11139828585128488
+      },
+      "screen": {
+        "his": 0.045743329097839895,
+        "league_expected": 0.04590709066733627
+      },
+      "rpo": {
+        "his": 0.020330368487928845,
+        "league_expected": 0.049168397956019044
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0430511753403093,
+        "his": 1.024107883284224,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.3862121873346815,
+        "his": 1.3809361646134675,
+        "lambda": 30.0,
+        "n": 782
+      },
+      "pass_depth": {
+        "league": 0.7902453800027701,
+        "his": 0.7865028587310356,
+        "lambda": 100.0,
+        "n": 1234
+      },
+      "specific_play": {
+        "n": 2172,
+        "logloss_league": 2.0116534903698486,
+        "logloss_his": 1.993353016602537,
+        "top1_his": 0.35220994475138123,
+        "top1_league": 0.34898710865561694,
+        "top3_his": 0.643646408839779
+      }
+    },
+    "rpo_throw": {
+      "his": 0.23948494593704894,
+      "league": 0.3142488161859664,
+      "his_n": 48
+    }
+  },
+  "built_at": "2026-10-10T21:15:59",
+  "sklearn": "1.9.1",
+  "slug": "drew-petzing",
+  "teams": [
+    "ARI",
+    "DET"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "ARI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.azcardinals.com/news/offensive-coordinator-drew-petzing-does-some-self-analysis"
+    },
+    {
+      "season": 2025,
+      "team": "ARI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/cardinals/news/arizona-cardinals-oc-gets-honest-questionable-final-play-call"
+    },
+    {
+      "season": 2026,
+      "team": "DET",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.detroitlions.com/news/goff-on-working-with-new-oc-petzing-it-s-been-awesome"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "ARI",
+      "DET"
+    ],
+    "n_train": 266793,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "10cae6c8fe857774",
+    "seconds": {
+      "own": 0.8,
+      "shared": 10.2,
+      "shared_by": 1
+    }
+  }
+}

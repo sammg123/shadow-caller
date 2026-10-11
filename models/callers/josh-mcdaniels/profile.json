@@ -1,0 +1,242 @@
+{
+  "caller": "Josh McDaniels",
+  "seasons": [
+    2025,
+    2026
+  ],
+  "n_snaps": 1513,
+  "n_games": 25,
+  "alpha": 0.9,
+  "lambda": 30.0,
+  "q0": 0.4930601454064772,
+  "coefs": {
+    "intercept": {
+      "est": 0.12203098825748449,
+      "lo": 0.002977921668590534,
+      "hi": 0.22652338183376794,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.05672975468055799,
+      "lo": -0.13653023723809132,
+      "hi": 0.03353356527638667,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.07087247774269595,
+      "lo": -0.08263124014946113,
+      "hi": 0.21451522563707448,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.13560566100241847,
+      "lo": -0.026425212408237312,
+      "hi": 0.3194145176129168,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.11300804172326015,
+      "lo": -0.030560220780827492,
+      "hi": 0.23308164164356146,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.20091522992503694,
+      "lo": 0.0883359518053863,
+      "hi": 0.31179782615574175,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.0904362771578648,
+      "lo": -0.1951182537230871,
+      "hi": 0.021242331934467076,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.033408949369993675,
+      "lo": -0.144894250082871,
+      "hi": 0.09319561032430557,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.0053249142733334575,
+      "lo": -0.15276007737653247,
+      "hi": 0.1644707035029699,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.04199728006976108,
+      "lo": -0.029294196038815255,
+      "hi": 0.10998216713262161,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5019356954504364,
+    "habits": 0.5005382070420387,
+    "habits_plus_memory": 0.4994086026143138,
+    "nflfastr_xpass_reference": 0.5115196606448918
+  },
+  "dropback_rate": {
+    "actual": 0.6054196959682749,
+    "league_expected": 0.5797538428717791
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 669,
+      "actual": 0.4813153961136024,
+      "league_expected": 0.47615874060375907
+    },
+    {
+      "down": 2,
+      "n": 507,
+      "actual": 0.6331360946745562,
+      "league_expected": 0.5874525118419677
+    },
+    {
+      "down": 3,
+      "n": 302,
+      "actual": 0.8211920529801324,
+      "league_expected": 0.7864535431485097
+    },
+    {
+      "down": 4,
+      "n": 35,
+      "actual": 0.7142857142857143,
+      "league_expected": 0.664856379038841
+    }
+  ],
+  "team": "NE",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33238,
+    "logloss_ours": 0.5281430197913135,
+    "logloss_nflfastr_xpass": 0.5365482314082953,
+    "logloss_constant": 0.6720586702173015
+  },
+  "granular": {
+    "n_snaps": 1513,
+    "family_rates": {
+      "run": {
+        "his": 0.38268341044282883,
+        "league_expected": 0.389291756166056
+      },
+      "dropback": {
+        "his": 0.449438202247191,
+        "league_expected": 0.402958099700103
+      },
+      "pa": {
+        "his": 0.12227362855254462,
+        "league_expected": 0.11755335513481695
+      },
+      "screen": {
+        "his": 0.029081295439524125,
+        "league_expected": 0.04390169006221183
+      },
+      "rpo": {
+        "his": 0.016523463317911435,
+        "league_expected": 0.04629509893681218
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9503755321411127,
+        "his": 0.9297081999730542,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.2430857845582737,
+        "his": 1.2280995742821115,
+        "lambda": 30.0,
+        "n": 575
+      },
+      "pass_depth": {
+        "league": 0.8821741317065739,
+        "his": 0.8766743695021673,
+        "lambda": 30.0,
+        "n": 695
+      },
+      "specific_play": {
+        "n": 1339,
+        "logloss_league": 1.940727180029198,
+        "logloss_his": 1.9201415253026488,
+        "top1_his": 0.3928304705003734,
+        "top1_league": 0.3950709484690067,
+        "top3_his": 0.6773711725168036
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2945929887106358,
+      "league": 0.31283422459893045,
+      "his_n": 25
+    }
+  },
+  "built_at": "2026-10-10T21:15:38",
+  "sklearn": "1.9.1",
+  "slug": "josh-mcdaniels",
+  "teams": [
+    "NE"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "NE",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.cbssports.com/nfl/news/why-patriots-qb-drake-maye-feels-more-comfortable-with-josh-mcdaniels-as-play-caller"
+    },
+    {
+      "season": 2026,
+      "team": "NE",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.patriots.com/news/after-further-review-drake-maye-film-breakdown-defense-outlasts-josh-allen-and-quick-hit-film-notes-from-week-4-win-vs-bills"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NE"
+    ],
+    "n_train": 275341,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "1660306ad292cf00",
+    "seconds": {
+      "own": 0.5,
+      "shared": 11.1,
+      "shared_by": 2
+    }
+  }
+}

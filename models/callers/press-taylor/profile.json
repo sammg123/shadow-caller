@@ -1,0 +1,232 @@
+{
+  "caller": "Press Taylor",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 984,
+  "n_games": 17,
+  "alpha": 0.9,
+  "lambda": 100.0,
+  "q0": 0.45934959349593496,
+  "coefs": {
+    "intercept": {
+      "est": -0.03742185863986946,
+      "lo": -0.09341016011246042,
+      "hi": 0.023335067053048494,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.00139089830263594,
+      "lo": -0.039170904915367726,
+      "hi": 0.048424128747928556,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.026330775962004203,
+      "lo": 0.0003152284595030778,
+      "hi": 0.05468371064472465,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.015623558606385004,
+      "lo": -0.05568349159755878,
+      "hi": 0.07146101133923756,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.043328093434768504,
+      "lo": -0.10113703111730044,
+      "hi": 0.021533117594870286,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": -0.04357528638280594,
+      "lo": -0.08482998142443754,
+      "hi": -0.00025718065020473253,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.03197477080171664,
+      "lo": -0.05575493698691845,
+      "hi": 0.11081625220423591,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.017688838857707362,
+      "lo": -0.06329843050649323,
+      "hi": 0.029689454711959846,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.022351600936729138,
+      "lo": -0.06332121250875876,
+      "hi": 0.011578002683575799,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.0036816233844254387,
+      "lo": -0.015995019045818737,
+      "hi": 0.020864371950879677,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.47706533846001115,
+    "habits": 0.4772183384218473,
+    "habits_plus_memory": 0.477287144395054,
+    "nflfastr_xpass_reference": 0.48932066792302886
+  },
+  "dropback_rate": {
+    "actual": 0.6138211382113821,
+    "league_expected": 0.6247586602669023
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 427,
+      "actual": 0.477751756440281,
+      "league_expected": 0.5311129269366167
+    },
+    {
+      "down": 2,
+      "n": 327,
+      "actual": 0.6880733944954128,
+      "league_expected": 0.6374844559248087
+    },
+    {
+      "down": 3,
+      "n": 204,
+      "actual": 0.7941176470588235,
+      "league_expected": 0.8045915138871813
+    },
+    {
+      "down": 4,
+      "n": 26,
+      "actual": 0.5,
+      "league_expected": 0.5916621530884281
+    }
+  ],
+  "team": "JAX",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33378,
+    "logloss_ours": 0.5274150628290785,
+    "logloss_nflfastr_xpass": 0.5357966892037782,
+    "logloss_constant": 0.671975565864627
+  },
+  "granular": {
+    "n_snaps": 984,
+    "family_rates": {
+      "run": {
+        "his": 0.3546747967479675,
+        "league_expected": 0.34871131792143906
+      },
+      "dropback": {
+        "his": 0.45121951219512196,
+        "league_expected": 0.4476785554938739
+      },
+      "pa": {
+        "his": 0.10264227642276423,
+        "league_expected": 0.11100994647232151
+      },
+      "screen": {
+        "his": 0.0508130081300813,
+        "league_expected": 0.04638482452369048
+      },
+      "rpo": {
+        "his": 0.04065040650406504,
+        "league_expected": 0.04621535558867496
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9842563090227371,
+        "his": 0.9854449704691483,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.1967049601155126,
+        "his": 1.188692189261263,
+        "lambda": 100.0,
+        "n": 346
+      },
+      "pass_depth": {
+        "league": 0.8574417465834796,
+        "his": 0.857835522864825,
+        "lambda": 100.0,
+        "n": 486
+      },
+      "specific_play": {
+        "n": 922,
+        "logloss_league": 1.9248479865314587,
+        "logloss_his": 1.922182167142508,
+        "top1_his": 0.3947939262472885,
+        "top1_league": 0.3947939262472885,
+        "top3_his": 0.6681127982646421
+      }
+    },
+    "rpo_throw": {
+      "his": 0.25392544478960744,
+      "league": 0.31177633436882235,
+      "his_n": 40
+    }
+  },
+  "built_at": "2026-10-10T21:17:49",
+  "sklearn": "1.9.1",
+  "slug": "press-taylor",
+  "teams": [
+    "JAX"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "JAX",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://profootballrumors.com/2024/09/doug-pederson-not-considering-reclaiming-jaguars-play-calling-role"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "JAX"
+    ],
+    "n_train": 275721,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "537b00f009ac2dcb",
+    "seconds": {
+      "own": 0.3,
+      "shared": 12.1,
+      "shared_by": 1
+    }
+  }
+}

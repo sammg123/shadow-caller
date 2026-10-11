@@ -1,0 +1,252 @@
+{
+  "caller": "Shane Steichen",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2284,
+  "n_games": 38,
+  "alpha": 0.1,
+  "lambda": 3.0,
+  "q0": 0.47197898423817863,
+  "coefs": {
+    "intercept": {
+      "est": -0.407866315000767,
+      "lo": -0.6347127312920341,
+      "hi": -0.18266359971492288,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.44032010529515136,
+      "lo": 0.23801385523956087,
+      "hi": 0.6611346262412026,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.2082380221486632,
+      "lo": -0.46815913146621346,
+      "hi": 0.15099456276466888,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.09308544857069408,
+      "lo": -0.3540531295390811,
+      "hi": 0.1431829347451704,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.4158861937131793,
+      "lo": -0.627353882423079,
+      "hi": -0.1906153771402737,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 1.0014584580386166,
+      "lo": 0.49877434435928175,
+      "hi": 1.6041699874700837,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.29505275223137073,
+      "lo": 0.19604940743800886,
+      "hi": 0.4203238247658862,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.1971405161066503,
+      "lo": -0.3912838801497596,
+      "hi": 0.006565873520189003,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.2567863836576904,
+      "lo": -0.5492898177923147,
+      "hi": 0.07720542485398248,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.13247151987462125,
+      "lo": -0.2780044324277198,
+      "hi": 0.5697654630887534,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.542998726243699,
+    "habits": 0.5377266856611499,
+    "habits_plus_memory": 0.5323602578330979,
+    "nflfastr_xpass_reference": 0.5660982862928493
+  },
+  "dropback_rate": {
+    "actual": 0.5735551663747811,
+    "league_expected": 0.6020620147342836
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1016,
+      "actual": 0.4822834645669291,
+      "league_expected": 0.5026995775989114
+    },
+    {
+      "down": 2,
+      "n": 744,
+      "actual": 0.6075268817204301,
+      "league_expected": 0.6156704541027239
+    },
+    {
+      "down": 3,
+      "n": 463,
+      "actual": 0.7278617710583153,
+      "league_expected": 0.8017837923698257
+    },
+    {
+      "down": 4,
+      "n": 61,
+      "actual": 0.5081967213114754,
+      "league_expected": 0.5751173293926879
+    }
+  ],
+  "team": "IND",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33498,
+    "logloss_ours": 0.5265508987503139,
+    "logloss_nflfastr_xpass": 0.5350745191528469,
+    "logloss_constant": 0.6719047550427804
+  },
+  "granular": {
+    "n_snaps": 2284,
+    "family_rates": {
+      "run": {
+        "his": 0.36996497373029774,
+        "league_expected": 0.36487993664949064
+      },
+      "dropback": {
+        "his": 0.38222416812609455,
+        "league_expected": 0.4228180127216226
+      },
+      "pa": {
+        "his": 0.14579684763572678,
+        "league_expected": 0.11814349417712883
+      },
+      "screen": {
+        "his": 0.03283712784588441,
+        "league_expected": 0.04631165383464545
+      },
+      "rpo": {
+        "his": 0.0691768826619965,
+        "league_expected": 0.047846902617112566
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.089041914593334,
+        "his": 1.0792258604144378,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.3111190063652263,
+        "his": 1.3134898398682358,
+        "lambda": 100.0,
+        "n": 834
+      },
+      "pass_depth": {
+        "league": 0.8822839831035191,
+        "his": 0.8817207123176161,
+        "lambda": 100.0,
+        "n": 1087
+      },
+      "specific_play": {
+        "n": 2154,
+        "logloss_league": 2.0875201025422485,
+        "logloss_his": 2.0755982075180452,
+        "top1_his": 0.3519034354688951,
+        "top1_league": 0.3477251624883937,
+        "top3_his": 0.5919220055710307
+      }
+    },
+    "rpo_throw": {
+      "his": 0.19849156245217967,
+      "league": 0.31657490582439873,
+      "his_n": 158
+    }
+  },
+  "built_at": "2026-10-10T21:16:13",
+  "sklearn": "1.9.1",
+  "slug": "shane-steichen",
+  "teams": [
+    "IND"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "IND",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://abc13.com/post/calls-plays-every-nfl-team-2024-what-know/15246862/"
+    },
+    {
+      "season": 2025,
+      "team": "IND",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.colts.com/news/5-colts-things-shane-steichen-addresses-late-game-offensive-slide-issues-pop-up-on-first-down-rushes-evaluating-charvarius-ward-sr-and-sauce-gardner-in-week-12-loss-to-kansas-city-chiefs"
+    },
+    {
+      "season": 2026,
+      "team": "IND",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.tsn.ca/nfl/article/colts-steichen-planned-to-go-for-win-on-fourth-and-8-if-coverage-was-right-n1-49996583/"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "IND"
+    ],
+    "n_train": 275607,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "e5a5a604e0e883b4",
+    "seconds": {
+      "own": 0.9,
+      "shared": 10.9,
+      "shared_by": 1
+    }
+  }
+}

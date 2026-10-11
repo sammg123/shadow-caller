@@ -1,0 +1,254 @@
+{
+  "caller": "Liam Coen",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2468,
+  "n_games": 40,
+  "alpha": 0.3,
+  "lambda": 10.0,
+  "q0": 0.513776337115073,
+  "coefs": {
+    "intercept": {
+      "est": -0.2656059552558932,
+      "lo": -0.4499867953261515,
+      "hi": -0.043784610663550896,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.3516059037830051,
+      "lo": 0.173050737130727,
+      "hi": 0.5274673882821622,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.21905714772252197,
+      "lo": -0.00016186391283924873,
+      "hi": 0.44719523823740037,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.18151868903682852,
+      "lo": 0.019644982474203945,
+      "hi": 0.3266118506688657,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.0694925335167418,
+      "lo": -0.10958275629992503,
+      "hi": 0.2191427125588731,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.4976816072085478,
+      "lo": 0.30112592620302936,
+      "hi": 0.68475244859972,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.19807959075780773,
+      "lo": -0.28863827504436257,
+      "hi": -0.10306183010441103,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.050290960921384915,
+      "lo": -0.2409704945178149,
+      "hi": 0.12338626728717263,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.06269101025292044,
+      "lo": -0.18385100227553144,
+      "hi": 0.2847827193246987,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.006270506006256595,
+      "lo": -0.21975490968446149,
+      "hi": 0.2536385744085269,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5214436061612193,
+    "habits": 0.5210688907129596,
+    "habits_plus_memory": 0.5177100709356812,
+    "nflfastr_xpass_reference": 0.5290892630942546
+  },
+  "dropback_rate": {
+    "actual": 0.5935980551053485,
+    "league_expected": 0.5782576035256523
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1117,
+      "actual": 0.4932855863921218,
+      "league_expected": 0.47809902011214706
+    },
+    {
+      "down": 2,
+      "n": 817,
+      "actual": 0.6340269277845777,
+      "league_expected": 0.5922901842930955
+    },
+    {
+      "down": 3,
+      "n": 490,
+      "actual": 0.7755102040816326,
+      "league_expected": 0.7888872053214
+    },
+    {
+      "down": 4,
+      "n": 44,
+      "actual": 0.36363636363636365,
+      "league_expected": 0.5147124741158262
+    }
+  ],
+  "team": "JAX",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32321,
+    "logloss_ours": 0.5277826033872031,
+    "logloss_nflfastr_xpass": 0.5367191271263781,
+    "logloss_constant": 0.6719901531704916
+  },
+  "granular": {
+    "n_snaps": 2468,
+    "family_rates": {
+      "run": {
+        "his": 0.38371150729335496,
+        "league_expected": 0.3863478073558693
+      },
+      "dropback": {
+        "his": 0.4315235008103728,
+        "league_expected": 0.4022586915543775
+      },
+      "pa": {
+        "his": 0.10291734197730956,
+        "league_expected": 0.11718191788764716
+      },
+      "screen": {
+        "his": 0.05348460291734198,
+        "league_expected": 0.04556219230826878
+      },
+      "rpo": {
+        "his": 0.028363047001620744,
+        "league_expected": 0.048649390893837303
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9750844728085643,
+        "his": 0.9682244497961562,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.3858504337234767,
+        "his": 1.3761368121856827,
+        "lambda": 10.0,
+        "n": 939
+      },
+      "pass_depth": {
+        "league": 0.8803988875255929,
+        "his": 0.8737006888646532,
+        "lambda": 100.0,
+        "n": 1136
+      },
+      "specific_play": {
+        "n": 2277,
+        "logloss_league": 2.027759292995616,
+        "logloss_his": 2.0132037117652692,
+        "top1_his": 0.34299516908212563,
+        "top1_league": 0.3416776460254721,
+        "top3_his": 0.6271409749670619
+      }
+    },
+    "rpo_throw": {
+      "his": 0.22515528451349565,
+      "league": 0.31319878031073034,
+      "his_n": 70
+    }
+  },
+  "built_at": "2026-10-10T21:15:47",
+  "sklearn": "1.9.1",
+  "slug": "liam-coen",
+  "teams": [
+    "JAX",
+    "TB"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "TB",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/41018846/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-nathaniel-hackett"
+    },
+    {
+      "season": 2025,
+      "team": "JAX",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.news4jax.com/sports/2026/01/11/trevor-lawrence-has-to-live-with-costly-turnovers-in-jaguars-playoff-loss-to-bills/"
+    },
+    {
+      "season": 2026,
+      "team": "JAX",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.inquirer.com/eagles/nfl-week-5-jaguars-london-offensive-coordinator-grant-udinski-cb-west-20261008.html"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "JAX",
+      "TB"
+    ],
+    "n_train": 266251,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "a96a241ba9fd7862",
+    "seconds": {
+      "own": 0.7,
+      "shared": 9.4,
+      "shared_by": 1
+    }
+  }
+}

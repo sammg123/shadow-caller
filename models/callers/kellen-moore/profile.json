@@ -1,0 +1,254 @@
+{
+  "caller": "Kellen Moore",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2684,
+  "n_games": 42,
+  "alpha": 0.1,
+  "lambda": 10.0,
+  "q0": 0.46795827123695977,
+  "coefs": {
+    "intercept": {
+      "est": -0.3689765538548381,
+      "lo": -0.5290701851635737,
+      "hi": -0.2097615572517468,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.2578556670245563,
+      "lo": 0.07842392228686777,
+      "hi": 0.43184923979886847,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.13332119481825747,
+      "lo": -0.3936381214252805,
+      "hi": 0.1696931371692128,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.11270564484849242,
+      "lo": -0.07417293691907767,
+      "hi": 0.284383450930022,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.3096936176740482,
+      "lo": -0.5153799452734683,
+      "hi": -0.14134514259677114,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.40804582957955854,
+      "lo": 0.1279331193445876,
+      "hi": 0.6636348015269503,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.07767381140938891,
+      "lo": -0.01899291134554918,
+      "hi": 0.15936790400232112,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.28240854286391703,
+      "lo": -0.42960076271664527,
+      "hi": -0.1285799616773252,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.11501295501331668,
+      "lo": -0.3659382209063236,
+      "hi": 0.17464345673356388,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.12793843253983528,
+      "lo": -0.3026028858249654,
+      "hi": 0.0409080137778591,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5276438047736881,
+    "habits": 0.5247997975019469,
+    "habits_plus_memory": 0.5234763356573315,
+    "nflfastr_xpass_reference": 0.5335199214863332
+  },
+  "dropback_rate": {
+    "actual": 0.5648286140089419,
+    "league_expected": 0.5976663710263855
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1151,
+      "actual": 0.44048653344917466,
+      "league_expected": 0.4938194896787423
+    },
+    {
+      "down": 2,
+      "n": 897,
+      "actual": 0.6243032329988851,
+      "league_expected": 0.6110193289179787
+    },
+    {
+      "down": 3,
+      "n": 562,
+      "actual": 0.7153024911032029,
+      "league_expected": 0.7857060515149202
+    },
+    {
+      "down": 4,
+      "n": 74,
+      "actual": 0.6351351351351351,
+      "league_expected": 0.6229617327537055
+    }
+  ],
+  "team": "NO",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32377,
+    "logloss_ours": 0.5271395685722029,
+    "logloss_nflfastr_xpass": 0.5358413414296288,
+    "logloss_constant": 0.6719739579761196
+  },
+  "granular": {
+    "n_snaps": 2684,
+    "family_rates": {
+      "run": {
+        "his": 0.4027570789865872,
+        "league_expected": 0.37008077115041765
+      },
+      "dropback": {
+        "his": 0.4247391952309985,
+        "league_expected": 0.42202087824956247
+      },
+      "pa": {
+        "his": 0.10283159463487332,
+        "league_expected": 0.11460286431626944
+      },
+      "screen": {
+        "his": 0.02421758569299553,
+        "league_expected": 0.045673232913234905
+      },
+      "rpo": {
+        "his": 0.045454545454545456,
+        "league_expected": 0.047622253370515476
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9816938547283902,
+        "his": 0.9749701863190372,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.2530065562587762,
+        "his": 1.2490134449813044,
+        "lambda": 100.0,
+        "n": 1073
+      },
+      "pass_depth": {
+        "league": 0.8454077684365872,
+        "his": 0.8468822720536635,
+        "lambda": 100.0,
+        "n": 1205
+      },
+      "specific_play": {
+        "n": 2465,
+        "logloss_league": 1.984679295291678,
+        "logloss_his": 1.9747043439693168,
+        "top1_his": 0.39675456389452335,
+        "top1_league": 0.39594320486815415,
+        "top3_his": 0.6466531440162272
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2893973281750589,
+      "league": 0.30472103004291845,
+      "his_n": 122
+    }
+  },
+  "built_at": "2026-10-10T21:15:26",
+  "sklearn": "1.9.1",
+  "slug": "kellen-moore",
+  "teams": [
+    "NO",
+    "PHI"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "PHI",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.nbcsportsphiladelphia.com/nfl/philadelphia-eagles/kellen-moore-blames-himself-for-jalen-hurts-safety-divisional-round-vs-rams/643836"
+    },
+    {
+      "season": 2025,
+      "team": "NO",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://nbcsports.com/nfl/profootballtalk/rumor-mill/news/kellen-moore-will-call-plays-for-saints-in-2025"
+    },
+    {
+      "season": 2026,
+      "team": "NO",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/49711157/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-mike-mccarthy"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NO",
+      "PHI"
+    ],
+    "n_train": 265970,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "6d360ce90504f965",
+    "seconds": {
+      "own": 0.9,
+      "shared": 10.4,
+      "shared_by": 1
+    }
+  }
+}

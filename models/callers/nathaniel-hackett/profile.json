@@ -1,0 +1,232 @@
+{
+  "caller": "Nathaniel Hackett",
+  "seasons": [
+    2024
+  ],
+  "n_snaps": 314,
+  "n_games": 5,
+  "alpha": 0.9,
+  "lambda": 10.0,
+  "q0": 0.44904458598726116,
+  "coefs": {
+    "intercept": {
+      "est": 0.2185783974698237,
+      "lo": 0.02349002218232288,
+      "hi": 0.3633476062808796,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.005010212991593695,
+      "lo": -0.2367607064317459,
+      "hi": 0.25946790565452804,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.15296206198010465,
+      "lo": 0.051565057963809516,
+      "hi": 0.2532567850183635,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.011993017876943292,
+      "lo": -0.12187126504634556,
+      "hi": 0.11206520250077634,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.3373737150401085,
+      "lo": 0.06450528423704564,
+      "hi": 0.5829091244700049,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.18814181114168183,
+      "lo": 0.07221873048184425,
+      "hi": 0.26450528762667364,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.22197026731371086,
+      "lo": 0.06122515763603355,
+      "hi": 0.36392034065778156,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.06783943903642535,
+      "lo": -0.06972555691778089,
+      "hi": 0.1782483847008386,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.025479415673808195,
+      "lo": -0.1406892941168369,
+      "hi": 0.22391347790485258,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.06551754661283116,
+      "lo": -0.23818572065127033,
+      "hi": 0.04386344073790567,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5278898819898391,
+    "habits": 0.51996850587576,
+    "habits_plus_memory": 0.5150226501449886,
+    "nflfastr_xpass_reference": 0.5140828090543844
+  },
+  "dropback_rate": {
+    "actual": 0.6751592356687898,
+    "league_expected": 0.6111517277544327
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 131,
+      "actual": 0.5648854961832062,
+      "league_expected": 0.5162278597141149
+    },
+    {
+      "down": 2,
+      "n": 109,
+      "actual": 0.6972477064220184,
+      "league_expected": 0.6163663895138196
+    },
+    {
+      "down": 3,
+      "n": 71,
+      "actual": 0.8450704225352113,
+      "league_expected": 0.7744130987864056
+    },
+    {
+      "down": 4,
+      "n": 3,
+      "actual": 0.6666666666666666,
+      "league_expected": 0.7028421405005592
+    }
+  ],
+  "team": "NYJ",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33501,
+    "logloss_ours": 0.5269905820183516,
+    "logloss_nflfastr_xpass": 0.5356457027210341,
+    "logloss_constant": 0.6720389724638256
+  },
+  "granular": {
+    "n_snaps": 314,
+    "family_rates": {
+      "run": {
+        "his": 0.2898089171974522,
+        "league_expected": 0.35095874094561913
+      },
+      "dropback": {
+        "his": 0.49363057324840764,
+        "league_expected": 0.4535656682474818
+      },
+      "pa": {
+        "his": 0.12101910828025478,
+        "league_expected": 0.10245921145135628
+      },
+      "screen": {
+        "his": 0.03821656050955414,
+        "league_expected": 0.046123524712257946
+      },
+      "rpo": {
+        "his": 0.05732484076433121,
+        "league_expected": 0.04689285464328477
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0435698819732206,
+        "his": 1.0402070279910771,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.329075864125572,
+        "his": 1.3277561136341316,
+        "lambda": 30.0,
+        "n": 91
+      },
+      "pass_depth": {
+        "league": 0.8280837421226472,
+        "his": 0.8242532614266251,
+        "lambda": 30.0,
+        "n": 171
+      },
+      "specific_play": {
+        "n": 292,
+        "logloss_league": 2.0094386433371887,
+        "logloss_his": 2.005321692910662,
+        "top1_his": 0.363013698630137,
+        "top1_league": 0.3595890410958904,
+        "top3_his": 0.6472602739726028
+      }
+    },
+    "rpo_throw": {
+      "his": 0.34869350545054356,
+      "league": 0.3125176603560328,
+      "his_n": 18
+    }
+  },
+  "built_at": "2026-10-10T21:16:47",
+  "sklearn": "1.9.1",
+  "slug": "nathaniel-hackett",
+  "teams": [
+    "NYJ"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "NYJ",
+      "first_week": 1,
+      "last_week": 5,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.cbssports.com/nfl/news/nathaniel-hackett-demoted-jets-announce-new-offensive-play-caller-aaron-rodgers-on-board-with-decision"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NYJ"
+    ],
+    "n_train": 276147,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "616815dd149eba45",
+    "seconds": {
+      "own": 0.2,
+      "shared": 9.5,
+      "shared_by": 3
+    }
+  }
+}

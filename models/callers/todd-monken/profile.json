@@ -1,0 +1,254 @@
+{
+  "caller": "Todd Monken",
+  "seasons": [
+    2024,
+    2025,
+    2026
+  ],
+  "n_snaps": 2339,
+  "n_games": 40,
+  "alpha": 0.2,
+  "lambda": 3.0,
+  "q0": 0.516887558785806,
+  "coefs": {
+    "intercept": {
+      "est": -0.8326044282127538,
+      "lo": -1.0599909780944812,
+      "hi": -0.5881226044823942,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.4798673404985532,
+      "lo": 0.23815222139049583,
+      "hi": 0.6952924735884984,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 1.0079545491673443,
+      "lo": 0.6584112878566453,
+      "hi": 1.465254964379565,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.06617035916126748,
+      "lo": -0.3201631647630408,
+      "hi": 0.1894225995121827,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.07446037720190285,
+      "lo": -0.25251983715827286,
+      "hi": 0.09939973652256244,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.5284223574403311,
+      "lo": 0.08651907076828318,
+      "hi": 1.0149294973657295,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.010462906038247096,
+      "lo": -0.11662782337820918,
+      "hi": 0.14198217508834304,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.015151488615250676,
+      "lo": -0.17771812204012635,
+      "hi": 0.15559723738055833,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": 0.057094208633630995,
+      "lo": -0.20938621833617935,
+      "hi": 0.3754676502775819,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.30119844626069936,
+      "lo": -0.771435999227708,
+      "hi": 0.17007858096548026,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5175867660898886,
+    "habits": 0.5013960640215577,
+    "habits_plus_memory": 0.5019486443296179,
+    "nflfastr_xpass_reference": 0.5229500385659256
+  },
+  "dropback_rate": {
+    "actual": 0.529713552800342,
+    "league_expected": 0.6007812984842181
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 1067,
+      "actual": 0.4442361761949391,
+      "league_expected": 0.4998579625044246
+    },
+    {
+      "down": 2,
+      "n": 764,
+      "actual": 0.5143979057591623,
+      "league_expected": 0.6188018130895128
+    },
+    {
+      "down": 3,
+      "n": 461,
+      "actual": 0.7396963123644251,
+      "league_expected": 0.7940828259001618
+    },
+    {
+      "down": 4,
+      "n": 47,
+      "actual": 0.6595744680851063,
+      "league_expected": 0.7030264515319748
+    }
+  ],
+  "team": "CLE",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 32524,
+    "logloss_ours": 0.5291213135362974,
+    "logloss_nflfastr_xpass": 0.5371023765149977,
+    "logloss_constant": 0.6713109297534061
+  },
+  "granular": {
+    "n_snaps": 2339,
+    "family_rates": {
+      "run": {
+        "his": 0.43779392902949976,
+        "league_expected": 0.3647251926367372
+      },
+      "dropback": {
+        "his": 0.3753740914920906,
+        "league_expected": 0.42123389634596126
+      },
+      "pa": {
+        "his": 0.10816588285592134,
+        "league_expected": 0.11957859406661914
+      },
+      "screen": {
+        "his": 0.03591278324070116,
+        "league_expected": 0.045732233396851084
+      },
+      "rpo": {
+        "his": 0.04275331338178709,
+        "league_expected": 0.04873008355383138
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9618602666592384,
+        "his": 0.9454190341282421,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.4617635417381243,
+        "his": 1.4472188891948614,
+        "lambda": 30.0,
+        "n": 1017
+      },
+      "pass_depth": {
+        "league": 0.8695313263150923,
+        "his": 0.8659464399146487,
+        "lambda": 30.0,
+        "n": 947
+      },
+      "specific_play": {
+        "n": 2148,
+        "logloss_league": 2.08483056158497,
+        "logloss_his": 2.05105098471131,
+        "top1_his": 0.3505586592178771,
+        "top1_league": 0.34916201117318435,
+        "top3_his": 0.5949720670391061
+      }
+    },
+    "rpo_throw": {
+      "his": 0.25204728950403693,
+      "league": 0.31228373702422146,
+      "his_n": 100
+    }
+  },
+  "built_at": "2026-10-10T21:16:11",
+  "sklearn": "1.9.1",
+  "slug": "todd-monken",
+  "teams": [
+    "BAL",
+    "CLE"
+  ],
+  "stints": [
+    {
+      "season": 2024,
+      "team": "BAL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.espn.com/nfl/story/_/id/47754909/browns-hiring-todd-monken-new-coach"
+    },
+    {
+      "season": 2025,
+      "team": "BAL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.si.com/nfl/ravens/news/baltimore-ravens-todd-monken-accountability-questionable-play-calling"
+    },
+    {
+      "season": 2026,
+      "team": "CLE",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": "high",
+      "source": "https://www.foxsports.com/articles/nfl/browns-tab-travis-switzer-as-oc-mike-rutenberg-as-dc-and-byron-storer-as-special-teams-coordinator"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "BAL",
+      "CLE"
+    ],
+    "n_train": 266310,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "966867b01a24a8f7",
+    "seconds": {
+      "own": 0.9,
+      "shared": 11.1,
+      "shared_by": 1
+    }
+  }
+}

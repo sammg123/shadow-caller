@@ -1,0 +1,232 @@
+{
+  "caller": "Tanner Engstrand",
+  "seasons": [
+    2025
+  ],
+  "n_snaps": 1001,
+  "n_games": 17,
+  "alpha": 0.9,
+  "lambda": 30.0,
+  "q0": 0.4385614385614386,
+  "coefs": {
+    "intercept": {
+      "est": -0.31242075909140804,
+      "lo": -0.43163804771501413,
+      "hi": -0.1348133765048647,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.0064769926625381875,
+      "lo": -0.08570675396140555,
+      "hi": 0.055220427893820805,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.1473333294382059,
+      "lo": -0.3049164429701879,
+      "hi": 0.038546224360055684,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.07042696373780749,
+      "lo": -0.09884648763797291,
+      "hi": 0.2369572989976437,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": -0.0877705802229953,
+      "lo": -0.2052215682692273,
+      "hi": 0.03584472043008475,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.15432019720037563,
+      "lo": 0.02563971275577134,
+      "hi": 0.28280335759979,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": 0.10617464615026852,
+      "lo": -0.02172215841743393,
+      "hi": 0.20963156062305938,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.12131277000344673,
+      "lo": -0.01923228588425395,
+      "hi": 0.21039128045980246,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.038176999873719315,
+      "lo": -0.11650510993858872,
+      "hi": 0.03782627505003145,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.035278915231379195,
+      "lo": -0.02439391421043314,
+      "hi": 0.09583583985866433,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5206970961556457,
+    "habits": 0.5123245727904998,
+    "habits_plus_memory": 0.5111928812056882,
+    "nflfastr_xpass_reference": 0.5383339987860611
+  },
+  "dropback_rate": {
+    "actual": 0.6073926073926074,
+    "league_expected": 0.6658641384101768
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 411,
+      "actual": 0.5474452554744526,
+      "league_expected": 0.5722353712102193
+    },
+    {
+      "down": 2,
+      "n": 320,
+      "actual": 0.565625,
+      "league_expected": 0.6622580050268831
+    },
+    {
+      "down": 3,
+      "n": 229,
+      "actual": 0.7510917030567685,
+      "league_expected": 0.829896570486286
+    },
+    {
+      "down": 4,
+      "n": 41,
+      "actual": 0.7317073170731707,
+      "league_expected": 0.7163997251518228
+    }
+  ],
+  "team": "NYJ",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33501,
+    "logloss_ours": 0.5269905820183516,
+    "logloss_nflfastr_xpass": 0.5356457027210341,
+    "logloss_constant": 0.6720389724638256
+  },
+  "granular": {
+    "n_snaps": 1001,
+    "family_rates": {
+      "run": {
+        "his": 0.3096903096903097,
+        "league_expected": 0.30127327045671454
+      },
+      "dropback": {
+        "his": 0.4595404595404595,
+        "league_expected": 0.5002543065078626
+      },
+      "pa": {
+        "his": 0.1048951048951049,
+        "league_expected": 0.10101535469492594
+      },
+      "screen": {
+        "his": 0.03296703296703297,
+        "league_expected": 0.04635260620446817
+      },
+      "rpo": {
+        "his": 0.09290709290709291,
+        "league_expected": 0.05110446213602873
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0410828923994717,
+        "his": 1.0249593393320873,
+        "lambda": 10.0
+      },
+      "run_gap": {
+        "league": 1.316839990975532,
+        "his": 1.320257828671124,
+        "lambda": 100.0,
+        "n": 305
+      },
+      "pass_depth": {
+        "league": 0.7722887588903559,
+        "his": 0.7630817181980937,
+        "lambda": 30.0,
+        "n": 449
+      },
+      "specific_play": {
+        "n": 880,
+        "logloss_league": 1.9935225488711208,
+        "logloss_his": 1.9542013888950118,
+        "top1_his": 0.37272727272727274,
+        "top1_league": 0.3659090909090909,
+        "top3_his": 0.6488636363636363
+      }
+    },
+    "rpo_throw": {
+      "his": 0.14380843546124472,
+      "league": 0.3125176603560328,
+      "his_n": 93
+    }
+  },
+  "built_at": "2026-10-10T21:16:47",
+  "sklearn": "1.9.1",
+  "slug": "tanner-engstrand",
+  "teams": [
+    "NYJ"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "NYJ",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.foxnews.com/sports/jets-star-garrett-wilson-sounds-off-after-disappointing-play-calling-loss-broncos"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "NYJ"
+    ],
+    "n_train": 276147,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "744335e18a429103",
+    "seconds": {
+      "own": 0.4,
+      "shared": 9.5,
+      "shared_by": 3
+    }
+  }
+}

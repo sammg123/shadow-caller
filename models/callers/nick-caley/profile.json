@@ -1,0 +1,242 @@
+{
+  "caller": "Nick Caley",
+  "seasons": [
+    2025,
+    2026
+  ],
+  "n_snaps": 1460,
+  "n_games": 23,
+  "alpha": 0.2,
+  "lambda": 100.0,
+  "q0": 0.45,
+  "coefs": {
+    "intercept": {
+      "est": 0.058287893696281436,
+      "lo": -0.004118899692531978,
+      "hi": 0.12460837168309283,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": 0.022900027194046522,
+      "lo": -0.027548105720041325,
+      "hi": 0.06446482601790472,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": 0.035154522518429224,
+      "lo": -0.009652533667471831,
+      "hi": 0.08131014747687143,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": 0.08344257811195788,
+      "lo": -0.00012238919309851736,
+      "hi": 0.15908007017801692,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.027190081937014512,
+      "lo": -0.025744970038578573,
+      "hi": 0.06966887069086641,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.04338160668902534,
+      "lo": -0.004402907363268743,
+      "hi": 0.08598877113501877,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.08689066242799116,
+      "lo": -0.15296065092333058,
+      "hi": -0.020598746324157164,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": -0.09336973705323733,
+      "lo": -0.16528596484012106,
+      "hi": -0.02462252469186909,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.02150123061435083,
+      "lo": -0.05542377903642026,
+      "hi": 0.01716223554755299,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": 0.009403023637888188,
+      "lo": -0.005914325837000206,
+      "hi": 0.023169220736014334,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.4878667927218477,
+    "habits": 0.4875002506740319,
+    "habits_plus_memory": 0.48640647904805084,
+    "nflfastr_xpass_reference": 0.48722465018542566
+  },
+  "dropback_rate": {
+    "actual": 0.6143835616438356,
+    "league_expected": 0.5940293942958127
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 619,
+      "actual": 0.48303715670436187,
+      "league_expected": 0.49793097378885354
+    },
+    {
+      "down": 2,
+      "n": 498,
+      "actual": 0.6626506024096386,
+      "league_expected": 0.596390834313102
+    },
+    {
+      "down": 3,
+      "n": 315,
+      "actual": 0.8063492063492064,
+      "league_expected": 0.7854598117819517
+    },
+    {
+      "down": 4,
+      "n": 28,
+      "actual": 0.5,
+      "league_expected": 0.5228988106195248
+    }
+  ],
+  "team": "HOU",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33292,
+    "logloss_ours": 0.5283749817849255,
+    "logloss_nflfastr_xpass": 0.5371731749167165,
+    "logloss_constant": 0.6719903456261511
+  },
+  "granular": {
+    "n_snaps": 1460,
+    "family_rates": {
+      "run": {
+        "his": 0.37534246575342467,
+        "league_expected": 0.3684851315880133
+      },
+      "dropback": {
+        "his": 0.45,
+        "league_expected": 0.4255646955238356
+      },
+      "pa": {
+        "his": 0.13219178082191782,
+        "league_expected": 0.10701087003451111
+      },
+      "screen": {
+        "his": 0.023287671232876714,
+        "league_expected": 0.04746911246915313
+      },
+      "rpo": {
+        "his": 0.019178082191780823,
+        "league_expected": 0.05147019038448691
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 0.9126338216690316,
+        "his": 0.8918982112615903,
+        "lambda": 30.0
+      },
+      "run_gap": {
+        "league": 1.2343907823045555,
+        "his": 1.2059885572496931,
+        "lambda": 10.0,
+        "n": 544
+      },
+      "pass_depth": {
+        "league": 0.8445098532500264,
+        "his": 0.8448099358297629,
+        "lambda": 30.0,
+        "n": 760
+      },
+      "specific_play": {
+        "n": 1366,
+        "logloss_league": 1.8989925170107056,
+        "logloss_his": 1.869268389422075,
+        "top1_his": 0.4143484626647145,
+        "top1_league": 0.41142020497803805,
+        "top3_his": 0.6881405563689604
+      }
+    },
+    "rpo_throw": {
+      "his": 0.4007057150783742,
+      "league": 0.3116937161880982,
+      "his_n": 28
+    }
+  },
+  "built_at": "2026-10-10T21:17:01",
+  "sklearn": "1.9.1",
+  "slug": "nick-caley",
+  "teams": [
+    "HOU"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "HOU",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://www.click2houston.com/sports/2026/01/21/why-texans-offensive-coodinator-nick-caley-is-returning-as-play-caller-team-saw-growth-progress/"
+    },
+    {
+      "season": 2026,
+      "team": "HOU",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "OC",
+      "confidence": "high",
+      "source": "https://sports.yahoo.com/articles/texans-change-oc-0-3-130645758.html"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "HOU"
+    ],
+    "n_train": 275378,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "3ddbb254ad1020aa",
+    "seconds": {
+      "own": 0.5,
+      "shared": 13.0,
+      "shared_by": 1
+    }
+  }
+}

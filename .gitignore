@@ -15,7 +15,11 @@ data/shadow.duckdb*
 data/espn/*
 !data/espn/*_final.json
 data/logos/
-models/*.joblib
+# model binaries (tonight's and every caller's bundle) and the nflverse cache: rebuilt by build.py and
+# scripts/build_callers.py. Profiles and models/callers/index.json stay readable in git.
+models/**/*.joblib
+models/callers/.*
+cache/
 .DS_Store
 node_modules/
 test-results/

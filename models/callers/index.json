@@ -1,0 +1,2959 @@
+{
+  "built_at": "2026-10-10T21:17:51",
+  "table": "data/play_callers_2024_2026.csv",
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "sklearn": "1.9.1",
+  "counts": {
+    "built": 50,
+    "skipped": 9,
+    "failed": 0,
+    "not built": 0
+  },
+  "callers": [
+    {
+      "name": "Alex Van Pelt",
+      "slug": "alex-van-pelt",
+      "teams": [
+        "NE"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "NE",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.cbsnews.com/amp/boston/news/jerod-mayo-says-alex-van-pelt-will-keep-his-offensive-play-calling-duties"
+        }
+      ],
+      "status": "built",
+      "snaps": 1017,
+      "games": 17,
+      "logloss": {
+        "league": 0.544153147544632,
+        "his": 0.54425411349205
+      },
+      "specific_play": {
+        "league": 1.9873164007178403,
+        "his": 1.9782469425450797,
+        "top1": 0.3842746400885936,
+        "top3": 0.6489479512735327
+      },
+      "built_at": "2026-10-10T21:15:38",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 11.1,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Andy Reid",
+      "slug": "andy-reid",
+      "teams": [
+        "KC"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "KC",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.cbssports.com/nfl/news/redemption-for-matt-nagy-chiefs-offensive-coordinator-making-case-to-get-second-chance-as-head-coach"
+        },
+        {
+          "season": 2025,
+          "team": "KC",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.nbcsports.com/nfl/profootballtalk/rumor-mill/news/chiefs-finalize-deal-with-eric-bieniemy-to-return-as-their-oc"
+        },
+        {
+          "season": 2026,
+          "team": "KC",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.kctv5.com/2026/01/27/andy-reid-fired-up-eric-bieniemys-return-kansas-city"
+        }
+      ],
+      "status": "built",
+      "snaps": 2516,
+      "games": 41,
+      "logloss": {
+        "league": 0.5155256230820479,
+        "his": 0.5050877708037016
+      },
+      "specific_play": {
+        "league": 2.0479600794482153,
+        "his": 1.9949932676465831,
+        "top1": 0.36835222319093286,
+        "top3": 0.6316477768090671
+      },
+      "built_at": "2026-10-10T21:15:37",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 9.5,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Arthur Smith",
+      "slug": "arthur-smith",
+      "teams": [
+        "PIT"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "PIT",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://abc7ny.com/post/calls-plays-every-nfl-team-2024-what-know/15246862/"
+        },
+        {
+          "season": 2025,
+          "team": "PIT",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/steelers/onsi/news/blame-three-people-pittsburgh-steelers-embarrassment-browns"
+        }
+      ],
+      "status": "built",
+      "snaps": 2137,
+      "games": 36,
+      "logloss": {
+        "league": 0.5317112492028997,
+        "his": 0.531211625326265
+      },
+      "specific_play": {
+        "league": 2.0536907153579294,
+        "his": 2.0421252691845972,
+        "top1": 0.3527638190954774,
+        "top3": 0.6040201005025125
+      },
+      "built_at": "2026-10-10T21:16:36",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.6,
+        "shared": 10.0,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Ben Johnson",
+      "slug": "ben-johnson",
+      "teams": [
+        "CHI",
+        "DET"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "DET",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nfl.com/news/bears-coach-ben-johnson-leaving-juggernaut-lions-that-runway-has-been-built"
+        },
+        {
+          "season": 2025,
+          "team": "CHI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/bears/onsi/surprise-play-calls-ben-johnson-regrets-from-bears-loss-to-49ers"
+        },
+        {
+          "season": 2026,
+          "team": "CHI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.chicagobears.com/news/5-things-we-learned-from-bears-coach-ben-johnson-in-week-4-win-jets-2026"
+        }
+      ],
+      "status": "built",
+      "snaps": 2702,
+      "games": 41,
+      "logloss": {
+        "league": 0.6025914388182287,
+        "his": 0.593669798716149
+      },
+      "specific_play": {
+        "league": 2.1930360236999853,
+        "his": 2.147536163451536,
+        "top1": 0.2995681193561052,
+        "top3": 0.5571260306242638
+      },
+      "built_at": "2026-10-10T21:15:26",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.9,
+        "shared": 9.9,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Bo Hardegree",
+      "slug": "bo-hardegree",
+      "teams": [
+        "TEN"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "QB coach",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "TEN",
+          "first_week": 4,
+          "last_week": 22,
+          "role": "QB coach",
+          "confidence": "high",
+          "source": "https://www.cbssports.com/nfl/news/brian-callahan-gives-up-play-calling-duties-as-titans-look-to-dig-out-of-0-3-hole"
+        }
+      ],
+      "status": "built",
+      "snaps": 811,
+      "games": 14,
+      "logloss": {
+        "league": 0.4884923407166478,
+        "his": 0.488885769462688
+      },
+      "specific_play": {
+        "league": 2.0352667781883973,
+        "his": 2.02433654206149,
+        "top1": 0.350597609561753,
+        "top3": 0.6069057104913679
+      },
+      "built_at": "2026-10-10T21:16:47",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 10.7,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Bobby Slowik",
+      "slug": "bobby-slowik",
+      "teams": [
+        "HOU",
+        "MIA"
+      ],
+      "seasons": [
+        2024,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "HOU",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.cbssports.com/nfl/news/texans-fire-bobby-slowik-houston-offensive-coordinator-out-as-c-j-strouds-play-caller-after-two-seasons"
+        },
+        {
+          "season": 2026,
+          "team": "MIA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.miamidolphins.com/news/transcript-oc-bobby-slowik-press-conference-october-8"
+        }
+      ],
+      "status": "built",
+      "snaps": 1385,
+      "games": 23,
+      "logloss": {
+        "league": 0.5307504778283829,
+        "his": 0.5307102431799979
+      },
+      "specific_play": {
+        "league": 2.06031098070923,
+        "his": 2.055941544082696,
+        "top1": 0.321285140562249,
+        "top3": 0.6024096385542169
+      },
+      "built_at": "2026-10-10T21:17:12",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.6,
+        "shared": 11.9,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Brad Idzik",
+      "slug": "brad-idzik",
+      "teams": [
+        "CAR"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "CAR",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.panthers.com/news/brad-idzik-s-big-weekend-panthers-play-caller-new-dad"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 264,
+      "games": 4,
+      "reason": "Only 4 games (264 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Brian Callahan",
+      "slug": "brian-callahan",
+      "teams": [
+        "TEN"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "TEN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.tennesseetitans.com/news/titans-hc-brian-callahan-hands-off-play-calling-duties-to-qbs-coach-bo-hardegree"
+        },
+        {
+          "season": 2025,
+          "team": "TEN",
+          "first_week": 1,
+          "last_week": 3,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.tennesseetitans.com/news/titans-hc-brian-callahan-hands-off-play-calling-duties-to-qbs-coach-bo-hardegree"
+        }
+      ],
+      "status": "built",
+      "snaps": 1210,
+      "games": 20,
+      "logloss": {
+        "league": 0.5251399079795399,
+        "his": 0.5252729743711851
+      },
+      "specific_play": {
+        "league": 2.0140282952048985,
+        "his": 2.0152588604817745,
+        "top1": 0.3698630136986301,
+        "top3": 0.6136986301369863
+      },
+      "built_at": "2026-10-10T21:16:48",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 10.7,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Brian Daboll",
+      "slug": "brian-daboll",
+      "teams": [
+        "NYG",
+        "TEN"
+      ],
+      "seasons": [
+        2024,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "NYG",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://amp.nfl.com/news/giants-head-coach-brian-daboll-to-take-over-play-calling-role-in-2024-season"
+        },
+        {
+          "season": 2026,
+          "team": "TEN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nbcsports.com/nfl/profootballtalk/rumor-mill/news/robert-saleh-will-call-the-titans-defensive-plays"
+        }
+      ],
+      "status": "built",
+      "snaps": 1259,
+      "games": 21,
+      "logloss": {
+        "league": 0.5242752839711929,
+        "his": 0.5240837264389578
+      },
+      "specific_play": {
+        "league": 1.9501402801882504,
+        "his": 1.9420391657458576,
+        "top1": 0.41030042918454934,
+        "top3": 0.6506437768240343
+      },
+      "built_at": "2026-10-10T21:17:13",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.6,
+        "shared": 10.5,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Brian Fleury",
+      "slug": "brian-fleury",
+      "teams": [
+        "SEA"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "SEA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.seahawks.com/news/seahawks-offensive-coordinator-brian-fleury-vision-will-come-to-life-in-season-opener"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 234,
+      "games": 4,
+      "reason": "Only 4 games (234 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Brian Schottenheimer",
+      "slug": "brian-schottenheimer",
+      "teams": [
+        "DAL"
+      ],
+      "seasons": [
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "DAL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.yardbarker.com/nfl/articles/brian_schottenheimers_creative_play_mix_elevates_cowboys_attack/s1_17788_43990121"
+        },
+        {
+          "season": 2026,
+          "team": "DAL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://ran.joyn.de/sports/american-football/nfl/nfl-head-coaches-coordinators-general-manager-und-playcaller-in-der-saison2026-107921"
+        }
+      ],
+      "status": "built",
+      "snaps": 1406,
+      "games": 22,
+      "logloss": {
+        "league": 0.5288881292581726,
+        "his": 0.5228234142614054
+      },
+      "specific_play": {
+        "league": 1.958397752444434,
+        "his": 1.9548682081638507,
+        "top1": 0.38264150943396225,
+        "top3": 0.6626415094339623
+      },
+      "built_at": "2026-10-10T19:00:16",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.6,
+        "shared": 10.1,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Chip Kelly",
+      "slug": "chip-kelly",
+      "teams": [
+        "LV"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "LV",
+          "first_week": 1,
+          "last_week": 12,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.raiders.com/news/quick-hits-pete-carroll-addresses-chip-kelly-greg-olson-raiders-loss-to-browns"
+        }
+      ],
+      "status": "built",
+      "snaps": 637,
+      "games": 11,
+      "logloss": {
+        "league": 0.5495059462991514,
+        "his": 0.5509188582591907
+      },
+      "specific_play": {
+        "league": 1.921582156460755,
+        "his": 1.8907318346641533,
+        "top1": 0.4083044982698962,
+        "top3": 0.7058823529411765
+      },
+      "built_at": "2026-10-10T21:16:59",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 11.3,
+        "shared_by": 4
+      }
+    },
+    {
+      "name": "Dan Campbell",
+      "slug": "dan-campbell",
+      "teams": [
+        "DET"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "DET",
+          "first_week": 10,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/46912993/lions-offense-rolls-dan-campbell-takes-play-calling"
+        }
+      ],
+      "status": "built",
+      "snaps": 570,
+      "games": 9,
+      "logloss": {
+        "league": 0.5636301514434943,
+        "his": 0.5649963705713781
+      },
+      "specific_play": {
+        "league": 2.0584807130018725,
+        "his": 2.0216585174299135,
+        "top1": 0.3577981651376147,
+        "top3": 0.6128440366972477
+      },
+      "built_at": "2026-10-10T21:17:36",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 12.8,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Dave Canales",
+      "slug": "dave-canales",
+      "teams": [
+        "CAR"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "CAR",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/41018846/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-nathaniel-hackett"
+        },
+        {
+          "season": 2025,
+          "team": "CAR",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.panthers.com/news/inside-dave-canales-decision-to-turn-over-play-calling"
+        }
+      ],
+      "status": "built",
+      "snaps": 2038,
+      "games": 35,
+      "logloss": {
+        "league": 0.5464497162762745,
+        "his": 0.5430080371160824
+      },
+      "specific_play": {
+        "league": 1.99827186566912,
+        "his": 1.977386055545924,
+        "top1": 0.3703506907545165,
+        "top3": 0.6487778958554729
+      },
+      "built_at": "2026-10-10T21:16:47",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.7,
+        "shared": 11.0,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "David Blough",
+      "slug": "david-blough",
+      "teams": [
+        "WAS"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "WAS",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.thebanner.com/sports/commanders-nfl/commanders-coordinators-growing-pains-M46ZN3NTXVCZ5H6ILJC2S6KAHY/"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 258,
+      "games": 4,
+      "reason": "Only 4 games (258 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Davis Webb",
+      "slug": "davis-webb",
+      "teams": [
+        "DEN"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "DEN",
+          "first_week": 1,
+          "last_week": 4,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.tsn.ca/nfl/article/payton-taking-over-playcalling-duties-as-broncos-search-for-spark-on-offence-n1-50135033/"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 226,
+      "games": 4,
+      "reason": "Only 4 games (226 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Declan Doyle",
+      "slug": "declan-doyle",
+      "teams": [
+        "BAL"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "BAL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.baltimoreravens.com/news/declan-doyle-will-call-plays-from-booth-anthony-weaver-jesse-minter-sharing-sideline-duties"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 232,
+      "games": 4,
+      "reason": "Only 4 games (232 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Drew Petzing",
+      "slug": "drew-petzing",
+      "teams": [
+        "ARI",
+        "DET"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "ARI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.azcardinals.com/news/offensive-coordinator-drew-petzing-does-some-self-analysis"
+        },
+        {
+          "season": 2025,
+          "team": "ARI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/cardinals/news/arizona-cardinals-oc-gets-honest-questionable-final-play-call"
+        },
+        {
+          "season": 2026,
+          "team": "DET",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.detroitlions.com/news/goff-on-working-with-new-oc-petzing-it-s-been-awesome"
+        }
+      ],
+      "status": "built",
+      "snaps": 2361,
+      "games": 38,
+      "logloss": {
+        "league": 0.5373796248890861,
+        "his": 0.5296153176482181
+      },
+      "specific_play": {
+        "league": 2.0116534903698486,
+        "his": 1.993353016602537,
+        "top1": 0.35220994475138123,
+        "top3": 0.643646408839779
+      },
+      "built_at": "2026-10-10T21:15:59",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 10.2,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Frank Reich",
+      "slug": "frank-reich",
+      "teams": [
+        "NYJ"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "NYJ",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://nbcsports.com/nfl/profootballtalk/rumor-mill/news/jets-oc-frank-reich-defends-fourth-down-run-comfortable-and-confident-in-my-play-calls"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 224,
+      "games": 4,
+      "reason": "Only 4 games (224 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Greg Olson",
+      "slug": "greg-olson",
+      "teams": [
+        "LV"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "Interim OC (QB coach)",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "LV",
+          "first_week": 13,
+          "last_week": 22,
+          "role": "Interim OC (QB coach)",
+          "confidence": "high",
+          "source": "https://abc7news.com/post/did-raiders-offense-improve-first-game-post-chip-kelly/18234028/"
+        }
+      ],
+      "status": "built",
+      "snaps": 302,
+      "games": 6,
+      "logloss": {
+        "league": 0.5265321311939095,
+        "his": 0.5304916651884477
+      },
+      "specific_play": {
+        "league": 1.9840949207851555,
+        "his": 1.98512553058646,
+        "top1": 0.38461538461538464,
+        "top3": 0.6336996336996337
+      },
+      "built_at": "2026-10-10T21:16:59",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.2,
+        "shared": 11.3,
+        "shared_by": 4
+      }
+    },
+    {
+      "name": "Greg Roman",
+      "slug": "greg-roman",
+      "teams": [
+        "LAC"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "LAC",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.newstribune.com/news/2024/dec/06/roman-herbert-attempt-to-get-chargers-offense-on-track-in-game-against-chiefs/"
+        },
+        {
+          "season": 2025,
+          "team": "LAC",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nfl.com/news/jim-harbaugh-on-whether-greg-roman-is-right-play-caller-for-chargers-i-don-t-have-that-answer-right-now"
+        }
+      ],
+      "status": "built",
+      "snaps": 2185,
+      "games": 36,
+      "logloss": {
+        "league": 0.48394922155117254,
+        "his": 0.4752965489403483
+      },
+      "specific_play": {
+        "league": 1.9477995396536485,
+        "his": 1.9319359362614663,
+        "top1": 0.4057897409852717,
+        "top3": 0.6485525647536821
+      },
+      "built_at": "2026-10-10T21:16:37",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 11.2,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Joe Brady",
+      "slug": "joe-brady",
+      "teams": [
+        "BUF"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "BUF",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.buffalobills.com/news/bills-oc-joe-brady-explains-trick-play-rationale-hc-sean-mcdermott-provides-injury-updates-heading-into-week-5"
+        },
+        {
+          "season": 2025,
+          "team": "BUF",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/bills/onsi/joe-brady-stubborn-play-calls-cost-slumping-bills-two-weeks-in-a-row-jet-sweep-james-cook"
+        },
+        {
+          "season": 2026,
+          "team": "BUF",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.buffalobills.com/news/something-special-about-this-guy-why-pete-carmichael-waited-seven-years-to-get-back-with-joe-brady"
+        }
+      ],
+      "status": "built",
+      "snaps": 2625,
+      "games": 43,
+      "logloss": {
+        "league": 0.5151838990964248,
+        "his": 0.5116355127339505
+      },
+      "specific_play": {
+        "league": 2.0488687123046914,
+        "his": 2.0369763644545817,
+        "top1": 0.3735088440970794,
+        "top3": 0.6157959687371453
+      },
+      "built_at": "2026-10-10T21:15:26",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.9,
+        "shared": 10.5,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "John Morton",
+      "slug": "john-morton",
+      "teams": [
+        "DET"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "DET",
+          "first_week": 1,
+          "last_week": 9,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/lions/onsi/news/dan-campbell-possibly-took-over-play-calling-john-morton"
+        }
+      ],
+      "status": "built",
+      "snaps": 480,
+      "games": 8,
+      "logloss": {
+        "league": 0.553960871757733,
+        "his": 0.534218167166361
+      },
+      "specific_play": {
+        "league": 2.1370480968051884,
+        "his": 2.0988167121359256,
+        "top1": 0.30196936542669583,
+        "top3": 0.5864332603938731
+      },
+      "built_at": "2026-10-10T21:17:36",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 12.8,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Josh Grizzard",
+      "slug": "josh-grizzard",
+      "teams": [
+        "TB"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "TB",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nfl.com/news/buccaneers-fire-josh-grizzard-one-season-offensive-coordinator"
+        }
+      ],
+      "status": "built",
+      "snaps": 1057,
+      "games": 17,
+      "logloss": {
+        "league": 0.49240361513371395,
+        "his": 0.4916126363137639
+      },
+      "specific_play": {
+        "league": 2.0208955216821853,
+        "his": 1.985203097736829,
+        "top1": 0.37474332648870634,
+        "top3": 0.6293634496919918
+      },
+      "built_at": "2026-10-10T21:17:25",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 12.0,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Josh McDaniels",
+      "slug": "josh-mcdaniels",
+      "teams": [
+        "NE"
+      ],
+      "seasons": [
+        2025,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "NE",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.cbssports.com/nfl/news/why-patriots-qb-drake-maye-feels-more-comfortable-with-josh-mcdaniels-as-play-caller"
+        },
+        {
+          "season": 2026,
+          "team": "NE",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.patriots.com/news/after-further-review-drake-maye-film-breakdown-defense-outlasts-josh-allen-and-quick-hit-film-notes-from-week-4-win-vs-bills"
+        }
+      ],
+      "status": "built",
+      "snaps": 1513,
+      "games": 25,
+      "logloss": {
+        "league": 0.5019356954504364,
+        "his": 0.4994086026143138
+      },
+      "specific_play": {
+        "league": 1.940727180029198,
+        "his": 1.9201415253026488,
+        "top1": 0.3928304705003734,
+        "top3": 0.6773711725168036
+      },
+      "built_at": "2026-10-10T21:15:38",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.5,
+        "shared": 11.1,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Kellen Moore",
+      "slug": "kellen-moore",
+      "teams": [
+        "NO",
+        "PHI"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "PHI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nbcsportsphiladelphia.com/nfl/philadelphia-eagles/kellen-moore-blames-himself-for-jalen-hurts-safety-divisional-round-vs-rams/643836"
+        },
+        {
+          "season": 2025,
+          "team": "NO",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://nbcsports.com/nfl/profootballtalk/rumor-mill/news/kellen-moore-will-call-plays-for-saints-in-2025"
+        },
+        {
+          "season": 2026,
+          "team": "NO",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/49711157/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-mike-mccarthy"
+        }
+      ],
+      "status": "built",
+      "snaps": 2684,
+      "games": 42,
+      "logloss": {
+        "league": 0.5276438047736881,
+        "his": 0.5234763356573315
+      },
+      "specific_play": {
+        "league": 1.984679295291678,
+        "his": 1.9747043439693168,
+        "top1": 0.39675456389452335,
+        "top3": 0.6466531440162272
+      },
+      "built_at": "2026-10-10T21:15:26",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.9,
+        "shared": 10.4,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Ken Dorsey",
+      "slug": "ken-dorsey",
+      "teams": [
+        "CLE"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "CLE",
+          "first_week": 8,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.clevelandbrowns.com/news/ken-dorsey-discusses-calling-plays-for-the-browns"
+        }
+      ],
+      "status": "built",
+      "snaps": 671,
+      "games": 10,
+      "logloss": {
+        "league": 0.48656809473128376,
+        "his": 0.48501435162872164
+      },
+      "specific_play": {
+        "league": 1.9482010262366054,
+        "his": 1.9439729871143672,
+        "top1": 0.3904,
+        "top3": 0.6464
+      },
+      "built_at": "2026-10-10T21:16:59",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 11.0,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Kevin O'Connell",
+      "slug": "kevin-oconnell",
+      "teams": [
+        "MIN"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "MIN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.vikings.com/news/kevin-o-connell-sam-darnold-play-calls-meetings-2024"
+        },
+        {
+          "season": 2025,
+          "team": "MIN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.vikings.com/news/kevin-oconnell-jj-mccarthy-packers-takeaways-seahawks"
+        },
+        {
+          "season": 2026,
+          "team": "MIN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.vikings.com/news/kevin-o-connell-bears-week-2-win-unsung-heroes-run-game-defense"
+        }
+      ],
+      "status": "built",
+      "snaps": 2270,
+      "games": 39,
+      "logloss": {
+        "league": 0.5086029089889227,
+        "his": 0.4980893445487008
+      },
+      "specific_play": {
+        "league": 2.047117039619216,
+        "his": 2.040835934233874,
+        "top1": 0.3584905660377358,
+        "top3": 0.5955491049830672
+      },
+      "built_at": "2026-10-10T21:16:26",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 11.9,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Kevin Patullo",
+      "slug": "kevin-patullo",
+      "teams": [
+        "PHI"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "PHI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.inquirer.com/eagles/kevin-patullo-out-eagles-offensive-coordinator-20260113.html"
+        }
+      ],
+      "status": "built",
+      "snaps": 1064,
+      "games": 18,
+      "logloss": {
+        "league": 0.564780180026161,
+        "his": 0.5573205575467524
+      },
+      "specific_play": {
+        "league": 2.0795228562720314,
+        "his": 2.07705208590076,
+        "top1": 0.34791454730417093,
+        "top3": 0.602238046795524
+      },
+      "built_at": "2026-10-10T21:17:23",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 10.3,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Kevin Stefanski",
+      "slug": "kevin-stefanski",
+      "teams": [
+        "CLE"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "CLE",
+          "first_week": 1,
+          "last_week": 7,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/41960286/browns-start-qb-jameis-winston-vs-ravens-sources-confirm"
+        },
+        {
+          "season": 2025,
+          "team": "CLE",
+          "first_week": 1,
+          "last_week": 9,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.clevelandbrowns.com/news/kevin-stefanski-to-assume-play-calling-duties-again-in-2025"
+        }
+      ],
+      "status": "built",
+      "snaps": 950,
+      "games": 15,
+      "logloss": {
+        "league": 0.5047647849001163,
+        "his": 0.49854037777056964
+      },
+      "specific_play": {
+        "league": 1.9623429676104036,
+        "his": 1.9640432586881484,
+        "top1": 0.3856812933025404,
+        "top3": 0.6720554272517321
+      },
+      "built_at": "2026-10-10T21:17:00",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 11.0,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Klay Kubiak",
+      "slug": "klay-kubiak",
+      "teams": [
+        "SF"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "Pass game specialist",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "SF",
+          "first_week": 18,
+          "last_week": 22,
+          "role": "Pass game specialist",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/49ers/news/one-area-where-49ers-hc-kyle-shanahan-must-improve-on-01jgz2jw61x5"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 71,
+      "games": 1,
+      "reason": "Only 1 game (71 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Kliff Kingsbury",
+      "slug": "kliff-kingsbury",
+      "teams": [
+        "WAS"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "WAS",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.foxsports.com/stories/nfl/washington-dynamic-duo-jayden-daniels-kliff-kingsbury"
+        },
+        {
+          "season": 2025,
+          "team": "WAS",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nbcwashington.com/news/sports/changes-coming-for-commanders-coaching-staff-but-there-is-no-scapegoat/4036734/"
+        }
+      ],
+      "status": "built",
+      "snaps": 2272,
+      "games": 37,
+      "logloss": {
+        "league": 0.5283923705634045,
+        "his": 0.5220303086146932
+      },
+      "specific_play": {
+        "league": 2.1201143568693026,
+        "his": 2.104822868221168,
+        "top1": 0.33661902414982753,
+        "top3": 0.5672745194677181
+      },
+      "built_at": "2026-10-10T21:16:23",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.7,
+        "shared": 10.8,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Klint Kubiak",
+      "slug": "klint-kubiak",
+      "teams": [
+        "LV",
+        "NO",
+        "SEA"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "NO",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.neworleanssaints.com/news/darren-rizzi-talks-stepping-in-as-interim-head-coach-coaching-roles-rest-of-season-wwl-coaches-show-five-takeways"
+        },
+        {
+          "season": 2025,
+          "team": "SEA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.espn.in/nfl/story/_/id/43576493/source-seahawks-hiring-klint-kubiak-offensive-coordinator"
+        },
+        {
+          "season": 2026,
+          "team": "LV",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://abc7.com/post/evaluating-3-0-raiders-strong-offensive-start/19903877/"
+        }
+      ],
+      "status": "built",
+      "snaps": 2461,
+      "games": 41,
+      "logloss": {
+        "league": 0.5548175838322693,
+        "his": 0.5440925162023229
+      },
+      "specific_play": {
+        "league": 2.0277384080518797,
+        "his": 2.000854319732988,
+        "top1": 0.3606346483704974,
+        "top3": 0.6123499142367067
+      },
+      "built_at": "2026-10-10T21:15:48",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 10.6,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Kyle Shanahan",
+      "slug": "kyle-shanahan",
+      "teams": [
+        "SF"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "SF",
+          "first_week": 1,
+          "last_week": 17,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://nbcsportsbayarea.com/nfl/san-francisco-49ers/klay-kubiak-kyle-shanahan-play-calling-duties/1819012"
+        },
+        {
+          "season": 2025,
+          "team": "SF",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.49ers.com/news/john-lynch-kyle-shanahan-talk-offseason-coaching-changes"
+        },
+        {
+          "season": 2026,
+          "team": "SF",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://sfstandard.com/2026/09/27/brock-purdy-kyle-shanahan-49ers-offense/"
+        }
+      ],
+      "status": "built",
+      "snaps": 2338,
+      "games": 39,
+      "logloss": {
+        "league": 0.5171806773655938,
+        "his": 0.5164478589763382
+      },
+      "specific_play": {
+        "league": 1.9339665132818995,
+        "his": 1.9034004543132874,
+        "top1": 0.37734983952315454,
+        "top3": 0.657496561210454
+      },
+      "built_at": "2026-10-10T21:16:12",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.6,
+        "shared": 10.6,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Liam Coen",
+      "slug": "liam-coen",
+      "teams": [
+        "JAX",
+        "TB"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "TB",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/41018846/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-nathaniel-hackett"
+        },
+        {
+          "season": 2025,
+          "team": "JAX",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.news4jax.com/sports/2026/01/11/trevor-lawrence-has-to-live-with-costly-turnovers-in-jaguars-playoff-loss-to-bills/"
+        },
+        {
+          "season": 2026,
+          "team": "JAX",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.inquirer.com/eagles/nfl-week-5-jaguars-london-offensive-coordinator-grant-udinski-cb-west-20261008.html"
+        }
+      ],
+      "status": "built",
+      "snaps": 2468,
+      "games": 40,
+      "logloss": {
+        "league": 0.5214436061612193,
+        "his": 0.5177100709356812
+      },
+      "specific_play": {
+        "league": 2.027759292995616,
+        "his": 2.0132037117652692,
+        "top1": 0.34299516908212563,
+        "top3": 0.6271409749670619
+      },
+      "built_at": "2026-10-10T21:15:47",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.7,
+        "shared": 9.4,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Luke Getsy",
+      "slug": "luke-getsy",
+      "teams": [
+        "LV"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "LV",
+          "first_week": 1,
+          "last_week": 9,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://africa.espn.com/nfl/story/_/id/42096623/pierce-raiders-clean-playcalling-offensive-issues"
+        }
+      ],
+      "status": "built",
+      "snaps": 542,
+      "games": 9,
+      "logloss": {
+        "league": 0.5079843960861126,
+        "his": 0.5071287681544308
+      },
+      "specific_play": {
+        "league": 1.8610202735106705,
+        "his": 1.8483438053054335,
+        "top1": 0.43824701195219123,
+        "top3": 0.6872509960159362
+      },
+      "built_at": "2026-10-10T21:17:00",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 11.3,
+        "shared_by": 4
+      }
+    },
+    {
+      "name": "Matt LaFleur",
+      "slug": "matt-lafleur",
+      "teams": [
+        "GB"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "GB",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.packers.com/news/from-idea-to-play-call-to-touchdown-sep-1-2025"
+        },
+        {
+          "season": 2025,
+          "team": "GB",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/46945762/packers-coach-matt-lafleur-not-giving-playcalling-duties-push-do-better"
+        },
+        {
+          "season": 2026,
+          "team": "GB",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.packers.com/news/rapid-reaction-there-s-plenty-of-blame-to-go-around-week-3-2026"
+        }
+      ],
+      "status": "built",
+      "snaps": 2368,
+      "games": 40,
+      "logloss": {
+        "league": 0.5428477522476696,
+        "his": 0.5355927717408424
+      },
+      "specific_play": {
+        "league": 2.1115935774987062,
+        "his": 2.0859313887217845,
+        "top1": 0.3398663697104677,
+        "top3": 0.5928730512249443
+      },
+      "built_at": "2026-10-10T21:16:01",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.9,
+        "shared": 12.8,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Matt Nagy",
+      "slug": "matt-nagy",
+      "teams": [
+        "NYG"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "NYG",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.giants.com/news/quotes-10-8-dc-dennard-wilson-oc-matt-nagy-asst-hc-stc-chris-horton"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 238,
+      "games": 4,
+      "reason": "Only 4 games (238 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Mike Kafka",
+      "slug": "mike-kafka",
+      "teams": [
+        "NYG"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "Interim HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "NYG",
+          "first_week": 1,
+          "last_week": 10,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/46157629/mike-kafka-giants-play-caller-brian-daboll-says"
+        },
+        {
+          "season": 2025,
+          "team": "NYG",
+          "first_week": 11,
+          "last_week": 22,
+          "role": "Interim HC",
+          "confidence": "high",
+          "source": "https://www.giants.com/news/te-coach-tim-kelly-to-serve-as-giants-new-oc-mike-kafka-to-continue-calling-plays"
+        }
+      ],
+      "status": "built",
+      "snaps": 1075,
+      "games": 17,
+      "logloss": {
+        "league": 0.5584660943954339,
+        "his": 0.5585670454040255
+      },
+      "specific_play": {
+        "league": 2.1725065928193064,
+        "his": 2.1280841773378687,
+        "top1": 0.30020491803278687,
+        "top3": 0.5727459016393442
+      },
+      "built_at": "2026-10-10T21:17:25",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 12.3,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Mike LaFleur",
+      "slug": "mike-lafleur",
+      "teams": [
+        "ARI",
+        "LA"
+      ],
+      "seasons": [
+        2024,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "LA",
+          "first_week": 18,
+          "last_week": 18,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://nbclosangeles.com/news/sports/shorthanded-rams-lose-to-seahawks-30-25-fall-to-fourth-seed-in-the-nfc-playoffs/3594852"
+        },
+        {
+          "season": 2026,
+          "team": "ARI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.azcardinals.com/news/why-mike-lafleur-is-a-dream-for-cardinals-wide-receivers"
+        }
+      ],
+      "status": "built",
+      "snaps": 324,
+      "games": 5,
+      "logloss": {
+        "league": 0.469007093991238,
+        "his": 0.4675536033286553
+      },
+      "specific_play": {
+        "league": 1.8028467393241252,
+        "his": 1.7988598598519006,
+        "top1": 0.44660194174757284,
+        "top3": 0.7087378640776699
+      },
+      "built_at": "2026-10-10T21:17:51",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.2,
+        "shared": 13.0,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Mike McCarthy",
+      "slug": "mike-mccarthy",
+      "teams": [
+        "DAL",
+        "PIT"
+      ],
+      "seasons": [
+        2024,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "DAL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.dallascowboys.com/news/schotty-on-calling-plays-vs-rams-it-was-fun"
+        },
+        {
+          "season": 2026,
+          "team": "PIT",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.baltimoreravens.com/news/todd-monken-mike-tomlin-trade-barbs-browns-first-win-mike-mccarthy-aaron-rodgers-play-calling-woes-bengals-strong-defense-week-2-around-afc-north"
+        }
+      ],
+      "status": "built",
+      "snaps": 1340,
+      "games": 21,
+      "logloss": {
+        "league": 0.5394130679284735,
+        "his": 0.5411926135510098
+      },
+      "specific_play": {
+        "league": 2.0033341357177847,
+        "his": 2.002192962689627,
+        "top1": 0.3570300157977883,
+        "top3": 0.6627172195892576
+      },
+      "built_at": "2026-10-10T21:17:12",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 11.4,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Mike McDaniel",
+      "slug": "mike-mcdaniel",
+      "teams": [
+        "LAC",
+        "MIA"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "MIA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://abc7ny.com/post/calls-plays-every-nfl-team-2024-what-know/15246862/"
+        },
+        {
+          "season": 2025,
+          "team": "MIA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://abc7ny.com/post/calls-plays-every-nfl-team-2025-what-know/17777918/"
+        },
+        {
+          "season": 2026,
+          "team": "LAC",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.chargers.com/news/what-mike-mcdaniel-hopes-to-see-from-chargers-offense-in-preseason-opener"
+        }
+      ],
+      "status": "built",
+      "snaps": 2255,
+      "games": 38,
+      "logloss": {
+        "league": 0.5496723906649232,
+        "his": 0.5462868132182693
+      },
+      "specific_play": {
+        "league": 2.1516632791335044,
+        "his": 2.1189572923535436,
+        "top1": 0.3045346062052506,
+        "top3": 0.5689737470167064
+      },
+      "built_at": "2026-10-10T21:16:36",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 11.4,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Nathaniel Hackett",
+      "slug": "nathaniel-hackett",
+      "teams": [
+        "NYJ"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "NYJ",
+          "first_week": 1,
+          "last_week": 5,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.cbssports.com/nfl/news/nathaniel-hackett-demoted-jets-announce-new-offensive-play-caller-aaron-rodgers-on-board-with-decision"
+        }
+      ],
+      "status": "built",
+      "snaps": 314,
+      "games": 5,
+      "logloss": {
+        "league": 0.5278898819898391,
+        "his": 0.5150226501449886
+      },
+      "specific_play": {
+        "league": 2.0094386433371887,
+        "his": 2.005321692910662,
+        "top1": 0.363013698630137,
+        "top3": 0.6472602739726028
+      },
+      "built_at": "2026-10-10T21:16:47",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.2,
+        "shared": 9.5,
+        "shared_by": 3
+      }
+    },
+    {
+      "name": "Nick Caley",
+      "slug": "nick-caley",
+      "teams": [
+        "HOU"
+      ],
+      "seasons": [
+        2025,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "HOU",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.click2houston.com/sports/2026/01/21/why-texans-offensive-coodinator-nick-caley-is-returning-as-play-caller-team-saw-growth-progress/"
+        },
+        {
+          "season": 2026,
+          "team": "HOU",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://sports.yahoo.com/articles/texans-change-oc-0-3-130645758.html"
+        }
+      ],
+      "status": "built",
+      "snaps": 1460,
+      "games": 23,
+      "logloss": {
+        "league": 0.4878667927218477,
+        "his": 0.48640647904805084
+      },
+      "specific_play": {
+        "league": 1.8989925170107056,
+        "his": 1.869268389422075,
+        "top1": 0.4143484626647145,
+        "top3": 0.6881405563689604
+      },
+      "built_at": "2026-10-10T21:17:01",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.5,
+        "shared": 13.0,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Press Taylor",
+      "slug": "press-taylor",
+      "teams": [
+        "JAX"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "JAX",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://profootballrumors.com/2024/09/doug-pederson-not-considering-reclaiming-jaguars-play-calling-role"
+        }
+      ],
+      "status": "built",
+      "snaps": 984,
+      "games": 17,
+      "logloss": {
+        "league": 0.47706533846001115,
+        "his": 0.477287144395054
+      },
+      "specific_play": {
+        "league": 1.9248479865314587,
+        "his": 1.922182167142508,
+        "top1": 0.3947939262472885,
+        "top3": 0.6681127982646421
+      },
+      "built_at": "2026-10-10T21:17:49",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 12.1,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Ryan Grubb",
+      "slug": "ryan-grubb",
+      "teams": [
+        "SEA"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "SEA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://seahawks.com/news/seahawks-offensive-coordinator-ryan-grubb-lack-of-run-game-is-100-percent-on-me"
+        }
+      ],
+      "status": "built",
+      "snaps": 1015,
+      "games": 17,
+      "logloss": {
+        "league": 0.5110883801741001,
+        "his": 0.5086494733479295
+      },
+      "specific_play": {
+        "league": 1.9891235179674298,
+        "his": 1.988816455435464,
+        "top1": 0.37351991388589884,
+        "top3": 0.6490850376749193
+      },
+      "built_at": "2026-10-10T21:17:37",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 11.8,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Scott Turner",
+      "slug": "scott-turner",
+      "teams": [
+        "LV"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "Interim OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "LV",
+          "first_week": 10,
+          "last_week": 22,
+          "role": "Interim OC",
+          "confidence": "high",
+          "source": "https://africa.espn.com/nfl/story/_/id/43669619/new-york-jets-add-scott-turner-charles-london-staff"
+        }
+      ],
+      "status": "built",
+      "snaps": 507,
+      "games": 8,
+      "logloss": {
+        "league": 0.48950444360357387,
+        "his": 0.47679524421894115
+      },
+      "specific_play": {
+        "league": 1.7539139930801493,
+        "his": 1.7152246950562733,
+        "top1": 0.4745762711864407,
+        "top3": 0.7436440677966102
+      },
+      "built_at": "2026-10-10T21:17:00",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 11.3,
+        "shared_by": 4
+      }
+    },
+    {
+      "name": "Sean Mannion",
+      "slug": "sean-mannion",
+      "teams": [
+        "PHI"
+      ],
+      "seasons": [
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2026,
+          "team": "PHI",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nbcsportsphiladelphia.com/nfl/philadelphia-eagles/sean-mannion-andy-dalton-play-call-interception-in-endzone/755732/"
+        }
+      ],
+      "status": "skipped",
+      "snaps": 228,
+      "games": 4,
+      "reason": "Only 4 games (228 snaps) in the data; a model needs at least 5 games and 200 snaps."
+    },
+    {
+      "name": "Sean McVay",
+      "slug": "sean-mcvay",
+      "teams": [
+        "LA"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "low",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "LA",
+          "first_week": 1,
+          "last_week": 17,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.therams.com/news/from-the-podium-sean-mcvay-and-jimmy-garoppolo-discuss-week-18-loss-to-seahawks-upcoming-playoff-matchup"
+        },
+        {
+          "season": 2024,
+          "team": "LA",
+          "first_week": 19,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://arizonasports.com/nfl/arizona-cardinals/mike-lafleur-call-plays/3610387"
+        },
+        {
+          "season": 2025,
+          "team": "LA",
+          "first_week": 1,
+          "last_week": 13,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/rams/onsi/los-angeles-why-mike-lafleur-primed-next-coaching-opportunity"
+        },
+        {
+          "season": 2025,
+          "team": "LA",
+          "first_week": 14,
+          "last_week": 14,
+          "role": "HC (shared with OC)",
+          "confidence": "low",
+          "source": "https://www.therams.com/news/what-was-more-cool-was-watching-the-guys-do-their-thing-and-play-at-a-really-high-clip-mike-lafleur-talks-offensive-staff-stepping-up-for-ill-sean-mcvay-in-week-14"
+        },
+        {
+          "season": 2025,
+          "team": "LA",
+          "first_week": 15,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://arizonasports.com/nfl/arizona-cardinals/mike-lafleur-call-plays/3610387"
+        },
+        {
+          "season": 2026,
+          "team": "LA",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.therams.com/news/top-takeaways-from-sean-mcvay-s-post-2026-nfl-combine-press-conference-finalized-coaching-staff-pending-free-agents-and-more"
+        }
+      ],
+      "status": "built",
+      "snaps": 2606,
+      "games": 42,
+      "logloss": {
+        "league": 0.5513290633752456,
+        "his": 0.5519633845557405
+      },
+      "specific_play": {
+        "league": 1.970923198121108,
+        "his": 1.9301570639059988,
+        "top1": 0.36450457620374055,
+        "top3": 0.6609629924393156
+      },
+      "built_at": "2026-10-10T21:15:37",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 9.9,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Sean Payton",
+      "slug": "sean-payton",
+      "teams": [
+        "DEN"
+      ],
+      "seasons": [
+        2024,
+        2025
+      ],
+      "role": "HC",
+      "confidence": "medium",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "DEN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/49035483/broncos-first-year-offensive-coordinator-davis-webb-playcaller-sean-payton"
+        },
+        {
+          "season": 2025,
+          "team": "DEN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.denver7.com/sports/broncos/broncos-fire-offensive-coordinator-joe-lombardi-days-after-afc-championship-loss"
+        },
+        {
+          "season": 2026,
+          "team": "DEN",
+          "first_week": 5,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "medium",
+          "source": "https://www.denver7.com/sports/broncos/sean-payton-reclaims-broncos-play-calling-duties-in-a-bid-to-jolt-a-sputtering-offense"
+        }
+      ],
+      "status": "built",
+      "snaps": 2276,
+      "games": 37,
+      "logloss": {
+        "league": 0.511627985360889,
+        "his": 0.5040315803416189
+      },
+      "specific_play": {
+        "league": 2.0745447786934634,
+        "his": 2.0642957652299456,
+        "top1": 0.3432203389830508,
+        "top3": 0.6148775894538606
+      },
+      "built_at": "2026-10-10T21:16:25",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.8,
+        "shared": 12.7,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Shane Steichen",
+      "slug": "shane-steichen",
+      "teams": [
+        "IND"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "IND",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://abc13.com/post/calls-plays-every-nfl-team-2024-what-know/15246862/"
+        },
+        {
+          "season": 2025,
+          "team": "IND",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.colts.com/news/5-colts-things-shane-steichen-addresses-late-game-offensive-slide-issues-pop-up-on-first-down-rushes-evaluating-charvarius-ward-sr-and-sauce-gardner-in-week-12-loss-to-kansas-city-chiefs"
+        },
+        {
+          "season": 2026,
+          "team": "IND",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.tsn.ca/nfl/article/colts-steichen-planned-to-go-for-win-on-fourth-and-8-if-coverage-was-right-n1-49996583/"
+        }
+      ],
+      "status": "built",
+      "snaps": 2284,
+      "games": 38,
+      "logloss": {
+        "league": 0.542998726243699,
+        "his": 0.5323602578330979
+      },
+      "specific_play": {
+        "league": 2.0875201025422485,
+        "his": 2.0755982075180452,
+        "top1": 0.3519034354688951,
+        "top3": 0.5919220055710307
+      },
+      "built_at": "2026-10-10T21:16:13",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.9,
+        "shared": 10.9,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Shane Waldron",
+      "slug": "shane-waldron",
+      "teams": [
+        "CHI"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "CHI",
+          "first_week": 1,
+          "last_week": 10,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.nbcchicago.com/news/sports/nfl/chicago-bears/shane-waldron-fired-as-chicago-bears-offensive-coordinator-reports/3598528/"
+        }
+      ],
+      "status": "built",
+      "snaps": 564,
+      "games": 9,
+      "logloss": {
+        "league": 0.5120182845699366,
+        "his": 0.5125270416381329
+      },
+      "specific_play": {
+        "league": 2.114664944623089,
+        "his": 2.110276512559431,
+        "top1": 0.31274900398406374,
+        "top3": 0.5896414342629482
+      },
+      "built_at": "2026-10-10T21:17:37",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.2,
+        "shared": 12.0,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Tanner Engstrand",
+      "slug": "tanner-engstrand",
+      "teams": [
+        "NYJ"
+      ],
+      "seasons": [
+        2025
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "NYJ",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.foxnews.com/sports/jets-star-garrett-wilson-sounds-off-after-disappointing-play-calling-loss-broncos"
+        }
+      ],
+      "status": "built",
+      "snaps": 1001,
+      "games": 17,
+      "logloss": {
+        "league": 0.5206970961556457,
+        "his": 0.5111928812056882
+      },
+      "specific_play": {
+        "league": 1.9935225488711208,
+        "his": 1.9542013888950118,
+        "top1": 0.37272727272727274,
+        "top3": 0.6488636363636363
+      },
+      "built_at": "2026-10-10T21:16:47",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 9.5,
+        "shared_by": 3
+      }
+    },
+    {
+      "name": "Thomas Brown",
+      "slug": "thomas-brown",
+      "teams": [
+        "CHI"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "Interim HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "CHI",
+          "first_week": 11,
+          "last_week": 13,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.shawlocal.com/bears/2024/12/02/heres-what-chicago-bears-interim-head-coach-thomas-brown-said-monday/"
+        },
+        {
+          "season": 2024,
+          "team": "CHI",
+          "first_week": 14,
+          "last_week": 22,
+          "role": "Interim HC",
+          "confidence": "high",
+          "source": "https://www.nbcsports.com/nfl/profootballtalk/rumor-mill/news/bears-promote-chris-beatty-to-interim-offensive-coordinator"
+        }
+      ],
+      "status": "built",
+      "snaps": 485,
+      "games": 8,
+      "logloss": {
+        "league": 0.46883374960688046,
+        "his": 0.47039494223760914
+      },
+      "specific_play": {
+        "league": 2.018806663330293,
+        "his": 1.9755068457153055,
+        "top1": 0.3427230046948357,
+        "top3": 0.6314553990610329
+      },
+      "built_at": "2026-10-10T21:17:37",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.2,
+        "shared": 12.0,
+        "shared_by": 2
+      }
+    },
+    {
+      "name": "Todd Downing",
+      "slug": "todd-downing",
+      "teams": [
+        "NYJ"
+      ],
+      "seasons": [
+        2024
+      ],
+      "role": "Pass game coord/QB coach",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "NYJ",
+          "first_week": 6,
+          "last_week": 22,
+          "role": "Pass game coord/QB coach",
+          "confidence": "high",
+          "source": "https://www.ksat.com/sports/2024/10/10/jets-interim-jeff-ulbrich-replaces-nathaniel-hackett-with-todd-downing-as-the-offenses-play-caller/"
+        }
+      ],
+      "status": "built",
+      "snaps": 691,
+      "games": 12,
+      "logloss": {
+        "league": 0.5347227282191537,
+        "his": 0.5172316989222957
+      },
+      "specific_play": {
+        "league": 2.106940493097976,
+        "his": 2.092746204080371,
+        "top1": 0.31546707503828486,
+        "top3": 0.5926493108728943
+      },
+      "built_at": "2026-10-10T21:16:48",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.4,
+        "shared": 9.5,
+        "shared_by": 3
+      }
+    },
+    {
+      "name": "Todd Monken",
+      "slug": "todd-monken",
+      "teams": [
+        "BAL",
+        "CLE"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "BAL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/47754909/browns-hiring-todd-monken-new-coach"
+        },
+        {
+          "season": 2025,
+          "team": "BAL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/ravens/news/baltimore-ravens-todd-monken-accountability-questionable-play-calling"
+        },
+        {
+          "season": 2026,
+          "team": "CLE",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.foxsports.com/articles/nfl/browns-tab-travis-switzer-as-oc-mike-rutenberg-as-dc-and-byron-storer-as-special-teams-coordinator"
+        }
+      ],
+      "status": "built",
+      "snaps": 2339,
+      "games": 40,
+      "logloss": {
+        "league": 0.5175867660898886,
+        "his": 0.5019486443296179
+      },
+      "specific_play": {
+        "league": 2.08483056158497,
+        "his": 2.05105098471131,
+        "top1": 0.3505586592178771,
+        "top3": 0.5949720670391061
+      },
+      "built_at": "2026-10-10T21:16:11",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.9,
+        "shared": 11.1,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Tommy Rees",
+      "slug": "tommy-rees",
+      "teams": [
+        "ATL",
+        "CLE"
+      ],
+      "seasons": [
+        2025,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2025,
+          "team": "CLE",
+          "first_week": 10,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.clevelandbrowns.com/news/offensive-coordinator-tommy-rees-to-call-plays-for-the-browns-team-coverage"
+        },
+        {
+          "season": 2026,
+          "team": "ATL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.atlantafalcons.com/news/tommy-rees-offensive-play-caller-kevin-stefanski"
+        }
+      ],
+      "status": "built",
+      "snaps": 758,
+      "games": 13,
+      "logloss": {
+        "league": 0.4988565237653571,
+        "his": 0.5006652515638591
+      },
+      "specific_play": {
+        "league": 2.0625856496654293,
+        "his": 2.0491859491489817,
+        "top1": 0.3695652173913043,
+        "top3": 0.5869565217391305
+      },
+      "built_at": "2026-10-10T21:17:51",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.3,
+        "shared": 13.2,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Zac Robinson",
+      "slug": "zac-robinson",
+      "teams": [
+        "ATL",
+        "TB"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "OC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "ATL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.espn.com/nfl/story/_/id/41018846/nfl-playcallers-32-teams-mike-mcdaniel-sean-mcvay-nathaniel-hackett"
+        },
+        {
+          "season": 2025,
+          "team": "ATL",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.atlantafalcons.com/news/zac-robinson-call-plays-sideline-week-4-change"
+        },
+        {
+          "season": 2026,
+          "team": "TB",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "OC",
+          "confidence": "high",
+          "source": "https://www.buccaneers.com/news/bucs-get-three-receivers-going-in-zac-robinson-play-calling-debut"
+        }
+      ],
+      "status": "built",
+      "snaps": 2402,
+      "games": 39,
+      "logloss": {
+        "league": 0.49991315871625575,
+        "his": 0.49230164619952527
+      },
+      "specific_play": {
+        "league": 2.0662457613543808,
+        "his": 2.0104820529586123,
+        "top1": 0.31588209414870216,
+        "top3": 0.6000879894412671
+      },
+      "built_at": "2026-10-10T21:15:49",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.6,
+        "shared": 10.2,
+        "shared_by": 1
+      }
+    },
+    {
+      "name": "Zac Taylor",
+      "slug": "zac-taylor",
+      "teams": [
+        "CIN"
+      ],
+      "seasons": [
+        2024,
+        2025,
+        2026
+      ],
+      "role": "HC",
+      "confidence": "high",
+      "stints": [
+        {
+          "season": 2024,
+          "team": "CIN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/bengals/gameday/zac-taylor-explains-late-playcalling-in-bengals-overtime-loss-to-ravens-01j9hsjsdmmw"
+        },
+        {
+          "season": 2025,
+          "team": "CIN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.si.com/nfl/bengals/news/zac-taylor-explains-why-continue-call-plays-despite-bengals-struggles-offense"
+        },
+        {
+          "season": 2026,
+          "team": "CIN",
+          "first_week": 1,
+          "last_week": 22,
+          "role": "HC",
+          "confidence": "high",
+          "source": "https://www.tsn.ca/nfl/article/breaking-down-every-teams-playcaller-and-strategy-ahead-of-nfl-kickoff-next-week-on-tsn/"
+        }
+      ],
+      "status": "built",
+      "snaps": 2357,
+      "games": 38,
+      "logloss": {
+        "league": 0.5169810624363947,
+        "his": 0.5023389223955134
+      },
+      "specific_play": {
+        "league": 1.930118503197866,
+        "his": 1.8743517385178268,
+        "top1": 0.387038703870387,
+        "top3": 0.6944194419441945
+      },
+      "built_at": "2026-10-10T21:16:01",
+      "up_to_date": true,
+      "seconds": {
+        "own": 0.7,
+        "shared": 11.1,
+        "shared_by": 1
+      }
+    }
+  ]
+}

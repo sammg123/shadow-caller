@@ -1,0 +1,242 @@
+{
+  "caller": "Brian Schottenheimer",
+  "seasons": [
+    2025,
+    2026
+  ],
+  "n_snaps": 1406,
+  "n_games": 22,
+  "alpha": 0.1,
+  "lambda": 10.0,
+  "q0": 0.5106685633001422,
+  "coefs": {
+    "intercept": {
+      "est": 0.3492208175412709,
+      "lo": 0.14482182566383617,
+      "hi": 0.5269110151902903,
+      "label": "Overall lean",
+      "group": "habit"
+    },
+    "early_down": {
+      "est": -0.3500483915566649,
+      "lo": -0.5517869482804875,
+      "hi": -0.16433538532783118,
+      "label": "Early downs (1st/2nd)",
+      "group": "habit"
+    },
+    "third_long": {
+      "est": -0.1567480810924682,
+      "lo": -0.41691747613062685,
+      "hi": 0.08547045360043978,
+      "label": "3rd & 4+",
+      "group": "habit"
+    },
+    "trailing9": {
+      "est": -0.011149354170767789,
+      "lo": -0.1688802401600812,
+      "hi": 0.14913550050934013,
+      "label": "Trailing by 9+",
+      "group": "habit"
+    },
+    "red_zone": {
+      "est": 0.07528034731418208,
+      "lo": -0.17073340373931117,
+      "hi": 0.30105056906703753,
+      "label": "Red zone",
+      "group": "habit"
+    },
+    "dq": {
+      "est": 0.18476738296334924,
+      "lo": -0.039698619444596586,
+      "hi": 0.3690173269485904,
+      "label": "Value gap (what's been working)",
+      "group": "memory"
+    },
+    "last": {
+      "est": -0.4287920689756545,
+      "lo": -0.5447488363910448,
+      "hi": -0.29885197011301756,
+      "label": "Repeat last call (stickiness)",
+      "group": "memory"
+    },
+    "last_fail": {
+      "est": 0.18262034621014406,
+      "lo": -0.06702936037772385,
+      "hi": 0.39525374628610555,
+      "label": "After a failed play",
+      "group": "memory"
+    },
+    "explosive_prev": {
+      "est": -0.2714813620438496,
+      "lo": -0.49607003466304556,
+      "hi": -0.023617501517171353,
+      "label": "After a 20+ yard gain",
+      "group": "memory"
+    },
+    "sack_prev": {
+      "est": -0.10753693688631777,
+      "lo": -0.32899422432819725,
+      "hi": 0.11572878939852471,
+      "label": "After a sack",
+      "group": "memory"
+    }
+  },
+  "cv_logloss": {
+    "league_baseline": 0.5288881292581726,
+    "habits": 0.5288563275033822,
+    "habits_plus_memory": 0.5228234142614054,
+    "nflfastr_xpass_reference": 0.5283002002549059
+  },
+  "dropback_rate": {
+    "actual": 0.6330014224751067,
+    "league_expected": 0.6324187637502918
+  },
+  "by_down": [
+    {
+      "down": 1,
+      "n": 640,
+      "actual": 0.5125,
+      "league_expected": 0.5439889161048822
+    },
+    {
+      "down": 2,
+      "n": 464,
+      "actual": 0.6573275862068966,
+      "league_expected": 0.6401101180057568
+    },
+    {
+      "down": 3,
+      "n": 264,
+      "actual": 0.8598484848484849,
+      "league_expected": 0.8253211589045788
+    },
+    {
+      "down": 4,
+      "n": 38,
+      "actual": 0.7894736842105263,
+      "league_expected": 0.687684074218572
+    }
+  ],
+  "team": "DAL",
+  "stage1_check": {
+    "test_season": 2025,
+    "n": 33401,
+    "logloss_ours": 0.5267817625779824,
+    "logloss_nflfastr_xpass": 0.5354508496025102,
+    "logloss_constant": 0.6721973788841601
+  },
+  "granular": {
+    "n_snaps": 1406,
+    "family_rates": {
+      "run": {
+        "his": 0.3314366998577525,
+        "league_expected": 0.33551050467966476
+      },
+      "dropback": {
+        "his": 0.4473684210526316,
+        "league_expected": 0.447238111286808
+      },
+      "pa": {
+        "his": 0.14580369843527738,
+        "league_expected": 0.12284493549884772
+      },
+      "screen": {
+        "his": 0.02702702702702703,
+        "league_expected": 0.04286258370065073
+      },
+      "rpo": {
+        "his": 0.04836415362731152,
+        "league_expected": 0.051543864834028716
+      }
+    },
+    "cv": {
+      "family": {
+        "league": 1.0242742675175727,
+        "his": 1.023551947825541,
+        "lambda": 100.0
+      },
+      "run_gap": {
+        "league": 1.2584957983635587,
+        "his": 1.2473474302747596,
+        "lambda": 30.0,
+        "n": 462
+      },
+      "pass_depth": {
+        "league": 0.8105392735955688,
+        "his": 0.809223177439454,
+        "lambda": 10.0,
+        "n": 757
+      },
+      "specific_play": {
+        "n": 1325,
+        "logloss_league": 1.958397752444434,
+        "logloss_his": 1.9548682081638507,
+        "top1_his": 0.38264150943396225,
+        "top1_league": 0.379622641509434,
+        "top3_his": 0.6626415094339623
+      }
+    },
+    "rpo_throw": {
+      "his": 0.2752887219581992,
+      "league": 0.3112703766160764,
+      "his_n": 68
+    }
+  },
+  "built_at": "2026-10-10T19:00:16",
+  "sklearn": "1.9.1",
+  "slug": "brian-schottenheimer",
+  "teams": [
+    "DAL"
+  ],
+  "stints": [
+    {
+      "season": 2025,
+      "team": "DAL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": null,
+      "source": "https://www.yardbarker.com/nfl/articles/brian_schottenheimers_creative_play_mix_elevates_cowboys_attack/s1_17788_43990121"
+    },
+    {
+      "season": 2026,
+      "team": "DAL",
+      "first_week": 1,
+      "last_week": 22,
+      "role": "HC",
+      "confidence": null,
+      "source": "https://ran.joyn.de/sports/american-football/nfl/nfl-head-coaches-coordinators-general-manager-und-playcaller-in-der-saison2026-107921"
+    }
+  ],
+  "baseline": {
+    "excluded_teams": [
+      "DAL"
+    ],
+    "n_train": 274943,
+    "note": "Trained on every team except these, in every season: none of his snaps."
+  },
+  "data": {
+    "source": "nflverse",
+    "pulled_at": "2026-10-10T18:46:35",
+    "seasons": [
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ]
+  },
+  "build": {
+    "version": 1,
+    "fingerprint": "649bf16bb2c2b1c3",
+    "seconds": {
+      "own": 0.6,
+      "shared": 10.1,
+      "shared_by": 1
+    }
+  }
+}
