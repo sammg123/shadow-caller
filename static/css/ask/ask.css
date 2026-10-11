@@ -1,0 +1,236 @@
+/* The analyst panel (static/js/ask/; docs/design/analyst-ui.md; restructure-v2.md 7 item 4). Structure and token
+   references only, so it is the neutral world's look as it stands; Under the Lights skins it in
+   ask-under-the-lights.css beside this file (every rule there is scoped to that world, so it is inert in any other).
+   One panel, two layouts:
+     .sc-ask[data-layout="slide"]     the GameCast's Ask slide-out: a drawer fixed at the viewport's left edge, hidden
+                                      until the top bar's Ask key opens it (ui/view-keys.js's Ask key)
+     .sc-ask[data-layout="embedded"]  the Model Report's full chat, as tall as the window under the report's ribbon
+   Inside both: the head (title, status, Close), the status note, then the body: the intro (while the conversation is
+   empty; in a wide embedded panel, beside it always), the conversation (it scrolls) and the desk (the box and its
+   key). Hooks: view.js's header comment. */
+
+.sc-ask {
+  --sc-ask-w: min(26rem, 100vw);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+  font-family: var(--sc-font-text);
+  font-size: var(--sc-size-m);
+  line-height: var(--sc-leading-body);
+}
+.sc-ask[hidden] { display: none; }
+/* Explicit rows: a hidden note must not move the body into the note's auto row (the face would stop filling). */
+.sc-ask-head { grid-row: 1; }
+.sc-ask-note { grid-row: 2; }
+.sc-ask-body { grid-row: 3; }
+
+/* ---------------------------------------------------------------- the two layouts */
+.sc-ask[data-layout="slide"] {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 800;
+  width: var(--sc-ask-w);
+  border-inline-end: var(--sc-border-w) solid var(--sc-rule-strong);
+  box-shadow: 2px 0 18px color-mix(in srgb, var(--sc-ink) 16%, transparent);
+}
+.sc-ask[data-layout="embedded"] {
+  container: sc-ask / inline-size;
+  height: clamp(30rem, calc(100dvh - var(--rp-ribbon-h, 0px) - 2 * var(--sc-space-5)), 64rem);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-l);
+  scroll-margin-top: calc(var(--rp-ribbon-h, 0px) + var(--sc-space-4));
+}
+
+/* ---------------------------------------------------------------- the head and the status */
+.sc-ask-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-2) var(--sc-space-3);
+  padding: var(--sc-space-3) var(--sc-space-4);
+  border-bottom: var(--sc-border-w) solid var(--sc-rule);
+}
+.sc-ask-title {
+  margin-inline-end: auto;
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.sc-ask-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  white-space: nowrap;
+}
+/* The lamp beside the word: good (ready), warn (warming up, busy, answering), bad (not ready, offline). */
+.sc-ask-state[data-tone="good"] .sc-ask-lamp { background: var(--sc-good); }
+.sc-ask-state[data-tone="warn"] .sc-ask-lamp { background: var(--sc-warn); }
+.sc-ask-state[data-tone="bad"] .sc-ask-lamp { background: var(--sc-bad); }
+.sc-ask-close { flex: none; }
+.sc-ask-note {
+  padding: var(--sc-space-2) var(--sc-space-4);
+  border-bottom: var(--sc-border-w) solid var(--sc-rule);
+  background: var(--sc-surface-2);
+  font-size: var(--sc-size-s);
+}
+
+/* ---------------------------------------------------------------- the body: intro or conversation, then the desk */
+.sc-ask-body {
+  display: grid;
+  grid-template-areas: "main" "desk";
+  grid-template-rows: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+.sc-ask-intro,
+.sc-ask-face {
+  grid-area: main;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sc-ask-desk { grid-area: desk; }
+/* Until the first question the intro has the room; then the conversation does. */
+.sc-ask[data-empty="true"] .sc-ask-face,
+.sc-ask[data-empty="false"] .sc-ask-intro,
+.sc-ask[data-empty="false"] .sc-ask-empty { display: none; }
+
+/* ---------------------------------------------------------------- the intro */
+.sc-ask-intro {
+  display: grid;
+  align-content: start;
+  gap: var(--sc-space-3);
+  padding: var(--sc-space-4);
+}
+.sc-ask-lead { font-weight: var(--sc-weight-strong); }
+.sc-ask-facts {
+  display: grid;
+  gap: var(--sc-space-1);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-s);
+}
+.sc-ask-try {
+  margin-top: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.sc-ask-suggestions { display: grid; gap: var(--sc-space-2); }
+.sc-ask-suggestion {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+  line-height: var(--sc-leading-tight);
+  text-align: start;
+}
+.sc-ask-suggestion:hover:not(:disabled) { border-color: var(--sc-ink); }
+.sc-ask-suggestion:disabled { color: var(--sc-ink-muted); }
+
+/* ---------------------------------------------------------------- the conversation */
+.sc-ask-face { padding: var(--sc-space-2) var(--sc-space-4); }
+.sc-ask-face:focus-visible { outline-offset: -3px; }
+.sc-ask-empty { padding-block: var(--sc-space-3); color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.sc-ask-log { display: grid; }
+.sc-ask-turn {
+  display: grid;
+  gap: var(--sc-space-2);
+  padding-block: var(--sc-space-3);
+}
+.sc-ask-turn + .sc-ask-turn { border-top: 1px solid var(--sc-rule); }
+.sc-ask-q { max-width: 60ch; font-weight: var(--sc-weight-strong); line-height: var(--sc-leading-tight); }
+.sc-ask-a { display: grid; justify-items: start; gap: var(--sc-space-2); min-width: 0; }
+/* The answer is text with its own line breaks and short hyphen bullets (analyst.md 4). */
+.sc-ask-text { max-width: 60ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sc-ask-line,
+.sc-ask-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sc-space-2);
+}
+/* A lamp sits on its words' first line, however many lines they wrap to. */
+:is(.sc-ask-line, .sc-ask-error) > .sc-lamp { margin-top: calc((1lh - 0.625rem) / 2); }
+.sc-ask-line { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.sc-ask-line-lamp { background: var(--sc-warn); }
+.sc-ask-error-lamp { background: var(--sc-bad); }
+.sc-ask-stopped { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.sc-ask-cites { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); }
+.sc-ask-cite {
+  min-height: 2rem;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+  font-weight: var(--sc-weight-strong);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sc-ask-cite:hover { border-color: var(--sc-ink); }
+
+/* ---------------------------------------------------------------- the desk: the box and its key */
+.sc-ask-desk {
+  display: grid;
+  gap: var(--sc-space-1);
+  padding: var(--sc-space-3) var(--sc-space-4);
+  border-top: var(--sc-border-w) solid var(--sc-rule);
+}
+.sc-ask-row { display: flex; align-items: flex-end; gap: var(--sc-space-2); }
+.sc-ask-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 2.75rem;
+  max-height: 9.5em;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-m);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  line-height: var(--sc-leading-body);
+  resize: none;
+  field-sizing: content;
+}
+.sc-ask-input::placeholder { color: var(--sc-ink-muted); opacity: 1; }
+/* As wide as "Enter Ask", so the box keeps its width when the key says Stop. */
+.sc-ask-send { flex: none; justify-content: center; min-width: 6.5rem; }
+.sc-ask-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--sc-space-3);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+}
+.sc-ask-count { font-variant-numeric: tabular-nums; }
+
+/* ---------------------------------------------------------------- a wide embedded chat: the intro beside it */
+@container sc-ask (min-width: 56rem) {
+  .sc-ask-body {
+    grid-template-areas: "main side" "desk side";
+    grid-template-columns: minmax(0, 3fr) minmax(17rem, 2fr);
+  }
+  .sc-ask[data-empty] .sc-ask-intro {
+    display: grid;
+    grid-area: side;
+    border-inline-start: var(--sc-border-w) solid var(--sc-rule);
+  }
+  .sc-ask[data-empty] .sc-ask-face { display: block; }
+}
+
+/* ---------------------------------------------------------------- touch */
+@media (pointer: coarse) {
+  .sc-ask-cite { min-height: 2.75rem; }
+}

@@ -1,0 +1,263 @@
+/* Under the Lights: the analyst panel (static/js/ask/; docs/design/analyst-ui.md; restructure-v2.md 7 item 4). The
+   stadium's own hardware, built from its three materials (DESIGN.md): a steel cabinet with a painted plate on top
+   ("ASK THE ANALYST", a lamp and the analyst's state beside it, the Esc key), an LED face where the conversation reads
+   like a captioning board (his question in amber, the analyst's answer in warm white, the tool at work as a quiet
+   line beside an amber lamp, each cited play an LED key in amber), and the desk under it: an LED input with an amber
+   caret and the Enter key. On the GameCast it is the control-room drawer's successor: it runs out on rails from the
+   left wall between the top bar and the lower ribbon, never over the video board or the band, and while it is out the
+   camera keeps the play clear of it (--sc-field-safe-left). On the Model Report it is one more board, as tall as the
+   window under the ribbon. Flat hardware: no shadow (the focus ring's gutter is layout.css's), no glass, no gradient
+   but the LED pixel grid (--uls-led-face); steel never fades or bounces; nothing glows.
+   It sits beside the plain sheet rather than under css/worlds/ (a world's folder holds only sheets a page registers,
+   uls-world.test.mjs): every rule is scoped to :root[data-world="under-the-lights"], so a page can link it whatever
+   world it opens in. */
+
+:root[data-world="under-the-lights"] {
+  /* The drawer's width: 360 px at 1440, 480 px at 1920 (the old drawer's proportions, a little narrower). */
+  --uls-ask-w: calc(clamp(360px, 25vw, 480px) * var(--uls-hud-scale));
+}
+
+/* ---------------------------------------------------------------- the cabinet: steel, an 8 px frame round the face */
+:where(:root[data-world="under-the-lights"]) .sc-ask {
+  padding: 0 var(--uls-frame) var(--uls-frame);
+  border: 0;
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel);
+  box-shadow: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-regular) var(--sc-size-m) / var(--sc-leading-body) var(--sc-font-text);
+}
+/* The drawer hangs from the top bar's lower edge to the lower ribbon's upper edge, flush with the left wall; its open
+   side carries a steel edge, as the control-room drawer's did. */
+:where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="slide"] {
+  inset: calc(2 * var(--uls-ribbon-h)) auto calc(var(--uls-lower-h) + var(--uls-band-gap) + var(--uls-band-h)) 0;
+  z-index: 9;
+  width: var(--uls-ask-w);
+  border-radius: 0;
+  border-inline-end: 1px solid var(--uls-steel-edge);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="embedded"] {
+  border-radius: var(--sc-radius-m);
+}
+
+/* ---------------------------------------------------------------- the plate: title, the analyst's state, Esc */
+:where(:root[data-world="under-the-lights"]) .sc-ask-head {
+  gap: var(--sc-space-1) var(--sc-space-3);
+  min-height: calc(var(--uls-plate-h) + 12px);
+  margin-inline: calc(-1 * var(--uls-frame));
+  padding: 4px var(--sc-space-2) 4px var(--sc-space-3);
+  border: 0;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-bottom: 1px solid var(--uls-steel-seam);
+  background: var(--uls-steel-raised);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-title {
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-state {
+  gap: 6px;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-state:not([data-tone="idle"]) { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-ask-state[data-tone="good"] .sc-ask-lamp {
+  background: var(--uls-lamp-green);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-state[data-tone="warn"] .sc-ask-lamp {
+  background: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-state[data-tone="bad"] .sc-ask-lamp {
+  background: var(--uls-tally-red);
+}
+/* Esc: a key sized to the plate, its window printing the key. */
+:where(:root[data-world="under-the-lights"]) .sc-ask .sc-ask-close {
+  min-height: calc(var(--uls-plate-h) + 4px);
+  padding-inline-end: var(--sc-space-2);
+  font-size: var(--sc-size-xs);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask .sc-ask-close .sc-key-cap {
+  height: var(--uls-plate-h);
+  font-size: var(--sc-size-s);
+}
+
+/* The analyst's state in words, when there is something to say: an LED strip under the plate. Not ready and
+   offline light it warm white; warming up and busy are dimmer news. */
+:where(:root[data-world="under-the-lights"]) .sc-ask-note {
+  margin-top: var(--uls-frame);
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: 0;
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.3 var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask:is([data-status="warming"], [data-status="busy"],
+  [data-status="answering"]) .sc-ask-note {
+  color: var(--sc-ink-muted);
+}
+
+/* ---------------------------------------------------------------- the LED face: intro or conversation */
+:where(:root[data-world="under-the-lights"]) .sc-ask-body {
+  gap: var(--uls-frame);
+  padding-top: var(--uls-frame);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-ask-intro, .sc-ask-face) {
+  padding: var(--uls-face-pad);
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-lead {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-m) / 1.25 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-facts {
+  gap: 6px;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-regular) var(--uls-size-body) / 1.3 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-ask-try, .sc-ask-line, .sc-ask-stopped, .sc-ask-empty) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* The suggestions: rows of the board, each a button; the row under the pointer takes the board's 2 px warm-white
+   frame and lights its words amber (DESIGN.md "Video board", States). */
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestions { gap: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestions > li + li {
+  border-top: 1px solid var(--uls-steel-seam);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestion {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sc-space-2);
+  min-height: var(--uls-key-h);
+  padding: var(--sc-space-2);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-m) / 1.2 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestion::before {
+  content: "›" / "";
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestion:hover:not(:disabled) {
+  outline: 2px solid var(--sc-ink);
+  outline-offset: -2px;
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestion:disabled { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-ask-suggestion:disabled::before { color: var(--uls-segment-unlit); }
+
+/* The conversation: his question in amber, the analyst's answer in warm white, both sentence case (the Caps Rule
+   keeps plates and keys in caps; this is copy). A seam between turns. */
+:where(:root[data-world="under-the-lights"]) .sc-ask-turn { gap: 6px; }
+:where(:root[data-world="under-the-lights"]) .sc-ask-turn:first-child { padding-top: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-ask-turn + .sc-ask-turn {
+  border-top: 1px solid var(--uls-steel-seam);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-q {
+  color: var(--uls-led-amber);
+  font: var(--sc-weight-strong) var(--sc-size-m) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-text {
+  color: var(--sc-ink);
+  font: var(--sc-weight-regular) var(--sc-size-m) / var(--sc-leading-body) var(--sc-font-text);
+  letter-spacing: 0.01em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-line { gap: 6px; }
+:where(:root[data-world="under-the-lights"]) :is(.sc-ask-line, .sc-ask-error) > .sc-lamp {
+  margin-top: calc((1lh - var(--uls-lamp)) / 2);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-line-lamp { background: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-ask-error {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-body) / 1.3 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-error-lamp { background: var(--uls-tally-red); }
+/* A cited play: an LED key reading the scoreboard's clock in amber; pressing it shows the play. */
+:where(:root[data-world="under-the-lights"]) .sc-ask-cites { gap: 6px; margin-top: 2px; }
+:where(:root[data-world="under-the-lights"]) .sc-ask-cite {
+  display: inline-flex;
+  align-items: center;
+  min-height: calc(var(--uls-key-h) - 10px);
+  padding: 0 var(--sc-space-2);
+  border: 1px solid var(--uls-steel-frame);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-panel);
+  color: var(--uls-led-amber);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-cite:hover { border-color: var(--sc-ink); color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-ask-cite:active { background: var(--uls-steel); }
+:where(:root[data-world="under-the-lights"]) .sc-ask .sc-ask-retry { min-height: calc(var(--uls-key-h) - 8px); }
+
+/* ---------------------------------------------------------------- the desk: the LED input and the Enter key */
+:where(:root[data-world="under-the-lights"]) .sc-ask-desk {
+  gap: 6px;
+  padding: 0;
+  border: 0;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-input {
+  min-height: var(--uls-key-h);
+  padding: 8px var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--uls-steel-frame);
+  border-radius: var(--sc-radius-s);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  caret-color: var(--uls-led-amber);
+  font: var(--sc-weight-regular) var(--sc-size-m) / 1.3 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-input::placeholder { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-ask .sc-ask-send {
+  min-width: calc(2.5 * var(--uls-key-h));
+  min-height: var(--uls-key-h);
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-hint {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.2 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-ask-count { color: var(--uls-led-amber); }
+
+/* ---------------------------------------------------------------- the Model Report, wide: the intro beside it */
+@container sc-ask (min-width: 56rem) {
+  :where(:root[data-world="under-the-lights"]) .sc-ask[data-empty] .sc-ask-intro { border-inline-start: 0; }
+}
+
+/* ---------------------------------------------------------------- the stadium: the play stays clear of the drawer */
+@media (min-width: 1200px) and (min-height: 640px) {
+  :root[data-world="under-the-lights"][data-ask="open"] #app[data-layout="uls"] {
+    --sc-field-safe-left: calc(var(--uls-ask-w) + var(--uls-stack-gap));
+  }
+}
+/* One column (phones, small or short windows): the drawer is a sheet over the whole screen. */
+@media (max-width: 1199px), (max-height: 639px) {
+  :where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="slide"] {
+    inset: 0;
+    z-index: 60;
+    width: auto;
+    border-inline-end: 0;
+  }
+}
+
+/* ---------------------------------------------------------------- motion: out on its rails, once */
+@keyframes uls-ask-rail { from { transform: translateX(-100%); } }
+:where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="slide"][data-open="true"] {
+  animation: uls-ask-rail 240ms var(--sc-ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="slide"][data-open="true"] { animation: none; }
+}
+:where(:root[data-world="under-the-lights"][data-motion="reduced"]) .sc-ask[data-layout="slide"][data-open="true"] {
+  animation: none;
+}
