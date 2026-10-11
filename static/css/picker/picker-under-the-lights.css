@@ -1,0 +1,277 @@
+/* Under the Lights: the game picker (static/js/picker/picker.js; docs/design/game-picker.md 3; DESIGN.md "Keys, lamps
+   and LED inputs", "Control-room drawer"). A steel cabinet drops from its key under the top bar: a caption plate, the
+   team selector and the pasted-link field as LED inputs, then the season as racks, a painted plate per week over an
+   LED face listing its games (LIVE beside a tally-red lamp with the quarter and clock, scores in amber, finals in dim
+   LED, kickoffs in warm white, whose calls a game can shadow in dim LED). The chosen game's two sides are lamp
+   switches on raised steel and Open is the wide key, lit amber once a side is picked. Flat hardware: no shadow but the
+   focus gutter, no gradient but the LED pixel grid, no glow, no tween. Keys and lamps are the world's (masthead.css).
+   Its home is css/worlds/under-the-lights/picker/picker.css, listed in the world's css (theme/worlds/under-the-lights/
+   index.js); it waits here until that wiring lands, because every stylesheet in the world's folder must be one a
+   page loads (uls-world.test.mjs). Every rule is scoped to the world, so it is inert anywhere else. */
+
+/* ---------------------------------------------------------------- the cabinet */
+:where(:root[data-world="under-the-lights"]) .sc-picker-panel {
+  gap: 0;
+  width: min(calc(600px * var(--uls-hud-scale)), calc(100vw - 2 * var(--sc-gutter)));
+  max-height: calc(100vh - var(--uls-ribbon-h) - var(--sc-space-6));
+  padding: 0 var(--uls-frame) var(--uls-frame);
+  border: 0;
+  border-top: var(--uls-light-catch) solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-head {
+  min-height: calc(var(--uls-plate-h) + var(--sc-space-3));
+  padding-block: var(--sc-space-2);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-title, .sc-picker-chosen-title) {
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- LED inputs on the steel */
+:where(:root[data-world="under-the-lights"]) .sc-picker-tools { padding-block-end: var(--sc-space-3); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-label {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-select, .sc-picker-input) {
+  min-height: var(--uls-key-h);
+  border: 2px solid var(--uls-steel-frame);
+  border-radius: 0;
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  caret-color: var(--uls-led-amber);
+  font: var(--sc-weight-strong) var(--uls-size-body) / 1 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-input::placeholder { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-input[aria-invalid="true"] { border-color: var(--uls-tally-red); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-help {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / var(--sc-leading-body) var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-error {
+  color: var(--uls-tally-red);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / var(--sc-leading-body) var(--sc-font-text);
+}
+
+/* ---------------------------------------------------------------- the status strip: a lamp and its words */
+:where(:root[data-world="under-the-lights"]) .sc-picker-status {
+  margin-block-end: var(--sc-space-2);
+  padding: var(--sc-space-2) var(--sc-space-3);
+  background: var(--uls-led-face);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.25 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-status .sc-lamp { background: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-status[data-tone="error"] { color: var(--uls-tally-red); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-status[data-tone="error"] .sc-lamp { background: var(--uls-tally-red); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-empty {
+  padding: var(--sc-space-3);
+  background: var(--uls-led-face);
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--uls-size-body) / 1.2 var(--sc-font-text);
+}
+
+/* ---------------------------------------------------------------- racks: a painted plate per week over its LED face */
+:where(:root[data-world="under-the-lights"]) .sc-picker-list { gap: var(--uls-band-gap); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-week { border: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-picker-week-head {
+  align-items: center;
+  min-height: var(--uls-plate-h);
+  padding: 0 var(--sc-space-3);
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+  list-style: none;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-week-head::-webkit-details-marker { display: none; }
+/* The plate's switch: + to open the rack, a true minus once it is out. */
+:where(:root[data-world="under-the-lights"]) .sc-picker-week-head::before {
+  content: "+" / "";
+  width: 1ch;
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-week[open] > .sc-picker-week-head::before { content: "\2212" / ""; }
+/* This week: an amber lamp on its plate, beside the words that say so. */
+:where(:root[data-world="under-the-lights"]) .sc-picker-week[data-current="true"] .sc-picker-week-title::before {
+  content: "";
+  display: inline-block;
+  width: var(--uls-lamp);
+  height: var(--uls-lamp);
+  margin-inline-end: var(--sc-space-2);
+  border-radius: 50%;
+  background: var(--uls-led-amber);
+  vertical-align: 0.1em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-week-detail {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-week-note {
+  padding: var(--sc-space-2) var(--sc-space-3) 0;
+  background: var(--uls-led-face);
+  color: var(--uls-line-to-gain);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.25 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-games {
+  gap: 2px;
+  padding: var(--sc-space-2);
+  background: var(--uls-led-face);
+}
+
+/* One game: the two teams and their scores, the state at the right, whose calls it can shadow under them. A row
+   under the pointer gets a 2 px warm-white frame (the board's rows do the same); the game just picked an amber one. */
+:where(:root[data-world="under-the-lights"]) .sc-picker-game {
+  min-height: var(--uls-key-h);
+  padding: var(--sc-space-1) var(--sc-space-2);
+  border: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--uls-size-body) / 1.15 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-game:hover { border-color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-game[data-picked="true"] { border-color: var(--uls-led-amber); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-game:focus-visible {
+  outline: var(--sc-focus-w) solid var(--sc-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--sc-bg);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-abbr {
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-score {
+  color: var(--uls-segment-lit);
+  font: var(--sc-weight-display) var(--uls-size-caption) / 1 var(--sc-font-num);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-at {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-state {
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-game[data-kind="live"] .sc-picker-state { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-game[data-kind="live"] .sc-lamp { background: var(--uls-tally-red); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-game:is([data-kind="final"], [data-kind="off"]) .sc-picker-state {
+  color: var(--sc-ink-muted);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-caller {
+  padding-block-start: 2px;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ---------------------------------------------------------------- the chosen game: lamp switches and the wide key */
+:where(:root[data-world="under-the-lights"]) .sc-picker-chosen {
+  gap: var(--sc-space-3);
+  padding: var(--sc-space-3);
+  background: var(--uls-led-face);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-chosen-title {
+  color: var(--sc-ink);
+  font-size: var(--uls-size-ribbon);
+  letter-spacing: var(--uls-tracking-caption);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-chosen-sub {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1.2 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-sides > .sc-picker-label { margin-block-end: var(--sc-space-2); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-side {
+  padding: var(--sc-space-3);
+  border: 0;
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-side:has(input:checked) { outline-color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-side:has(input:disabled) { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-side-team {
+  color: var(--uls-caption-white);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-side:has(input:disabled) .sc-picker-side-team { color: var(--sc-ink-muted); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-side-caller {
+  font: var(--sc-weight-strong) var(--uls-size-body) / 1.2 var(--sc-font-text);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-side-note, .sc-picker-note) {
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-strong) var(--sc-size-xs) / 1.25 var(--sc-font-text);
+}
+/* The radio and the checkbox are lamps: a dark lens in a steel socket, lit amber when on. They stay the real controls,
+   so the label, Space, the arrows and a click on the lamp all work; focus rings the whole switch. */
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-side-box, .sc-picker-both-box) {
+  appearance: none;
+  flex: none;
+  width: var(--uls-lamp);
+  height: var(--uls-lamp);
+  margin: 0.3em 0 0;
+  border: 1px solid var(--uls-steel-frame);
+  border-radius: 50%;
+  background: var(--uls-led-panel);
+  cursor: inherit;
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-side-box, .sc-picker-both-box):checked {
+  border-color: var(--uls-led-amber);
+  background: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-side-box, .sc-picker-both-box):focus-visible { outline: none; }
+:where(:root[data-world="under-the-lights"]) :is(.sc-picker-side, .sc-picker-both):has(input:focus-visible) {
+  outline: var(--sc-focus-w) solid var(--sc-focus);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px var(--sc-bg);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-both {
+  min-height: var(--uls-key-h);
+  padding: 0 var(--sc-space-3);
+  border-top: 1px solid var(--uls-steel-edge);
+  border-radius: var(--sc-radius-m);
+  background: var(--uls-steel-raised);
+  color: var(--sc-ink);
+  font: var(--sc-weight-strong) var(--sc-size-s) / 1 var(--sc-font-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-both .sc-picker-both-box { margin: 0; }
+:where(:root[data-world="under-the-lights"]) .sc-picker-both:has(input:disabled) { color: var(--sc-ink-muted); }
+/* Open: the wide key, its whole face lit amber once a side is picked (the panel's black on it, 10.5:1). */
+:where(:root[data-world="under-the-lights"]) .sc-picker-go {
+  min-width: calc(220px * var(--uls-hud-scale));
+  justify-content: center;
+  font-size: var(--uls-size-plate);
+  letter-spacing: var(--uls-tracking-plate);
+}
+:where(:root[data-world="under-the-lights"]) .sc-picker-go:not(:disabled) {
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+}
+
+@media (max-width: 720px) {
+  :where(:root[data-world="under-the-lights"]) .sc-picker-panel {
+    width: auto;
+    max-height: calc(100vh - 2 * var(--sc-space-2));
+  }
+}

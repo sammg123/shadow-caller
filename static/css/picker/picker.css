@@ -1,0 +1,219 @@
+/* The game picker (static/js/picker/picker.js; docs/design/game-picker.md 3): structure and token references only, so
+   it reads in any world (the neutral one included); Under the Lights skins it in
+   css/worlds/under-the-lights/picker/picker.css. Key caps and lamps are the shared ones (components/masthead.css).
+   The panel drops from its key in the top bar, over the page, and scrolls inside itself; it is never wider or taller
+   than the viewport. States: .sc-picker[data-open], .sc-picker-game[data-kind="live|final|upcoming|off"][data-picked],
+   .sc-picker-week[open][data-current], .sc-picker-status[data-tone], .sc-picker-side[data-model], aria-invalid. */
+
+.sc-picker {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+.sc-picker-trigger { max-width: 100%; }
+.sc-picker-trigger .sc-key-value {
+  max-width: 14em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------- the panel */
+.sc-picker-panel {
+  position: absolute;
+  inset-block-start: calc(100% + var(--sc-space-2));
+  inset-inline-start: 0;
+  z-index: 60;
+  display: grid;
+  align-content: start;
+  gap: var(--sc-space-3);
+  width: min(38rem, calc(100vw - 2 * var(--sc-gutter)));
+  max-height: min(52rem, calc(100vh - 6rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--sc-space-4);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-l);
+  background: var(--sc-surface);
+  color: var(--sc-ink);
+}
+.sc-picker-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sc-space-3);
+}
+.sc-picker-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+
+/* ---------------------------------------------------------------- the team filter and the pasted link */
+.sc-picker-tools {
+  display: grid;
+  grid-template-columns: minmax(9rem, 13rem) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--sc-space-3);
+}
+.sc-picker-label {
+  display: block;
+  margin-block-end: var(--sc-space-1);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  letter-spacing: var(--sc-tracking-label);
+  text-transform: var(--sc-case-label);
+}
+.sc-picker-select,
+.sc-picker-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0 var(--sc-space-2);
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  font-size: var(--sc-size-s);
+}
+.sc-picker-input[aria-invalid="true"] { border-color: var(--sc-bad); }
+.sc-picker-ref-row { display: flex; gap: var(--sc-space-2); }
+.sc-picker-ref-row .sc-picker-input { flex: 1 1 auto; min-width: 0; }
+.sc-picker-help,
+.sc-picker-error {
+  margin-block-start: var(--sc-space-1);
+  font-size: var(--sc-size-xs);
+  line-height: var(--sc-leading-body);
+}
+.sc-picker-help { color: var(--sc-ink-muted); }
+.sc-picker-error { color: var(--sc-bad); font-weight: var(--sc-weight-strong); }
+
+/* ---------------------------------------------------------------- loading, a failure, offline */
+.sc-picker-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  min-width: 0;
+  font-size: var(--sc-size-s);
+}
+.sc-picker-status .sc-lamp { background: var(--sc-warn); }
+.sc-picker-status[data-tone="error"] { color: var(--sc-bad); }
+.sc-picker-status[data-tone="error"] .sc-lamp { background: var(--sc-bad); }
+.sc-picker-status-text { min-width: 0; overflow-wrap: anywhere; }
+.sc-picker-retry { margin-inline-start: auto; }
+.sc-picker-empty { color: var(--sc-ink-muted); }
+
+/* ---------------------------------------------------------------- the weeks and their games */
+.sc-picker-list { display: grid; gap: var(--sc-space-2); min-width: 0; }
+.sc-picker-week { border-block-start: var(--sc-border-w) solid var(--sc-rule); }
+.sc-picker-week-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sc-space-3);
+  padding-block: var(--sc-space-2);
+  font-weight: var(--sc-weight-strong);
+  cursor: pointer;
+}
+.sc-picker-week-title { flex: 1 1 auto; min-width: 0; }
+.sc-picker-week-detail {
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-regular);
+}
+.sc-picker-week-note { padding-block-end: var(--sc-space-2); color: var(--sc-warn); font-size: var(--sc-size-xs); }
+.sc-picker-games { display: grid; gap: var(--sc-space-1); padding-block-end: var(--sc-space-2); }
+
+.sc-picker-game {
+  display: grid;
+  grid-template-columns: minmax(4rem, auto) auto minmax(4rem, auto) minmax(0, 1fr);
+  grid-template-areas: "away at home state" "caller caller caller caller";
+  align-items: center;
+  gap: 0 var(--sc-space-2);
+  width: 100%;
+  min-height: 2.75rem;
+  padding: var(--sc-space-2) var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-s);
+  background: var(--sc-surface-2);
+  color: var(--sc-ink);
+  text-align: start;
+}
+.sc-picker-game:hover { border-color: var(--sc-ink); }
+.sc-picker-game[data-picked="true"] { border-color: var(--sc-focus); }
+.sc-picker-team {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sc-space-2);
+  font-weight: var(--sc-weight-strong);
+}
+.sc-picker-team[data-side="away"] { grid-area: away; }
+.sc-picker-team[data-side="home"] { grid-area: home; }
+.sc-picker-score { font-family: var(--sc-font-num); font-variant-numeric: tabular-nums; }
+.sc-picker-at { grid-area: at; color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+.sc-picker-state {
+  display: inline-flex;
+  grid-area: state;
+  align-items: center;
+  justify-self: end;
+  gap: var(--sc-space-2);
+  color: var(--sc-ink-muted);
+  font-size: var(--sc-size-xs);
+  white-space: nowrap;
+}
+.sc-picker-game[data-kind="live"] .sc-picker-state { color: var(--sc-live); font-weight: var(--sc-weight-strong); }
+.sc-picker-game[data-kind="live"] .sc-lamp { background: var(--sc-live); }
+.sc-picker-game[data-kind="upcoming"] .sc-picker-state { color: var(--sc-ink); }
+.sc-picker-caller { grid-area: caller; color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+
+/* ---------------------------------------------------------------- the chosen game: whose calls to shadow */
+.sc-picker-chosen { display: grid; justify-items: start; gap: var(--sc-space-3); min-width: 0; }
+.sc-picker-chosen-title {
+  font-family: var(--sc-font-display);
+  font-size: var(--sc-size-l);
+  font-weight: var(--sc-weight-display);
+  line-height: var(--sc-leading-tight);
+}
+.sc-picker-chosen-sub { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
+.sc-picker-sides { width: 100%; min-width: 0; margin: 0; padding: 0; border: 0; }
+.sc-picker-side-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sc-space-2); }
+.sc-picker-side {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-content: start;
+  gap: var(--sc-space-1) var(--sc-space-2);
+  padding: var(--sc-space-3);
+  border: var(--sc-border-w) solid var(--sc-rule);
+  border-radius: var(--sc-radius-m);
+  cursor: pointer;
+}
+.sc-picker-side:has(input:checked) { border-color: var(--sc-ink); }
+.sc-picker-side:has(input:disabled) { color: var(--sc-ink-muted); cursor: not-allowed; }
+/* The lamp in the first column, the words under each other in the second: a line that is hidden takes no row. */
+.sc-picker-side-box { grid-row: 1 / span 3; align-self: start; margin: 0.2em 0 0; }
+.sc-picker-side > :not(.sc-picker-side-box) { grid-column: 2; }
+.sc-picker-side-team { font-weight: var(--sc-weight-strong); }
+.sc-picker-side-caller { font-size: var(--sc-size-s); }
+.sc-picker-side-note,
+.sc-picker-note { color: var(--sc-ink-muted); font-size: var(--sc-size-xs); }
+.sc-picker-both {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sc-space-2);
+  font-weight: var(--sc-weight-strong);
+  cursor: pointer;
+}
+.sc-picker-both:has(input:disabled) { color: var(--sc-ink-muted); cursor: not-allowed; }
+.sc-picker-go-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sc-space-3); }
+.sc-picker-go:not(:disabled) { border-color: var(--sc-ink); background: var(--sc-ink); color: var(--sc-ink-inverse); }
+
+/* ---------------------------------------------------------------- a narrow window: one column, the panel full width */
+@media (max-width: 720px) {
+  .sc-picker-panel {
+    position: fixed;
+    inset: var(--sc-space-2) var(--sc-space-2) auto;
+    width: auto;
+    max-height: calc(100vh - 2 * var(--sc-space-2));
+  }
+  .sc-picker-tools,
+  .sc-picker-side-list { grid-template-columns: minmax(0, 1fr); }
+}

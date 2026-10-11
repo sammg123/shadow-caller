@@ -1,0 +1,74 @@
+{
+ "_source": "ESPN site API summary (event=401872981), fetched 2026-10-10: the header and pickcenter only",
+ "header": {
+  "id": "401872981",
+  "season": {
+   "year": 2026,
+   "current": true,
+   "type": 2
+  },
+  "week": 5,
+  "timeValid": true,
+  "league": {
+   "slug": "nfl",
+   "abbreviation": "NFL"
+  },
+  "competitions": [
+   {
+    "id": "401872981",
+    "date": "2026-10-11T13:30Z",
+    "neutralSite": true,
+    "competitors": [
+     {
+      "homeAway": "home",
+      "team": {
+       "id": "30",
+       "abbreviation": "JAX",
+       "displayName": "Jacksonville Jaguars",
+       "name": "Jaguars",
+       "location": "Jacksonville"
+      }
+     },
+     {
+      "homeAway": "away",
+      "team": {
+       "id": "21",
+       "abbreviation": "PHI",
+       "displayName": "Philadelphia Eagles",
+       "name": "Eagles",
+       "location": "Philadelphia"
+      }
+     }
+    ],
+    "status": {
+     "type": {
+      "name": "STATUS_SCHEDULED",
+      "state": "pre",
+      "completed": false,
+      "detail": "Sun, October 11th at 9:30 AM EDT",
+      "shortDetail": "10/11 - 9:30 AM EDT"
+     }
+    }
+   }
+  ]
+ },
+ "pickcenter": [
+  {
+   "details": "JAX -7.5",
+   "overUnder": 41.5,
+   "spread": -7.5,
+   "provider": {
+    "id": "100",
+    "name": "DraftKings"
+   },
+   "homeTeamOdds": {
+    "favorite": true,
+    "underdog": false
+   },
+   "awayTeamOdds": {
+    "favorite": false,
+    "underdog": true
+   }
+  }
+ ]
+}

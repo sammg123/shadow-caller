@@ -1,0 +1,1962 @@
+{
+ "season": 2026,
+ "current": "2-5",
+ "offline": true,
+ "weeks": [
+  {
+   "key": "2-5",
+   "season_type": 2,
+   "week": 5,
+   "label": "Week 5",
+   "detail": "Oct 7-13",
+   "current": true,
+   "stale": false,
+   "error": null,
+   "games": [
+    {
+     "event_id": "401872980",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_TB_DAL",
+     "kickoff": "2026-10-09T00:15:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "TB",
+      "nflverse": "TB",
+      "name": "Tampa Bay Buccaneers",
+      "short": "Buccaneers",
+      "score": 24,
+      "caller": null
+     },
+     "home": {
+      "abbr": "DAL",
+      "nflverse": "DAL",
+      "name": "Dallas Cowboys",
+      "short": "Cowboys",
+      "score": 16,
+      "caller": {
+       "name": "Brian Schottenheimer",
+       "role": "HC",
+       "model": true
+      }
+     }
+    },
+    {
+     "event_id": "401872981",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_PHI_JAX",
+     "kickoff": "2026-10-11T13:30:00Z",
+     "time_valid": true,
+     "neutral": true,
+     "status": "pre",
+     "detail": "10/11 - 9:30 AM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "PHI",
+      "nflverse": "PHI",
+      "name": "Philadelphia Eagles",
+      "short": "Eagles",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "JAX",
+      "nflverse": "JAX",
+      "name": "Jacksonville Jaguars",
+      "short": "Jaguars",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872990",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_CHI_GB",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CHI",
+      "nflverse": "CHI",
+      "name": "Chicago Bears",
+      "short": "Bears",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "GB",
+      "nflverse": "GB",
+      "name": "Green Bay Packers",
+      "short": "Packers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872984",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_HOU_TEN",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "HOU",
+      "nflverse": "HOU",
+      "name": "Houston Texans",
+      "short": "Texans",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "TEN",
+      "nflverse": "TEN",
+      "name": "Tennessee Titans",
+      "short": "Titans",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872982",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_CIN_MIA",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CIN",
+      "nflverse": "CIN",
+      "name": "Cincinnati Bengals",
+      "short": "Bengals",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "MIA",
+      "nflverse": "MIA",
+      "name": "Miami Dolphins",
+      "short": "Dolphins",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872986",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_LV_NE",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "LV",
+      "nflverse": "LV",
+      "name": "Las Vegas Raiders",
+      "short": "Raiders",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NE",
+      "nflverse": "NE",
+      "name": "New England Patriots",
+      "short": "Patriots",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872987",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_MIN_NO",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "MIN",
+      "nflverse": "MIN",
+      "name": "Minnesota Vikings",
+      "short": "Vikings",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NO",
+      "nflverse": "NO",
+      "name": "New Orleans Saints",
+      "short": "Saints",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872983",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_CLE_NYJ",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CLE",
+      "nflverse": "CLE",
+      "name": "Cleveland Browns",
+      "short": "Browns",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NYJ",
+      "nflverse": "NYJ",
+      "name": "New York Jets",
+      "short": "Jets",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872985",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_IND_PIT",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "IND",
+      "nflverse": "IND",
+      "name": "Indianapolis Colts",
+      "short": "Colts",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "PIT",
+      "nflverse": "PIT",
+      "name": "Pittsburgh Steelers",
+      "short": "Steelers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872988",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_NYG_WAS",
+     "kickoff": "2026-10-11T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "NYG",
+      "nflverse": "NYG",
+      "name": "New York Giants",
+      "short": "Giants",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "WSH",
+      "nflverse": "WAS",
+      "name": "Washington Commanders",
+      "short": "Commanders",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872989",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_DEN_LAC",
+     "kickoff": "2026-10-11T20:05:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 4:05 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DEN",
+      "nflverse": "DEN",
+      "name": "Denver Broncos",
+      "short": "Broncos",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "LAC",
+      "nflverse": "LAC",
+      "name": "Los Angeles Chargers",
+      "short": "Chargers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872991",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_DET_ARI",
+     "kickoff": "2026-10-11T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 4:25 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DET",
+      "nflverse": "DET",
+      "name": "Detroit Lions",
+      "short": "Lions",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "ARI",
+      "nflverse": "ARI",
+      "name": "Arizona Cardinals",
+      "short": "Cardinals",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872992",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_SF_SEA",
+     "kickoff": "2026-10-11T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 4:25 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "SF",
+      "nflverse": "SF",
+      "name": "San Francisco 49ers",
+      "short": "49ers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "SEA",
+      "nflverse": "SEA",
+      "name": "Seattle Seahawks",
+      "short": "Seahawks",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872993",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_BAL_ATL",
+     "kickoff": "2026-10-12T00:20:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/11 - 8:20 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "BAL",
+      "nflverse": "BAL",
+      "name": "Baltimore Ravens",
+      "short": "Ravens",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "ATL",
+      "nflverse": "ATL",
+      "name": "Atlanta Falcons",
+      "short": "Falcons",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872994",
+     "season": 2026,
+     "season_type": 2,
+     "week": 5,
+     "game_id": "2026_05_BUF_LA",
+     "kickoff": "2026-10-13T00:15:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/12 - 8:15 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "BUF",
+      "nflverse": "BUF",
+      "name": "Buffalo Bills",
+      "short": "Bills",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "LAR",
+      "nflverse": "LA",
+      "name": "Los Angeles Rams",
+      "short": "Rams",
+      "score": null,
+      "caller": null
+     }
+    }
+   ]
+  },
+  {
+   "key": "2-4",
+   "season_type": 2,
+   "week": 4,
+   "label": "Week 4",
+   "detail": "Sep 30-Oct 6",
+   "current": false,
+   "stale": false,
+   "error": null,
+   "games": [
+    {
+     "event_id": "401872964",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_PIT_CLE",
+     "kickoff": "2026-10-02T00:15:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "PIT",
+      "nflverse": "PIT",
+      "name": "Pittsburgh Steelers",
+      "short": "Steelers",
+      "score": 24,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CLE",
+      "nflverse": "CLE",
+      "name": "Cleveland Browns",
+      "short": "Browns",
+      "score": 27,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872965",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_IND_WAS",
+     "kickoff": "2026-10-04T13:30:00Z",
+     "time_valid": true,
+     "neutral": true,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "IND",
+      "nflverse": "IND",
+      "name": "Indianapolis Colts",
+      "short": "Colts",
+      "score": 30,
+      "caller": null
+     },
+     "home": {
+      "abbr": "WSH",
+      "nflverse": "WAS",
+      "name": "Washington Commanders",
+      "short": "Commanders",
+      "score": 13,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872971",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_NE_BUF",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "NE",
+      "nflverse": "NE",
+      "name": "New England Patriots",
+      "short": "Patriots",
+      "score": 29,
+      "caller": null
+     },
+     "home": {
+      "abbr": "BUF",
+      "nflverse": "BUF",
+      "name": "Buffalo Bills",
+      "short": "Bills",
+      "score": 26,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872972",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_NYJ_CHI",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "NYJ",
+      "nflverse": "NYJ",
+      "name": "New York Jets",
+      "short": "Jets",
+      "score": 12,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CHI",
+      "nflverse": "CHI",
+      "name": "Chicago Bears",
+      "short": "Bears",
+      "score": 23,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872969",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_JAX_CIN",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "JAX",
+      "nflverse": "JAX",
+      "name": "Jacksonville Jaguars",
+      "short": "Jaguars",
+      "score": 22,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CIN",
+      "nflverse": "CIN",
+      "name": "Cincinnati Bengals",
+      "short": "Bengals",
+      "score": 17,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872966",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_ARI_NYG",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "ARI",
+      "nflverse": "ARI",
+      "name": "Arizona Cardinals",
+      "short": "Cardinals",
+      "score": 24,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NYG",
+      "nflverse": "NYG",
+      "name": "New York Giants",
+      "short": "Giants",
+      "score": 36,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872970",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_LA_PHI",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "LAR",
+      "nflverse": "LA",
+      "name": "Los Angeles Rams",
+      "short": "Rams",
+      "score": 24,
+      "caller": null
+     },
+     "home": {
+      "abbr": "PHI",
+      "nflverse": "PHI",
+      "name": "Philadelphia Eagles",
+      "short": "Eagles",
+      "score": 20,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872968",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_GB_TB",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "GB",
+      "nflverse": "GB",
+      "name": "Green Bay Packers",
+      "short": "Packers",
+      "score": 17,
+      "caller": null
+     },
+     "home": {
+      "abbr": "TB",
+      "nflverse": "TB",
+      "name": "Tampa Bay Buccaneers",
+      "short": "Buccaneers",
+      "score": 14,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872973",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_TEN_BAL",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "TEN",
+      "nflverse": "TEN",
+      "name": "Tennessee Titans",
+      "short": "Titans",
+      "score": 18,
+      "caller": null
+     },
+     "home": {
+      "abbr": "BAL",
+      "nflverse": "BAL",
+      "name": "Baltimore Ravens",
+      "short": "Ravens",
+      "score": 24,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872967",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_DAL_HOU",
+     "kickoff": "2026-10-04T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DAL",
+      "nflverse": "DAL",
+      "name": "Dallas Cowboys",
+      "short": "Cowboys",
+      "score": 34,
+      "caller": {
+       "name": "Brian Schottenheimer",
+       "role": "HC",
+       "model": true
+      }
+     },
+     "home": {
+      "abbr": "HOU",
+      "nflverse": "HOU",
+      "name": "Houston Texans",
+      "short": "Texans",
+      "score": 30,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872974",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_MIA_MIN",
+     "kickoff": "2026-10-04T20:05:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "MIA",
+      "nflverse": "MIA",
+      "name": "Miami Dolphins",
+      "short": "Dolphins",
+      "score": 10,
+      "caller": null
+     },
+     "home": {
+      "abbr": "MIN",
+      "nflverse": "MIN",
+      "name": "Minnesota Vikings",
+      "short": "Vikings",
+      "score": 15,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872976",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_KC_LV",
+     "kickoff": "2026-10-04T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "KC",
+      "nflverse": "KC",
+      "name": "Kansas City Chiefs",
+      "short": "Chiefs",
+      "score": 30,
+      "caller": null
+     },
+     "home": {
+      "abbr": "LV",
+      "nflverse": "LV",
+      "name": "Las Vegas Raiders",
+      "short": "Raiders",
+      "score": 27,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872975",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_DEN_SF",
+     "kickoff": "2026-10-04T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DEN",
+      "nflverse": "DEN",
+      "name": "Denver Broncos",
+      "short": "Broncos",
+      "score": 14,
+      "caller": null
+     },
+     "home": {
+      "abbr": "SF",
+      "nflverse": "SF",
+      "name": "San Francisco 49ers",
+      "short": "49ers",
+      "score": 24,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872977",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_LAC_SEA",
+     "kickoff": "2026-10-04T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "LAC",
+      "nflverse": "LAC",
+      "name": "Los Angeles Chargers",
+      "short": "Chargers",
+      "score": 23,
+      "caller": null
+     },
+     "home": {
+      "abbr": "SEA",
+      "nflverse": "SEA",
+      "name": "Seattle Seahawks",
+      "short": "Seahawks",
+      "score": 30,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872978",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_DET_CAR",
+     "kickoff": "2026-10-05T00:20:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DET",
+      "nflverse": "DET",
+      "name": "Detroit Lions",
+      "short": "Lions",
+      "score": 26,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CAR",
+      "nflverse": "CAR",
+      "name": "Carolina Panthers",
+      "short": "Panthers",
+      "score": 32,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872979",
+     "season": 2026,
+     "season_type": 2,
+     "week": 4,
+     "game_id": "2026_04_ATL_NO",
+     "kickoff": "2026-10-06T00:15:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "post",
+     "detail": "Final",
+     "completed": true,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "ATL",
+      "nflverse": "ATL",
+      "name": "Atlanta Falcons",
+      "short": "Falcons",
+      "score": 45,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NO",
+      "nflverse": "NO",
+      "name": "New Orleans Saints",
+      "short": "Saints",
+      "score": 24,
+      "caller": null
+     }
+    }
+   ]
+  },
+  {
+   "key": "2-6",
+   "season_type": 2,
+   "week": 6,
+   "label": "Week 6",
+   "detail": "Oct 14-20",
+   "current": false,
+   "stale": false,
+   "error": null,
+   "games": [
+    {
+     "event_id": "401872995",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_SEA_DEN",
+     "kickoff": "2026-10-16T00:15:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/15 - 8:15 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "SEA",
+      "nflverse": "SEA",
+      "name": "Seattle Seahawks",
+      "short": "Seahawks",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "DEN",
+      "nflverse": "DEN",
+      "name": "Denver Broncos",
+      "short": "Broncos",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872996",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_HOU_JAX",
+     "kickoff": "2026-10-18T13:30:00Z",
+     "time_valid": true,
+     "neutral": true,
+     "status": "pre",
+     "detail": "10/18 - 9:30 AM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "HOU",
+      "nflverse": "HOU",
+      "name": "Houston Texans",
+      "short": "Texans",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "JAX",
+      "nflverse": "JAX",
+      "name": "Jacksonville Jaguars",
+      "short": "Jaguars",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872999",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_CHI_ATL",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CHI",
+      "nflverse": "CHI",
+      "name": "Chicago Bears",
+      "short": "Bears",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "ATL",
+      "nflverse": "ATL",
+      "name": "Atlanta Falcons",
+      "short": "Falcons",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872997",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_BAL_CLE",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "BAL",
+      "nflverse": "BAL",
+      "name": "Baltimore Ravens",
+      "short": "Ravens",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CLE",
+      "nflverse": "CLE",
+      "name": "Cleveland Browns",
+      "short": "Browns",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873003",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_TEN_IND",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "TEN",
+      "nflverse": "TEN",
+      "name": "Tennessee Titans",
+      "short": "Titans",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "IND",
+      "nflverse": "IND",
+      "name": "Indianapolis Colts",
+      "short": "Colts",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873001",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_NYJ_NE",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "NYJ",
+      "nflverse": "NYJ",
+      "name": "New York Jets",
+      "short": "Jets",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NE",
+      "nflverse": "NE",
+      "name": "New England Patriots",
+      "short": "Patriots",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873000",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_NO_NYG",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "NO",
+      "nflverse": "NO",
+      "name": "New Orleans Saints",
+      "short": "Saints",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NYG",
+      "nflverse": "NYG",
+      "name": "New York Giants",
+      "short": "Giants",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401872998",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_CAR_PHI",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CAR",
+      "nflverse": "CAR",
+      "name": "Carolina Panthers",
+      "short": "Panthers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "PHI",
+      "nflverse": "PHI",
+      "name": "Philadelphia Eagles",
+      "short": "Eagles",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873002",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_PIT_TB",
+     "kickoff": "2026-10-18T17:00:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 1:00 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "PIT",
+      "nflverse": "PIT",
+      "name": "Pittsburgh Steelers",
+      "short": "Steelers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "TB",
+      "nflverse": "TB",
+      "name": "Tampa Bay Buccaneers",
+      "short": "Buccaneers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873004",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_ARI_LA",
+     "kickoff": "2026-10-18T20:05:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 4:05 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "ARI",
+      "nflverse": "ARI",
+      "name": "Arizona Cardinals",
+      "short": "Cardinals",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "LAR",
+      "nflverse": "LA",
+      "name": "Los Angeles Rams",
+      "short": "Rams",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873006",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_LAC_KC",
+     "kickoff": "2026-10-18T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 4:25 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "LAC",
+      "nflverse": "LAC",
+      "name": "Los Angeles Chargers",
+      "short": "Chargers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "KC",
+      "nflverse": "KC",
+      "name": "Kansas City Chiefs",
+      "short": "Chiefs",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873005",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_BUF_LV",
+     "kickoff": "2026-10-18T20:25:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 4:25 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "BUF",
+      "nflverse": "BUF",
+      "name": "Buffalo Bills",
+      "short": "Bills",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "LV",
+      "nflverse": "LV",
+      "name": "Las Vegas Raiders",
+      "short": "Raiders",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873007",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_DAL_GB",
+     "kickoff": "2026-10-19T00:20:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/18 - 8:20 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DAL",
+      "nflverse": "DAL",
+      "name": "Dallas Cowboys",
+      "short": "Cowboys",
+      "score": null,
+      "caller": {
+       "name": "Brian Schottenheimer",
+       "role": "HC",
+       "model": true
+      }
+     },
+     "home": {
+      "abbr": "GB",
+      "nflverse": "GB",
+      "name": "Green Bay Packers",
+      "short": "Packers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873008",
+     "season": 2026,
+     "season_type": 2,
+     "week": 6,
+     "game_id": "2026_06_WAS_SF",
+     "kickoff": "2026-10-20T00:15:00Z",
+     "time_valid": true,
+     "neutral": false,
+     "status": "pre",
+     "detail": "10/19 - 8:15 PM EDT",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "WSH",
+      "nflverse": "WAS",
+      "name": "Washington Commanders",
+      "short": "Commanders",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "SF",
+      "nflverse": "SF",
+      "name": "San Francisco 49ers",
+      "short": "49ers",
+      "score": null,
+      "caller": null
+     }
+    }
+   ]
+  },
+  {
+   "key": "2-18",
+   "season_type": 2,
+   "week": 18,
+   "label": "Week 18",
+   "detail": "Jan 6-12",
+   "current": false,
+   "stale": false,
+   "error": null,
+   "games": [
+    {
+     "event_id": "401873181",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_NYJ_BUF",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "NYJ",
+      "nflverse": "NYJ",
+      "name": "New York Jets",
+      "short": "Jets",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "BUF",
+      "nflverse": "BUF",
+      "name": "Buffalo Bills",
+      "short": "Bills",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873174",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_CLE_CIN",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CLE",
+      "nflverse": "CLE",
+      "name": "Cleveland Browns",
+      "short": "Browns",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CIN",
+      "nflverse": "CIN",
+      "name": "Cincinnati Bengals",
+      "short": "Bengals",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873179",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_LAC_DEN",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "LAC",
+      "nflverse": "LAC",
+      "name": "Los Angeles Chargers",
+      "short": "Chargers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "DEN",
+      "nflverse": "DEN",
+      "name": "Denver Broncos",
+      "short": "Broncos",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873176",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_DET_GB",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DET",
+      "nflverse": "DET",
+      "name": "Detroit Lions",
+      "short": "Lions",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "GB",
+      "nflverse": "GB",
+      "name": "Green Bay Packers",
+      "short": "Packers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873177",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_JAX_IND",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "JAX",
+      "nflverse": "JAX",
+      "name": "Jacksonville Jaguars",
+      "short": "Jaguars",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "IND",
+      "nflverse": "IND",
+      "name": "Indianapolis Colts",
+      "short": "Colts",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873178",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_LV_KC",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "LV",
+      "nflverse": "LV",
+      "name": "Las Vegas Raiders",
+      "short": "Raiders",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "KC",
+      "nflverse": "KC",
+      "name": "Kansas City Chiefs",
+      "short": "Chiefs",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873185",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_SEA_LA",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "SEA",
+      "nflverse": "SEA",
+      "name": "Seattle Seahawks",
+      "short": "Seahawks",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "LAR",
+      "nflverse": "LA",
+      "name": "Los Angeles Rams",
+      "short": "Rams",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873173",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_CHI_MIN",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "CHI",
+      "nflverse": "CHI",
+      "name": "Chicago Bears",
+      "short": "Bears",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "MIN",
+      "nflverse": "MIN",
+      "name": "Minnesota Vikings",
+      "short": "Vikings",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873180",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_MIA_NE",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "MIA",
+      "nflverse": "MIA",
+      "name": "Miami Dolphins",
+      "short": "Dolphins",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NE",
+      "nflverse": "NE",
+      "name": "New England Patriots",
+      "short": "Patriots",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873186",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_TB_NO",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "TB",
+      "nflverse": "TB",
+      "name": "Tampa Bay Buccaneers",
+      "short": "Buccaneers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NO",
+      "nflverse": "NO",
+      "name": "New Orleans Saints",
+      "short": "Saints",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873182",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_PHI_NYG",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "PHI",
+      "nflverse": "PHI",
+      "name": "Philadelphia Eagles",
+      "short": "Eagles",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "NYG",
+      "nflverse": "NYG",
+      "name": "New York Giants",
+      "short": "Giants",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873184",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_SF_ARI",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "SF",
+      "nflverse": "SF",
+      "name": "San Francisco 49ers",
+      "short": "49ers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "ARI",
+      "nflverse": "ARI",
+      "name": "Arizona Cardinals",
+      "short": "Cardinals",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873175",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_DAL_WAS",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "DAL",
+      "nflverse": "DAL",
+      "name": "Dallas Cowboys",
+      "short": "Cowboys",
+      "score": null,
+      "caller": {
+       "name": "Brian Schottenheimer",
+       "role": "HC",
+       "model": true
+      }
+     },
+     "home": {
+      "abbr": "WSH",
+      "nflverse": "WAS",
+      "name": "Washington Commanders",
+      "short": "Commanders",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873172",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_ATL_CAR",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "ATL",
+      "nflverse": "ATL",
+      "name": "Atlanta Falcons",
+      "short": "Falcons",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "CAR",
+      "nflverse": "CAR",
+      "name": "Carolina Panthers",
+      "short": "Panthers",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873183",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_PIT_BAL",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "PIT",
+      "nflverse": "PIT",
+      "name": "Pittsburgh Steelers",
+      "short": "Steelers",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "BAL",
+      "nflverse": "BAL",
+      "name": "Baltimore Ravens",
+      "short": "Ravens",
+      "score": null,
+      "caller": null
+     }
+    },
+    {
+     "event_id": "401873187",
+     "season": 2026,
+     "season_type": 2,
+     "week": 18,
+     "game_id": "2026_18_TEN_HOU",
+     "kickoff": "2027-01-10T05:00:00Z",
+     "time_valid": false,
+     "neutral": false,
+     "status": "pre",
+     "detail": "TBD",
+     "completed": false,
+     "clock": null,
+     "period": null,
+     "away": {
+      "abbr": "TEN",
+      "nflverse": "TEN",
+      "name": "Tennessee Titans",
+      "short": "Titans",
+      "score": null,
+      "caller": null
+     },
+     "home": {
+      "abbr": "HOU",
+      "nflverse": "HOU",
+      "name": "Houston Texans",
+      "short": "Texans",
+      "score": null,
+      "caller": null
+     }
+    }
+   ]
+  }
+ ]
+}

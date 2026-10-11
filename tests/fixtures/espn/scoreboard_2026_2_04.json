@@ -1,0 +1,1249 @@
+{
+ "_source": "ESPN site API scoreboard (dates=2026&seasontype=2&week=4), fetched 2026-10-10, trimmed to the fields games.py reads",
+ "season": {
+  "type": 2,
+  "year": 2026
+ },
+ "week": {
+  "number": 4
+ },
+ "leagues": [
+  {
+   "calendar": [
+    {
+     "label": "Preseason",
+     "value": "1",
+     "startDate": "2026-08-06T07:00Z",
+     "endDate": "2026-09-06T06:59Z",
+     "entries": [
+      {
+       "label": "Hall of Fame Weekend",
+       "alternateLabel": "HOF",
+       "detail": "Aug 6-12",
+       "value": "1",
+       "startDate": "2026-08-06T07:00Z",
+       "endDate": "2026-08-13T06:59Z"
+      },
+      {
+       "label": "Preseason Week 1",
+       "alternateLabel": "Pre Wk 1",
+       "detail": "Aug 13-19",
+       "value": "2",
+       "startDate": "2026-08-13T07:00Z",
+       "endDate": "2026-08-20T06:59Z"
+      },
+      {
+       "label": "Preseason Week 2",
+       "alternateLabel": "Pre Wk 2",
+       "detail": "Aug 20-26",
+       "value": "3",
+       "startDate": "2026-08-20T07:00Z",
+       "endDate": "2026-08-27T06:59Z"
+      },
+      {
+       "label": "Preseason Week 3",
+       "alternateLabel": "Pre Wk 3",
+       "detail": "Aug 27-Sep 5",
+       "value": "4",
+       "startDate": "2026-08-27T07:00Z",
+       "endDate": "2026-09-06T06:59Z"
+      }
+     ]
+    },
+    {
+     "label": "Regular Season",
+     "value": "2",
+     "startDate": "2026-09-06T07:00Z",
+     "endDate": "2027-01-13T07:59Z",
+     "entries": [
+      {
+       "label": "Week 1",
+       "alternateLabel": "Week 1",
+       "detail": "Sep 6-15",
+       "value": "1",
+       "startDate": "2026-09-06T07:00Z",
+       "endDate": "2026-09-16T06:59Z"
+      },
+      {
+       "label": "Week 2",
+       "alternateLabel": "Week 2",
+       "detail": "Sep 16-22",
+       "value": "2",
+       "startDate": "2026-09-16T07:00Z",
+       "endDate": "2026-09-23T06:59Z"
+      },
+      {
+       "label": "Week 3",
+       "alternateLabel": "Week 3",
+       "detail": "Sep 23-29",
+       "value": "3",
+       "startDate": "2026-09-23T07:00Z",
+       "endDate": "2026-09-30T06:59Z"
+      },
+      {
+       "label": "Week 4",
+       "alternateLabel": "Week 4",
+       "detail": "Sep 30-Oct 6",
+       "value": "4",
+       "startDate": "2026-09-30T07:00Z",
+       "endDate": "2026-10-07T06:59Z"
+      },
+      {
+       "label": "Week 5",
+       "alternateLabel": "Week 5",
+       "detail": "Oct 7-13",
+       "value": "5",
+       "startDate": "2026-10-07T07:00Z",
+       "endDate": "2026-10-14T06:59Z"
+      },
+      {
+       "label": "Week 6",
+       "alternateLabel": "Week 6",
+       "detail": "Oct 14-20",
+       "value": "6",
+       "startDate": "2026-10-14T07:00Z",
+       "endDate": "2026-10-21T06:59Z"
+      },
+      {
+       "label": "Week 7",
+       "alternateLabel": "Week 7",
+       "detail": "Oct 21-27",
+       "value": "7",
+       "startDate": "2026-10-21T07:00Z",
+       "endDate": "2026-10-28T06:59Z"
+      },
+      {
+       "label": "Week 8",
+       "alternateLabel": "Week 8",
+       "detail": "Oct 28-Nov 3",
+       "value": "8",
+       "startDate": "2026-10-28T07:00Z",
+       "endDate": "2026-11-04T07:59Z"
+      },
+      {
+       "label": "Week 9",
+       "alternateLabel": "Week 9",
+       "detail": "Nov 4-10",
+       "value": "9",
+       "startDate": "2026-11-04T08:00Z",
+       "endDate": "2026-11-11T07:59Z"
+      },
+      {
+       "label": "Week 10",
+       "alternateLabel": "Week 10",
+       "detail": "Nov 11-17",
+       "value": "10",
+       "startDate": "2026-11-11T08:00Z",
+       "endDate": "2026-11-18T07:59Z"
+      },
+      {
+       "label": "Week 11",
+       "alternateLabel": "Week 11",
+       "detail": "Nov 18-24",
+       "value": "11",
+       "startDate": "2026-11-18T08:00Z",
+       "endDate": "2026-11-25T07:59Z"
+      },
+      {
+       "label": "Week 12",
+       "alternateLabel": "Week 12",
+       "detail": "Nov 25-Dec 1",
+       "value": "12",
+       "startDate": "2026-11-25T08:00Z",
+       "endDate": "2026-12-02T07:59Z"
+      },
+      {
+       "label": "Week 13",
+       "alternateLabel": "Week 13",
+       "detail": "Dec 2-8",
+       "value": "13",
+       "startDate": "2026-12-02T08:00Z",
+       "endDate": "2026-12-09T07:59Z"
+      },
+      {
+       "label": "Week 14",
+       "alternateLabel": "Week 14",
+       "detail": "Dec 9-15",
+       "value": "14",
+       "startDate": "2026-12-09T08:00Z",
+       "endDate": "2026-12-16T07:59Z"
+      },
+      {
+       "label": "Week 15",
+       "alternateLabel": "Week 15",
+       "detail": "Dec 16-22",
+       "value": "15",
+       "startDate": "2026-12-16T08:00Z",
+       "endDate": "2026-12-23T07:59Z"
+      },
+      {
+       "label": "Week 16",
+       "alternateLabel": "Week 16",
+       "detail": "Dec 23-29",
+       "value": "16",
+       "startDate": "2026-12-23T08:00Z",
+       "endDate": "2026-12-30T07:59Z"
+      },
+      {
+       "label": "Week 17",
+       "alternateLabel": "Week 17",
+       "detail": "Dec 30-Jan 5",
+       "value": "17",
+       "startDate": "2026-12-30T08:00Z",
+       "endDate": "2027-01-06T07:59Z"
+      },
+      {
+       "label": "Week 18",
+       "alternateLabel": "Week 18",
+       "detail": "Jan 6-12",
+       "value": "18",
+       "startDate": "2027-01-06T08:00Z",
+       "endDate": "2027-01-13T07:59Z"
+      }
+     ]
+    },
+    {
+     "label": "Postseason",
+     "value": "3",
+     "startDate": "2027-01-13T08:00Z",
+     "endDate": "2027-02-16T07:59Z",
+     "entries": [
+      {
+       "label": "Wild Card",
+       "alternateLabel": "Wild Card",
+       "detail": "Jan 13-19",
+       "value": "1",
+       "startDate": "2027-01-13T08:00Z",
+       "endDate": "2027-01-20T07:59Z"
+      },
+      {
+       "label": "Divisional Round",
+       "alternateLabel": "Div Rd",
+       "detail": "Jan 20-26",
+       "value": "2",
+       "startDate": "2027-01-20T08:00Z",
+       "endDate": "2027-01-27T07:59Z"
+      },
+      {
+       "label": "Conference Championship",
+       "alternateLabel": "Conf Champ",
+       "detail": "Jan 27-Feb 2",
+       "value": "3",
+       "startDate": "2027-01-27T08:00Z",
+       "endDate": "2027-02-03T07:59Z"
+      },
+      {
+       "label": "Super Bowl",
+       "alternateLabel": "Super Bowl",
+       "detail": "Feb 3-15",
+       "value": "4",
+       "startDate": "2027-02-03T08:00Z",
+       "endDate": "2027-02-16T07:59Z"
+      }
+     ]
+    },
+    {
+     "label": "Off Season",
+     "value": "4",
+     "startDate": "2027-02-16T08:00Z",
+     "endDate": "2027-08-01T06:59Z",
+     "entries": []
+    }
+   ]
+  }
+ ],
+ "events": [
+  {
+   "id": "401872964",
+   "date": "2026-10-02T00:15Z",
+   "name": "Pittsburgh Steelers at Cleveland Browns",
+   "shortName": "PIT @ CLE",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872964",
+     "date": "2026-10-02T00:15Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "27",
+       "team": {
+        "id": "5",
+        "abbreviation": "CLE",
+        "displayName": "Cleveland Browns",
+        "shortDisplayName": "Browns",
+        "name": "Browns",
+        "location": "Cleveland",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "24",
+       "team": {
+        "id": "23",
+        "abbreviation": "PIT",
+        "displayName": "Pittsburgh Steelers",
+        "shortDisplayName": "Steelers",
+        "name": "Steelers",
+        "location": "Pittsburgh",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872965",
+   "date": "2026-10-04T13:30Z",
+   "name": "Indianapolis Colts at Washington Commanders",
+   "shortName": "IND VS WSH",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872965",
+     "date": "2026-10-04T13:30Z",
+     "timeValid": true,
+     "neutralSite": true,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "13",
+       "team": {
+        "id": "28",
+        "abbreviation": "WSH",
+        "displayName": "Washington Commanders",
+        "shortDisplayName": "Commanders",
+        "name": "Commanders",
+        "location": "Washington",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "30",
+       "team": {
+        "id": "11",
+        "abbreviation": "IND",
+        "displayName": "Indianapolis Colts",
+        "shortDisplayName": "Colts",
+        "name": "Colts",
+        "location": "Indianapolis",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872971",
+   "date": "2026-10-04T17:00Z",
+   "name": "New England Patriots at Buffalo Bills",
+   "shortName": "NE @ BUF",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872971",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "26",
+       "team": {
+        "id": "2",
+        "abbreviation": "BUF",
+        "displayName": "Buffalo Bills",
+        "shortDisplayName": "Bills",
+        "name": "Bills",
+        "location": "Buffalo",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "29",
+       "team": {
+        "id": "17",
+        "abbreviation": "NE",
+        "displayName": "New England Patriots",
+        "shortDisplayName": "Patriots",
+        "name": "Patriots",
+        "location": "New England",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872972",
+   "date": "2026-10-04T17:00Z",
+   "name": "New York Jets at Chicago Bears",
+   "shortName": "NYJ @ CHI",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872972",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "23",
+       "team": {
+        "id": "3",
+        "abbreviation": "CHI",
+        "displayName": "Chicago Bears",
+        "shortDisplayName": "Bears",
+        "name": "Bears",
+        "location": "Chicago",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "12",
+       "team": {
+        "id": "20",
+        "abbreviation": "NYJ",
+        "displayName": "New York Jets",
+        "shortDisplayName": "Jets",
+        "name": "Jets",
+        "location": "New York",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872969",
+   "date": "2026-10-04T17:00Z",
+   "name": "Jacksonville Jaguars at Cincinnati Bengals",
+   "shortName": "JAX @ CIN",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872969",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "17",
+       "team": {
+        "id": "4",
+        "abbreviation": "CIN",
+        "displayName": "Cincinnati Bengals",
+        "shortDisplayName": "Bengals",
+        "name": "Bengals",
+        "location": "Cincinnati",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "22",
+       "team": {
+        "id": "30",
+        "abbreviation": "JAX",
+        "displayName": "Jacksonville Jaguars",
+        "shortDisplayName": "Jaguars",
+        "name": "Jaguars",
+        "location": "Jacksonville",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872966",
+   "date": "2026-10-04T17:00Z",
+   "name": "Arizona Cardinals at New York Giants",
+   "shortName": "ARI @ NYG",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872966",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "36",
+       "team": {
+        "id": "19",
+        "abbreviation": "NYG",
+        "displayName": "New York Giants",
+        "shortDisplayName": "Giants",
+        "name": "Giants",
+        "location": "New York",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "24",
+       "team": {
+        "id": "22",
+        "abbreviation": "ARI",
+        "displayName": "Arizona Cardinals",
+        "shortDisplayName": "Cardinals",
+        "name": "Cardinals",
+        "location": "Arizona",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872970",
+   "date": "2026-10-04T17:00Z",
+   "name": "Los Angeles Rams at Philadelphia Eagles",
+   "shortName": "LAR @ PHI",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872970",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "20",
+       "team": {
+        "id": "21",
+        "abbreviation": "PHI",
+        "displayName": "Philadelphia Eagles",
+        "shortDisplayName": "Eagles",
+        "name": "Eagles",
+        "location": "Philadelphia",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "24",
+       "team": {
+        "id": "14",
+        "abbreviation": "LAR",
+        "displayName": "Los Angeles Rams",
+        "shortDisplayName": "Rams",
+        "name": "Rams",
+        "location": "Los Angeles",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872968",
+   "date": "2026-10-04T17:00Z",
+   "name": "Green Bay Packers at Tampa Bay Buccaneers",
+   "shortName": "GB @ TB",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872968",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "14",
+       "team": {
+        "id": "27",
+        "abbreviation": "TB",
+        "displayName": "Tampa Bay Buccaneers",
+        "shortDisplayName": "Buccaneers",
+        "name": "Buccaneers",
+        "location": "Tampa Bay",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "17",
+       "team": {
+        "id": "9",
+        "abbreviation": "GB",
+        "displayName": "Green Bay Packers",
+        "shortDisplayName": "Packers",
+        "name": "Packers",
+        "location": "Green Bay",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872973",
+   "date": "2026-10-04T17:00Z",
+   "name": "Tennessee Titans at Baltimore Ravens",
+   "shortName": "TEN @ BAL",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872973",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "24",
+       "team": {
+        "id": "33",
+        "abbreviation": "BAL",
+        "displayName": "Baltimore Ravens",
+        "shortDisplayName": "Ravens",
+        "name": "Ravens",
+        "location": "Baltimore",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "18",
+       "team": {
+        "id": "10",
+        "abbreviation": "TEN",
+        "displayName": "Tennessee Titans",
+        "shortDisplayName": "Titans",
+        "name": "Titans",
+        "location": "Tennessee",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872967",
+   "date": "2026-10-04T17:00Z",
+   "name": "Dallas Cowboys at Houston Texans",
+   "shortName": "DAL @ HOU",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872967",
+     "date": "2026-10-04T17:00Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "30",
+       "team": {
+        "id": "34",
+        "abbreviation": "HOU",
+        "displayName": "Houston Texans",
+        "shortDisplayName": "Texans",
+        "name": "Texans",
+        "location": "Houston",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "34",
+       "team": {
+        "id": "6",
+        "abbreviation": "DAL",
+        "displayName": "Dallas Cowboys",
+        "shortDisplayName": "Cowboys",
+        "name": "Cowboys",
+        "location": "Dallas",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872974",
+   "date": "2026-10-04T20:05Z",
+   "name": "Miami Dolphins at Minnesota Vikings",
+   "shortName": "MIA @ MIN",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872974",
+     "date": "2026-10-04T20:05Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "15",
+       "team": {
+        "id": "16",
+        "abbreviation": "MIN",
+        "displayName": "Minnesota Vikings",
+        "shortDisplayName": "Vikings",
+        "name": "Vikings",
+        "location": "Minnesota",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "10",
+       "team": {
+        "id": "15",
+        "abbreviation": "MIA",
+        "displayName": "Miami Dolphins",
+        "shortDisplayName": "Dolphins",
+        "name": "Dolphins",
+        "location": "Miami",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872976",
+   "date": "2026-10-04T20:25Z",
+   "name": "Kansas City Chiefs at Las Vegas Raiders",
+   "shortName": "KC @ LV",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872976",
+     "date": "2026-10-04T20:25Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "27",
+       "team": {
+        "id": "13",
+        "abbreviation": "LV",
+        "displayName": "Las Vegas Raiders",
+        "shortDisplayName": "Raiders",
+        "name": "Raiders",
+        "location": "Las Vegas",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "30",
+       "team": {
+        "id": "12",
+        "abbreviation": "KC",
+        "displayName": "Kansas City Chiefs",
+        "shortDisplayName": "Chiefs",
+        "name": "Chiefs",
+        "location": "Kansas City",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872975",
+   "date": "2026-10-04T20:25Z",
+   "name": "Denver Broncos at San Francisco 49ers",
+   "shortName": "DEN @ SF",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872975",
+     "date": "2026-10-04T20:25Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "24",
+       "team": {
+        "id": "25",
+        "abbreviation": "SF",
+        "displayName": "San Francisco 49ers",
+        "shortDisplayName": "49ers",
+        "name": "49ers",
+        "location": "San Francisco",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "14",
+       "team": {
+        "id": "7",
+        "abbreviation": "DEN",
+        "displayName": "Denver Broncos",
+        "shortDisplayName": "Broncos",
+        "name": "Broncos",
+        "location": "Denver",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872977",
+   "date": "2026-10-04T20:25Z",
+   "name": "Los Angeles Chargers at Seattle Seahawks",
+   "shortName": "LAC @ SEA",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872977",
+     "date": "2026-10-04T20:25Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "30",
+       "team": {
+        "id": "26",
+        "abbreviation": "SEA",
+        "displayName": "Seattle Seahawks",
+        "shortDisplayName": "Seahawks",
+        "name": "Seahawks",
+        "location": "Seattle",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "23",
+       "team": {
+        "id": "24",
+        "abbreviation": "LAC",
+        "displayName": "Los Angeles Chargers",
+        "shortDisplayName": "Chargers",
+        "name": "Chargers",
+        "location": "Los Angeles",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872978",
+   "date": "2026-10-05T00:20Z",
+   "name": "Detroit Lions at Carolina Panthers",
+   "shortName": "DET @ CAR",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872978",
+     "date": "2026-10-05T00:20Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "32",
+       "team": {
+        "id": "29",
+        "abbreviation": "CAR",
+        "displayName": "Carolina Panthers",
+        "shortDisplayName": "Panthers",
+        "name": "Panthers",
+        "location": "Carolina",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "26",
+       "team": {
+        "id": "8",
+        "abbreviation": "DET",
+        "displayName": "Detroit Lions",
+        "shortDisplayName": "Lions",
+        "name": "Lions",
+        "location": "Detroit",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  },
+  {
+   "id": "401872979",
+   "date": "2026-10-06T00:15Z",
+   "name": "Atlanta Falcons at New Orleans Saints",
+   "shortName": "ATL @ NO",
+   "season": {
+    "year": 2026,
+    "type": 2,
+    "slug": "regular-season"
+   },
+   "week": {
+    "number": 4
+   },
+   "competitions": [
+    {
+     "id": "401872979",
+     "date": "2026-10-06T00:15Z",
+     "timeValid": true,
+     "neutralSite": false,
+     "competitors": [
+      {
+       "homeAway": "home",
+       "score": "24",
+       "team": {
+        "id": "18",
+        "abbreviation": "NO",
+        "displayName": "New Orleans Saints",
+        "shortDisplayName": "Saints",
+        "name": "Saints",
+        "location": "New Orleans",
+        "isActive": true
+       }
+      },
+      {
+       "homeAway": "away",
+       "score": "45",
+       "team": {
+        "id": "1",
+        "abbreviation": "ATL",
+        "displayName": "Atlanta Falcons",
+        "shortDisplayName": "Falcons",
+        "name": "Falcons",
+        "location": "Atlanta",
+        "isActive": true
+       }
+      }
+     ],
+     "status": {
+      "clock": 0.0,
+      "displayClock": "0:00",
+      "period": 4,
+      "type": {
+       "name": "STATUS_FINAL",
+       "state": "post",
+       "completed": true,
+       "detail": "Final",
+       "shortDetail": "Final"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}
