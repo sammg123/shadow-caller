@@ -129,6 +129,80 @@ test("with a model on each side: one side by default, both when ticked, the chos
   assert.equal(pickerReduce(ui, { type: "side", abbr: "KC" }), ui, "a team not in the game is ignored");
 });
 
+// restructure-v2.md 11 item 5: "Track both sides" selects both sides. A browser keeps one radio of a group checked, so
+// each side tracked takes a group of its own while both are on (the view names the radios by `group`).
+test("Track both sides selects both sides: each side checked, in a group of its own, and both go", () => {
+  const both = game({ away: team("TB", "Tampa Bay Buccaneers", "Buccaneers", 24, { name: "Zac Robinson", role: "OC",
+    model: true }) });
+  let ui = pickerReduce(loaded(), { type: "pick", game: both });
+  const one = pickerVm(ui, NY).chosen.sides.map((s) => [s.abbr, s.checked, s.disabled, s.group]);
+  assert.deepEqual(one, [["TB", false, false, "side"], ["DAL", true, false, "side"]], "one side: one radio group");
+  ui = pickerReduce(ui, { type: "both", on: true });
+  const two = pickerVm(ui, NY).chosen.sides.map((s) => [s.abbr, s.checked, s.disabled, s.group]);
+  assert.deepEqual(two, [["TB", true, true, "side-TB"], ["DAL", true, true, "side-DAL"]]);
+  assert.deepEqual(selectionOf(ui), { event_id: "401872980", sides: ["TB", "DAL"] });
+});
+
+// restructure-v2.md 11 decision 1: a side with no built model is not offered; the picker disables it and says why.
+test("a side whose play-caller has no model is off and says why, in the model index's own words when sent", () => {
+  const reason = "Only 4 games (264 snaps) in the data; a model needs at least 5 games and 200 snaps.";
+  const skipped = game({ away: team("TB", "Tampa Bay Buccaneers", "Buccaneers", 24, { name: "Brad Idzik", role: "OC",
+    model: false, reason }) });
+  const [tb, dal] = pickerVm(pickerReduce(loaded(), { type: "pick", game: skipped }), NY).chosen.sides;
+  assert.deepEqual([tb.disabled, tb.checked, tb.note], [true, false, reason]);
+  assert.deepEqual([dal.disabled, dal.checked, dal.note], [false, true, "Model ready."]);
+  const quiet = game({ away: team("TB", "Tampa Bay Buccaneers", "Buccaneers", 24, { name: "Brad Idzik", role: "OC",
+    model: false, reason: "x".repeat(900) }) });
+  const capped = pickerVm(pickerReduce(loaded(), { type: "pick", game: quiet }), NY).chosen.sides[0].note;
+  assert.ok(capped.length <= 300, "a long reason is capped");
+});
+
+// restructure-v2.md 11 decision 1: the models' index (GET /api/callers) decides who has a model, as the server's
+// select does (callers.has_model: his name as the play-caller table spells it, his entry built), and gives the reason.
+const INDEX = { callers: [
+  { name: "Zac Robinson", slug: "zac-robinson", status: "built" },
+  { name: "Brian Schottenheimer", slug: "brian-schottenheimer", status: "built" },
+  { name: "Brad Idzik", slug: "brad-idzik", status: "skipped",
+    reason: "Only 4 games (264 snaps) in the data; a model needs at least 5 games and 200 snaps." },
+  { name: "Old Coach", slug: "old-coach", status: "failed", error: "The bundle couldn't be read." },
+  { name: "__proto__", status: "built" }, null, { status: "built" }] };
+const withIndex = (data, callers = INDEX) => ({ ...pickerReduce(INITIAL, { type: "loaded", data, callers }), open: true });
+
+test("the models' index lights a side the listing doesn't know has a model, and both can be tracked", () => {
+  const listed = game({ away: team("TB", "Tampa Bay Buccaneers", "Buccaneers", 24, { name: "Zac Robinson", role: "OC",
+    model: false }) });
+  const data = { ...DATA, weeks: [week(5, [listed])] };
+  const without = pickerReduce(withIndex(data, null), { type: "pick", game: listed });
+  assert.equal(pickerVm(without, NY).chosen.sides[0].disabled, true, "no index: the listing's own word stands");
+  let ui = pickerReduce(withIndex(data), { type: "pick", game: listed });
+  const vm = pickerVm(ui, NY);
+  assert.deepEqual(vm.chosen.sides.map((s) => [s.abbr, s.model, s.disabled, s.note]),
+    [["TB", true, false, "Model ready."], ["DAL", true, false, "Model ready."]]);
+  assert.equal(vm.chosen.both.disabled, false);
+  assert.equal(rowsOf(vm)[0].caller, "Shadow: Robinson (TB) · Schottenheimer (DAL)");
+  ui = pickerReduce(ui, { type: "both", on: true });
+  assert.deepEqual(selectionOf(ui), { event_id: "401872980", sides: ["TB", "DAL"] });
+});
+
+test("the models' index says why a side has no model: a skipped caller's reason, a failed build's error", () => {
+  const skipped = game({ away: team("CAR", "Carolina Panthers", "Panthers", 10, { name: "Brad Idzik", role: "OC",
+    model: true }) });
+  const ui = pickerReduce(withIndex({ ...DATA, weeks: [week(5, [skipped])] }), { type: "pick", game: skipped });
+  const [car, dal] = pickerVm(ui, NY).chosen.sides;
+  assert.deepEqual([car.disabled, car.checked, car.note], [true, false, INDEX.callers[2].reason],
+    "the index wins over the listing's flag");
+  assert.equal(dal.checked, true);
+  const failed = game({ away: team("TB", "Tampa Bay Buccaneers", "Buccaneers", 24, { name: "Old Coach", role: "OC",
+    model: true }) });
+  const f = pickerReduce(withIndex({ ...DATA, weeks: [week(5, [failed])] }), { type: "pick", game: failed });
+  assert.deepEqual(pickerVm(f, NY).chosen.sides[0].note, "The bundle couldn't be read.");
+  const unknown = game({ away: team("TB", "Tampa Bay Buccaneers", "Buccaneers", 24, { name: "Not Indexed", role: "OC",
+    model: true }) });
+  const u = pickerReduce(withIndex({ ...DATA, weeks: [week(5, [unknown])] }), { type: "pick", game: unknown });
+  assert.equal(pickerVm(u, NY).chosen.sides[0].model, true, "a caller the index doesn't list keeps the listing's word");
+  assert.ok(isDeepFrozen(pickerVm(u, NY)));
+});
+
 test("no model on either side: Open is off and says why; live and upcoming games say how they open", () => {
   const vm = pickerVm(pickerReduce(loaded(), { type: "pick", game: LONDON }), NY);
   assert.deepEqual([vm.chosen.go.disabled, vm.chosen.go.hint], [true, "No play-caller model for either team yet."]);

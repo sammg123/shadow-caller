@@ -50,3 +50,58 @@ test("view keys: the camera's label comes from the engine's modes, else from its
   assert.deepEqual([none.cameraMode, none.cameraLabel], ["", ""]);
   assert.ok(isDeepFrozen(named));
 });
+
+// ---------------------------------------------------------------- restructure-v2.md 11: the tracked play-callers
+const ROBINSON = { team: "TB", caller: "Zac Robinson", slug: "zac-robinson" };
+const SCHOTT = { team: "DAL", caller: "Brian Schottenheimer", slug: "brian-schottenheimer" };
+const tracked = (list, extra = {}) => ({ ...state.final(), tracked: list, ...extra });
+
+test("one tracked caller: the plate names him from /api/state's tracked list", () => {
+  const vm = mastheadVm(pv({ presented: tracked([SCHOTT]) }));
+  assert.equal(vm.whoLabel, "Shadowing Schottenheimer · DAL");
+  assert.equal(vm.plateTitle, "Modelling Brian Schottenheimer (DAL offense)");
+  assert.equal(vm.sides, 1);
+  const other = mastheadVm(pv({ presented: tracked([{ team: "KC", caller: "Matt Nagy Jr.", slug: "matt-nagy" }]) }));
+  assert.equal(other.whoLabel, "Shadowing Nagy · KC", "whoever the track names, not the profile");
+});
+
+test("both sides tracked: the plate names both callers, away first (restructure-v2.md 11 decision 4)", () => {
+  const vm = mastheadVm(pv({ presented: tracked([ROBINSON, SCHOTT]) }));
+  assert.equal(vm.whoLabel, "Shadowing Robinson · TB and Schottenheimer · DAL");
+  assert.equal(vm.plateTitle, "Modelling Zac Robinson (TB offense) and Brian Schottenheimer (DAL offense)");
+  assert.equal(vm.sides, 2);
+  assert.ok(isDeepFrozen(vm));
+});
+
+test("a tracked list that says nothing usable falls back to the profile; a repeated team counts once", () => {
+  for (const list of [[], [null, { team: 7 }, { caller: "No Team" }], "DAL"]) {
+    const vm = mastheadVm(pv({ presented: tracked(list) }));
+    assert.equal(vm.whoLabel, "Shadowing Schottenheimer · DAL", JSON.stringify(list));
+    assert.equal(vm.sides, 1);
+  }
+  const twice = mastheadVm(pv({ presented: tracked([SCHOTT, { ...SCHOTT, caller: "Someone Else" }]) }));
+  assert.equal(twice.whoLabel, "Shadowing Schottenheimer · DAL");
+  const nameless = mastheadVm(pv({ presented: tracked([{ team: "TB", caller: "", slug: null }, SCHOTT]) }));
+  assert.equal(nameless.whoLabel, "Shadowing TB and Schottenheimer · DAL", "a side with no name still shows");
+});
+
+test("the game's words come from the track when neither the timeline nor the game has the teams", () => {
+  const game = { ...state.final().game, offense: undefined, opponent: undefined };
+  const presented = { ...state.final(), game, track: { event_id: "401872980", sides: ["TB", "DAL"], label: "TB at DAL" } };
+  assert.equal(mastheadVm(makePv({ presented })).gameLabel, "TB at DAL");
+  const bad = { ...presented, track: { label: 42 } };
+  assert.equal(mastheadVm(makePv({ presented: bad })).gameLabel, "");
+});
+
+test("a neutral-site game reads vs on the top bar, as in the picker and the tooltip; any other game reads at", () => {
+  const neutral = { ...state.final(), game: { ...state.final().game, neutral: true } };
+  assert.equal(mastheadVm(pv({ presented: neutral })).gameLabel, "TB vs DAL", "the timeline's teams");
+  assert.equal(mastheadVm(makePv({ presented: neutral })).gameLabel, "TB vs DAL", "the game's own teams");
+  const final = mastheadVm(pv({ presented: neutral, version: { watch: { state: "done", game: { status: "post",
+    detail: "Final" } } } }));
+  assert.equal(final.gameLabel, "TB vs DAL · Final");
+  for (const flag of [false, "true", 1, null]) {
+    const game = { ...state.final().game, neutral: flag };
+    assert.equal(mastheadVm(pv({ presented: { ...state.final(), game } })).gameLabel, "TB at DAL", String(flag));
+  }
+});

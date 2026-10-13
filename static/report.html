@@ -24,10 +24,12 @@ FORM. Candidate 4 of 7 (the game told call by call), with the cutaway staging's 
 <title>Model report · Shadow Play-Caller</title>
 <meta name="description" content="How the shadow model of one NFL play-caller did tonight: every call against the model and the league.">
 <link rel="icon" type="image/svg+xml" href="/static/img/favicon.svg">
-<!-- Order (as index.html): base, every component this page reuses, the report's own structure, then the active world
-     (swapped by theme/apply.js). The page ships in the default world, Under the Lights: its tokens, its key caps and
-     its boot board, so the first frame is the night sky with the loading board lit before any script runs; report/main.js
-     then loads the world's whole report set (or ?world=neutral) and swaps these out. -->
+<!-- Order (as index.html): base, every component this page reuses, the report's own structure, the analyst's chat
+     (its plain sheet and its stadium skin, which stays a page link: every rule in it is scoped to Under the Lights, so
+     it is inert in any other world; docs/design/analyst-ui.md 5), then the active world (swapped by theme/apply.js).
+     The page ships in the default world, Under the Lights: its tokens, its key caps and its boot board, so the first
+     frame is the night sky with the loading board lit before any script runs; report/main.js then loads the world's
+     whole report set (or ?world=neutral) and swaps these out. -->
 <link rel="stylesheet" href="/static/css/base.css">
 <link rel="stylesheet" href="/static/css/components/masthead.css">
 <link rel="stylesheet" href="/static/css/components/boot-screen.css">
@@ -39,6 +41,8 @@ FORM. Candidate 4 of 7 (the game told call by call), with the cutaway staging's 
 <link rel="stylesheet" href="/static/css/components/drive-chart.css">
 <link rel="stylesheet" href="/static/css/components/box-score.css">
 <link rel="stylesheet" href="/static/css/report/report.css">
+<link rel="stylesheet" href="/static/css/ask/ask.css">
+<link rel="stylesheet" href="/static/css/ask/ask-under-the-lights.css">
 <link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-text/big-shoulders-text-latin.woff2">
 <link rel="stylesheet" id="world-css" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/tokens.css">
@@ -98,8 +102,10 @@ FORM. Candidate 4 of 7 (the game told call by call), with the cutaway staging's 
     <section id="rp-calls" class="rp-board rp-board-wide" data-region="calls" aria-labelledby="rp-calls-plate">
       <h2 class="rp-plate" id="rp-calls-plate">Every call v the model</h2>
     </section>
-    <!-- The AI analyst's full chat comes here in phase 4 (restructure-v2.md section 7). -->
-    <section id="rp-analyst" class="rp-analyst" data-region="analyst" data-testid="report-analyst" aria-label="Analyst" hidden></section>
+    <!-- The AI analyst's full chat (restructure-v2.md 6 and 7 item 4): report/main.js mounts it and shows the section;
+         the panel's own plate names it. Its cites take the reader to the call's row above. -->
+    <section id="rp-analyst" class="rp-analyst rp-board-wide" data-region="analyst" data-testid="report-analyst"
+      aria-labelledby="sc-ask-title" hidden></section>
   </main>
 </div>
 <div id="rg-conn" data-region="conn"></div>

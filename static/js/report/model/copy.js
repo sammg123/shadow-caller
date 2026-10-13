@@ -24,6 +24,15 @@ export const REPORT = Object.freeze({
   spoken: (score, status) => [score, status].filter(Boolean).map((s) => `${s}.`).join(" "),
 });
 
+/** restructure-v2.md 11 decision 4: with both sides tracked, the ribbon's switch between the two callers' sections
+ * (his night, scorecard, hit rate, surprises, tendencies, memory and calls; the rest is the whole game's). */
+export const SIDES = Object.freeze({
+  label: "Shadowing",
+  group: "Whose calls the report shows",
+  title: (caller, team) => `Show ${caller}'s calls (${team} offense). Win probability, drives and team stats are the `
+    + "whole game's.",
+});
+
 export const NIGHT = Object.freeze({
   heading: (last) => `${last} so far`,
   headingPlain: "His night so far",
@@ -48,6 +57,7 @@ export const LEAGUE = Object.freeze({
 
 export const CALLS = Object.freeze({
   heading: "Every call v the model",
+  named: (last) => `${last}'s calls v the model`,     // both sides tracked: the plate names whose calls they are
   count: (n) => (n === 1 ? "1 call" : `${n} calls`),
   columns: Object.freeze(["#", "Time", "Situation", "His top 3", "He called", "Rank", "Verdict"]),
   caption: "Every snap he called: the model's top 3 before it with their chances, what he called, its rank among "
@@ -60,6 +70,7 @@ export const CALLS = Object.freeze({
 
 export const HIT_RATE = Object.freeze({
   heading: "Hit rate by down and distance",
+  named: (last) => `${last}'s hit rate by down and distance`,
   columns: Object.freeze(["Situation", "Calls", "Top pick", "In his top 3", "League top 3"]),
   labels: Object.freeze({
     "1st": "1st down", "2nd-short": "2nd & short", "2nd-medium": "2nd & medium", "2nd-long": "2nd & long",
@@ -77,6 +88,7 @@ export const HIT_RATE = Object.freeze({
 
 export const SURPRISES = Object.freeze({
   heading: "His biggest surprises",
+  named: (last) => `${last}'s biggest surprises`,
   sub: "The calls the model gave the lowest chance.",
   called: "He called",
   modelPick: "Model's pick",
@@ -87,6 +99,7 @@ export const SURPRISES = Object.freeze({
 
 export const MEMORY = Object.freeze({
   heading: "In-game memory",
+  named: (last) => `${last}'s in-game memory`,
   sub: "Snaps where the model tilted his call away from the league: his habits and the game so far, in points of "
     + "pass chance.",
   tilt: Object.freeze({ pass: "Tilts pass", run: "Tilts run" }),

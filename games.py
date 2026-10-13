@@ -45,9 +45,8 @@ CALLER_TABLES = ("play_callers_2024_2026.csv", "play_callers.csv")   # the first
 
 LIVE_TTL_S = 30                            # a week with a game on, or one kicking off within SOON_S
 UPCOMING_TTL_S = 15 * 60                   # any other week that isn't over
-SOON_S = 60 * 60
+SOON_S = NFLVERSE_TTL_S = 60 * 60
 POST_LOOKAHEAD_S = 14 * 86400              # a postseason week is looked up from two weeks before it starts
-NFLVERSE_TTL_S = 60 * 60
 FETCH_WORKERS = 6
 REFRESH_BUDGET_S = 15                      # the listing waits this long for ESPN, then answers with what it has
 
@@ -85,6 +84,7 @@ SCOREBOARD_KEYS = {"season": ("type", "year"), "week": ("number",), "leagues": [
 
 FIND_ID_HELP = "Open the game on espn.com. The number after gameId/ in the address is the game id."
 NOT_ESPN = f"That isn't an espn.com game address. {FIND_ID_HELP}"
+NO_LINE = "No betting line for {} yet: neither nflverse nor ESPN has one, and the model needs the spread and the total."
 
 
 class GamesError(Exception):
@@ -123,8 +123,7 @@ def _whole(value, lo, hi):
 
 def _number(value):
     """A finite float from a JSON number (never a bool or text); None otherwise."""
-    value = espn_feed.finite(value)
-    return None if value is None else float(value)
+    return None if espn_feed.finite(value) is None else float(value)
 
 
 def _utc(value):
@@ -190,7 +189,11 @@ def parse_week(scoreboard, season, season_type, week):
     regular = sum(1 for w in parse_calendar(scoreboard) if w["season_type"] == REGULAR) or None
     out, seen = [], set()
     for ev in scoreboard["events"]:
-        game = _event(_dict(ev), (season, season_type, week), regular)
+        try:                                   # one malformed event never fails the week: it is left out (logged)
+            game = _event(_dict(ev), (season, season_type, week), regular)
+        except (TypeError, ValueError, AttributeError, KeyError) as ex:
+            log.warning("Skipped a malformed ESPN event in week %s-%s (%s).", season_type, week, ex)
+            continue
         if game and game["event_id"] not in seen:
             seen.add(game["event_id"])
             out.append(game)
@@ -202,7 +205,7 @@ def _event(ev, when, regular_weeks):
     eid, comp = ev.get("id"), _dict((_list(ev.get("competitions")) or [None])[0])
     if not (isinstance(eid, str) and EVENT_RE.fullmatch(eid)) or not _same_week(ev, when):
         return None
-    sides = {c.get("homeAway"): c for c in _list(comp.get("competitors")) if isinstance(c, dict)}
+    sides = {c["homeAway"]: c for c in _list(comp.get("competitors")) if _dict(c).get("homeAway") in ("away", "home")}
     away, home = _team(sides.get("away")), _team(sides.get("home"))
     status = _status(_dict(comp.get("status")) or _dict(ev.get("status")))
     if not (away and home and status["status"]) or away["abbr"] == home["abbr"]:
@@ -544,9 +547,9 @@ class Games:
     def game_config(self, event_id, offense):
         """config.GAME for this game from `offense`'s side (ESPN's abbreviation; nflverse's spelling works too): the
         nflverse game id, a label, both teams as ESPN writes them (the feed matches on those), home or away, the line
-        from that side (nflverse, else ESPN's odds) and where it came from. Neither has a line: offense_spread and
-        total_line are None and line_note says so, never a guess (the engine needs both). ValueError for a team that
-        isn't in the game."""
+        from that side (nflverse, else ESPN's odds) and where it came from, and whether it is at a neutral site (the
+        track's top bar then says vs). Neither has a line: offense_spread and total_line are None and line_note says
+        so, never a guess (the engine needs both). ValueError for a team that isn't in the game."""
         game = self.game(event_id)
         side = self._side(game, offense)
         row = self._schedule().get(game["event_id"])
@@ -555,15 +558,13 @@ class Games:
             line, source = self._espn_line(game), "espn"
         margin, total = line or (None, None)
         same = row and (row["away_team"], row["home_team"]) == (game["away"]["nflverse"], game["home"]["nflverse"])
-        note = (f"No betting line for {matchup(game)} yet: neither nflverse nor ESPN has one, and the model needs the "
-                "spread and the total.")
         return {"game_id": row["game_id"] if same else game["game_id"],
                 "label": game_label(game, self._label((game["season_type"], game["week"]))),
                 "offense": game[side]["abbr"], "opponent": game["home" if side == "away" else "away"]["abbr"],
                 "offense_is_home": side == "home",
                 "offense_spread": None if margin is None else (margin if side == "home" else (-margin or 0.0)),
                 "total_line": total, "espn_event": game["event_id"], "line_source": source if line else None,
-                "line_note": None if line else note}
+                "line_note": None if line else NO_LINE.format(matchup(game)), "neutral": game["neutral"]}
 
     def callers_for(self, event_id):
         """{ESPN abbreviation: {name, role, source, model} or None} for the game's two teams that week, from the
@@ -779,11 +780,12 @@ class Games:
 _DEFAULT, _DEFAULT_LOCK = {}, threading.Lock()
 
 
-def default_games():
-    """The app's Games (DATA_DIR, offline when SHADOW_ESPN_OFFLINE=1): one per process, so its caches are shared."""
+def default_games(has_model=None):
+    """The app's Games (DATA_DIR, offline when SHADOW_ESPN_OFFLINE=1, has_model the models' hook, game-picker.md 5.7):
+    one per process, so its caches are shared (the first call's has_model stays)."""
     with _DEFAULT_LOCK:
         if "games" not in _DEFAULT:
-            _DEFAULT["games"] = Games(DATA_DIR, offline=ESPN_OFFLINE)
+            _DEFAULT["games"] = Games(DATA_DIR, offline=ESPN_OFFLINE, has_model=has_model)
         return _DEFAULT["games"]
 
 

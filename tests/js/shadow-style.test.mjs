@@ -91,6 +91,38 @@ test("a casing is thin and optional: one ring per part, under it, the stroke's c
     .length, 0, "none by default");
 });
 
+// Colour in linear light, as the scene blends it (its render target is linear until the output pass): a part at
+// opacity a over a turf or logo pixel is a * part + (1 - a) * pixel; relative luminance and contrast as WCAG 2.2 has them.
+const linear = (c) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4);
+const rgb = (hex) => [1, 3, 5].map((i) => linear(Number.parseInt(hex.slice(i, i + 2), 16)));
+const luminance = ([r, g, b]) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+const over = (top, a, under) => luminance(rgb(top).map((v, i) => a * v + (1 - a) * rgb(under)[i]));
+const contrast = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+// A light midfield logo's paint: white, the stadium's paint white, light gray, silver (the Raiders' shield).
+const LIGHT_LOGOS = ["#ffffff", "#f4f1e6", "#c4c8cc", "#a5acaf"];
+
+test("Under the Lights: over a light midfield logo every dash keeps a thin dark edge, flat (no glow, no blur)", () => {
+  const env = envFor(ULS);
+  for (const parts of shadowsOf().slice(0, 2).map((s) => shadowParts(s, ULS, env))) {
+    const stroke = own(parts)[0];
+    const ring = parts.find((p) => p.layer === "casing" && p.path === stroke.path);
+    assert.ok(ring, `${stroke.color} is cased`);
+    assert.ok((ring.width - stroke.width) / 2 <= 2, "thin: at most 2 px of edge each side at 1440x900");
+    assert.ok(ring.inner > 0 && ring.order < stroke.order, "a ring under the stroke, its colour never darkened");
+    assert.deepEqual(Object.keys(ring).sort(), Object.keys(stroke).sort(), "the same flat strip: no glow, no blur");
+    assert.deepEqual(ring.dash, stroke.dash, "dashed with it");
+    for (const logo of LIGHT_LOGOS) {
+      // the edge stands off the logo (4.5:1), and the dash off its edge (3:1, WCAG 1.4.11 for graphics); the old
+      // 0.55 ring gave 2.08:1 and 1.92:1 for the warm-white #2 on white: the logo swallowed it
+      const edge = over(ring.color, ring.opacity, logo);
+      const offLogo = contrast(edge, luminance(rgb(logo)));
+      const offEdge = contrast(edge, over(stroke.color, stroke.opacity, logo));
+      assert.ok(offLogo >= 4.5, `${stroke.color}'s edge on ${logo}: ${offLogo.toFixed(2)}:1`);
+      assert.ok(offEdge >= 3, `${stroke.color} off its edge on ${logo}: ${offEdge.toFixed(2)}:1`);
+    }
+  }
+});
+
 test("nothing drawable: no parts; no end mark when targetYd is 0", () => {
   assert.deepEqual(shadowParts(null, NEUTRAL_LOOK, envFor(NEUTRAL_LOOK)), []);
   const none = resolveLook({ world: { plays: { targetYd: 0 } } });

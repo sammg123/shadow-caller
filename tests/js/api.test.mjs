@@ -33,8 +33,9 @@ const kindOf = async (p) => p.then(() => "resolved", (e) => (e instanceof ApiErr
 
 test("the timeouts and the POST allowlist: playback only, never a manual-entry endpoint (restructure-v2.md 1, 9)", () => {
   assert.deepEqual({ ...TIMEOUTS }, { version: 4000, state: 8000, timeline: 8000, post: 30000 });
-  assert.deepEqual([...POST_PATHS].sort(), ["/api/golive", "/api/open", "/api/watch/back", "/api/watch/forward",
-    "/api/watch/pause", "/api/watch/resume", "/api/watch/seek", "/api/watch/speed"]);
+  assert.deepEqual([...POST_PATHS].sort(), ["/api/game/select", "/api/golive", "/api/open", "/api/watch/back",
+    "/api/watch/forward", "/api/watch/pause", "/api/watch/resume", "/api/watch/seek", "/api/watch/speed"]);
+  assert.equal(ROUTES.select, "/api/game/select", "restructure-v2.md 11: the game picker opens another game");
   assert.equal(ROUTES.open, "/api/open");
   assert.equal(ROUTES.seek, "/api/watch/seek");
   assert.equal(ROUTES.golive, "/api/golive");
@@ -48,6 +49,22 @@ test("Go Live's 503 (ESPN unreachable) resolves with its plain message, like a 4
   const { fetchImpl } = stubFetch(() => response(503, { error: "ESPN can't be reached right now." }));
   const api = createApi({ fetchImpl });
   assert.deepEqual(await api.post("/api/golive", {}), { status: 503, body: { error: "ESPN can't be reached right now." } });
+});
+
+// game-picker.md 4: POST /api/game/select refuses with 404 (ESPN has no such game) or 500 (a switch that failed and
+// was put back), each with its reason as JSON; the page shows the server's words, never "can't reach the server".
+test("a POST refused with a JSON reason, any status, resolves with it; an HTML error page still rejects", async () => {
+  for (const status of [403, 404, 413, 415, 500]) {
+    const { fetchImpl } = stubFetch(() => response(status, { error: `refused ${status}` }));
+    const reply = await createApi({ fetchImpl }).post("/api/game/select", { event_id: "1", sides: ["DAL"] });
+    assert.deepEqual(reply, { status, body: { error: `refused ${status}` } }, String(status));
+  }
+  const html = createApi({ fetchImpl: stubFetch(() => response(404, "<p>no</p>", { json: false })).fetchImpl });
+  assert.equal(await kindOf(html.post("/api/game/select", {})), "http:404");
+  const noReason = createApi({ fetchImpl: stubFetch(() => response(500, { ok: false })).fetchImpl });
+  assert.equal(await kindOf(noReason.post("/api/open", {})), "http:500", "an answer that says nothing is a failure");
+  const blank = createApi({ fetchImpl: stubFetch(() => response(500, { error: "  " })).fetchImpl });
+  assert.equal(await kindOf(blank.post("/api/open", {})), "http:500");
 });
 
 test("GETs return the parsed body and never cache", async () => {

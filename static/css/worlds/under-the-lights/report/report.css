@@ -102,6 +102,43 @@
   padding-inline: var(--sc-space-3);
   font-size: var(--uls-size-plate);
 }
+/* Both callers tracked: the who line is the switch. "SHADOWING" in the plate's caps, then a key per caller sized to
+   the line: his team in an LED window (dim until it is the one shown, then the window lights amber with the letters in
+   the panel's black, the way a pressed key's window lights), his last name on the steel. */
+:where(:root[data-world="under-the-lights"]) .rp-sides-label {
+  color: var(--sc-ink);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1.1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+  text-transform: uppercase;
+}
+:where(:root[data-world="under-the-lights"]) .rp-ribbon .sc-key.rp-side-key {
+  gap: 6px;
+  min-height: var(--uls-plate-h);
+  padding: 0 var(--sc-space-2) 0 3px;
+  color: var(--sc-ink-muted);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-plate);
+}
+:where(:root[data-world="under-the-lights"]) .rp-side-team {
+  min-width: 2.2em;
+  height: calc(var(--uls-plate-h) - 6px);
+  border: 0;
+  background: var(--uls-led-face);
+  color: var(--uls-led-dim);
+  font: var(--sc-weight-display) var(--uls-size-plate) / 1 var(--sc-font-display);
+  letter-spacing: var(--uls-tracking-caption);
+}
+:where(:root[data-world="under-the-lights"]) .rp-side-key:hover:not([aria-pressed="true"]) .rp-side-team {
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) .rp-ribbon .sc-key.rp-side-key[aria-pressed="true"] {
+  color: var(--sc-ink);
+}
+:where(:root[data-world="under-the-lights"]) .rp-side-key[aria-pressed="true"] .rp-side-team {
+  border-color: transparent;
+  background: var(--uls-led-amber);
+  color: var(--uls-led-panel);
+}
 
 /* ---------------------------------------------------------------- a board: steel cabinet, painted plate, LED face */
 :where(:root[data-world="under-the-lights"]) .rp-board {

@@ -6,7 +6,7 @@ import test from "node:test";
 import { ASK } from "../../../static/js/ask/copy.js";
 import { INITIAL, newest, reduce } from "../../../static/js/ask/state.js";
 import { normalizeStatus } from "../../../static/js/ask/stream.js";
-import { askVm, citeChips, citeLabel, statusOf } from "../../../static/js/ask/vm.js";
+import { askKeyVm, askVm, citeChips, citeLabel, statusOf } from "../../../static/js/ask/vm.js";
 import { statusBody } from "./helpers.mjs";
 
 const status = (over) => normalizeStatus(statusBody(over));
@@ -150,6 +150,25 @@ test("the announcement for screen readers passes through once per turn", () => {
 test("the view model is frozen data", () => {
   const vm = askVm(end(asked(ready()), { type: "done", text: "He ran it.", cites: [{ seq: 3, ref: "Q1 9:00" }] }));
   assert.ok(Object.isFrozen(vm) && Object.isFrozen(vm.turns) && Object.isFrozen(vm.turns[0].cites[0]));
+});
+
+// restructure-v2.md 11: the top bar's Ask key shows when the analyst's status says the server has one, and says in
+// words when it can't answer, with the reason on its tooltip (the drawer it opens says the rest).
+test("the Ask key: shown and plain when the analyst can answer; 'Not ready' with the reason when it can't", () => {
+  const ok = (over) => ({ ok: true, status: status(over) });
+  assert.deepEqual(askKeyVm(ok()), { shown: true, status: "ready", value: "", title: ASK.key.title });
+  assert.equal(askKeyVm(ok({ warm: false })).status, "warming");
+  assert.equal(askKeyVm(ok({ busy: true })).status, "busy");
+  assert.equal(askKeyVm(ok({ busy: true })).value, "", "busy is a moment, not a fault");
+  const message = "The analyst needs Ollama running with gpt-oss:20b. Start Ollama, then ask again.";
+  assert.deepEqual(askKeyVm(ok({ ready: false, ollama: false, message })),
+    { shown: true, status: "down", value: "Not ready", title: message });
+  assert.equal(askKeyVm(ok({ ready: false, message: null, model: "gpt-oss:20b" })).title, ASK.notes.down("gpt-oss:20b"));
+  assert.deepEqual(askKeyVm({ ok: false, code: "missing", message: "x" }),
+    { shown: false, status: "missing", value: "", title: "" }, "a server with no analyst: no key");
+  assert.equal(askKeyVm({ ok: false, code: "offline", message: "x" }).shown, false);
+  assert.equal(askKeyVm(null).shown, false);
+  assert.ok(Object.isFrozen(askKeyVm(ok())));
 });
 
 test("no em dash in anything the panel can say", () => {

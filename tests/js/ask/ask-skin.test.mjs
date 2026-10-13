@@ -8,6 +8,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { cascadeLosses } from "../css-cascade.mjs";
 
 const ROOT = new URL("../../../", import.meta.url);
 const read = (path) => readFileSync(new URL(path, ROOT), "utf8");
@@ -67,6 +68,26 @@ test("motion is the drawer running out on its rails, once, with both reduced-mot
 test("G5-8: no rule makes the page the subject of a :has()", () => {
   const rooted = /(?:#app|:root|\bhtml|\bbody)(?:\[[^\]]*\]|:not\([^()]*\)|:is\([^()]*\))*:has\(/;
   for (const css of [PLAIN, SKIN]) assert.deepEqual(selectors(css).filter((s) => rooted.test(s)), []);
+});
+
+// restructure-v2.md 11 item 5: the stadium skin wins the cascade. The plain sheet's drawer carried a soft shadow on a
+// more specific rule than the skin's flat steel, so the shadow showed in Under the Lights; every declaration the skin
+// restyles must now win on the same element.
+test("the skin wins the cascade: no plain rule outranks it where it restyles (no soft shadow on the drawer)", () => {
+  assert.deepEqual(cascadeLosses(PLAIN_RAW, SKIN_RAW), []);
+  const slide = /:where\(:root\[data-world="under-the-lights"\]\) \.sc-ask\[data-layout="slide"\]\s*\{([^}]*)\}/
+    .exec(SKIN)?.[1] ?? "";
+  assert.match(slide, /box-shadow:\s*none/, "the drawer is flat steel");
+});
+
+test("the cascade check finds a plain rule that outranks a skin (the shadow this skin had)", () => {
+  const plain = '.sc-ask[data-layout="slide"] { box-shadow: 2px 0 18px gray; }';
+  const skin = ':where(:root[data-world="under-the-lights"]) .sc-ask { box-shadow: none; }';
+  assert.equal(cascadeLosses(plain, skin).length, 1);
+  assert.deepEqual(cascadeLosses(plain, `${skin} :where(:root[data-world="under-the-lights"]) `
+    + '.sc-ask[data-layout="slide"] { box-shadow: none; }'), []);
+  assert.deepEqual(cascadeLosses('.sc-ask[data-layout="embedded"] { border: 1px solid; }',
+    ':where(:root) .sc-ask[data-layout="slide"] { border-inline-end: 0; }'), [], "a slide rule never styles the chat");
 });
 
 test("the slide-out keeps the play clear of it: open, it widens the field's left inset on the stadium layout", () => {

@@ -58,7 +58,7 @@ def history_of(value: object) -> list:
 def message_of(m: object) -> dict:
     if not isinstance(m, dict) or set(m) != {"role", "content"}:
         raise ValueError('Each history message is {"role": "user" or "assistant", "content": "..."}.')
-    if m["role"] not in TEXT_MAX:
+    if not isinstance(m["role"], str) or m["role"] not in TEXT_MAX:     # a list or an object can't be looked up
         raise ValueError("A history message's role must be user or assistant.")
     content = text_of(m["content"])
     if not content:

@@ -10,6 +10,7 @@
 // (actions.hoverLeaf, which the conductor turns into engine.highlightGhost); a play is shown, never picked (no user
 // input into the game). Lists are keyed, so a background render never moves focus (G18, FI 4.3). World hooks
 // (ui-architecture.md 11.3): .sc-call[data-enter] (flips "a"/"b" on every new call, so a world's entrance replays),
+// #heroArea[data-team] (both sides tracked: the offense whose caller the card follows; absent with one side),
 // .sc-call[data-fourth], data-family, data-top-leaf and data-hot on families, data-highlighted on plays, and the bar
 // shares as custom properties (--sc-share, --sc-league-share: "0%" to "100%"). The board speaks one sentence per
 // change in one live region outside the sections (.sc-board-spoken), so a face that appears is still heard.
@@ -259,7 +260,8 @@ function renderWhy(list, why) {
   });
 }
 
-function renderCall(view, vm, hover) {
+/** @param {string | null} team  the offense the card follows when both sides are tracked, else null */
+function renderCall(view, vm, hover, team) {
   renderTop(view, vm);
   renderThen(view, vm);
   renderSplit(view.split, vm.split);
@@ -270,8 +272,10 @@ function renderCall(view, vm, hover) {
   });
   renderWhy(view.why, vm.why);
   setText(view.legend, vm.legend);
-  // A new call (another snap, another top pick or share) replays a world's entrance; a hover is not a new call.
-  view.enter = entranceOf(view.node, view.enter, [vm.snap?.n ?? "", vm.call?.leaf ?? "", vm.call?.pct ?? ""].join("|"));
+  // A new call (another caller's, another snap, another top pick or share) replays a world's entrance; a hover is not
+  // a new call.
+  view.enter = entranceOf(view.node, view.enter,
+    [team ?? "", vm.snap?.n ?? "", vm.call?.leaf ?? "", vm.call?.pct ?? ""].join("|"));
 }
 
 // ---------------------------------------------------------------- NEXT CALL at the final whistle: FINAL
@@ -331,11 +335,13 @@ export function mount(root, ctx) {
   return {
     update(vm) {
       const kind = KINDS.includes(vm?.kind) ? vm.kind : "empty";
+      const team = kind !== "empty" && typeof vm.team === "string" && vm.team ? vm.team : null;
       setData(root, "kind", kind);
+      setData(root, "team", team);          // both sides tracked: whose card it is (restructure-v2.md 11 decision 4)
       for (const [name, face] of Object.entries(faces)) setHidden(face.node, name !== kind);
       if (kind !== "call") hover.reset();
       if (kind === "offfield") renderOffField(faces.offfield, vm.next);
-      if (kind === "call") renderCall(faces.call, vm.next, hover);
+      if (kind === "call") renderCall(faces.call, vm.next, hover, team);
       if (kind === "final") renderFinal(faces.final, vm.next);
       renderPrevious(previous, kind === "empty" ? null : vm.previous ?? null);
       renderRecent(recent, kind === "empty" ? null : vm.recent ?? null);

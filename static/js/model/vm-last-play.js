@@ -14,6 +14,9 @@ import { actualText } from "./vm-log.js";
 const RECENT_SNAPS = 6;                         // LAST 6
 const SPOKEN_PAUSE = ", ";                      // the field's " · " is read as a pause, never as "dot"
 const logOf = (p) => (Array.isArray(p && p.log) ? p.log.filter(Boolean) : []);
+/** A verdict on the play type (or on pass or run) rather than on a specific play: a sack or a scramble, whose called
+ * route is unknown (live_calls.py). The scorecard's specific-play counts (leaf_n, the tally's) leave it out. */
+const isTypeOnly = (v) => v.key !== "none" && v.level !== "leaf";
 const spokenWords = (text) => text.split(" · ").join(SPOKEN_PAUSE).replace(/(\d)%/g, "$1 percent");
 
 /** The drawn timeline row of a log row (its ESPN play id, or "log-<seq>" for a typed snap; DC B7), else null. */
@@ -52,22 +55,26 @@ function snapOf(row) {
 /**
  * PREVIOUS PLAY: the tracked offense's last snap (a call a flag wiped out still counts as his call).
  * @param {object} pv  presented view
+ * @param {{ named?: string }} [opts]  named: his last name, when both sides are tracked and the plate must say whose
+ *   play it is ("Robinson's previous play"); else the plate reads "Previous play" as always
  * @returns {object | null} {plate, snap: {n, text}, seq, label, lead, verdict: {key, rank, text}, predicted, espn};
- *   null before his first snap (no placeholder)
+ *   null before his first snap (no placeholder). The verdict's words are the field's, and say "play type only" when it
+ *   grades his play type (a sack, a scramble), so a top pick there is never read as one the tally counts.
  */
-export function previousOf(pv) {
+export function previousOf(pv, { named = "" } = {}) {
   const p = pv && pv.presented;
   const last = logOf(p)[0];
   if (!last) return null;
   const row = timelineRowOf(pv.tl, last);
   const v = verdictOf(last);
+  const words = verdictChipText(last, p.leaf_names);
   return {
-    plate: PREDICTION.previousPlate,
+    plate: named ? PREDICTION.previousNamed(named) : PREDICTION.previousPlate,
     snap: snapOf(last),
     seq: Number.isInteger(last.seq) ? last.seq : null,
     label: (row && playLabel(row)) || actualText(last),
     lead: leadOf(last, row),
-    verdict: { key: v.key, rank: v.rank, text: verdictChipText(last, p.leaf_names) },
+    verdict: { key: v.key, rank: v.rank, text: words && isTypeOnly(v) ? PREDICTION.verdictTypeOnly(words) : words },
     predicted: predictedOf(last, p.leaf_names, v),
     espn: typeof last.feed_text === "string" ? last.feed_text : "",
   };
@@ -84,9 +91,11 @@ export function previousSpoken(previous) {
   return said.join(" ");
 }
 
-/** One glyph's words: "Top pick", "In his top 3 (#2)", "Miss". */
-const recentText = (v) => (v.key === "top3" && Number.isInteger(v.rank) ? PREDICTION.recentTop3(v.rank)
-  : verdictText(v.key));
+/** One glyph's words: "Top pick", "In his top 3 (#2)", "Miss", and "Top pick (play type only)" for a sack. */
+function recentText(v) {
+  const words = v.key === "top3" && Number.isInteger(v.rank) ? PREDICTION.recentTop3(v.rank) : verdictText(v.key);
+  return isTypeOnly(v) ? PREDICTION.recentTypeOnly(words) : words;
+}
 
 /** Top pick and in-his-top-3 counts, from the scorecard's own numbers (no league count exists, so none is shown). */
 function tallyOf(metrics) {
@@ -96,25 +105,32 @@ function tallyOf(metrics) {
     { id: "top3", label: PREDICTION.tallyTop3, value: SCORECARD.of(g.leaf_top3, g.leaf_n) }];
 }
 
-/** Why "Snap 55" sits beside "of 59": a call a flag wiped out is graded but gets no snap number, so once there is one
- * the tally says how its calls split ("59 calls: 55 snaps and 4 wiped out by flags"); "" while they agree. */
+/**
+ * Why "Snap 34" sits beside "of 33": his calls counted from his own log, the rows LAST 6 grades (the engine logs every
+ * call, newest first). A call a flag wiped out is graded but gets no snap number (G15), and a call graded on its play
+ * type only is not in the tally, so once either happens the note says how his calls split ("38 calls: 34 snaps and 4
+ * wiped out; 5 graded on play type only"); "" while his calls, his snaps and the tally's count agree.
+ */
 function callsNoteOf(p) {
-  const g = (p && p.metrics && p.metrics.granular) || {};
-  const wiped = logOf(p).filter((r) => r.nullified && Number.isInteger(r.leaf_rank)).length;
-  return g.leaf_n > 0 && wiped > 0 ? PREDICTION.callsNote(g.leaf_n, g.leaf_n - wiped, wiped) : "";
+  const graded = logOf(p).filter((r) => verdictOf(r).key !== "none");
+  const wiped = graded.filter((r) => r.nullified).length;
+  const typeOnly = graded.filter((r) => isTypeOnly(verdictOf(r))).length;
+  return wiped || typeOnly ? PREDICTION.callsNote(graded.length, graded.length - wiped, wiped, typeOnly) : "";
 }
 
 /**
  * LAST 6: his last six graded calls, oldest first so the newest sits at the right end like the ribbon's newest
- * message (a check, his rank in his top 3, or an X), and his night so far as the recap said it.
+ * message (a check, his rank in his top 3, or an X; set apart when it grades the play type only, since the tally
+ * counts specific plays), and his night so far as the recap said it.
  * @param {object} p  the presented state
  * @param {string} plate  the section's plate ("Schottenheimer so far")
- * @returns {object | null} {plate, label, items: {key, rank, text}[], aria, tally: {id, label, value}[], note}; null
- *   before his first graded snap
+ * @returns {object | null} {plate, label, items: {key, rank, level, text}[], aria, tally: {id, label, value}[], note};
+ *   null before his first graded snap. An item's level is verdict.js's: "leaf" (graded on the specific play, as the
+ *   tally counts), else "family" or "passrun" (graded on the play type only)
  */
 export function recentOf(p, plate) {
   const items = logOf(p).map(verdictOf).filter((v) => v.key !== "none").slice(0, RECENT_SNAPS)
-    .map((v) => ({ key: v.key, rank: v.rank, text: recentText(v) })).reverse();
+    .map((v) => ({ key: v.key, rank: v.rank, level: v.level, text: recentText(v) })).reverse();
   const tally = tallyOf(p && p.metrics);
   if (!items.length && !tally.length) return null;
   const label = PREDICTION.recentLabel;

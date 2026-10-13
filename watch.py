@@ -27,22 +27,24 @@ import re
 import shutil
 import threading
 import time
+from dataclasses import dataclass
 from datetime import datetime
+from pathlib import Path
 
 import espn_feed
 import live
 import playback
 from config import GAME
 from playback import delay_s, pace_plan
+from watch_args import (DEFAULT_SPEED, EVENT_ID_RE, SEEK_KEYS, SPEED_KEYS, SPEED_MAX, SPEED_MIN,  # noqa: F401
+                        START_KEYS, STOP_KEYS, WatchError, body_of, event_arg, from_seq_arg, parse_empty, parse_seek,
+                        parse_speed, parse_start, parse_stop, speed_arg)   # (E1: app.py and the tests read them here)
 from watch_session import BACKUP_NAMES, SESSION_FILE, drop_session, load_session, save_session, session_path
 
 log = logging.getLogger(__name__)
 
 ACTIVE = ("playing", "paused")                       # the thread is applying plays, or will on resume
 SESSION = ("playing", "paused", "done", "error")     # a watched game is on screen and can still be put back
-SPEED_MIN, SPEED_MAX, DEFAULT_SPEED = 0.5, 10.0, 4.0
-EVENT_ID_RE = re.compile(r"[0-9]{6,12}")             # ASCII digits: the id ends up in file names and URLs
-START_KEYS, SPEED_KEYS, STOP_KEYS, SEEK_KEYS = ("event_id", "speed", "from_seq"), ("speed",), ("restore",), ("idx",)
 MAX_SAME_SECOND = 99                                 # backups made in one second are named -2 to -99
 KEEP_BACKUPS = 20                                    # of each file: older backups go (prune_backups)
 BACKUP_STAMP_RE = re.compile(r"\.backup-([0-9]{8}-[0-9]{6})(?:-([0-9]{1,2}))?(?:\.json)?$")
@@ -50,92 +52,17 @@ MAX_SKIPS_IN_A_ROW = 3                               # plays the feed couldn't a
 # restructure-v2 sections 2 and 5: the page's top bar has Reset and Go Live (no Stop), and both rebuild from an error
 RESTARTED = ("The app restarted during a watch, so the watched game is still loaded. Reset takes it back to kickoff, "
              "Go Live to the latest play.")
+# A session's own fields (everything _clear resets, and its speed): what a game switch parks and puts back
+SESSION_FIELDS = ("state", "queue", "plan", "idx", "event_id", "ff_until", "started_at", "feed_was_on", "backup", "error",
+                  "_due", "_due_idx", "_left", "skipped", "_in_a_row", "_restore", "summary", "_map", "speed")
 
 
-class WatchError(Exception):
-    """A watch request that isn't valid (status 400) or that the session's state doesn't allow (409)."""
-
-    def __init__(self, message, status=409):
-        super().__init__(message)
-        self.status = status
-
-
-# ---------------------------------------------------------------- E1: request bodies (validated at the HTTP boundary)
-def body_of(raw, allowed=()):
-    """A JSON request body as a dict holding only `allowed` keys. No body counts as {}."""
-    if raw is None:
-        return {}
-    if not isinstance(raw, dict):
-        raise WatchError("Send a JSON object.", 400)
-    extra = sorted(str(k) for k in raw if k not in allowed)
-    if extra:
-        raise WatchError(f"Unknown field '{extra[0][:20]}'. This takes {', '.join(allowed) or 'no fields'}.", 400)
-    return raw
-
-
-def event_arg(value, default=None):
-    """The ESPN event id: 6 to 12 digits, as a string or a JSON number. Missing or '' means `default`."""
-    if value is None or value == "":
-        value = default
-    if isinstance(value, int) and not isinstance(value, bool):
-        value = str(value)
-    if value is None or value == "":
-        raise WatchError("Enter the ESPN event id to watch.", 400)
-    if not isinstance(value, str) or not EVENT_ID_RE.fullmatch(value):
-        raise WatchError(f"ESPN event ids are 6 to 12 digits, like 401872980 (got '{str(value)[:20]}').", 400)
-    return value
-
-
-def speed_arg(value):
-    """A playback speed from 0.5 to 10 (NaN and infinity fail the range test)."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not SPEED_MIN <= value <= SPEED_MAX:
-        raise WatchError(f"Speed must be a number from {SPEED_MIN:g} to {SPEED_MAX:g}.", 400)
-    return float(value)
-
-
-def from_seq_arg(value):
-    """Plays to apply at once before the pacing starts: a whole number from 0 (the top is checked in start())."""
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise WatchError("from_seq must be a whole number of plays, 0 or more.", 400)
-    return value
-
-
-def parse_start(raw, default_event):
-    """(event_id, speed, from_seq) from a POST /api/watch/start body."""
-    d = body_of(raw, START_KEYS)
-    return (event_arg(d.get("event_id"), default_event), speed_arg(d.get("speed", DEFAULT_SPEED)),
-            from_seq_arg(d.get("from_seq", 0)))
-
-
-def parse_speed(raw):
-    d = body_of(raw, SPEED_KEYS)
-    if "speed" not in d:
-        raise WatchError(f"Send the speed, from {SPEED_MIN:g} to {SPEED_MAX:g}.", 400)
-    return speed_arg(d["speed"])
-
-
-def parse_stop(raw):
-    """restore, default false."""
-    restore = body_of(raw, STOP_KEYS).get("restore", False)
-    if not isinstance(restore, bool):
-        raise WatchError("restore must be true or false.", 400)
-    return restore
-
-
-def parse_seek(raw):
-    """POST /api/watch/seek's idx, the plays to show: a whole number from 0 (the top is checked in seek())."""
-    d = body_of(raw, SEEK_KEYS)
-    if "idx" not in d:
-        raise WatchError("Send idx, the number of plays to show (0 is kickoff).", 400)
-    idx = d["idx"]
-    if isinstance(idx, bool) or not isinstance(idx, int) or idx < 0:
-        raise WatchError("idx must be a whole number of plays, 0 or more.", 400)
-    return idx
-
-
-def parse_empty(raw):
-    """pause, resume, step, back, forward, open and Go Live take no fields."""
-    body_of(raw)
+@dataclass(frozen=True)
+class Parked:
+    """A session a game switch stepped aside (Watch.leave): its fields as they stood, and its session file, which stays
+    in its track's folder until the switch is done."""
+    fields: dict
+    session: Path
 
 
 def where(n, total):
@@ -266,18 +193,27 @@ class Watch:
     def __init__(self, feed, lock, pace_scale=1.0):
         if not (isinstance(pace_scale, (int, float)) and 0 < pace_scale < math.inf):
             raise ValueError(f"pace_scale must be a positive number, got {pace_scale!r}")
-        self.feed, self.lock, self.engine, self.scale = feed, lock, feed.engine, float(pace_scale)
+        self.feed, self.lock, self.scale = feed, lock, float(pace_scale)
         self.cv = threading.Condition()           # guards the fields below; never held while touching the engine
-        self.state, self.queue, self.plan, self.idx, self.token = "idle", [], [], 0, 0
-        self.event_id, self.speed, self.ff_until, self.started_at = None, None, 0, None
+        self.token, self.speed, self._thread = 0, None, None
+        self._clear()
+        self._reload_session()
+
+    @property
+    def engine(self):
+        """The engine on screen: the feed's (a game switch reloads it in place, switch.py)."""
+        return self.feed.engine
+
+    def _clear(self):
+        """No session: every field as a watch that never started has it (the speed and the token carry on)."""
+        self.state, self.queue, self.plan, self.idx = "idle", [], [], 0
+        self.event_id, self.ff_until, self.started_at = None, 0, None
         self.feed_was_on, self.backup, self.error = False, None, None
         self._due = self._due_idx = self._left = None   # monotonic deadline of play _due_idx; seconds left if paused
         self.skipped = self._in_a_row = 0         # plays the feed couldn't apply this session; how many just now
         self._restore = None                      # what stop(restore=True) puts back
         self.summary = None                       # the session's game: seek, back and forward rebuild from it
         self._map = None                          # (a summary, its playback.PlayMap): worked out once per summary
-        self._thread = None
-        self._reload_session()
 
     def _reload_session(self):
         """A session the last server run didn't end: the files hold the watched game. It comes back as 'error' with
@@ -411,7 +347,7 @@ class Watch:
         from before the first watch."""
         queue = espn_feed.iter_plays(summary)
         self._check_game(event_id, summary, queue, from_seq)
-        plan = pace_plan(queue, GAME["offense"])
+        plan = pace_plan(queue, self.engine.sides)       # each tracked offense's snaps are caller snaps
         with self.lock:
             carried = self.check_can_start()
             started_at = datetime.now().isoformat(timespec="seconds")
@@ -615,6 +551,54 @@ class Watch:
         self._restore = self.summary = None
         drop_session()
 
+    # ------------------------------------------------ a game switch (switch.py; LOCK, then cv)
+    def leave(self):
+        """Before the game on screen switches: the thread applies nothing more and a session steps aside, nothing of it
+        lost (its restore point, its file in its track's folder). Returns it parked, or None with no session: a switch
+        that fails brings it back (come_back), one that goes through ends it (end_parked)."""
+        with self.lock:
+            with self.cv:
+                parked = (Parked({k: getattr(self, k) for k in SESSION_FIELDS}, session_path())
+                          if self.state in SESSION else None)
+                self.token += 1
+                self.state, self.error, self._due, self._left = "idle", None, None, None
+                self.cv.notify_all()
+            return parked
+
+    def come_back(self, parked):
+        """After a switch that failed (the game on screen is back): the parked session is back exactly as it stood,
+        where it was, its speed and its restore point, its file never having left its folder; a playing or paused one
+        gets its thread again. None: nothing to bring back."""
+        if parked is None:
+            return
+        with self.lock:
+            with self.cv:
+                self.token += 1
+                for name, value in parked.fields.items():
+                    setattr(self, name, value)
+                token, active = self.token, self.state in ACTIVE
+                self.cv.notify_all()
+            if active:
+                self._thread = threading.Thread(target=self._run, args=(token,), name=f"watch-{token}", daemon=True)
+                self._thread.start()
+
+    @staticmethod
+    def end_parked(parked):
+        """After a switch that went through: the parked session ends the way Go Live ends one (nothing is put back,
+        its game and its backups stay in its own track's folder): its session file goes."""
+        if parked is not None:
+            drop_session(parked.session)
+
+    def enter(self):
+        """After the switch: nothing of the old game is left here, then a session the new track's files hold (a restart
+        cut it short) comes back as 'error' with its restore point, as at a start."""
+        with self.lock:
+            with self.cv:
+                self.token += 1
+                self._clear()
+                self.cv.notify_all()
+            self._reload_session()
+
     def _put_back(self):
         """Under LOCK: the live feed stops and a poll in flight is dropped, both backups are checked, then go back
         atomically; the engine, the applied ids, the event and its summary are reloaded from them, the epoch changes
@@ -652,7 +636,7 @@ class Watch:
         the end. Paused or done at n of this game already: nothing changes."""
         queue = espn_feed.iter_plays(summary)
         self._check_game(event_id, summary, queue, n, "idx")
-        plan = pace_plan(queue, GAME["offense"])
+        plan = pace_plan(queue, self.engine.sides)       # each tracked offense's snaps are caller snaps
         with self.lock:
             with self.cv:
                 if self.state in ("paused", "done") and (self.event_id, self.idx, len(self.queue)) == \

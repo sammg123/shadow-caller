@@ -6,8 +6,12 @@
 // in the Model Report). The plates name the caller it shadows
 // (G4-2; on 4th down the call is the play if he goes for it, G4-4), the tilt tag says what it measures (G4-6), and the
 // whole board has one sentence for its live region. No user input: a play is shown on the field, never picked.
+// Tracking both sides (restructure-v2.md 11 decision 4): the card follows the offense with the ball (model/sides.js
+// ballSide) and reads that caller's slice of the state, so its plates name him and PREVIOUS PLAY and LAST 6 with his
+// night so far are his; with one side it reads the state as it is, exactly as before.
 import { PREDICTION } from "./copy.js";
 import { capitalize, freezeDeep, pct, pct1, signed1 } from "./format.js";
+import { ballSide, sideSlice } from "./sides.js";
 import { previousOf, previousSpoken, recentOf } from "./vm-last-play.js";
 import { lastNameOf } from "./vm-masthead.js";
 import { isFinal, scoreboardVm } from "./vm-scoreboard.js";
@@ -40,10 +44,16 @@ function hotFields(item) {
   };
 }
 
-/** A plate caption naming the caller this app shadows, by last name; a long or missing name gives the plain one. */
-function plateName(p, named, plain) {
-  const last = lastNameOf(p.profile && p.profile.caller);
-  return last && last.length <= MAX_PLATE_NAME ? named(last) : plain;
+/** The caller's last name when it fits a plate (a long or missing name gives ""). */
+function plateLast(caller) {
+  const last = lastNameOf(caller);
+  return last && last.length <= MAX_PLATE_NAME ? last : "";
+}
+
+/** A plate caption naming the caller this card follows, by last name; a long or missing name gives the plain one. */
+function plateName(caller, named, plain) {
+  const last = plateLast(caller);
+  return last ? named(last) : plain;
 }
 
 // ---------------------------------------------------------------- NEXT CALL: the call
@@ -112,8 +122,14 @@ function whyLines(pred, script) {
   ];
 }
 
-function callVm(pv, p) {
-  const pred = p.prediction;
+/** The plate over the call: his name, or on 4th down the caveat (naming him when both sides are tracked). */
+function callHeading(fourth, his) {
+  if (!fourth) return plateName(his.caller, PREDICTION.nextCall, PREDICTION.nextCallPlain);
+  return his.named ? PREDICTION.fourthDownNamed(his.named) : PREDICTION.fourthDown;
+}
+
+function callVm(his) {
+  const { pv, p, prediction: pred } = his;
   const top = (pred.top || []).map((t) => ({ leaf: t.key, name: t.name, family: t.family, p: t.p, pct: pct(t.p) }));
   const topP = top.length && finite(top[0].p) ? top[0].p : 0;
   const hover = (pv.view && pv.view.hoverLeaf) || null;
@@ -121,7 +137,7 @@ function callVm(pv, p) {
   const fourth = Boolean(p.sit && p.sit.down === FOURTH_DOWN);
   return {
     kind: "call",
-    heading: fourth ? PREDICTION.fourthDown : plateName(p, PREDICTION.nextCall, PREDICTION.nextCallPlain),
+    heading: callHeading(fourth, his),
     fourth: { on: fourth, title: fourth ? PREDICTION.fourthDownTitle : "" },
     snap: Number.isInteger(pred.snap_next) ? { n: pred.snap_next, text: PREDICTION.snap(pred.snap_next) }
       : { n: null, text: "" },
@@ -150,14 +166,15 @@ function callSpoken(next) {
 // ---------------------------------------------------------------- NEXT CALL: while he doesn't have the ball
 /** Who has the ball while his offense doesn't (ESPN's status, DC C5): "TB has the ball"; after a score, the team
  * that kicks off; else (before kickoff, at the half, a hand-entered game) nothing, and the body says when his call
- * comes. */
-function offFieldVm(pv, p) {
-  const off = String(p.game.offense || "");
+ * comes. Tracking both sides the card follows the ball, so his own offense with the ball and no call yet says so too
+ * (his call is on its way), never "when TB gets the ball". */
+function offFieldVm(pv, his) {
+  const off = his.offense;
   const status = (pv.tl && pv.tl.status) || {};
   const poss = typeof status.poss === "string" && status.poss ? status.poss : null;
   const heading = !poss ? "" : status.ball_kind === "kickoff" ? PREDICTION.kicksOff(poss)
-    : poss !== off ? PREDICTION.hasBall(poss) : "";
-  return { kind: "offfield", plate: plateName(p, PREDICTION.nextCall, PREDICTION.nextCallPlain), heading,
+    : poss !== off || his.team ? PREDICTION.hasBall(poss) : "";
+  return { kind: "offfield", plate: plateName(his.caller, PREDICTION.nextCall, PREDICTION.nextCallPlain), heading,
     body: heading ? "" : PREDICTION.waiting(off) };
 }
 
@@ -182,19 +199,41 @@ function nextSpoken(next) {
 }
 
 /**
+ * The caller the card follows and his slice of the state. One side: the state as it is (team and named are null and
+ * "", so every plate reads as before). Both sides: the offense with the ball (model/sides.js ballSide), his calls and
+ * his scorecard; a prediction the server sent without its team counts as his; `named` is his last name when it fits
+ * a plate, for the plates that would otherwise say "he".
+ */
+function followed(pv, p) {
+  const side = ballSide(pv);
+  if (!side) {
+    return { pv, p, prediction: p.prediction || null, caller: p.profile && p.profile.caller,
+      offense: String(p.game.offense || ""), team: null, named: "" };
+  }
+  const own = sideSlice(p, side.team);
+  const prediction = own.prediction || (p.prediction && !p.prediction.team ? p.prediction : null);
+  return { pv: { ...pv, presented: own }, p: own, prediction, caller: side.caller, offense: side.team,
+    team: side.team, named: plateLast(side.caller) };
+}
+
+/**
  * @param {object} pv  presented view
- * @returns {object} frozen; {kind: "empty"} before the first state; else {kind, next, previous, recent, spoken}:
- *   kind is NEXT CALL's: "call" with a prediction ({heading, fourth, snap, top[3], call, thenLine, flag, split,
- *   families[], legend, leafTitle, why[], script}), "final" once ESPN's game is over ({plate, teams, link}), else
- *   "offfield" ({plate, heading, body}); previous and recent are vm-last-play.js's, null before his
- *   first snap; spoken is the whole board in words, for its live region
+ * @returns {object} frozen; {kind: "empty"} before the first state; else {kind, team, next, previous, recent,
+ *   spoken}: kind is NEXT CALL's: "call" with a prediction ({heading, fourth, snap, top[3], call, thenLine, flag,
+ *   split, families[], legend, leafTitle, why[], script}), "final" once ESPN's game is over ({plate, teams, link}),
+ *   else "offfield" ({plate, heading, body}); previous and recent are vm-last-play.js's, null before his first snap;
+ *   spoken is the whole board in words, for its live region. With both sides tracked every part is the caller's whose
+ *   offense has the ball and `team` is his offense (restructure-v2.md 11 decision 4); with one side `team` is null and
+ *   the board reads exactly as before.
  */
 export function predictionVm(pv) {
-  const p = pv && pv.presented;
-  if (!p || !p.game) return freezeDeep({ kind: "empty" });
-  const next = p.prediction ? callVm(pv, p) : isFinal(pv) ? finalVm(pv) : offFieldVm(pv, p);
-  const previous = previousOf(pv);
-  const recent = recentOf(p, plateName(p, PREDICTION.soFar, PREDICTION.soFarPlain));
-  const spoken = [previousSpoken(previous), nextSpoken(next)].filter(Boolean).join(" ");
-  return freezeDeep({ kind: next.kind, next, previous, recent, spoken });
+  const presented = pv && pv.presented;
+  if (!presented || !presented.game) return freezeDeep({ kind: "empty" });
+  const his = followed(pv, presented);
+  const next = his.prediction ? callVm(his) : isFinal(pv) ? finalVm(pv) : offFieldVm(pv, his);
+  const previous = previousOf(his.pv, { named: his.named });
+  const recent = recentOf(his.p, plateName(his.caller, PREDICTION.soFar, PREDICTION.soFarPlain));
+  const said = [previousSpoken(previous), nextSpoken(next)].filter(Boolean).join(" ");
+  const spoken = said && his.named ? `${PREDICTION.spokenWho(his.named)} ${said}` : said;
+  return freezeDeep({ kind: next.kind, team: his.team, next, previous, recent, spoken });
 }

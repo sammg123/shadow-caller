@@ -5,9 +5,10 @@
    LED, kickoffs in warm white, whose calls a game can shadow in dim LED). The chosen game's two sides are lamp
    switches on raised steel and Open is the wide key, lit amber once a side is picked. Flat hardware: no shadow but the
    focus gutter, no gradient but the LED pixel grid, no glow, no tween. Keys and lamps are the world's (masthead.css).
-   Its home is css/worlds/under-the-lights/picker/picker.css, listed in the world's css (theme/worlds/under-the-lights/
-   index.js); it waits here until that wiring lands, because every stylesheet in the world's folder must be one a
-   page loads (uls-world.test.mjs). Every rule is scoped to the world, so it is inert anywhere else. */
+   Listed in the world's css after its keys (theme/worlds/under-the-lights/index.js; game-picker.md 5), so after the
+   plain sheet the page links (css/picker/picker.css) too, and it wins every tie; where the plain sheet's selector is
+   more specific, this one mirrors it (restructure-v2.md 11 item 5: the stadium skin wins the cascade,
+   picker-skin.test.mjs). Every rule is scoped to the world, so it is inert anywhere else. */
 
 /* ---------------------------------------------------------------- the cabinet */
 :where(:root[data-world="under-the-lights"]) .sc-picker-panel {
@@ -166,7 +167,10 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
 }
-:where(:root[data-world="under-the-lights"]) .sc-picker-game[data-kind="live"] .sc-picker-state { color: var(--sc-ink); }
+:where(:root[data-world="under-the-lights"]) .sc-picker-game[data-kind="live"] .sc-picker-state {
+  color: var(--sc-ink);
+  font-weight: var(--sc-weight-strong);
+}
 :where(:root[data-world="under-the-lights"]) .sc-picker-game[data-kind="live"] .sc-lamp { background: var(--uls-tally-red); }
 :where(:root[data-world="under-the-lights"]) .sc-picker-game:is([data-kind="final"], [data-kind="off"]) .sc-picker-state {
   color: var(--sc-ink-muted);
@@ -205,7 +209,11 @@
   background: var(--uls-steel-raised);
   color: var(--sc-ink);
 }
-:where(:root[data-world="under-the-lights"]) .sc-picker-side:has(input:checked) { outline-color: var(--sc-ink); }
+/* The plain sheet rings a checked side in ink on a more specific rule: the steel keeps its light-catch here. */
+:where(:root[data-world="under-the-lights"]) .sc-picker-side:has(input:checked) {
+  border-color: var(--uls-steel-edge);
+  outline-color: var(--sc-ink);
+}
 :where(:root[data-world="under-the-lights"]) .sc-picker-side:has(input:disabled) { color: var(--sc-ink-muted); }
 :where(:root[data-world="under-the-lights"]) .sc-picker-side-team {
   color: var(--uls-caption-white);

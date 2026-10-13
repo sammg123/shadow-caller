@@ -50,6 +50,9 @@ def test_sandbox_script_never_uses_the_real_data_dir(tmp_path):
     info = json.loads(got.stdout)
     assert info["data_dir"] == str(tmp_path) and info["data_dir"] != str(ROOT / "data")
     assert (tmp_path / "espn" / ESPN_FILE.name).exists() and (tmp_path / "play_callers.csv").exists()
+    table = ROOT / "data" / "play_callers_2024_2026.csv"
+    if table.exists():                       # the sourced table the picker and the caller models read
+        assert (tmp_path / table.name).read_bytes() == table.read_bytes()
 
 
 def test_sandbox_script_refuses_the_real_data_dir():

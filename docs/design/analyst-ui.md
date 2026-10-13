@@ -1,9 +1,9 @@
 # The analyst's chat: the Ask slide-out and the Model Report's full chat (phase 4 front end)
 
-Status: **built, not mounted.** restructure-v2.md section 7 item 4: a local AI analyst, typed questions only, with an
+Status: **mounted (2026-10-12).** restructure-v2.md section 7 item 4: a local AI analyst, typed questions only, with an
 Ask slide-out on the GameCast and the full chat on the Model Report. The backend is docs/design/analyst.md (its
-section 5 is the contract this follows). This file is the component, its events and the exact steps that mount it on
-both pages once the restructure lands.
+section 5 is the contract this follows). This file is the component, its events and how it is mounted on both pages
+(sections 4 and 5, as wired).
 
 Files (all new): `static/js/ask/` (`copy.js`, `history.js`, `keys.js`, `ndjson.js`, `state.js`, `vm.js` are pure;
 `stream.js` is pure* like `core/api.js`, fetch and timers injected; `view.js` and `panel.js` are the DOM side),
@@ -118,7 +118,7 @@ Hooks for styles and tests: `.sc-ask[data-layout][data-open][data-phase="idle|as
 and `data-testid`: `ask-panel`, `ask-status`, `ask-close`, `ask-suggestion`, `ask-log`, `ask-turn`, `ask-cite`,
 `ask-retry`, `ask-input`, `ask-send`.
 
-## 4. Mounting on the GameCast (static/index.html, static/js/main.js)
+## 4. Mounting on the GameCast (static/index.html, static/js/main.js, static/js/shell/analyst.js)
 
 1. **index.html, head:** after the last component sheet (`components/win-prob.css`), before the world's sheets:
 
@@ -128,95 +128,70 @@ and `data-testid`: `ask-panel`, `ask-status`, `ask-close`, `ask-suggestion`, `as
    ```
 
    Both stay as page links: `theme/apply.js` swaps only `[data-world-css]` links, and every rule in the second sheet is
-   scoped to `:root[data-world="under-the-lights"]`, so it is inert under `?world=neutral`. (To keep it in the world's
-   folder instead: move it to `static/css/worlds/under-the-lights/ask/ask.css` and, in the same change, add
-   `CSS("ask/ask")` to the world's `css` list in `theme/worlds/under-the-lights/index.js` and `"ask/ask"` to
-   `ULS_PARTS` in `report/world.js`, because `tests/js/uls-world.test.mjs` fails on any sheet in that folder no page
-   registers; then point `tests/js/ask/ask-skin.test.mjs` at the new path.)
+   scoped to `:root[data-world="under-the-lights"]`, so it is inert under `?world=neutral`. The Model Report links the
+   same two files (section 5), so they stay at these paths: moving the skin into the world's folder means adding
+   `CSS("ask/ask")` to the world's css list and `"ask/ask"` to `ULS_PARTS` in `report/world.js` in the same change
+   (`tests/js/uls-world.test.mjs` fails on any sheet in that folder no page registers).
 
 2. **index.html, body:** the drawer's host, right after `#app`'s closing tag and before `#rg-conn`, outside `#app`
-   (the world's `arrange()` and the neutral grid leave it alone; the drawer itself is `position: fixed`):
+   (the world's `arrange()` and the neutral grid leave it alone; the drawer itself is `position: fixed`), listed in
+   `SHELL_IDS`:
 
    ```html
    <div id="rg-ask" data-region="ask"></div>
    ```
 
-   Optionally add `"rg-ask"` to `SHELL_IDS` in `shell/bindings.js`.
+3. **main.js** imports `shell/analyst.js` dynamically after `listenToWorld(...)` and calls
+   `mountAnalyst(doc, { actions, rt, notices })`; a module that fails to load leaves a notice and the GameCast goes on.
+   `shell/analyst.js` mounts `ask/panel.js` (again by dynamic import) as the slide-out in `#rg-ask` and wires the top
+   bar's Ask key (`[data-testid="ask"]`, built hidden by `ui/view-keys.js`):
+   - The key shows once `GET /api/ask/status` has been read: plain "Ask" when the analyst can answer; "Ask · Not
+     ready" (`data-status="down"`) with the server's reason as its tooltip when it can't (Ollama not running, the
+     model missing), so a press opens the drawer, which says the same reason. A server with no analyst (404) keeps
+     the key hidden. While it can't answer the status is read again every 30 s (`STATUS_RECHECK_MS`), and whenever
+     the drawer closes.
+   - A press toggles the drawer; the second click of a double-click is ignored (the drawer opens once). The key gets
+     `aria-controls="sc-ask"` and `aria-expanded`.
+   - `sc:ask-cite {seq}` calls `actions.seek(seq)` (POST /api/watch/seek) for an integer `seq` of 0 or more.
+   - `sc:ask-toggle` re-reads the field's insets (`rt.engine?.setSafeArea?.(null)`), so the camera keeps the play
+     clear of the drawer.
 
-3. **main.js:** in `boot()`, after `listenToWorld(app, { actions, rt });`, add
-   `mountAnalyst(doc, { actions, rt, notices }).catch(core.onError);` and this function. The import is dynamic, so a
-   broken analyst leaves a notice and never stops the GameCast; the Ask key is shown only once the drawer mounted
-   (`ui/view-keys.js` builds it hidden; `tests/js/masthead.test.mjs` keeps holding that):
+4. **Keys:** no keymap entry (restructure-v2.md 2 lists the only keys). The slide-out's root carries
+   `data-sc-layer="panel"`, and `core/keyboard.js` stands down while focus is inside a panel or modal layer, so no page
+   shortcut fires from the drawer; its own Escape closes it without going live. A press on Stop within 500 ms of
+   asking (`STOP_GUARD_MS`), or the second click of a double-click, never stops the question.
 
-   ```js
-   /** restructure-v2.md 7 item 4: the analyst's Ask slide-out, under the top bar's Ask key. */
-   async function mountAnalyst(doc, { actions, rt, notices }) {
-     const host = doc.getElementById("rg-ask");
-     const key = doc.querySelector('[data-testid="ask"]');
-     if (!host || !key) return;
-     let mod;
-     try {
-       mod = await import("./ask/panel.js");
-     } catch (err) {
-       notices.show("ask", `The analyst couldn't load (${message(err)}).`);
-       return;
-     }
-     const ask = mod.mountAsk(host, { layout: "slide" });
-     key.hidden = false;
-     key.addEventListener("click", () => ask.toggle(key));
-     host.addEventListener("sc:ask-cite", (e) => actions.seek(e.detail.seq));
-     host.addEventListener("sc:ask-toggle", () => rt.engine?.setSafeArea?.(null));
-   }
-   ```
-
-4. **Nothing else on the page changes:** no keymap entry (restructure-v2.md 2 lists the only keys; Escape is handled
-   as above), no reducer state (the drawer keeps its own; `aria-expanded` on the Ask key is set by the panel).
-
-5. **Tests that flip:** `tests/e2e/test_ui_top_bar.py` line 125 expects the Ask key hidden; it is now visible and
-   opens the drawer.
+5. **Tests that flipped:** `tests/e2e/test_ui_top_bar.py` expects the Ask key visible once the status is read;
+   `tests/e2e/test_ui_game_and_ask.py` checks its state, the drawer's words and that the page's keys stand down
+   inside it.
 
 ## 5. Mounting on the Model Report (static/report.html, static/js/report/main.js)
 
 1. **report.html, head:** after `report/report.css`, the same two links as the GameCast (step 4.1).
 
-2. **report.html, the section:** keep `hidden` (the script shows it once the chat mounted), make it span both columns
-   and name it by the panel's own heading:
+2. **report.html, the section:** hidden until the chat mounted, spanning both columns, named by the panel's own
+   heading:
 
    ```html
    <section id="rp-analyst" class="rp-analyst rp-board-wide" data-region="analyst" data-testid="report-analyst"
      aria-labelledby="sc-ask-title" hidden></section>
    ```
 
-3. **report/main.js:** in `boot()`, after `startScheduler(...)`, add
-   `mountAnalyst(doc, { motion, notices }).catch(reportError);` and:
+3. **report/main.js** mounts `mountAsk(host, { layout: "embedded" })` by dynamic import after the scheduler starts
+   (one that fails leaves a notice), shows the section, and sends each `sc:ask-cite` to `report/moves.js`
+   `revealCall(seq)`: with both play-callers tracked it first switches the boards to the cited call's caller
+   (`report/model/cite.js`), then `report/ui/reveal.js` scrolls that call's row (`#rp-calls tr[data-seq]`) in clear of
+   the sticky ribbon, focuses it and lights it (`data-cited="true"`) for 2.4 s. A play with no row (an opponent's play
+   with one caller tracked, or a kick) lights its drive on the drive chart instead. The drive chart's buttons go the
+   same way. `REPORT_IDS` lists `rp-analyst`.
 
-   ```js
-   /** restructure-v2.md 6 and 7 item 4: the analyst's full chat; a cite scrolls to that call's row. */
-   async function mountAnalyst(doc, { motion, notices }) {
-     const host = doc.getElementById("rp-analyst");
-     if (!host) return;
-     try {
-       const { mountAsk } = await import("../ask/panel.js");
-       mountAsk(host, { layout: "embedded" });
-     } catch (err) {
-       notices.show("ask", `The analyst couldn't load (${message(err)}).`);
-       return;
-     }
-     host.hidden = false;
-     host.addEventListener("sc:ask-cite", (e) => showCall(doc, e.detail.seq, motion));
-   }
-   ```
-
-   `showCall` is the page's own (it scrolls to `#rp-calls tr[data-seq]` and focuses the row). `REPORT_IDS` already
-   lists `rp-analyst`.
-
-4. **Tests that flip:** `tests/e2e/test_report_page.py` lines 73 to 75 expect the analyst region hidden and empty.
+4. **Tests that flipped:** `tests/e2e/test_report_page.py` expects the analyst region visible with the embedded chat.
 
 ## 6. The server
 
-Register the blueprint in app.py exactly as docs/design/analyst.md section 7 says. Until then the chat shows "Not set
-up: This server has no analyst yet. Update the app, then restart it with bash start.sh." and checks again every 30 s;
-nothing else on either page changes.
+app.py registers the blueprint as docs/design/analyst.md section 7 shows. On a server without it, the chat would show
+"Not set up: This server has no analyst yet. Update the app, then restart it with bash start.sh." and check again
+every 30 s, and the GameCast's Ask key stays hidden.
 
 ## 7. Verified
 
@@ -234,8 +209,8 @@ nothing else on either page changes.
 
 ## 8. Open items
 
-- On the Model Report a cite to an opponent's play has no row in "Every call v the model" (it lists his snaps), so
-  `showCall` does nothing; it could fall back to the nearest of his calls before it, or to the drive's row.
+- (Resolved 2026-10-12.) On the Model Report a cite to a play with no row in "Every call v the model" (an opponent's
+  play with one caller tracked, or a kick) now lights that play's drive on the drive chart (section 5).
 - A cite on the GameCast seeks: during a live game that leaves Go Live (POST /api/watch/seek starts a watch session at
   that play; Escape or Go Live returns). After a seek back, the analyst only knows the game up to that play (no
   spoilers, analyst.md section 2), which is right but worth knowing in a demo.

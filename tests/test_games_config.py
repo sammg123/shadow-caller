@@ -63,7 +63,7 @@ def test_dallas_at_home_against_tampa_bay(tmp_path):
         "game_id": "2026_05_TB_DAL", "label": "Buccaneers at Cowboys, Week 5, Thu Oct 8",
         "offense": "DAL", "opponent": "TB", "offense_is_home": True,
         "offense_spread": 9.5, "total_line": 49.5, "espn_event": TB_DAL,
-        "line_source": "nflverse", "line_note": None,
+        "line_source": "nflverse", "line_note": None, "neutral": False,
     }
 
 
@@ -88,6 +88,7 @@ def test_espns_odds_stand_in_when_nflverse_is_unreachable(tmp_path):
     cfg = g.game_config(PHI_JAX, "JAX")
     assert (cfg["offense_spread"], cfg["total_line"], cfg["line_source"]) == (7.5, 41.5, "espn")
     assert cfg["label"] == "Eagles vs Jaguars, Week 5, Sun Oct 11", "a neutral site says vs"
+    assert cfg["neutral"] is True, "and the track's config says so, so its top bar says vs too"
     assert cfg["game_id"] == "2026_05_PHI_JAX"
 
 

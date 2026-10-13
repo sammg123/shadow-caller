@@ -27,6 +27,9 @@ export const STATUS_STALE_MS = 30000;  // focusing the box re-checks a status ol
 /** After an answer ends, the status is checked this much later: the server frees its one-question gate only when the
  * response closes, and a check that beat it would flash Busy and hold Ask off for a poll. */
 export const AFTER_ANSWER_MS = 400;
+/** Ask turns into Stop the moment the question goes, under the pointer: a press on Stop this soon after asking, or the
+ * second click of a double-click, is the same press, never a Stop (restructure-v2.md 11 item 5). */
+export const STOP_GUARD_MS = 500;
 const STICK_PX = 48;                   // the conversation follows new words while it is this close to its end
 const LAYOUTS = new Set(["slide", "embedded"]);
 const ID = /^[a-z][a-z0-9-]{0,39}$/;
@@ -55,6 +58,7 @@ class AskPanel {
     this.shown = layout === "embedded";
     this.opener = null;
     this.inflight = null;               // { id, ctl }: the question on its way
+    this.askedAt = null;                // when the newest question went (now()): STOP_GUARD_MS counts from it
     this.poll = null;
     this.checking = false;
     this.checkedAt = null;
@@ -76,7 +80,7 @@ class AskPanel {
   handlers() {
     return Object.freeze({
       close: () => this.close(),
-      sendOrStop: () => (answering(this.state) ? this.stopHere() : this.send()),
+      sendOrStop: (e) => (answering(this.state) ? this.stopPressed(e) : this.send()),
       suggest: (text) => this.ask(text, false),
       retry: (id) => this.retry(id),
       cite: (seq, ref) => this.emit("sc:ask-cite", { seq, ref }),
@@ -154,6 +158,7 @@ class AskPanel {
   }
 
   begin(turn, earlier) {
+    this.askedAt = this.now();
     this.stick = true;
     this.render();
     this.stream(turn, earlier).catch(report);
@@ -187,6 +192,14 @@ class AskPanel {
   stopHere() {
     this.stop();
     this.focusInput();
+  }
+
+  /** The send key pressed while it says Stop: a Stop, unless it is the rest of the press that asked (a double-click's
+   * second click, the browser's click count, or a press within STOP_GUARD_MS of asking). */
+  stopPressed(e) {
+    const repeat = Number.isInteger(e?.detail) && e.detail > 1;
+    const soon = this.askedAt !== null && this.now() - this.askedAt < STOP_GUARD_MS;
+    if (!repeat && !soon) this.stopHere();
   }
 
   // ---------------------------------------------------------------- the status

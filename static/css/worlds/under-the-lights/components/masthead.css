@@ -131,7 +131,8 @@
 }
 :where(:root[data-world="under-the-lights"]) .sc-masthead-meta { color: var(--sc-ink-muted); }
 :where(:root[data-world="under-the-lights"]) .sc-masthead-who { font-weight: var(--sc-weight-regular); }
-/* The current game (phase 2's game picker takes this place): an LED caption beside the plate, "TB AT DAL · FINAL". */
+/* The current game's plain words, when the game picker didn't load: an LED caption beside the plate, "TB AT DAL ·
+   FINAL" (the picker's key carries the same words: worlds/under-the-lights/picker/picker.css). */
 :where(:root[data-world="under-the-lights"]) .sc-masthead-game {
   color: var(--sc-ink);
   font: var(--sc-weight-strong) var(--uls-size-plate) / 1 var(--sc-font-text);

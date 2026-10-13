@@ -20,7 +20,9 @@ def prepare(data_dir):
     if data_dir == REAL_DATA or REAL_DATA in data_dir.parents:
         sys.exit("Refusing to run the sandbox on the real data folder (that's the live game). Pick another --data.")
     (data_dir / "espn").mkdir(parents=True, exist_ok=True)
-    shutil.copy(ROOT / "data" / "play_callers.csv", data_dir / "play_callers.csv")
+    for table in ("play_callers.csv", "play_callers_2024_2026.csv"):    # the sourced table, when there is one
+        if (ROOT / "data" / table).is_file():
+            shutil.copy(ROOT / "data" / table, data_dir / table)
     for saved in (ROOT / "data" / "espn").glob("*_final.json"):
         if not (data_dir / "espn" / saved.name).exists():
             shutil.copy(saved, data_dir / "espn" / saved.name)

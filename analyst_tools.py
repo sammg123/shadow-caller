@@ -10,13 +10,15 @@ import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 import live
-from analyst_snapshot import (SPLITS, TERM_ORDER, VERDICT_WORDS, Caller, Snapshot, after_last_call, came_true, clean,
-                              compact, defuse, finite, fixed, grade, his_pct_on, hot_of, int_text,
+from analyst_explain import model_explainer
+from analyst_snapshot import (SPLITS, TERM_ORDER, VERDICT_WORDS, Caller, Snapshot, after_last_call, based_on,
+                              caller_for, came_true, clean, compact, defuse, finite, fixed, grade, his_pct_on, hot_of,
+                              int_text,
                               last_call_on_drive, last_call_read, names_player, pct, pct1, plain, qtr_text, red_zone,
                               scoring_text, signed1, situation_text, splits, team_aliases, term_row, tilt_call,
                               tilt_words, verdict_of, when_of, wp_after, x_spot)
 from analyst_snapshot import build_snapshot, capture, dump, take_snapshot  # noqa: F401  (app.py's wiring, the tests)
-from config import EXPLOSIVE_YARDS, LEAGUE_SEASONS, LEAN, SCRIPT_PLAYS, TILT
+from config import EXPLOSIVE_YARDS, SCRIPT_PLAYS
 from granular import FAMILIES, FAMILY_NAMES, LEAF_NAMES, LEAVES
 
 log = logging.getLogger(__name__)
@@ -126,14 +128,9 @@ class Param:
         return word in BLANK_WORDS and word not in (o.lower() for o in self.options(snap) or ())
 
 
-def caller_for(snap: Snapshot, team: str | None) -> Caller:
-    """The tracked caller of `team` (checked against the snapshot's callers), else the only one."""
-    return next(c for c in snap.callers if team in (None, c.team))
-
-
 TEAM = Param("string", "A team abbreviation from this game.", lambda s: s.teams, teams=True)
-CALLER = Param("string", "The team of the modeled play-caller (leave out: the only one).",
-               lambda s: tuple(c.team for c in s.callers), teams=True)
+CALLER = Param("string", "The team of the modeled play-caller you mean (leave out: the one whose offense has the ball, "
+               "else the first).", lambda s: tuple(c.team for c in s.callers), teams=True)
 
 
 # ---------------------------------------------------------------- game_situation
@@ -417,8 +414,8 @@ def distribution(dist: Mapping | None) -> dict:
 def called_view(pred: Mapping) -> dict:
     if finite(pred.get("leaf_p")):
         return {"play": pred.get("name"), "chance": pct1(pred["leaf_p"]),
-                "league_chance": pct1(pred.get("leaf_p_league")), "rank": pred.get("leaf_rank"),
-                "league_rank": pred.get("leaf_rank_league")}
+                "league_chance": pct1(pred.get("leaf_p_league")), "model_rank_of_his_call": pred.get("leaf_rank"),
+                "league_rank_of_his_call": pred.get("leaf_rank_league")}
     return compact({"play": pred.get("name"), "type": FAMILY_NAMES.get(pred.get("family") or ""),
                     "chance": his_pct_on(pred), "league_chance": pct1(pred.get("fam_p_league"))})
 
@@ -555,12 +552,6 @@ def tonight_mix(snaps: list) -> dict:
     return counts
 
 
-def based_on(prof: Mapping) -> str:
-    seasons = list(prof.get("seasons") or [])
-    years = f"{seasons[0]} to {seasons[-1]}" if len(seasons) > 1 else ", ".join(map(str, seasons))
-    return f"{int_text(prof.get('n_snaps'))} snaps, {prof.get('n_games')} games ({years})"
-
-
 def caller_profile(snap: Snapshot, team=None) -> dict:
     c = caller_for(snap, team)
     p = c.profile
@@ -579,50 +570,6 @@ def caller_profile(snap: Snapshot, team=None) -> dict:
             "specific_play_held_out": {"top_pick": pct(sp.get("top1_his")), "top_3": pct(sp.get("top3_his")),
                                        "snaps": sp.get("n")},
             "note": "Held-out numbers are cross-validated by game on his own past games; lower log loss is better."}
-
-
-def model_explainer(snap: Snapshot) -> dict:
-    """How the model works (README.md, PRODUCT.md, live.py, features.py, build.py), with this caller's numbers."""
-    c = snap.callers[0]
-    p = c.profile
-    cv, s1 = p.get("cv_logloss") or {}, p.get("stage1_check") or {}
-    return {"explainer": " ".join((
-        f"Shadow Play-Caller predicts {c.name}'s next call ({c.team}) before every snap, in three layers.",
-        f"1. League baseline: a gradient-boosted model trained on nflverse play-by-play from {LEAGUE_SEASONS[0]} to "
-        f"{LEAGUE_SEASONS[-1]}, every team except {p.get('team') or c.team}, gives the league's chance of a pass (a "
-        "dropback) in the exact situation: down, distance, field position, goal to go, score, quarter, time left in "
-        "the half and the game, home or away, the pregame spread and total, and the two-minute mark. It never knows "
-        f"who calls the plays. On the {s1.get('test_season')} season, held out, its log loss was "
-        f"{fixed(s1.get('logloss_ours'), 3)} against {fixed(s1.get('logloss_nflfastr_xpass'), 3)} for nflfastR's "
-        "pass model.",
-        f"2. His habits: a logistic model fit to his {based_on(p)} adds his own terms on top of the baseline: an "
-        "overall lean, early downs, 3rd & 4+, trailing by 9+ and the red zone. A ridge penalty pulls every term "
-        "toward zero, so a habit has to be real to move the number.",
-        "3. In-game memory: the model tracks what has been working tonight, a running success score for his passes "
-        f"and for his runs, updated after each of his calls with learning rate {p.get('alpha')}, plus whether he "
-        "repeats or switches from his last call, and what he does after a failed play, a 20+ yard gain or a sack. "
-        f"Memory stays off for his first {SCRIPT_PLAYS} snaps (the opening script), and the last-call terms reset "
-        "at every new drive. Those terms are signed by his last call: a negative stickiness term means he tends to "
-        "switch (after a pass he leans run). A play is a success when it gains 40% of the distance on 1st down, 60% "
-        "on 2nd and all of it on 3rd or 4th; a touchdown is a success and a turnover a failure. A snap wiped out by "
-        "a flag is graded but stays out of his memory.",
-        "Play types: league models trained on FTN charting split the call into five play types (run, dropback "
-        "pass, play-action, screen, RPO) and 14 specific plays (run gap and side, pass depth by air yards: short "
-        "0-9, intermediate 10-19, deep 20+, RPO handed off or thrown), each adjusted to his habits and shrunk "
-        "toward the league; his memory shifts pass against run inside them.",
-        "Grading: every one of his snaps is graded against what ESPN's feed says he called: run or pass called "
-        "right (a pass chance of 50% or more means pass), the play type, and the specific play's rank (top pick, "
-        "in his top 3, or a miss), with log loss for his model (Shadow) and the league baseline (League) side by "
-        "side. Lower log loss is better, and one game is a small sample.",
-        f"Tilt: the tag compares his pass chance with the league's in the same spot: {round(TILT * 100)} points or "
-        f"more is a tilt, {round(LEAN * 100)} points or more a lean, and under that he calls it like the league "
-        "does. Arrows mark play types at least 4 points and 30% above or below the league.",
-        "Limits: ESPN's free feed can't see play-action, screens or RPOs, so those calls are graded as ESPN "
-        "describes them (a dropback by depth, or a run). There is no player tracking, so routes, formations and "
-        "personnel aren't known. The model has no punt or field-goal class: on 4th down the call is the play he'd "
-        "run if he goes for it. Held out on his own past games, cross-validated by game, the league baseline's log "
-        f"loss was {fixed(cv.get('league_baseline'), 3)}, his habits {fixed(cv.get('habits'), 3)} and habits plus "
-        f"memory {fixed(cv.get('habits_plus_memory'), 3)}."))}
 
 
 # ---------------------------------------------------------------- the registry and the dispatcher
@@ -646,7 +593,8 @@ TOOLS = (
          "count every match, not only the rows shown: take counts and rates (passes and runs, yards, first downs, "
          "tilts that came true) from totals, never by counting rows. Each row: seq (for play_detail), when (quarter "
          "and clock: cite plays this way), the team with the ball, the situation before the snap, the play, the "
-         "result, ESPN's text, and for the modeled play-caller's calls the model's grade and any tilt.",
+         "result, ESPN's text, and for the modeled play-caller's calls the model's grade and any tilt "
+         "(model_rank_of_his_call: where the play he called stood in the model's list, 1 its top pick).",
          {"team": Param("string", "Only plays where this team had the ball (a timeout: the team that called it).",
                         TEAM.choices, teams=True),
           "his_calls_only": Param("boolean", "Only snaps called by the modeled play-caller, each graded."),
@@ -676,7 +624,8 @@ TOOLS = (
                         "true (tilt_came_true; totals count them).", tuple(TILTS)),
           "player": Param("string", "Only plays whose ESPN text names this player: a last name, like Pickens."),
           "sort": Param("string", "game_order (default); surprise: the model's biggest misses first (his least "
-                        "expected calls); yards: most gained first; win_prob_swing: biggest swing first.",
+                        "expected calls, lowest model_chance first: keep that order); yards: most gained first; "
+                        "win_prob_swing: biggest swing first.",
                         ("game_order", *SORTS)),
           "limit": Param("integer", f"Most rows to return (default {LIST_DEFAULT}, at most {LIST_MAX}); matched says "
                          "how many there are.", minimum=1, maximum=LIST_MAX, clamp=True)}, list_plays),
@@ -684,8 +633,9 @@ TOOLS = (
          "One play in full: before and after, what happened, the flag, the score and win probability; for the "
          "modeled play-caller's snaps, the model's prediction before the snap: pass vs run against the league, the "
          "tilt, his habits' and memory's pass points (with his last call on the drive, which the memory reacts to), "
-         "his top 3 plays, the five play types, his and the league's % on what he called, the ranks and the "
-         "verdict. Use it for why the model leaned the way it did on a play.",
+         "his top 3 plays, the five play types, his and the league's % on what he called, where it stood in each "
+         "list (model_rank_of_his_call, league_rank_of_his_call: 1 is the top pick) and the verdict. Use it for why "
+         "the model leaned the way it did on a play.",
          {"seq": Param("integer", "The play's seq from another tool.", minimum=1, maximum=9999),
           "when": Param("string", "Quarter and clock, like Q3 2:52 or OT 4:10, when you don't have the seq.")},
          play_detail),
@@ -714,7 +664,8 @@ TOOLS = (
          "was built, the memory settings and the held-out evidence.", {"team": CALLER}, caller_profile),
     Tool("model_explainer", "Reading how the model works",
          "How the model works, in plain words: the league baseline, his habits, the in-game memory, play types, "
-         "grading, the tilt and the limits of ESPN's free data.", {}, model_explainer),
+         "grading, the tilt and the limits of ESPN's free data, with the play-caller's own numbers.", {"team": CALLER},
+         model_explainer),
 )
 TOOLS_BY_NAME = {t.name: t for t in TOOLS}
 

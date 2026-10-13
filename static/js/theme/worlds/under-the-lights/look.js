@@ -112,12 +112,14 @@ export const look = deepFreeze({
   world: {
     day: DAY,
     // 4b: his predictions thin (2.5 px at 1440x900) and dashed, #1 LED amber and #2 LED warm white, each over a thin
-    // night-sky ring so the dashes hold over white paint; the previous play in steel while they are up
+    // night-sky ring (1.5 px each side) so the dashes hold over white paint and a light midfield logo: at 0.9 the
+    // edge stays 4.5:1 or more against white, paint white, light gray and silver (shadow-style.test.mjs); flat, never a
+    // glow. The previous play in steel while they are up
     plays: { headGlow: 3, headYd: 1.5, trackOpacity: 0.2, trackWidthPx: 1.5, trackDash: [0.5, 0.9], arrowYd: 1.8,
       hoverOpacity: 0.95, dimOthers: 0.45, shadowPx: 2.5, shadowDash: [0.7, 0.4], targetYd: 0.75, kickDim: 0.25,
       tones: { good: ULS.lampGreen, bad: ULS.tallyRed, warn: ULS.ltg },
       ranks: [ULS.ledAmber, ULS.ledWarm], last: { core: ULS.lastSlate, edge: ULS.steelEdge },
-      casing: { color: ULS.nightSky, opacity: 0.55, width: 2.2 } },
+      casing: { color: ULS.nightSky, opacity: 0.9, width: 2.2 } },
     uls: WORLD_ULS,
   },
 });

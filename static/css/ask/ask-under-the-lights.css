@@ -28,15 +28,19 @@
   font: var(--sc-weight-regular) var(--sc-size-m) / var(--sc-leading-body) var(--sc-font-text);
 }
 /* The drawer hangs from the top bar's lower edge to the lower ribbon's upper edge, flush with the left wall; its open
-   side carries a steel edge, as the control-room drawer's did. */
+   side carries a steel edge, as the control-room drawer's did. Each layout's rule mirrors the plain sheet's, which
+   is more specific than the cabinet's: the stadium skin wins the cascade (restructure-v2.md 11 item 5), so the drawer
+   is flat steel with no soft shadow, and the chat has no plain rule round it (ask-skin.test.mjs). */
 :where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="slide"] {
   inset: calc(2 * var(--uls-ribbon-h)) auto calc(var(--uls-lower-h) + var(--uls-band-gap) + var(--uls-band-h)) 0;
   z-index: 9;
   width: var(--uls-ask-w);
   border-radius: 0;
   border-inline-end: 1px solid var(--uls-steel-edge);
+  box-shadow: none;
 }
 :where(:root[data-world="under-the-lights"]) .sc-ask[data-layout="embedded"] {
+  border: 0;
   border-radius: var(--sc-radius-m);
 }
 
@@ -148,6 +152,7 @@
   color: var(--uls-led-amber);
 }
 :where(:root[data-world="under-the-lights"]) .sc-ask-suggestion:hover:not(:disabled) {
+  border-color: transparent;
   outline: 2px solid var(--sc-ink);
   outline-offset: -2px;
   color: var(--uls-led-amber);

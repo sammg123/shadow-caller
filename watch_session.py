@@ -33,11 +33,13 @@ def save_session(restore, watching, started_at):
     os.replace(tmp, path)
 
 
-def drop_session():
+def drop_session(path=None):
+    """Remove the session file next to the game file, or `path` (the one a game switch left behind in its folder)."""
+    path = path or session_path()
     try:
-        session_path().unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
     except OSError as ex:                          # a stale file would offer an old game back after a restart
-        log.error("Couldn't remove %s (%s): delete it by hand before restarting the app.", SESSION_FILE, ex)
+        log.error("Couldn't remove %s (%s): delete it by hand before restarting the app.", path, ex)
 
 
 def load_session():

@@ -5,8 +5,10 @@
 // CALL, each under its painted plate (.sc-face-head). Neither lights a shadow on the field: the shadows are the next
 // call's. World hooks: .sc-prev[data-enter="a" | "b"] (flips on every new previous play, so a world's entrance
 // replays), .sc-prev-play[data-lead="td | int | fumble | turnover"], .sc-prev-verdict[data-verdict][data-rank],
-// .sc-prev-predicted[data-family], .sc-recent-dot[data-verdict][data-rank] (the rank on a top-3 hit only),
-// .sc-recent-count[data-tally] and .sc-recent-note (how his calls split once a flag has wiped one out).
+// .sc-prev-predicted[data-family], .sc-recent-dot[data-verdict][data-rank] (the rank on a top-3 hit only)
+// [data-level] ("leaf" graded on the specific play, as the tally counts; "family" or "passrun" graded on the play type
+// only: a sack or a scramble, set apart), .sc-recent-count[data-tally] and .sc-recent-note (how his calls split once
+// a flag has wiped one out or a call was graded on its play type only).
 import { el, reconcile, setAttr, setData, setHidden, setText } from "./dom.js";
 
 const SEPARATOR = " · ";
@@ -120,6 +122,7 @@ export function renderRecent(view, recent) {
     update: (dot, item) => {
       setData(dot, "verdict", item.key);
       setData(dot, "rank", item.key === "top3" ? item.rank : null);
+      setData(dot, "level", item.level ?? null);
     },
   });
   setHidden(view.row, recent.items.length === 0);

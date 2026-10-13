@@ -2,6 +2,7 @@
 // ESPN's result. A drive in progress ends at its last drawn row's next spot.
 import { DRIVES } from "./copy.js";
 import { freezeDeep } from "./format.js";
+import { teamsOf } from "./vm-scoreboard.js";
 
 /** Result codes shown as ESPN sends them (DC C3); anything else falls back to ESPN's own words. */
 export const KNOWN_RESULTS = Object.freeze(["TD", "FG", "PUNT", "INT", "FUMBLE", "DOWNS", "END OF HALF",
@@ -53,9 +54,16 @@ function firstDrawableSeq(rows, idx) {
   return first ? first.seq : null;
 }
 
-function driveEntry(drive, rows) {
-  const caller = Boolean(drive.offense_is_caller);
-  const dir = caller ? 1 : -1;                  // DC A3: the caller attacks +x, everyone else -x
+/** DC A3: the game's offense (the field's left team) attacks +x, everyone else -x, and the team's colour follows. With
+ * both sides tracked the other offense's drives are caller drives too (offense_is_caller), so the side comes from the
+ * drive's team; without a known left team, from the flag as before. */
+function ownSide(drive, left) {
+  return left ? drive.team === left : Boolean(drive.offense_is_caller);
+}
+
+function driveEntry(drive, rows, left) {
+  const caller = ownSide(drive, left);
+  const dir = caller ? 1 : -1;
   const x0 = clampX(drive.start && drive.start.x);
   const x1 = endX(drive, rows, dir, x0);
   const resultText = driveResultText(drive);
@@ -82,5 +90,6 @@ export function drivesVm(pv) {
   const tl = pv && pv.tl;
   const drives = (tl && Array.isArray(tl.drives) ? tl.drives : []).filter((d) => d && Number.isInteger(d.idx));
   const rows = (tl && tl.rows) || [];
-  return freezeDeep({ heading: DRIVES.heading, drives: drives.map((drive) => driveEntry(drive, rows)) });
+  const left = teamsOf(pv).caller;
+  return freezeDeep({ heading: DRIVES.heading, drives: drives.map((drive) => driveEntry(drive, rows, left)) });
 }

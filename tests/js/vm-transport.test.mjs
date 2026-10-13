@@ -62,6 +62,13 @@ test("while the page opens the game the bar is loading and nothing can be presse
   assert.equal(vm.busy, true);
 });
 
+test("while the page opens another game (the picker) the bar is loading too", () => {
+  const vm = transportVm(pv({ view: { playback: { kind: "select", target: null } } }));
+  assert.equal(vm.state, "loading");
+  assert.deepEqual(can(vm), { back: false, play: false, forward: false, reset: false, live: false, seek: false });
+  assert.equal(vm.busy, true);
+});
+
 test("a seek in flight shows its target on the bar before the server answers", () => {
   const vm = transportVm(pv({ view: { playback: { kind: "seek", target: 20 } } }));
   assert.deepEqual([vm.busy, vm.idx, vm.target, vm.at], [true, 104, 20, Number((20 / 183).toFixed(5))]);

@@ -2,8 +2,10 @@
 // panel of the season's games by week (this week first), a team filter, the chosen game's two sides with their
 // play-callers and "Track both sides", and a field for a pasted ESPN game link or id. It emits {event_id, sides}
 // through onSelect; phase 2's POST /api/game/select acts on it. DOM side, through ui/dom.js: text only, never HTML.
-// Keyboard: Escape closes it and is spent there (the page's Escape is Go Live), Up and Down walk the games, and no page
-// shortcut fires while focus is inside it (its keydowns stop at the panel; core/keyboard.js listens on the document).
+// Keyboard: Escape closes it and is spent there (the page's Escape is Go Live), Up and Down walk the games. It is
+// modal (restructure-v2.md 11 item 5): while it is open its panel carries data-sc-layer="modal", so no page shortcut
+// fires anywhere (core/keyboard.js stands down), Escape from anywhere on the page closes it, and so does focus moving
+// to a control outside it (it never stays open behind the control that has the keys).
 import { el, reconcile, setAttr, setData, setHidden, setText } from "../ui/dom.js";
 import { keycap, lamp } from "../ui/keycap.js";
 import { pickerApi } from "./picker-api.js";
@@ -30,6 +32,10 @@ function localZone() {
 }
 
 const isGame = (node) => typeof node?.getAttribute === "function" && node.getAttribute("data-event") !== null;
+const isEscape = (e) => e.key === "Escape" || e.key === "Esc";
+/** Escape with no modifier, outside an input method's composition (229 is the key code some browsers send then). */
+const plainEscape = (e) => isEscape(e) && !(e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || e.isComposing)
+  && e.keyCode !== 229;
 
 function openWeek(node) {
   for (let n = node; n; n = n.parentNode) if (n.localName === "details") return n.hasAttribute("open");
@@ -74,7 +80,7 @@ function buildChosen(p) {
 }
 
 function buildNodes(p, label) {
-  const trigger = keycap({ name: "Game", value: label, cls: "sc-picker-trigger", attrs: { "aria-haspopup": "dialog",
+  const trigger = keycap({ name: "Game", value: String(label ?? ""), cls: "sc-picker-trigger", attrs: { "aria-haspopup": "dialog",
     "aria-expanded": "false", "aria-controls": `${ID}-panel` }, on: { click: () => p.toggle() } });
   const close = keycap({ cap: "Esc", name: "Close", shortcut: "Escape", cls: "sc-picker-close",
     on: { click: () => p.close() } }).node;
@@ -144,16 +150,25 @@ function updateWeek(p, node, week) {
 }
 
 function sideNode(p, side) {
-  const input = el("input", { cls: "sc-picker-side-box", attrs: { type: "radio", name: `${ID}-side`, value: side.abbr },
+  const input = el("input", { cls: "sc-picker-side-box", attrs: { type: "radio", value: side.abbr },
     on: { change: () => p.dispatch({ type: "side", abbr: side.abbr }) } });
   return el("label", { cls: "sc-picker-side", data: { abbr: side.abbr } }, [input, el("span",
     { cls: "sc-picker-side-team" }), el("span", { cls: "sc-picker-side-caller" }), el("span",
     { cls: "sc-picker-side-note" })]);
 }
 
+/** A browser keeps one radio of a group checked, and a radio that joins a group while checked unchecks the others. So
+ * a side that ends dark goes dark before it changes group, and one that ends lit changes group before it lights:
+ * "Track both sides" keeps both lit, and turning it off leaves exactly the chosen side (restructure-v2.md 11 item 5). */
+function setRadio(input, name, checked) {
+  if (!checked) input.checked = false;
+  setAttr(input, "name", name);
+  input.checked = checked;
+}
+
 function updateSide(label, side) {
   const [input, team, caller, note] = label.childNodes;
-  input.checked = side.checked;
+  setRadio(input, `${ID}-${side.group}`, side.checked);
   input.disabled = side.disabled;
   setData(label, "model", side.model);
   setText(team, side.team);
@@ -169,6 +184,10 @@ class Picker {
     this.shownOpen = new Map();
     this.n = buildNodes(this, label);
     this.onOutside = (e) => { if (this.ui.open && !this.n.root.contains(e.target)) this.close({ focus: false }); };
+    this.onDocKey = (e) => this.docKey(e);
+    this.onFocusIn = (e) => {
+      if (this.ui.open && e.target && !this.n.root.contains(e.target)) this.close({ focus: false });
+    };
     this.n.trigger.node.addEventListener("keydown", (e) => this.triggerKey(e));
     host.appendChild(this.n.root);
     this.render();
@@ -189,7 +208,10 @@ class Picker {
   open() {
     if (this.ui.open) return;
     this.dispatch({ type: "open" });
-    this.host.ownerDocument.addEventListener("pointerdown", this.onOutside);
+    const doc = this.host.ownerDocument;
+    doc.addEventListener("pointerdown", this.onOutside);
+    doc.addEventListener("keydown", this.onDocKey, true);
+    doc.addEventListener("focusin", this.onFocusIn);   // modal: focus leaving it (Tab past its end) closes it
     this.n.select.focus();
     this.load();
   }
@@ -198,9 +220,29 @@ class Picker {
     if (!this.ui.open) return;
     this.stopRefresh();
     this.seq += 1;                       // a load still on its way lands in a closed panel: ignored
-    this.host.ownerDocument.removeEventListener("pointerdown", this.onOutside);
+    const doc = this.host.ownerDocument;
+    doc.removeEventListener("pointerdown", this.onOutside);
+    doc.removeEventListener("keydown", this.onDocKey, true);
+    doc.removeEventListener("focusin", this.onFocusIn);
     this.dispatch({ type: "close" });
     if (focus) this.n.trigger.node.focus();
+  }
+
+  /** Escape from anywhere outside it (the page, a key it tabbed to) closes the open picker; it runs first (capture),
+   * so the page's Escape (Go Live) sees it spent. Inside it, the panel's and the key's own handlers close it. */
+  docKey(e) {
+    if (!this.ui.open || e.defaultPrevented || !plainEscape(e) || this.n.root.contains(e.target)) return;
+    e.preventDefault();
+    this.close();
+  }
+
+  /** The models' index (restructure-v2.md 11 decision 1), or null: one that can't be read never stops the listing. */
+  async callerIndex() {
+    try {
+      return typeof this.api.callers === "function" ? await this.api.callers() : null;
+    } catch {
+      return null;   // an older server, or the index unreadable: the listing's own word on each caller stands
+    }
   }
 
   async load() {
@@ -208,8 +250,8 @@ class Picker {
     this.stopRefresh();
     this.dispatch({ type: "loading" });
     try {
-      const data = await this.api.games();
-      if (seq === this.seq) this.dispatch({ type: "loaded", data });
+      const [data, callers] = await Promise.all([this.api.games(), this.callerIndex()]);
+      if (seq === this.seq) this.dispatch({ type: "loaded", data, callers });
     } catch (err) {
       if (seq === this.seq) this.dispatch({ type: "loadFailed", error: err });
     }
@@ -270,7 +312,7 @@ class Picker {
   }
 
   keydown(e) {
-    if (e.key === "Escape" || e.key === "Esc") {
+    if (isEscape(e)) {
       e.preventDefault();
       e.stopPropagation();
       this.close();
@@ -284,7 +326,7 @@ class Picker {
   }
 
   triggerKey(e) {
-    if (this.ui.open && (e.key === "Escape" || e.key === "Esc")) {
+    if (this.ui.open && isEscape(e)) {
       e.preventDefault();
       e.stopPropagation();
       this.close();
@@ -303,6 +345,7 @@ class Picker {
     setData(n.root, "open", vm.open);
     setAttr(n.trigger.node, "aria-expanded", String(vm.open));
     setHidden(n.panel, !vm.open);
+    setData(n.panel, "scLayer", vm.open ? "modal" : null);   // modal while open: the page's shortcuts stand down
     setText(n.title, vm.title);
     this.renderStatus(vm);
     this.renderTools(vm);
@@ -355,8 +398,10 @@ class Picker {
     setText(c.hint, chosen.go.hint);
   }
 
-  setLabel(text) {
-    if (this.n.trigger.value) setText(this.n.trigger.value, text);
+  /** The game's words on the key ("TB at DAL · Final") and their tooltip (the game's whole label), or none. */
+  setLabel(text, title = null) {
+    setText(this.n.trigger.value, text);
+    setAttr(this.n.trigger.value, "title", title || null);
   }
 
   destroy() {
@@ -370,12 +415,14 @@ class Picker {
  * Mount the picker in `host` (the top bar's slot). opts: api ({games, resolve}; default: this page's server), onSelect
  * ({event_id, sides} when a game is opened), timers ({setTimeout, clearTimeout}), label (the trigger's game, "TB at
  * DAL"), timeZone (the viewer's own by default).
- * @returns {{ open: () => void, close: () => void, setLabel: (text: string) => void, destroy: () => void,
- *   isOpen: () => boolean }}
+ * @returns {{ open: () => void, close: () => void, setLabel: (text: string, title?: string | null) => void,
+ *   destroy: () => void, isOpen: () => boolean, labelNode: HTMLElement }}  labelNode: the key's game words, for a
+ *   host's own hooks (the GameCast keeps #gameLabel on them)
  */
 export function mountPicker(host, { api = null, onSelect = () => {}, timers = null, label = "", timeZone = null } = {}) {
   const picker = new Picker(host, { api: api ?? defaultApi(), onSelect, timers: timers ?? defaultTimers(), label,
     timeZone: timeZone ?? localZone() });
-  return { open: () => picker.open(), close: () => picker.close(), setLabel: (t) => picker.setLabel(t),
-    destroy: () => picker.destroy(), isOpen: () => picker.ui.open };
+  return Object.freeze({ open: () => picker.open(), close: () => picker.close(),
+    setLabel: (t, title) => picker.setLabel(t, title), destroy: () => picker.destroy(), isOpen: () => picker.ui.open,
+    labelNode: picker.n.trigger.value });
 }

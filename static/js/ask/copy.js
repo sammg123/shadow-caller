@@ -60,6 +60,11 @@ export const ASK = Object.freeze({
     answering: "Answering",
   }),
   statusLabel: "Analyst status",
+  // restructure-v2.md 11: the top bar's Ask key (ui/view-keys.js builds it; shell/analyst.js lights it)
+  key: Object.freeze({
+    title: "Ask the analyst about the game, his calls or the model",
+    notReady: "Not ready",
+  }),
   notes: Object.freeze({
     warming: "The first answer takes about 10 s longer while the model loads.",
     busy: "The analyst is answering another question. Ask again when it's done.",

@@ -1,5 +1,6 @@
-// Boot (ui-architecture.md 3.1 and 9.5; restructure-v2.md 9; owner A0). Wires the store, sync, actions, keyboard,
-// conductor, engine (WebGL with the 2D fallback), components and the world, then opens the game once (/api/open).
+// Boot (ui-architecture.md 3.1 and 9.5; restructure-v2.md 9 and 11; owner A0). Wires the store, sync, actions,
+// keyboard, conductor, engine (WebGL with the 2D fallback), components and the world, the game picker in the top bar's
+// game label and the analyst's Ask slide-out, then opens the game once (/api/open).
 // Core modules are imported statically; components, the engine and worlds are imported dynamically, so a missing or
 // broken one leaves a visible notice and boot goes on: the page is never blank. Timers, fetch and the clock are
 // called bare ("Illegal invocation" otherwise).
@@ -155,6 +156,32 @@ async function loadAnnouncer(notices) {
     notices.show("announcer", `Screen reader announcements didn't load (${message(err)}).`);
     return null;
   }
+}
+
+/** picker/picker.js (game-picker.md 5), loaded beside the components and handed to the top bar (ctx.picker): one that
+ * fails leaves a notice and the game's plain words, and boot goes on. */
+async function loadPicker(notices) {
+  try {
+    const mod = await import("./picker/picker.js");
+    if (typeof mod.mountPicker === "function") return mod;
+    throw new TypeError("picker/picker.js has no mountPicker()");
+  } catch (err) {
+    notices.show("picker", `The game picker didn't load (${message(err)}), so the game can't be switched here.`);
+    return null;
+  }
+}
+
+/** restructure-v2.md 11 (analyst-ui.md 4): the analyst's Ask slide-out under the top bar's Ask key, imported like
+ * every component, so a broken analyst leaves a notice and the GameCast goes on. */
+async function startAnalyst(doc, deps) {
+  let mod;
+  try {
+    mod = await import("./shell/analyst.js");
+  } catch (err) {
+    deps.notices.show("ask", `The analyst couldn't load (${message(err)}).`);
+    return;
+  }
+  await mod.mountAnalyst(doc, deps);
 }
 
 /** #field, created by the field host; made here when the field host did not mount, so the engine has a home. */
@@ -366,6 +393,7 @@ async function boot() {
   const loader = createEngineLoader();
   loader.preloadFallback();
   const announcerLoading = loadAnnouncer(notices);
+  const pickerLoading = loadPicker(notices);
   const theme = await loadTheme(doc, prefs, notices);
   const { world, look } = theme;
   arrangeRegions(doc, world, notices);
@@ -374,13 +402,14 @@ async function boot() {
   const core = createCore(doc, prefs, theme, notices);
   const actions = createAppActions({ core, look, rt });
   const ctx = Object.freeze({ actions, engine: () => rt.engine, copy: Copy, reportHref: reportHref(prefs),
-    settingsId: app?.querySelector(SETTINGS_MENU)?.id || null });
+    settingsId: app?.querySelector(SETTINGS_MENU)?.id || null, picker: await pickerLoading, notices });
   const { bindings } = mountComponents(COMPONENTS, await modules, { doc, ctx, notices, shellIds: SHELL_IDS });
   startScheduler({ doc, core, bindings, look, notices, rt, announcerMod: await announcerLoading });
   await bootEngine({ doc, look, world, boot: prefs, loader, notices, rt });
   rt.refreshExtras();
   startConductor({ doc, look, world, boot: prefs, core, loader, notices, rt });
   listenToWorld(app, { actions, rt });
+  startAnalyst(doc, { actions, rt, notices }).catch(core.onError);
   initialCamera(core.store, prefs, look, rt);
   attachKeyboard(doc, { store: core.store, actions, onError: core.onError });
   const matchMedia = typeof globalThis.matchMedia === "function" ? (query) => globalThis.matchMedia(query) : undefined;

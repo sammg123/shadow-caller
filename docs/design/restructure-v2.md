@@ -115,6 +115,13 @@ Testing (ECC): tests first for new behaviour; node and non-e2e pytest suites gre
 
 ## 11. Phases 2 to 4 wiring (after phase 1 lands)
 
+Status: **wired (2026-10-12)**; each track's doc records it as applied (game-picker.md 4 and 5, play-caller-models.md 7,
+analyst.md 7, analyst-ui.md 4 to 6). Two rules the wiring settled: today's game is adopted only by the server's own
+start (`python app.py`, as `start.sh` and `scripts/sandbox.py` run it), never by importing app.py; and with both sides
+tracked the field keeps the game's frame (its offense attacks +x, the other team -x, each in its own colours on the
+field, the drive chart and the scoreboard), so the other offense's ball, line to gain and shadow plays are drawn from
+its own side.
+
 The three tracks were built as new files and documented; this phase wires them in. Binding: game-picker.md sections 4 and 5 (per-game state, adoption of today's game, `POST /api/game/select`), play-caller-models.md section 7 (engine loads a caller, tracking both sides), analyst.md section 5 and analyst-ui.md sections 4 to 6 (the analyst's blueprint and the chat's mounting).
 
 Decisions:

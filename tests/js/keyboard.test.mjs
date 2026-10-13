@@ -4,6 +4,7 @@ import test from "node:test";
 import { attachKeyboard, classifyTarget, runIntent } from "../../static/js/core/keyboard.js";
 import { initialState, reducer } from "../../static/js/core/reducer.js";
 import { createStore } from "../../static/js/core/store.js";
+import { createDocument } from "./fake-dom.mjs";
 import { stateBody } from "./fixtures.mjs";
 
 /** A stand-in element: just the properties classifyTarget reads. */
@@ -92,6 +93,60 @@ test("a key a component already handled (defaultPrevented) is not the page's", (
   h.press("ArrowLeft", el("div", { role: "slider" }), { defaultPrevented: true });
   assert.equal(e.prevented, false);
   assert.deepEqual(h.calls, []);
+});
+
+// restructure-v2.md 11 item 5: shortcuts never fire while a modal panel has focus (the game picker, the Ask drawer:
+// [data-sc-layer] on the panel's root), nor anywhere while the picker is open ([data-sc-layer="modal"]).
+function layerHarness() {
+  const doc = createDocument();
+  const store = createStore(reducer, initialState());
+  store.dispatch({ type: "state/loaded", body: stateBody({ watch: { state: "paused" } }), origin: "poll", reqSeq: 0,
+    now: 0 });
+  const calls = [];
+  const actions = new Proxy({}, { get: (_t, name) => (...args) => { calls.push([name, ...args]); } });
+  attachKeyboard(doc, { store, actions });
+  const node = (tag, parent, attrs = {}) => {
+    const n = parent.appendChild(doc.createElement(tag));
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    return n;
+  };
+  const press = (key, target) => {
+    const e = { key, target, repeat: false, metaKey: false, ctrlKey: false, altKey: false, shiftKey: false,
+      isComposing: false, defaultPrevented: false, prevented: false, preventDefault() { this.prevented = true; } };
+    for (const fn of doc.listeners.get("keydown") ?? []) fn(e);
+    return e;
+  };
+  return { doc, calls, node, press };
+}
+
+test("no shortcut fires from inside a panel that keeps its keys (the Ask drawer, the picker's panel)", () => {
+  const h = layerHarness();
+  const drawer = h.node("aside", h.doc.body, { "data-sc-layer": "panel" });
+  const cite = h.node("button", h.node("div", drawer), { type: "button" });
+  const face = h.node("div", drawer, { tabindex: "0", role: "group" });
+  for (const [key, target] of [["ArrowLeft", cite], ["ArrowRight", face], [" ", face], ["v", cite], ["2", face],
+    ["Escape", face]]) {
+    assert.equal(h.press(key, target).prevented, false, `${key}: the panel's, never prevented by the page`);
+  }
+  assert.deepEqual(h.calls, []);
+  h.press("ArrowRight", h.node("button", h.doc.body));
+  assert.deepEqual(h.calls, [["stepForward"]], "outside the panel the key is the page's");
+});
+
+test("while a modal panel is open (the game picker) no shortcut fires anywhere; once it closes they do", () => {
+  const h = layerHarness();
+  const picker = h.node("div", h.doc.body);
+  const trigger = h.node("button", picker, { type: "button" });
+  const panel = h.node("section", picker, { role: "dialog", "data-sc-layer": "modal" });
+  for (const [key, target] of [["ArrowLeft", trigger], [" ", h.doc.body], ["v", h.doc.body], ["Escape", h.doc.body],
+    ["4", trigger]]) {
+    assert.equal(h.press(key, target).prevented, false, key);
+  }
+  assert.deepEqual(h.calls, []);
+  panel.removeAttribute("data-sc-layer");
+  h.press("ArrowLeft", trigger);
+  h.press("Escape", h.doc.body);
+  assert.deepEqual(h.calls, [["stepBack"], ["goLive"]]);
 });
 
 test("runIntent maps every intent type to its action", () => {

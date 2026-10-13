@@ -59,7 +59,7 @@ function buildDesk(h, ids) {
       enterkeyhint: "send", "aria-describedby": ids.hint },
     on: { input: () => h.input(input.value), keydown: (e) => h.key(e), focus: () => h.focused() } });
   const send = keycap({ cap: ASK.sendCap, name: ASK.send, shortcut: "Enter", title: ASK.sendTitle, cls: "sc-ask-send",
-    data: { testid: "ask-send", mode: "ask" }, on: { click: () => h.sendOrStop() } });
+    data: { testid: "ask-send", mode: "ask" }, on: { click: (e) => h.sendOrStop(e) } });
   const count = el("span", { cls: "sc-ask-count", attrs: { hidden: true } });
   const desk = el("div", { cls: "sc-ask-desk" }, [
     el("label", { cls: "sr-only", attrs: { for: ids.input }, text: ASK.inputLabel }),
@@ -71,7 +71,7 @@ function buildDesk(h, ids) {
 
 /**
  * The panel's nodes. h: the controller's handlers ({ close, suggest(text), retry(id), cite(seq, ref), input(text),
- * key(event), focused(), sendOrStop() }).
+ * key(event), focused(), sendOrStop(clickEvent) }).
  * @param {object} h
  * @param {{ layout: "slide" | "embedded", id: string }} opts
  */
@@ -88,9 +88,11 @@ export function buildPanel(h, { layout, id }) {
   const live = el("p", { cls: ["sr-only", "sc-ask-live"], attrs: { role: "status", "aria-live": "polite",
     "aria-atomic": "true" } });
   const slide = layout === "slide";
+  // the slide-out keeps its keys while it has focus: core/keyboard.js stands down for a keydown from inside a
+  // [data-sc-layer] (restructure-v2.md 11 item 5); the Model Report has no page shortcuts to keep out
   const root = el(slide ? "aside" : "div", { id: ids.root, cls: "sc-ask",
     attrs: { "aria-labelledby": slide ? ids.title : null, hidden: slide },
-    data: { layout, open: slide ? false : null, testid: "ask-panel" } },
+    data: { layout, open: slide ? false : null, testid: "ask-panel", scLayer: slide ? "panel" : null } },
   [head.head, note, el("div", { cls: "sc-ask-body" }, [intro.intro, face, desk.desk]), live]);
   return Object.freeze({ root, ...head, note, ...intro, face, log, ...desk, live, h, layout });
 }

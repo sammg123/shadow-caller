@@ -97,3 +97,39 @@ test("4b: the LAST plate's verdict for a play drawn at once: a graded caller sna
   assert.equal(rowVerdictText(bySeq(15)), "", "a TB play");
   assert.equal(rowVerdictText(null), "");
 });
+
+// ---------------------------------------------------------------- both sides tracked (restructure-v2.md 11)
+// The engine's situation is the offense with the ball's own (sit's down, distance and spot), and /api/state's `poss`
+// names that offense; the field's frame stays the game's (DAL attacks +x, TB -x).
+const { TRACKED, nextCallOf } = await import("./both-sides.mjs");
+const bothDrive = (team, sit) => patch(state.drive(), { tracked: TRACKED, poss: team, prediction: nextCallOf(team, 1),
+  sit: { ...state.drive().sit, ...sit } });
+
+test("both sides: the other offense's drive is drawn from its own side, attacking -x, with its shadows", async () => {
+  const fieldVm = await load();
+  const { ghostInputFromPrediction } = await import("../../static/js/field/ghosts.js");
+  const presented = bothDrive("TB", { down: 1, togo: 10, yardline_100: 75 });
+  const vm = fieldVm(makePv({ presented, tl: tlOf(timeline.final()) }));
+  assert.deepEqual({ ...vm.situation }, { ballX: 75, ltgX: 65, dir: -1, poss: "TB", kind: "snap", goalToGo: false,
+    down: 1, togo: 10 });
+  assert.deepEqual({ ...vm.facts }, { driveActive: true, los: 75, ltg: 65, poss: "TB", ballX: 75, ltgX: 65 });
+  assert.equal(vm.ariaLabel, "Ball on TB 25. 1st & 10. Line to gain TB 35.");
+  assert.deepEqual(vm.ghostInput, ghostInputFromPrediction(presented.prediction), "his top 2 as shadows");
+});
+
+test("both sides: the other offense's goal to go puts the line to gain on the goal line it attacks", async () => {
+  const fieldVm = await load();
+  const vm = fieldVm(makePv({ presented: bothDrive("TB", { down: 1, togo: 8, yardline_100: 8 }) }));
+  assert.deepEqual([vm.situation.ballX, vm.situation.ltgX, vm.situation.dir, vm.situation.goalToGo], [8, 0, -1, true]);
+  assert.deepEqual([vm.facts.los, vm.facts.ltg], [8, 0]);
+  assert.equal(vm.ariaLabel, "Ball on DAL 8. 1st & Goal. Line to gain the goal line.");
+});
+
+test("both sides: the game's own offense with the ball reads exactly as with one side", async () => {
+  const fieldVm = await load();
+  const one = fieldVm(makePv({ presented: state.drive(), tl: tlOf(timeline.final()) }));
+  const both = fieldVm(makePv({ presented: bothDrive("DAL", {}), tl: tlOf(timeline.final()) }));
+  assert.deepEqual({ ...both.situation }, { ...one.situation });
+  assert.deepEqual({ ...both.facts }, { ...one.facts });
+  assert.equal(both.ariaLabel, one.ariaLabel);
+});

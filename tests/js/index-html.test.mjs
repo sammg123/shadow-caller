@@ -88,3 +88,25 @@ test("G2-8 (with G1-7): no inline script runs before main.js: the import map and
     assert.equal(body.trim(), "");
   }
 });
+
+// ---------------------------------------------------------------- restructure-v2.md 11: the picker and the analyst
+test("the picker's and the analyst's sheets are page links after the components, before the world's", () => {
+  const hrefs = [...INDEX.matchAll(/<link rel="stylesheet"[^>]*href="([^"]+)"/g)].map((m) => m[1]);
+  const at = (href) => hrefs.indexOf(href);
+  const lastComponent = Math.max(...hrefs.map((h, i) => (h.startsWith("/static/css/components/") ? i : -1)));
+  const firstWorld = hrefs.findIndex((h) => h.startsWith("/static/css/worlds/"));
+  const own = ["/static/css/picker/picker.css", "/static/css/ask/ask.css", "/static/css/ask/ask-under-the-lights.css"];
+  for (const href of own) {
+    assert.ok(at(href) > lastComponent && at(href) < firstWorld, `${href} sits between the components and the world`);
+  }
+  assert.ok(at(own[1]) < at(own[2]), "the drawer's stadium skin after its plain sheet, so it wins its ties");
+  assert.equal(hrefs.filter((h) => own.includes(h)).length, own.length, "each once");
+});
+
+test("the analyst's drawer has its own host outside #app, before the connection banner", () => {
+  const host = INDEX.indexOf('<div id="rg-ask" data-region="ask"></div>');
+  assert.ok(host > 0, "#rg-ask is on the page");
+  const appEnd = INDEX.indexOf("</div>", INDEX.indexOf('<section id="rg-wp"'));
+  assert.ok(host > appEnd, "outside #app: the world's arrange() and the neutral grid leave it alone");
+  assert.ok(host < INDEX.indexOf('<div id="rg-conn"'));
+});

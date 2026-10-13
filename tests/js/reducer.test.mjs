@@ -211,6 +211,8 @@ test("view: camera, hover, the settings menu and the playback request in flight"
     assert.equal(run(c, { type: "playback/start", ...bad }), c, JSON.stringify(bad));
   }
   assert.deepEqual(run(c, { type: "playback/start", kind: "back" }).view.playback, { kind: "back", target: null });
+  assert.deepEqual(run(c, { type: "playback/start", kind: "select" }).view.playback, { kind: "select", target: null },
+    "restructure-v2.md 11: opening another game from the picker shares the playback lane");
 });
 
 test("toast/hide only hides the toast it was scheduled for (FI 4.5)", () => {

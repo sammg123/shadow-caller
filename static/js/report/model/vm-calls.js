@@ -6,6 +6,7 @@ import { freezeDeep } from "../../model/format.js";
 import { driveResultText, driveSummary } from "../../model/vm-drives.js";
 import { callFacts, callerCalls, leafTable } from "./calls.js";
 import { CALLS } from "./copy.js";
+import { namedPlate } from "./side.js";
 
 /** The row over a drive of his, keyed by its first call (unique even where a drive has no number). */
 function driveItem(row, drives) {
@@ -33,8 +34,8 @@ function itemsOf(rows, table, drives) {
  */
 export function callsVm(pv) {
   const rows = callerCalls(pv && pv.tl);
-  const base = { heading: CALLS.heading, caption: CALLS.caption, columns: [...CALLS.columns],
-    marks: { called: CALLS.calledMark, noPlay: CALLS.noPlay } };
+  const base = { heading: namedPlate(pv, CALLS.named, CALLS.heading), caption: CALLS.caption,
+    columns: [...CALLS.columns], marks: { called: CALLS.calledMark, noPlay: CALLS.noPlay } };
   if (!rows.length) return freezeDeep({ ...base, empty: true, emptyText: CALLS.empty, countText: "", items: [] });
   const drives = Array.isArray(pv.tl.drives) ? pv.tl.drives : [];
   return freezeDeep({ ...base, empty: false, emptyText: "", countText: CALLS.count(rows.length),

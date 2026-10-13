@@ -18,6 +18,10 @@ const W2_SKINS = Object.freeze(["masthead", "prediction", "board", "scoreboard",
   "toast", "conn-banner", "boot-screen", "field-host"]);
 /** The settings menu's lamp switches (booth.css) and the board's previous play (last-play.css). */
 const W4_BOOTH = Object.freeze(["booth", "components/last-play"]);
+/** restructure-v2.md 11 (game-picker.md 5): the game picker in the top bar's game label, after the world's keys so it
+ * wins ties with them. It styles only the picker, so the playback row's skin stays the last sheet (uls-deck.test.mjs).
+ * (The analyst's drawer skin is a page link, css/ask/: analyst-ui.md 4.) */
+const W6_PICKER = Object.freeze(["picker/picker"]);
 /** restructure-v2.md 2: the top bar's playback and its progress bar. */
 const W5_DECK = Object.freeze(["components/watch-transport"]);
 
@@ -95,9 +99,9 @@ export const world = Object.freeze({
   id: ID,
   label: "Under the Lights",
   look: w1.look ?? FALLBACK_PARTIAL,
-  // Cascade order: W3's tokens, layout and motion, then the component skins (W2, W4, W5) as they land.
+  // Cascade order: W3's tokens, layout and motion, then the component skins (W2, W4), the game picker's, the deck's.
   css: Object.freeze([CSS("tokens"), CSS("layout"), CSS("motion"), ...W2_SKINS.map((n) => CSS(`components/${n}`)),
-    ...W4_BOOTH.map((n) => CSS(n)), ...W5_DECK.map((n) => CSS(n))]),
+    ...W4_BOOTH.map((n) => CSS(n)), ...W6_PICKER.map((n) => CSS(n)), ...W5_DECK.map((n) => CSS(n))]),
   fonts: Object.freeze([
     FONT("big-shoulders-display/big-shoulders-display-latin.woff2"),
     FONT("big-shoulders-text/big-shoulders-text-latin.woff2"),

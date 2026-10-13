@@ -11,7 +11,7 @@ quarter mark sits just before its first play (the play before it is the newest o
 a score mark just after the scoring play (the score is on the board). The marks span the whole game, future scores
 included: Sam's progress bar asks for them (restructure-v2 overrides the data contract's E5 here).
 """
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from typing import NamedTuple
 
 import timeline
@@ -37,13 +37,15 @@ SEP = " · "
 
 
 # ---------------------------------------------------------------- E3: pacing
-def pace_of(team: str | None, p: dict, caller: str) -> tuple[str, float]:
-    """(pace, seconds before this row at 1x) for one ESPN play; pace is a PACE key."""
+def pace_of(team: str | None, p: dict, caller: str | Collection[str]) -> tuple[str, float]:
+    """(pace, seconds before this row at 1x) for one ESPN play; pace is a PACE key. caller: the tracked offense, or
+    the offenses when both sides are tracked (each side's snaps are caller snaps)."""
     info = classify(team, p)
     typ = (p.get("type") or {}).get("text") or ""
     kind = timeline.kind_of(info, typ, split_body(p.get("text"))[1])
     if kind in SNAP_KINDS:
-        pace = "caller_snap" if team == caller else "snap"
+        ours = team == caller if isinstance(caller, str) else team in caller
+        pace = "caller_snap" if ours else "snap"
     elif kind in timeline.KICKS:
         pace = "kick"
     else:
@@ -52,7 +54,7 @@ def pace_of(team: str | None, p: dict, caller: str) -> tuple[str, float]:
     return pace, PACE[pace]
 
 
-def pace_plan(plays: Sequence[tuple], caller: str) -> list[tuple[str, float]]:
+def pace_plan(plays: Sequence[tuple], caller: str | Collection[str]) -> list[tuple[str, float]]:
     """[(pace, seconds at 1x)] for (team, play) pairs, in apply order."""
     return [pace_of(team, p, caller) for team, p in plays]
 

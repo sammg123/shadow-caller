@@ -41,6 +41,12 @@ docs/design/direction-contract.md, verbatim:
 <link rel="stylesheet" href="/static/css/components/play-feed.css">
 <link rel="stylesheet" href="/static/css/components/drive-chart.css">
 <link rel="stylesheet" href="/static/css/components/win-prob.css">
+<!-- restructure-v2.md 11: the game picker in the top bar (its stadium skin loads with the world, last: game-picker.md
+     5) and the analyst's Ask drawer (both sheets are page links; the skin's rules are scoped to its world: analyst-ui.md
+     4). -->
+<link rel="stylesheet" href="/static/css/picker/picker.css">
+<link rel="stylesheet" href="/static/css/ask/ask.css">
+<link rel="stylesheet" href="/static/css/ask/ask-under-the-lights.css">
 <link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-display/big-shoulders-display-latin.woff2">
 <link rel="preload" as="font" type="font/woff2" crossorigin data-world-font="under-the-lights" href="/static/fonts/under-the-lights/big-shoulders-text/big-shoulders-text-latin.woff2">
 <link rel="stylesheet" id="world-css" data-world-css="under-the-lights" href="/static/css/worlds/under-the-lights/tokens.css">
@@ -62,6 +68,9 @@ docs/design/direction-contract.md, verbatim:
   <section id="rg-drives"     data-region="drives"></section>
   <section id="rg-wp"         data-region="wp"></section>
 </div>
+<!-- The analyst's Ask drawer (restructure-v2.md 11; analyst-ui.md 4), outside #app: it slides out from the left wall
+     under the top bar's Ask key; main.js mounts it. -->
+<div id="rg-ask" data-region="ask"></div>
 <div id="rg-conn" data-region="conn"></div>
 <div id="rg-boot" data-region="boot">
   <!-- Shown until main.js mounts the boot screen, dressed as that screen's board (the same classes, so the world's skin

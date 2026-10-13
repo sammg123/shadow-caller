@@ -85,6 +85,11 @@
   --uls-verdict-glyph: url("/static/img/worlds/under-the-lights/x.svg");
   color: var(--uls-tally-red);
 }
+/* A call graded on its play type only (a sack or a scramble: no specific play, so not in the tally) keeps its check
+   or X in the LED's dim light. */
+:where(:root[data-world="under-the-lights"]) .sc-recent-dot:is([data-level="family"], [data-level="passrun"]) {
+  color: var(--sc-ink-muted);
+}
 
 /* What the board predicted, on one row: its label, the name (Display caps, never cut; a long one takes two lines) and
    its odds in Doto over unlit 88%, the size the recap gave them. */
@@ -160,7 +165,8 @@
   text-transform: uppercase;
 }
 :where(:root[data-world="under-the-lights"]) .sc-recent-countvalue { color: var(--sc-ink); font-weight: var(--sc-weight-display); }
-/* How his calls split once a flag has wiped one out: a quiet line under the tally, in the tally's own type. */
+/* How his calls split once a flag has wiped one out or a call was graded on its play type only: a quiet line under the
+   tally, in the tally's own type. */
 :where(:root[data-world="under-the-lights"]) .sc-recent-note {
   color: var(--sc-ink-muted);
   font: var(--sc-weight-regular) var(--sc-size-xs) / 1.15 var(--sc-font-text);

@@ -6,6 +6,7 @@
 import { freezeDeep } from "../../model/format.js";
 import { callerCalls } from "./calls.js";
 import { HIT_RATE } from "./copy.js";
+import { namedPlate } from "./side.js";
 
 const SHORT_MAX = 3;
 const MEDIUM_MAX = 6;
@@ -81,7 +82,7 @@ export function hitRateVm(pv) {
   const lead = leadOf(tally);
   const total = { label: HIT_RATE.total, ...tally, lead, leadText: lead ? HIT_RATE.leads[lead] : "" };
   return freezeDeep({
-    heading: HIT_RATE.heading, columns: [...HIT_RATE.columns], note: HIT_RATE.note,
+    heading: namedPlate(pv, HIT_RATE.named, HIT_RATE.heading), columns: [...HIT_RATE.columns], note: HIT_RATE.note,
     empty: total.calls === 0, emptyText: emptyText(calls.length, total.calls), rows, total,
   });
 }

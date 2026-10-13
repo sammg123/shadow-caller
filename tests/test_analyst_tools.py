@@ -222,7 +222,7 @@ def test_a_listed_call_carries_its_grade(full):
     row = next(p for p in tool(full, "list_plays", his_calls_only=True, quarter=1)["plays"] if p["seq"] == 5)
     assert row == {"seq": 5, "when": "Q1 13:53", "team": "DAL", "situation": "1st & 10 at DAL 46",
                    "play": "Inside run (A/B gap)", "side": "middle", "result": "+4",
-                   "his_call": {"verdict": "top pick", "rank": 1, "model_chance": "24%",
+                   "his_call": {"verdict": "top pick", "model_rank_of_his_call": 1, "model_chance": "24%",
                                 "model_top_pick": "Inside run (A/B gap) 24%"},
                    "espn": "(No Huddle, Shotgun) J.Williams up the middle to 50 for 4 yards (J.Trotter; R.Bain)."}
 
@@ -258,6 +258,42 @@ def test_filters_by_team_type_zone_quarter_and_result(full, full_game):
 def test_sorts(full):
     s = tool(full, "list_plays", his_calls_only=True, sort="surprise", limit=3)["plays"]
     assert s[0]["play"] == "Deep shot (20+), incomplete" and s[0]["his_call"]["model_chance"] == "0.5%"
+
+
+def chance_of(row):
+    return float(row["his_call"]["model_chance"].rstrip("%"))
+
+
+def test_a_surprise_list_stays_sorted_least_expected_first(full):
+    """The analyst listed surprises out of order: every list sorted by surprise reads lowest model_chance first, the
+    rank of his call beside it (a bigger number: a bigger surprise), whatever the filter or the cut."""
+    for args in ({}, {"team": "DAL"}, {"quarter": 2}, {"verdict": "miss"}, {"play_type": "pass"}, {"limit": 30}):
+        rows = tool(full, "list_plays", his_calls_only=True, sort="surprise", **args)["plays"]
+        chances = [chance_of(r) for r in rows]
+        assert len(rows) > 1 and chances == sorted(chances), args
+    misses = tool(full, "list_plays", verdict="miss", sort="surprise", limit=30)["plays"]
+    assert all(r["his_call"]["model_rank_of_his_call"] > 3 for r in misses), "a miss: he called the model's 4th or lower"
+
+
+def keys_in(value):
+    if isinstance(value, dict):
+        return set(value) | {k for v in value.values() for k in keys_in(v)}
+    if isinstance(value, list):
+        return {k for v in value for k in keys_in(v)}
+    return set()
+
+
+def test_no_tool_says_a_bare_rank(full):
+    """'rank 13' read as '13th worst': a rank always says whose list it is and what it ranks, and the prompt says what
+    the number means."""
+    results = [tool(full, t.name) for t in at.TOOLS if t.name != "play_detail"]
+    results += [tool(full, "list_plays", his_calls_only=True, sort="surprise", limit=30),
+                tool(full, "play_detail", seq=5), tool(full, "play_detail", when="Q3 10:51")]
+    found = set().union(*map(keys_in, results))
+    assert {"model_rank_of_his_call", "league_rank_of_his_call"} <= found
+    assert not {"rank", "league_rank"} & found
+    words = at.TOOLS_BY_NAME["list_plays"].description + at.TOOLS_BY_NAME["play_detail"].description
+    assert "model_rank_of_his_call" in words
     assert tool(full, "list_plays", sort="yards", limit=1)["plays"][0]["seq"] == 95
     assert tool(full, "list_plays", sort="win_prob_swing", limit=1)["plays"][0]["seq"] == 176
 
@@ -396,8 +432,8 @@ def test_play_detail_of_his_call(full, full_game):
     top = sorted(range(len(LEAVES)), key=lambda i: -his[i])[:3]
     assert m["top_3"] == [{"play": LEAF_NAMES[LEAVES[i]], "chance": pct(his[i]), "league_chance": pct(lg[i])}
                           for i in top]
-    assert m["called"] == {"play": "Inside run (A/B gap)", "chance": "24%", "league_chance": "21%", "rank": 1,
-                           "league_rank": 1}
+    assert m["called"] == {"play": "Inside run (A/B gap)", "chance": "24%", "league_chance": "21%",
+                           "model_rank_of_his_call": 1, "league_rank_of_his_call": 1}
     assert (m["verdict"], m["tilt"], m["snap"], m["pass_chance"], m["league_pass_chance"]) == (
         "top pick", "Like the league", 4, "49%", "49%")
     assert "memory" not in m and "Opening script" in m["memory_note"]

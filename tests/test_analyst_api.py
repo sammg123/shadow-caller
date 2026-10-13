@@ -78,6 +78,11 @@ BAD = [
     ({"question": "ok", "history": [{"role": "user", "content": "x" * 501}]}, "500"),
     ({"question": "ok", "history": [{"role": "assistant", "content": "x" * 4001}]}, "4,000"),
     ({"question": "ok", "history": [{"role": "user", "content": "a", "name": "x"}]}, "history"),
+    # a role that isn't text (a list or an object can't even be looked up) is the page's mistake: 400, never a 500
+    ({"question": "ok", "history": [{"role": ["user"], "content": "a"}]}, "role"),
+    ({"question": "ok", "history": [{"role": {"user": 1}, "content": "a"}]}, "role"),
+    ({"question": "ok", "history": [{"role": 5, "content": "a"}]}, "role"),
+    ({"question": "ok", "history": [{"role": None, "content": "a"}]}, "role"),
 ]
 
 
@@ -227,16 +232,11 @@ data = sandbox.prepare(sys.argv[1])
 os.environ.update(SHADOW_DATA_DIR=str(data), SHADOW_ESPN_OFFLINE="1", SHADOW_NO_BROWSER="1")
 sys.path.insert(0, "tests")
 from test_analyst_loop import FakeClient, answer, tool_turn
-import app as shadow
-import analyst, analyst_api, analyst_tools
-from app import GAME, LOCK, WATCH, engine, feed, timeline_mode
-
-# docs/design/analyst.md section 7, as app.py will have it:
-def analyst_snapshot():
-    return analyst_tools.take_snapshot(engine, feed, LOCK, GAME, mode=timeline_mode, watch=WATCH.snapshot)
-
+import analyst
 client = FakeClient(tool_turn(("game_situation", {})), answer("Final: TB 24, DAL 16."))
-shadow.app.register_blueprint(analyst_api.create_blueprint(analyst_snapshot, client=client))
+analyst.OllamaClient = lambda: client          # the blueprint app.py registers (analyst.md 7) asks this fake model
+import app as shadow
+from app import GAME
 c = shadow.app.test_client()
 JSON = {"Content-Type": "application/json"}
 out = {}
@@ -259,8 +259,8 @@ print("RESULT " + json.dumps(out))
 
 
 def test_the_apps_gate_covers_the_analyst_routes():
-    """The exact wiring of section 7 against the real app module: its gate answers before the blueprint does, and a
-    question from the app's own page gets the stream, with a snapshot of the real (sandboxed) engine."""
+    """The blueprint app.py registers (section 7), against the real app module: its gate answers before the blueprint
+    does, and a question from the app's own page gets the stream, with a snapshot of the real (sandboxed) engine."""
     with tempfile.TemporaryDirectory(prefix="shadow-analyst-") as tmp:
         proc = subprocess.run([sys.executable, "-c", WIRED, str(Path(tmp) / "data")], cwd=ROOT, capture_output=True,
                               text=True, timeout=240, check=False)

@@ -5,7 +5,8 @@
 import { own } from "./domain.js";
 
 const IDLE_PLAYBACK = Object.freeze({ kind: null, target: null });
-const PLAYBACK_KINDS = Object.freeze(["open", "seek", "back", "forward", "golive", "toggle"]);
+/** The playback lane's requests (core/actions.js), the game picker's "select" among them (restructure-v2.md 11). */
+const PLAYBACK_KINDS = Object.freeze(["open", "seek", "back", "forward", "golive", "toggle", "select"]);
 const PREF_VALUES = Object.freeze({
   motion: ["full", "reduced"], ambient: ["room", "dark"], scene: ["auto", "2d"], watchSpeed: [1, 2, 4, 10],
 });

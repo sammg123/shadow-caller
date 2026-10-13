@@ -9,9 +9,7 @@ import functools
 import http.client
 import json
 import logging
-import math
 import os
-import re
 import threading
 import urllib.error
 import webbrowser
@@ -20,12 +18,21 @@ from threading import Timer
 from flask import Flask, Response, jsonify, request, send_from_directory
 from werkzeug.exceptions import HTTPException
 
+import analyst_api
+import analyst_tools
+import callers
+import games
+import games_api
+import live
 import logos
 import playback
+import switch
 import timeline
+import tracks
 import watch
-from config import DATA_DIR, ESPN_OFFLINE, GAME, PORT, ROOT, STATE_PATH, WATCH_SCALE
+from config import CALLER_NAME, DATA_DIR, ESPN_OFFLINE, GAME, PORT, ROOT, WATCH_SCALE
 from live import GameEngine, ModelVersionError, UndoRefused, parse_clock
+from request_values import flag, in_range, json_object, number, text, timeline_args, whole
 
 if __name__ == "__main__":       # the server log: request refusals (info), warnings, and tracebacks of real faults
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -49,30 +56,37 @@ SERVER_FAULT = "Something went wrong on the server; the server log has the detai
 ERROR_MAX = 300                    # characters of an error message sent back
 YARDS_MIN, YARDS_MAX = -100, 100
 SCORE_MAX, SCORE_STEP_MAX = 199, 99
-TEXT_FIELD_MAX = 40                # a call, leaf, family, outcome, side, team or drive end
 COMMAND_MAX = 500
 
 
 # ---------------------------------------------------------------- the engine (G1-13: no surprise rebuild mid-game)
 def game_in_progress():
-    """True when data/live_state.json holds a game with plays or a drive: a model rebuild must not run under it."""
+    """True when the game file holds a game with plays or a drive: a model rebuild must not run under it."""
     try:
-        s = json.loads(STATE_PATH.read_text())
+        s = json.loads(live.STATE_PATH.read_text())
     except (OSError, ValueError):
         return False
     return isinstance(s, dict) and (bool(s.get("log")) or bool(s.get("drive_active")) or bool(s.get("drive_n")))
 
 
-def _load_engine():
-    """The engine. Missing models, or models built with another scikit-learn, are rebuilt (about 30 s and ESPN data)
-    only when no game is in progress: a rebuild mid-game would change his predictions, and fails offline. Anything
-    else is a broken setup: the message says to run build.py, and the error stands."""
+def _load_engine(models):
+    """The engine of the game on screen. A track's bundles that won't load stop the start with the reason. Missing
+    models/, or models built with another scikit-learn, are rebuilt (about 30 s and ESPN data) only when no game is in
+    progress: a rebuild mid-game would change his predictions, and fails offline. Anything else is a broken setup:
+    the message says to run build.py, and the error stands."""
+    if models:
+        try:
+            return GameEngine(**switch.engine_args(models))
+        except switch.LOAD_ERRORS as e:
+            raise SystemExit(f"Can't load the play-caller models of the current game ({e}). Run "
+                             "scripts/build_callers.py, then start the app again.") from e
     try:
         return GameEngine()
     except (FileNotFoundError, ModelVersionError) as e:
         if game_in_progress():
-            raise SystemExit(f"Can't load the models ({e}). A game is in progress in {STATE_PATH.name}, so they were "
-                             "not rebuilt: run  python build.py  when you're ready, then start the app again.") from e
+            raise SystemExit(f"Can't load the models ({e}). A game is in progress in {live.STATE_PATH.name}, so "
+                             "they were not rebuilt: run  python build.py  when you're ready, then start the app "
+                             "again.") from e
         print(f"Models missing or built elsewhere ({e}). Building now, about 30 seconds...")
         import build
         build.main()
@@ -82,14 +96,28 @@ def _load_engine():
         raise
 
 
-engine = _load_engine()
+def track_models(track):
+    """The current track's bundles ({} on models/). SystemExit when one won't load: the app never opens a game on
+    another model than the one it was made with."""
+    try:
+        return switch.load_models(track, callers.load_caller) if track else {}
+    except switch.SwitchError as e:
+        raise SystemExit(f"{e} Run scripts/build_callers.py, then start the app again.") from e
+
+
+# Today's game is adopted (game-picker.md 4) only by the server's own start: python app.py, which start.sh and
+# scripts/sandbox.py run. An import of this module (a test, a REPL, a tool) never copies anything: it could copy a game
+# the running app is still writing. Either way the current track's folder is opened, or DATA_DIR as before.
+SERVING = __name__ == "__main__"
+TRACK = switch.startup(DATA_DIR, GAME, CALLER_NAME, adopting=SERVING)
+MODELS = track_models(TRACK)
+engine = _load_engine(MODELS)
 
 import espn_feed  # noqa: E402  (needs the engine)
 from espn_feed import Feed  # noqa: E402
 
 feed = Feed(engine, LOCK)
 WATCH = watch.Watch(feed, LOCK, pace_scale=WATCH_SCALE)   # "Watch this game"; while a session is on, mode is "watch"
-SINCE_RE = re.compile(r"[0-9]{1,9}")         # ASCII digits only: '\d' takes Arabic-Indic and fullwidth digits too
 _ROWS = {"epoch": None, "cache": {}}           # timeline rows frozen per epoch (data contract F3)
 
 
@@ -127,6 +155,7 @@ def view():
     v["feed"] = {**feed.status, "on": feed.on, "event_id": feed.event_id}
     v["timeline"] = timeline_pointer()
     v["watch"] = WATCH.snapshot()
+    v["track"] = tracks.track_view(SWITCH.track, GAME, feed.event_id)     # tracked: the engine's own, every side
     return v
 
 
@@ -156,7 +185,7 @@ def state_call(action):
     try:
         answer = action()
         return ok() if answer is None else answer
-    except watch.WatchError as e:
+    except (watch.WatchError, switch.SwitchError, games.GamesError) as e:
         return fail(e, e.status)
     except UndoRefused as e:
         return fail(e, 409)
@@ -183,60 +212,6 @@ def answers_with_state(route):
     def wrapped(*args, **kwargs):
         return state_call(lambda: route(*args, **kwargs))
     return wrapped
-
-
-def json_object():
-    """The request's JSON object. ValueError (a 400) for an empty body, one that isn't JSON or isn't an object."""
-    d = request.get_json(silent=True)
-    if not isinstance(d, dict):
-        raise ValueError("Send a JSON object.")
-    return d
-
-
-def number(value, what):
-    """An int from a JSON number or the text of one ('14', '2.0'; a fraction is cut off, as typed boxes always
-    were). ValueError for anything else: text that isn't a number, NaN, infinity, true or false."""
-    if isinstance(value, bool) or not isinstance(value, (int, float, str)):
-        raise ValueError(f"{what} must be a number.")
-    try:
-        return int(float(value)) if isinstance(value, str) else int(value)
-    except (ValueError, OverflowError):
-        raise ValueError(f"'{str(value)[:20]}' isn't a number ({what}).") from None
-
-
-def whole(value, what, lo, hi):
-    """A JSON whole number from lo to hi (a typed box sends text: those go through number())."""
-    ok_type = isinstance(value, int) or (isinstance(value, float) and math.isfinite(value) and value.is_integer())
-    if isinstance(value, bool) or not ok_type or not lo <= value <= hi:
-        raise ValueError(f"{what} must be a whole number from {lo} to {hi}.")
-    return int(value)
-
-
-def in_range(value, what, lo, hi):
-    n = number(value, what)
-    if not lo <= n <= hi:
-        raise ValueError(f"{what} must be from {lo} to {hi}.")
-    return n
-
-
-def text(d, key, what=None, required=False):
-    """A short text field: None when absent (or null), else a string of at most TEXT_FIELD_MAX characters."""
-    value = d.get(key)
-    if value is None and not required:
-        return None
-    if not isinstance(value, str) or not value.strip() or len(value) > TEXT_FIELD_MAX:
-        raise ValueError(f"Send {what or key} as text.")
-    return value.strip()
-
-
-def flag(d, key):
-    """A yes/no field: absent or null is no."""
-    value = d.get(key)
-    if value is None:
-        return False
-    if not isinstance(value, bool):
-        raise ValueError(f"{key} must be true or false.")
-    return value
 
 
 @app.errorhandler(HTTPException)
@@ -298,20 +273,6 @@ def version():
     tl = timeline_pointer()
     return jsonify({"version": engine.version, "epoch": tl["epoch"], "timeline_n": tl["n"],
                     "feed": {**feed.status, "on": feed.on}, "watch": WATCH.brief()})
-
-
-def timeline_args(args):
-    """(since, until, error) from the query: ASCII whole numbers; until is optional and never before since."""
-    since, until = args.get("since", "0"), args.get("until")
-    if not SINCE_RE.fullmatch(since):
-        return None, None, "since must be a whole number"
-    if until is None:
-        return int(since), None, None
-    if not SINCE_RE.fullmatch(until):
-        return None, None, "until must be a whole number"
-    if int(until) < int(since):
-        return None, None, "until can't be before since"
-    return int(since), int(until), None
 
 
 @app.get("/api/timeline")
@@ -471,6 +432,15 @@ def reset():
 
 
 # ---------------------------------------------------------------- the ESPN feed (G1-2, G1-11)
+def own_event(eid):
+    """eid, when it is the game on screen's own: on a track (game-picker.md 4) another game is picked with the game
+    picker and gets a track of its own, so its plays are never written into this one's files (409)."""
+    if SWITCH.track is not None and eid != SWITCH.track.event_id:
+        raise switch.SwitchError(f"This is ESPN game {SWITCH.track.event_id}'s track: pick game {eid} with the game "
+                                 "picker to open it.")
+    return eid
+
+
 def preflight(eid):
     """The summary the live feed would see first, fetched before taking LOCK (up to 10 s). None when ESPN can't be
     reached or doesn't answer with a game summary now: the feed's own polls retry, and check, those."""
@@ -524,7 +494,7 @@ def feed_control():
             engine.state["message"] = "ESPN live feed off. Enter plays by hand."
         return
     WATCH.require_idle("turning the live feed on")             # before any network call
-    eid = feed.resolve_event(d.get("event_id") or None)        # today's game can take a 10 s call: not under LOCK
+    eid = own_event(feed.resolve_event(d.get("event_id") or None))     # today's game can take 10 s: not under LOCK
     first = preflight(eid)
     with LOCK:                     # atomic with /api/watch/start: the live feed never comes on during a watch
         WATCH.require_idle("turning the live feed on")
@@ -543,7 +513,7 @@ def feed_replay():
     """Rebuild a whole game from ESPN: backs up the game file and the applied ids, clears them, applies every play.
     The live feed stops first, so a poll already in flight can't land in the rebuilt game (data contract E6)."""
     d = json_object()
-    eid = str(d.get("event_id") or feed.event_id or "")
+    eid = own_event(str(d.get("event_id") or feed.event_id or ""))
     if not eid:
         raise ValueError("Enter the ESPN event id to replay.")
     WATCH.require_idle("replaying a game")
@@ -600,6 +570,7 @@ def watch_state():
 def watch_start():
     def start():
         eid, speed, from_seq = watch.parse_start(watch_body(), feed.event_id or GAME.get("espn_event"))
+        own_event(eid)
         WATCH.check_can_start()        # before loading a game it couldn't use
         WATCH.start(eid, watch.load_game(eid), speed=speed, from_seq=from_seq)
     return state_call(start)
@@ -666,17 +637,23 @@ def go_live(opening=False):
     at kickoff, and nothing changes once a session or the live feed is on, checked again under LOCK."""
     eid = reach_espn(feed.resolve_event, WATCH.session_game()[0])
     summary = reach_espn(watch.load_game, eid)
-    live = playback.is_live(playback.game_of(summary))
-    if live:
+    is_live = playback.is_live(playback.game_of(summary))
+    if is_live:
         espn_feed.check_matchup(espn_feed.check_summary(summary, live=True), eid)
     with LOCK:
-        if opening and (WATCH.in_session() or feed.on):
-            return
-        if not live:
-            WATCH.seek(0 if opening else len(espn_feed.iter_plays(summary)), eid, summary)
-            return
-        WATCH.go_live(eid, summary)
-        follow_live(eid, None)
+        show_game(eid, summary, is_live, opening)
+
+
+def show_game(eid, summary, is_live, opening=True):
+    """Under LOCK, the game loaded: live, every ESPN play so far and the live feed on; finished, its end (opening:
+    paused at kickoff, and nothing changes once a session or the live feed is on). A picked game opens this way too."""
+    if opening and (WATCH.in_session() or feed.on):
+        return
+    if not is_live:
+        WATCH.seek(0 if opening else len(espn_feed.iter_plays(summary)), eid, summary)
+        return
+    WATCH.go_live(eid, summary)
+    follow_live(eid, None)
 
 
 @app.post("/api/open")
@@ -711,6 +688,59 @@ def watch_back():
 @app.post("/api/watch/forward")
 def watch_forward():
     return watch_action(lambda: WATCH.forward(*playback_game()))
+
+
+# ---------------------------------------------------------------- the game picker and the analyst (restructure-v2 11)
+CALLER_KEYS = ("name", "slug", "status", "reason", "error", "teams", "seasons", "role", "confidence", "snaps", "games",
+               "logloss", "specific_play", "up_to_date")
+
+
+def caller_index():
+    """Every play-caller in the models' index, built or not. SwitchError (503) when the index can't be read."""
+    try:
+        return callers.list_callers(include_unbuilt=True)
+    except ValueError as e:
+        raise switch.SwitchError(f"The play-caller models' index can't be read ({e}).", 503) from e
+
+
+@app.get("/api/callers")
+def caller_list():
+    """The picker's play-callers: each with his model's status, and the reason when there is none."""
+    try:
+        body = {"callers": [{k: c[k] for k in CALLER_KEYS if k in c} for c in caller_index()]}
+    except switch.SwitchError as e:
+        log.warning("GET /api/callers: %s", e)
+        return jsonify({"error": str(e)[:ERROR_MAX]}), e.status
+    resp = jsonify(body)
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
+@app.post("/api/game/select")
+@answers_with_state
+def game_select():
+    """Open a game from the picker on its own track (game-picker.md 4): {"event_id", "sides"}, checked strictly; the
+    plan waits on ESPN and loads the models before LOCK, then the switch runs under it, all or nothing."""
+    event_id, sides = switch.parse_select(json_object())
+    SWITCH.select(switch.plan_select(event_id, sides, data_dir=DATA_DIR, games=GAMES, index=caller_index(),
+                                     load_caller=callers.load_caller,
+                                     load_game=lambda eid: reach_espn(watch.load_game, eid)))
+
+
+def analyst_snapshot():
+    """The analyst's private copy of the game (analyst.md 7): copies under LOCK (about 10 ms), derived without it. Every
+    tracked play-caller is read under LOCK with the rest, so a game switch never mixes two games."""
+    with LOCK:
+        raw = analyst_tools.capture(engine, feed, GAME, mode=timeline_mode(), watch=WATCH.snapshot(),
+                                    sides=[(team, engine.models[team].profile) for team in engine.sides])
+    return analyst_tools.build_snapshot(raw)
+
+
+SWITCH = switch.Switch(DATA_DIR, lock=LOCK, game=GAME, feed=feed, watch=WATCH, open_game=show_game, track=TRACK,
+                       models=MODELS)
+GAMES = games.default_games(has_model=switch.has_built_model)
+app.register_blueprint(games_api.create_blueprint(GAMES))
+app.register_blueprint(analyst_api.create_blueprint(analyst_snapshot))
 
 
 @app.get("/api/export.csv")

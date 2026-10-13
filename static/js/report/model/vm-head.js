@@ -1,12 +1,15 @@
 // The Model Report's ribbon (pure): who the page shadows ("Shadowing Schottenheimer · DAL"), the game, the
 // score away first with the teams' logos (both variants, from the app's own logo proxy only, DC C2), and a status
 // lamp: final, a watch playing back or paused, the ESPN feed live, or the game clock. `word` is the status without the
-// clock: what the page says aloud when it changes (the clock ticks on screen, not in a screen reader's ear).
+// clock: what the page says aloud when it changes (the clock ticks on screen, not in a screen reader's ear). With both
+// play-callers tracked the who line is the switch between their sections (model/side.js switchVm, restructure-v2.md
+// 11 decision 4): "Shadowing", then a key per caller, the shown one pressed.
 import { freezeDeep } from "../../model/format.js";
 import { lastNameOf } from "../../model/vm-masthead.js";
 import { isFinal, scoreboardVm } from "../../model/vm-scoreboard.js";
 import { watchOf } from "../../model/vm-transport.js";
 import { REPORT } from "./copy.js";
+import { switchVm } from "./side.js";
 
 const SPEED_DECIMALS = 10;
 const str = (v) => (typeof v === "string" ? v : "");
@@ -43,9 +46,10 @@ function whoOf(presented) {
 }
 
 /**
- * @param {object} pv  presented view
- * @returns {object} frozen {who, game, teams: {abbr, score, logo, logoDark, caller}[], status: {tone, text, word},
- *   spoken}
+ * @param {object} pv  presented view, with sideChoice (the viewer's pick of a caller, or null)
+ * @returns {object} frozen {who, sides, game, teams: {abbr, score, logo, logoDark, caller}[], status: {tone, text,
+ *   word}, spoken}; `sides` is switchVm(pv) ({shown, label, group, keys}); while it is shown `who` is "" (the switch
+ *   says who the page shadows)
  */
 export function headVm(pv) {
   const presented = pv && pv.presented;
@@ -54,8 +58,9 @@ export function headVm(pv) {
     caller: t.caller }));
   const now = statusOf(pv, board);
   const score = teams.filter((t) => t.score !== "").map((t) => `${t.abbr} ${t.score}`).join(", ");
+  const sides = switchVm(pv);
   return freezeDeep({
-    who: whoOf(presented), game: str(presented && presented.game && presented.game.label),
+    who: sides.shown ? "" : whoOf(presented), sides, game: str(presented && presented.game && presented.game.label),
     teams, status: now, spoken: REPORT.spoken(score, now.word),
   });
 }

@@ -164,6 +164,39 @@ def test_hostile_or_broken_events_are_skipped_or_capped():
     assert len(week[events[5]["id"]]["detail"]) == games.DETAIL_MAX
 
 
+@pytest.mark.parametrize("home_away", [["home"], {"side": "home"}])
+def test_one_malformed_event_never_fails_the_week(home_away):
+    """A side named by a list or an object can't key a dict: that event is skipped, the rest of the week parses."""
+    raw = copy.deepcopy(board(2, 5))
+    bad = raw["events"][0]
+    bad["competitions"][0]["competitors"][0]["homeAway"] = home_away
+    week = games.parse_week(raw, 2026, 2, 5)
+    assert len(week) == 14 and bad["id"] not in {g["event_id"] for g in week}
+
+
+def test_an_event_the_parser_trips_on_is_left_out_and_logged(monkeypatch, caplog):
+    """Whatever an event holds, a parse that raises costs that event alone (the rest of the week is listed)."""
+    raw = board(2, 5)
+    bad, real = raw["events"][0]["id"], games._event
+
+    def trips(ev, when, regular):
+        if ev.get("id") == bad:
+            raise TypeError("unhashable type: 'list'")
+        return real(ev, when, regular)
+    monkeypatch.setattr(games, "_event", trips)
+    week = games.parse_week(raw, 2026, 2, 5)
+    assert len(week) == 14 and bad not in {g["event_id"] for g in week}
+    assert "Skipped a malformed ESPN event" in caplog.text
+
+
+def test_one_malformed_event_never_fails_the_listing(tmp_path):
+    raw = copy.deepcopy(board(2, 5))
+    raw["events"][0]["competitions"][0]["competitors"][1]["homeAway"] = ["away"]
+    listing = make(tmp_path, FakeESPN(answers={(2, 5): raw})).season()
+    week5 = next(w for w in listing["weeks"] if w["key"] == "2-5")
+    assert week5["error"] is None and len(week5["games"]) == 14
+
+
 def test_trimming_keeps_what_the_parser_reads():
     for stype, week in ((2, 4), (2, 5), (3, 1)):
         raw = board(stype, week)

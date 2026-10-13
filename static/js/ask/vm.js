@@ -92,6 +92,25 @@ function sendOf(live, canSend) {
 }
 
 /**
+ * The top bar's Ask key from a status read (stream.js fetchStatus): shown once the server says it has an analyst; plain
+ * when it can answer (ready, warming up or busy with another question), "Not ready" with the reason on its tooltip
+ * when it can't (Ollama not running, the model missing), so a press opens the drawer that says what to do. A server
+ * with no analyst (404) or one that can't be reached shows no key.
+ * @param {{ ok: true, status: object } | { ok: false, code: string } | null} result
+ * @returns {Readonly<{ shown: boolean, status: string, value: string, title: string }>}
+ */
+export function askKeyVm(result) {
+  if (!result || !result.ok || !result.status) {
+    return freeze({ shown: false, status: result?.code === "missing" ? "missing" : "offline", value: "", title: "" });
+  }
+  const s = result.status;
+  if (!s.ready) return freeze({ shown: true, status: "down", value: ASK.key.notReady,
+    title: s.message || ASK.notes.down(s.model) });
+  const status = s.busy ? "busy" : s.warm ? "ready" : "warming";
+  return freeze({ shown: true, status, value: "", title: ASK.key.title });
+}
+
+/**
  * The panel's view of the state.
  * @param {typeof import("./state.js").INITIAL} state
  * @param {{ layout?: "slide" | "embedded" }} [opts]

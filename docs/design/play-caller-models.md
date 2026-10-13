@@ -1,6 +1,6 @@
 # Play-caller models: one model per play-caller
 
-Phase 3 groundwork (restructure-v2.md, section 7): a model for every play-caller in a sourced table, 2024 to 2026, all 32 teams. This file covers what gets built, how to run it, what it writes, the runtime module, and how phase 3 wires it into the engine and the caller picker (including tracking both sides). Nothing here is wired into the app yet.
+Phase 3 (restructure-v2.md, section 7): a model for every play-caller in a sourced table, 2024 to 2026, all 32 teams. This file covers what gets built, how to run it, what it writes, the runtime module, and how it is wired into the engine and the caller picker (including tracking both sides). Status: **wired (2026-10-12)**, as section 7 records.
 
 Files: `build.py` and `build_granular.py` (the build, now taking the caller as an argument), `scripts/build_callers.py` (every caller in a table), `callers.py` (the runtime side), `tests/test_build_callers.py` and `tests/test_callers.py`.
 
@@ -138,9 +138,34 @@ The held-out comparison against the league is `cv_logloss`: `league_baseline` (t
 
 `load_caller` refuses anything that is not a slug before touching the disk (no path can leave the folder), raises `CallerNotFound` for a missing or incomplete bundle (naming the missing file), and `ModelVersionError` when the bundle was built with another scikit-learn. A missing index means nothing was built yet (`[]`); a broken one is an error. Loading a bundle takes about half a second.
 
-## 7. Wiring it in (phase 3, after the restructure lands)
+## 7. Wiring it in (phase 3)
 
-None of these files are this track's; each change is small.
+**As wired (2026-10-12; restructure-v2.md 11).** The plan below was applied with these differences:
+
+- **The engine** takes `GameEngine(caller=None, callers=None)`: neither is models/ exactly as before (a golden
+  fingerprint of the Oct 12 engine, `tests/fixtures/engine_default_tb_dal.json`, holds it bit for bit); `caller` is one
+  bundle for `GAME["offense"]`; `callers={team: bundle}` tracks one or both offenses of `GAME`, listed away then home.
+  The sides' models are `live_sides.Side` records in `engine.models`; `engine.sides`, `engine.track` ('DAL',
+  'DAL+TB'), `engine.tracked()`, `predict(team=None)`, `metrics(team=None)` (pooled over both callers when `team` is
+  None) and `engine.reload(...)` (switches a track in place; nothing changes when the models fail to load) are the
+  contract `switch.py` and the feed use. Every caller row and prediction carries `team` and `caller`; the memory is
+  per team, each from its caller's `q0`; `/api/state` gains `poss` and `tracked` (each side's caller, scorecard,
+  profile and memory). DuckDB's `live_log` gains `team`, `caller` and `track` columns, so two tracks of one game never
+  touch each other's rows; rows from before tracks belong to the adopted track. The timeline marks every tracked
+  offense's snaps and drives `offense_is_caller` (graded, with shadows), while its frame stays the game's: `left_team`
+  and `teams[abbr].caller` name `GAME`'s offense only, which attacks +x.
+- **The picker's model flags** come from `switch.has_built_model` (the models' index, read again only when it changes)
+  and `GET /api/callers`, which lists every index entry, built or not, with the index's reason (game-picker.md 3).
+- **A pick** (`POST /api/game/select`, game-picker.md 4) resolves each side's caller from the table and the index,
+  refuses a caller with no built model with the index's reason (409), loads the bundles before the lock, and reloads
+  the app's one engine in place under it. The adopted TB at DAL track keeps models/ (the Oct 8 build Sam was graded
+  on), never the bundle rebuilt since.
+- **Not held out:** a finished game replayed on a bundle built after it is in-sample. Schottenheimer's bundle (built
+  Oct 10, lambda 10) includes TB at DAL, so a new track of that game grades him on a game his model saw; only the
+  adopted track (models/, built before it) is out of sample. Holding the replayed game out of the bundle, or labelling
+  such grades, is open.
+
+The original plan, for reference:
 
 **live.py, the engine loads a caller.** `GameEngine.__init__(self, caller=None)`: when `caller` is a `CallerModel`, take `self.profile, self.stage1, self.G = caller.profile, caller.stage1, caller.granular`; when it is None, load `models/` exactly as today (tonight's build stays the default). Everything after that (`self.w`, `alpha`, `q0`, `predict`, `predict_tree`) is unchanged. Replace the local `class ModelVersionError` with `from callers import ModelVersionError`, so `app.py`'s `except (FileNotFoundError, ModelVersionError)` catches both.
 

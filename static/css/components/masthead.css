@@ -102,7 +102,11 @@
 
 .sc-masthead-meta { color: var(--sc-ink-muted); font-size: var(--sc-size-s); }
 
-/* The current game (phase 2 puts the game picker here). */
+/* The game slot (restructure-v2.md 11): the game picker's key, or the game's plain words when it didn't load. It only
+   places them: the picker's panel inside it keeps its own type. */
+.sc-masthead-slot { display: flex; align-items: center; min-width: 0; }
+
+/* The game's plain words (without the picker). */
 .sc-masthead-game {
   min-width: 0;
   color: var(--sc-ink);

@@ -11,21 +11,30 @@ import pytest
 
 from helpers import ESPN_FILE, NFLVERSE_FILE, ROOT, TEST_GAME, _free_port, _get, _num  # noqa: F401  (helpers also puts ROOT on sys.path)
 
-LIVE_GAME_FILES = (ROOT / "data" / "live_state.json", ROOT / "data" / "feed_seen.json")
+LIVE_GAME_FILES = tuple(ROOT / "data" / name for name in ("live_state.json", "feed_seen.json", "watch_session.json",
+                                                            "shadow.duckdb"))
+LIVE_GAMES_DIR = ROOT / "data" / "games"        # per-game folders: made only by the server's own start (adopt.py)
 
 
 def _digests():
     return {p.name: hashlib.sha256(p.read_bytes()).hexdigest() if p.exists() else None for p in LIVE_GAME_FILES}
 
 
+def _games_listing():
+    return sorted(str(p.relative_to(LIVE_GAMES_DIR)) for p in LIVE_GAMES_DIR.rglob("*")) if LIVE_GAMES_DIR.exists() \
+        else None
+
+
 @pytest.fixture(scope="session", autouse=True)
 def test_suite_never_touches_the_live_game():
-    """Data contract G39: the sha256 of data/live_state.json and data/feed_seen.json (when present) is the same
-    before and after the whole run."""
-    before = _digests()
+    """Data contract G39: the sha256 of data/live_state.json, feed_seen.json, watch_session.json and shadow.duckdb
+    (when present) is the same before and after the whole run, and data/games is neither made nor changed (today's
+    game is adopted by the server's own start only, never by a test)."""
+    before, games_before = _digests(), _games_listing()
     yield
-    after = _digests()
+    after, games_after = _digests(), _games_listing()
     assert after == before, f"The test run changed the live game files: {before} -> {after}"
+    assert games_after == games_before, f"The test run changed data/games: {games_before} -> {games_after}"
 
 
 @pytest.fixture(scope="session")

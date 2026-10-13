@@ -2,6 +2,7 @@
 snapshot and go back as data, the step limit, timeouts, malformed calls, Ollama down, the prompt, citations, the
 one-question gate, and the real Ollama client against a fake Ollama server on a free local port."""
 import copy
+import dataclasses
 import json
 import threading
 import time
@@ -295,6 +296,23 @@ def test_the_system_prompt_comes_from_trusted_settings_only(full, partial):
     assert "\u2014" not in prompt and "Dallas Cowboys" not in prompt
     assert not any(p["text"][:40] in prompt for p in full.plays if len(p["text"]) > 40)
     assert "play 120 of 183" in analyst.system_prompt(partial)
+
+
+def test_the_prompt_says_what_the_rank_of_his_call_means(full):
+    """It read 'rank 13' as '13th worst': the prompt defines the field in one line, the way it defines its words."""
+    prompt = analyst.system_prompt(full)
+    line = next(x for x in prompt.splitlines() if "model_rank_of_his_call" in x)
+    for part in ("1 is its top pick", "surprised the model more", "never how good or bad the call was",
+                 "league_rank_of_his_call"):
+        assert part in line, part
+
+
+def test_a_neutral_site_game_reads_vs_in_the_prompt(full):
+    """The prompt's matchup says vs at a neutral site, as the label, the picker and the top bar do."""
+    london = dataclasses.replace(full, game={**full.game, "neutral": True, "label": None})
+    prompt = analyst.system_prompt(london)
+    assert "The game: TB vs DAL (TB vs DAL)." in prompt and "TB at DAL" not in prompt
+    assert "(TB at DAL)" in analyst.system_prompt(full)
 
 
 def test_cites_map_references_to_plays(full):

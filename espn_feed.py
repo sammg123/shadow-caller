@@ -10,7 +10,6 @@ reason (WrongGame). Fetches refuse redirects and answers over 8 MB; a failing fe
 """
 import json
 import logging
-import math
 import os
 import re
 import threading
@@ -20,7 +19,9 @@ from datetime import datetime
 
 import logos
 from config import DATA_DIR, ESPN_OFFLINE, GAME
-from live import parse_clock
+from espn_plays import (ADMIN_TYPES, AIR_EST, AIR_EST_SOURCE, END_OF_HALF_TYPES, FOUL_MAX, GAP_LEAF,  # noqa: F401
+                        PASS_TYPES, _dict, _gain, classify, finite, penalty_note, play_text, situation,
+                        whole_in)   # (re-exported: timeline, playback, the tests read them here)
 
 log = logging.getLogger(__name__)
 
@@ -48,32 +49,9 @@ class WrongGame(ValueError):
         super().__init__(message)
         self.event_id = event_id
 
-GAP_RE = re.compile(r"\b(left end|left tackle|left guard|up the middle|right guard|right tackle|right end)\b", re.I)
-PASS_RE = re.compile(r"\bpass (incomplete )?(short|deep)? ?(left|middle|right)?", re.I)
-GAP_LEAF = {"left end": "run_edge_left", "left tackle": "run_ot_left", "left guard": "run_inside",
-            "up the middle": "run_inside", "right guard": "run_inside", "right tackle": "run_ot_right",
-            "right end": "run_edge_right"}
-GAIN_RE = re.compile(r"\bfor (?:(-?\d+) (?:yards?|yds?)\b|(no gain))", re.I)
-SHORT_GAIN_RE = re.compile(r"\b(-?\d+) yds? (?:pass|rush|run)\b", re.I)    # ESPN's own text: '46 Yd pass from'
-GAMEBOOK_RE = re.compile(r"\b[A-Z][a-z]?\.[A-Z]")                          # NFL gamebook names: 'D.Prescott'
-REVERSED_RE = re.compile(r"\bplay was REVERSED\.\s*", re.I)
-TWO_POINT_RE = re.compile(r"\s*TWO-POINT CONVERSION ATTEMPT\..*?(?:ATTEMPT (?:FAILS|SUCCEEDS)\.?|$)", re.I | re.S)
-PEN_RE = re.compile(r"PENALTY on ([A-Z]{2,3})(?:-[^,]*)?, ([^,]+),")
-ADMIN_TYPES = ("kickoff", "timeout", "end period", "end of", "two-minute", "coin toss", "extra point",
-               "two-point", "conversion")
-PASS_TYPES = ("pass reception", "pass incompletion", "passing touchdown", "pass interception")
-END_OF_HALF_TYPES = ("end of half", "end of regulation", "end of game")
-KICKOFF_RE = re.compile(r"\bkicks (?:onside )?\d+ yards?\b", re.I)
-SCORING_SUMMARY_RE = re.compile(r"\b\d+ Yds? (?:pass from|run|rush)\b[^()]*\(", re.I)   # 'X 46 Yd pass from Y (Z Kick)'
-SCRAMBLE_RE = re.compile(r"\bscrambles (left end|left tackle|left guard|up the middle|right guard|right tackle|right end)\b",
-                         re.I)
 EVENT_RE = re.compile(r"[0-9]{1,12}")      # ASCII digits only ('\d' takes Arabic-Indic too): ids reach paths and URLs
 ORDER_KEY = "_apply_order"                 # feed_seen.json: games whose id list is in apply order (older files sorted it)
 EVENTS_KEY = "_events"                     # feed_seen.json: {game_id: the ESPN event its applied ids came from}
-# Air yards of an incompletion, from the gamebook word: median and interquartile range, nflverse 2026 weeks 1 to 5
-# (65 games, pass attempts excluding sacks). Hard-coded for v1; build.py can write them into models/profile.json later.
-AIR_EST = {"short": {"air": 5, "band": [1, 10], "n": 1049}, "deep": {"air": 23, "band": [19, 32], "n": 461}}
-AIR_EST_SOURCE = "nflverse 2026 weeks 1-5 (65 games), pass attempts excluding sacks: median air yards, IQR as the band"
 
 
 def fetch_json(url, timeout=10):
@@ -101,21 +79,6 @@ def _read_capped(resp, deadline):
     return b"".join(chunks)
 
 
-def _dict(value):
-    return value if isinstance(value, dict) else {}
-
-
-def whole_in(value, lo, hi):
-    """value when it is a whole number (never a bool) from lo to hi, else None."""
-    return value if isinstance(value, int) and not isinstance(value, bool) and lo <= value <= hi else None
-
-
-def finite(value):
-    """value when it is a finite number (never a bool), else None: a NaN would make JSON no browser reads."""
-    ok = isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
-    return value if ok else None
-
-
 def competitors(summary):
     """header.competitions[0].competitors as a list of dicts, or None when the header doesn't have them."""
     comps = _dict(summary).get("header")
@@ -126,6 +89,12 @@ def competitors(summary):
         return None
     teams = [c for c in teams if isinstance(c, dict)]
     return teams or None
+
+
+def neutral_site(summary):
+    """ESPN's header says the game is at a neutral site (London, Mexico City): its matchup reads vs, not at."""
+    comps = _dict(_dict(summary).get("header")).get("competitions")
+    return isinstance(comps, list) and bool(comps) and _dict(comps[0]).get("neutralSite") is True
 
 
 def check_summary(summary, *, live=False, have_plays=False):
@@ -164,7 +133,7 @@ def check_matchup(summary, event_id):
     if len(teams) == 2 and all(any(same_team(t, w) for t in teams) for w in want):
         return
     if away and home:
-        named = f"{away} at {home}"
+        named = f"{away} {'vs' if neutral_site(summary) else 'at'} {home}"
     else:
         named = " v ".join(teams) if teams else "a game with no teams named"
     raise WrongGame(f"ESPN event {event_id} is {named}, not {want[0]} v {want[1]}.", event_id)
@@ -256,6 +225,12 @@ def _team_id(team, abbr):
     return None
 
 
+def team_ids(summary):
+    """{ESPN team id: abbreviation} for both teams of the game: who has the ball after a play (Feed._ball)."""
+    teams = [_dict(c.get("team")).get("abbreviation") for c in competitors(summary) or []]
+    return {tid: t for t in teams if isinstance(t, str) and (tid := team_id(summary, t))}
+
+
 def team_id(summary, abbr):
     """ESPN team id for an abbreviation, from the drive records (fallback: boxscore, header)."""
     drives = _dict(_dict(summary).get("drives"))
@@ -265,195 +240,6 @@ def team_id(summary, abbr):
                + [_dict(_dict(t).get("team")) for t in (box if isinstance(box, list) else [])]
                + [_dict(c.get("team")) for c in competitors(summary) or []])
     return next((tid for tid in (_team_id(t, abbr) for t in sources) if tid), None)
-
-
-def _depth(air):
-    return "short" if air < 10 else ("mid" if air < 20 else "deep")
-
-
-def play_text(text):
-    """The play as it finally stood: the corrected text after a replay reversal, without the two-point
-    try ESPN appends to a touchdown."""
-    return TWO_POINT_RE.sub("", REVERSED_RE.split(text)[-1]).strip()
-
-
-FOUL_MAX = 60                              # characters of a foul's name kept from ESPN's text (G1-12)
-
-
-def penalty_note(text):
-    """'defensive offside on TB' from '...PENALTY on TB-D.Walker, Defensive Offside, 4 yards...'."""
-    m = PEN_RE.search(text or "")
-    return f"{m.group(2).strip().lower()[:FOUL_MAX]} on {m.group(1)}" if m else None
-
-
-def _gain(text):
-    """First gain in the text ('for 8 yards', 'for no gain', ESPN's '46 Yd pass'), or None."""
-    m = GAIN_RE.search(text)
-    if m:
-        return 0 if m.group(2) else int(m.group(1))
-    m = SHORT_GAIN_RE.search(text)
-    return int(m.group(1)) if m else None
-
-
-def _align(text):
-    """'S' shotgun, 'U' not shotgun (under center or pistol); None when the text isn't gamebook text."""
-    if "shotgun" in text.lower():
-        return "S"
-    return "U" if GAMEBOOK_RE.search(text) else None
-
-
-def _call_family(typ, body):
-    """'sack', 'scramble', 'pass', 'run' or None (no call: a flag before the snap), from the play
-    text before any penalty, falling back to ESPN's play type for its own short text."""
-    low = body.lower()
-    if not re.search(r"[a-z]", low.replace("shotgun", "").replace("no huddle", "")):
-        return None                                                # nothing but a formation tag
-    if "sacked" in low or typ.startswith("sack"):
-        return "sack"
-    if "scrambles" in low:
-        return "scramble"
-    if re.search(r"\bpass\b", low) or "intercepted" in low or typ.startswith(PASS_TYPES):
-        return "pass"
-    if GAP_RE.search(low) or typ.startswith("rush") or SHORT_GAIN_RE.search(body):
-        return "run"
-    if GAMEBOOK_RE.search(body) and GAIN_RE.search(body):       # 'J.Williams to DAL 30 for 2 yards'
-        return "run"
-    return None
-
-
-def _yards(p, body, family, incomplete, intercepted):
-    """Yards the call gained: the gamebook gain before any fumble (not the return, not the flag)."""
-    if incomplete or intercepted:
-        return 0
-    gain = _gain(re.split(r"\bFUMBLES\b", body)[0])
-    if gain is None:
-        stat = finite(p.get("statYardage"))
-        gain = int(stat) if stat is not None else 0
-    return abs(gain) if family == "sack" else gain
-
-
-def _pass_leaf(p, body, yards, incomplete, intercepted):
-    """Depth from air yards (gain minus yards after catch) on a completion, else from the short/deep word.
-    Incompletions: 'deep' (15+) is 20+ air yards 70% of the time in 2022-25 nflverse, so deep -> 20+."""
-    m = PASS_RE.search(body)
-    word = (m.group(2) or "").lower() if m else ""
-    yac = finite(p.get("yardsAfterCatch"))
-    if not incomplete and not intercepted and yac is not None:
-        depth = _depth(yards - int(yac))
-        # gamebook 'deep' = 15+ air yards, 'short' = under 15: a whole bucket off means ESPN's YAC is wrong
-        if word == "deep" and depth == "short":
-            return "dropback_deep"
-        if word == "short" and depth == "deep":
-            return "dropback_mid"
-        return f"dropback_{depth}"
-    return f"dropback_{word}" if word else None
-
-
-def _gap_side(gap):
-    """'left' / 'middle' / 'right' from gap words ('left tackle' -> 'left', 'up the middle' -> 'middle')."""
-    if not gap:
-        return None
-    return "middle" if gap == "up the middle" else gap.split()[0]
-
-
-def _pass_facts(p, body, yards, incomplete, intercepted):
-    """Side and gamebook depth word of a pass, and its air yards: exact from yards after catch on a completion,
-    the median for the word on an incompletion. An interception's air comes from its spot (timeline.py)."""
-    m = PASS_RE.search(body)
-    word = ((m.group(2) or "").lower() or None) if m else None
-    out = {"lat": ((m.group(3) or "").lower() or None) if m else None, "depth": word}
-    yac = finite(p.get("yardsAfterCatch"))
-    if not incomplete and not intercepted and yac is not None:
-        air = yards - int(yac)
-        conflict = (word == "deep" and air < 10) or (word == "short" and air >= 20)   # the same distrust as _pass_leaf
-        out.update(air=air, yac=int(yac), air_src="yac_conflict" if conflict else "yac")
-    elif not intercepted and word in AIR_EST:
-        out.update(air=AIR_EST[word]["air"], air_src="est", air_band=list(AIR_EST[word]["band"]))
-    return out
-
-
-def _turnover(p, typ, low):
-    if "isTurnover" in p:
-        return bool(p["isTurnover"])
-    return "intercepted" in low or "opponent" in typ
-
-
-def classify(team, p):
-    """What happened on this play, in the engine's terms. A field of the wrong type reads as missing."""
-    typ = _dict(p.get("type")).get("text")
-    typ = typ.lower() if isinstance(typ, str) else ""
-    raw = p.get("text") if isinstance(p.get("text"), str) else ""
-    text = play_text(raw)
-    low = text.lower()
-    nullified = "no play" in low
-    info = {"id": str(p.get("id")), "team": team, "text": raw, "type": typ, "kind": "skip",
-            "leaf": None, "family": None, "outcome": None, "yards": 0, "td": False, "turnover": False,
-            "nullified": nullified, "align": _align(raw),
-            "lat": None, "gap": None, "depth": None, "air": None, "air_src": None, "air_band": None, "yac": None}
-    if (any(k in typ for k in ADMIN_TYPES) or raw.lstrip().upper().startswith("TWO-POINT CONVERSION")
-            or KICKOFF_RE.search(text)):
-        return info
-    if "punt" in typ or re.search(r"\bpunts\b", low):
-        info["kind"] = "sync" if nullified else "punt"
-        return info
-    if "field goal" in typ:
-        made = "good" in typ and "no good" not in typ
-        info["kind"] = "sync" if nullified else ("fg" if made else "fg_miss")
-        return info
-    body = re.split(r"\bpenalty on\b", text, maxsplit=1, flags=re.I)[0]
-    family = _call_family(typ, body)
-    if family is None or any(k in low for k in ("kneels", "spiked", "aborted")) or low.strip(" .") == "team safety":
-        info["kind"] = "sync"                      # flag before the snap, kneel, spike, fumbled snap
-        return info
-
-    body_low = body.lower()
-    gamebook = bool(GAMEBOOK_RE.search(body))      # gamebook text beats ESPN's type, which can lag a reversal
-    intercepted = "intercepted" in body_low
-    incomplete = family == "pass" and ("incomplete" in body_low or (not gamebook and "incompletion" in typ))
-    yards = _yards(p, body, family, incomplete, intercepted)
-    if family == "run":
-        m = GAP_RE.search(body)
-        gap = m.group(1).lower() if m else None
-        info.update(family="run", leaf=GAP_LEAF[gap] if gap else None, gap=gap, lat=_gap_side(gap))
-    elif family == "pass":
-        info.update(family="dropback", leaf=_pass_leaf(p, body, yards, incomplete, intercepted),
-                    outcome="incomplete" if incomplete else None, **_pass_facts(p, body, yards, incomplete, intercepted))
-    else:
-        info.update(family="dropback", outcome=family)
-        if family == "scramble":
-            m = SCRAMBLE_RE.search(body)
-            gap = m.group(1).lower() if m else None
-            info.update(gap=gap, lat=_gap_side(gap))
-    turnover = not nullified and _turnover(p, typ, low)
-    td = (not turnover and not nullified and "touchdown nullified" not in low
-          and ("touchdown" in low or (not gamebook and "touchdown" in typ) or bool(SCORING_SUMMARY_RE.search(text))))
-    info.update(kind="play", yards=yards, turnover=turnover, td=td)
-    return info
-
-
-def situation(p, which, offense_is_home):
-    """Down, distance, ball (distance to the end zone), quarter, clock, score at start or end of a play."""
-    st = _dict(p.get(which))
-    out = {}
-    down, ytg = whole_in(st.get("down"), 1, 4), whole_in(st.get("yardsToEndzone"), 1, 99)
-    if down and ytg:
-        out.update(down=down, togo=whole_in(st.get("distance"), 1, 99) or 10, yardline_100=ytg)
-    q = whole_in(_dict(p.get("period")).get("number"), 1, 5)
-    if q:
-        out["qtr"] = q
-    clk = _dict(p.get("clock")).get("displayValue")
-    if which == "start" and isinstance(clk, str) and clk:
-        try:
-            out["clock"] = parse_clock(clk)
-        except ValueError:
-            pass
-    if which == "end":
-        h, a = whole_in(p.get("homeScore"), 0, 999), whole_in(p.get("awayScore"), 0, 999)
-        if h is not None and a is not None:
-            out["score_off"], out["score_opp"] = (h, a) if offense_is_home else (a, h)
-    poss = _dict(st.get("team")).get("id")
-    out["_poss_id"] = str(poss) if isinstance(poss, (str, int)) and not isinstance(poss, bool) else None
-    return out
 
 
 class Feed:
@@ -474,7 +260,7 @@ class Feed:
         self.gen = 0
         self.reload_seen()             # the event its applied ids came from, when the seen file says (v1.4)
         self.summary = None
-        self.off_team_id = None
+        self.team_ids = {}             # {ESPN team id: abbreviation}: possession after a play
         self._thread = None
         self._wake = threading.Event()  # start and stop cut the wait between polls short
         self.load_summary()
@@ -488,8 +274,19 @@ class Feed:
         """Set event_id first: a summary only counts for the event it was set under."""
         self._summary, self._summary_event = summary, self.event_id
         if summary:                                    # apply_one needs it to see possession change hands
-            self.off_team_id = team_id(summary, GAME["offense"]) or getattr(self, "off_team_id", None)
+            self.team_ids = team_ids(summary) or getattr(self, "team_ids", {})
         self.fix_order(summary)
+
+    @property
+    def off_team_id(self):
+        """GAME's offense's ESPN team id, or None while no summary named it."""
+        return next((tid for tid, team in self.team_ids.items() if team == GAME["offense"]), None)
+
+    @off_team_id.setter
+    def off_team_id(self, value):
+        """None forgets the teams' ids (the next summary names them again)."""
+        if value is None:
+            self.team_ids = {}
 
     def load_summary(self):
         """This game's ESPN summary: memory, then data/espn/summary_<event>.json (the last poll), then the saved
@@ -699,7 +496,6 @@ class Feed:
                 return 0
             check_summary(summary)
             self.summary = summary
-            self.off_team_id = team_id(summary, GAME["offense"]) or self.off_team_id
             new = [(t, p) for t, p in iter_plays(summary) if str(p.get("id")) not in self.seen]
             try:
                 for team, p in new:
@@ -752,13 +548,13 @@ class Feed:
         e, home = self.engine, GAME["offense_is_home"]
         info = classify(team, p)
         start, end = situation(p, "start", home), situation(p, "end", home)
-        ours = team == GAME["offense"]
+        ours = team in e.sides                         # a tracked offense: one side, or both (game-picker.md 4)
         if info["kind"] == "skip":
             self._apply_admin(info, start, end)
             return 0
         logged = 0
         if ours and info["kind"] == "play":
-            e.feed_sync(start, offense_ball=True)
+            e.feed_sync(start, offense_ball=True, team=team)
             if info["nullified"]:
                 note = penalty_note(play_text(info["text"]))
                 e.apply_penalty("OFFSET", play={k: info[k] for k in ("leaf", "family", "outcome")},
@@ -771,8 +567,8 @@ class Feed:
         elif ours and info["kind"] in ("punt", "fg", "fg_miss") and e.state["drive_active"]:
             e.end_drive(info["kind"])
         elif ours and info["kind"] == "sync":
-            e.feed_sync(start, offense_ball=True)
-        e.feed_sync(end, offense_ball=self._ours(end))
+            e.feed_sync(start, offense_ball=True, team=team)
+        e.feed_sync(end, **self._ball(end))
         if ours and info["kind"] == "play" and info["nullified"] and e.state["drive_active"]:
             e.set_message(f"No play: {note or 'flag'}. {e.situation_text()}. His call still counts for scoring.")
         return logged
@@ -787,13 +583,14 @@ class Feed:
         if "kickoff" in info["type"]:
             e.feed_sync({}, offense_ball=False)            # a kickoff always starts a new possession
             if "down" in end:
-                e.feed_sync(end, offense_ball=self._ours(end))
+                e.feed_sync(end, **self._ball(end))
 
-    def _ours(self, end):
-        """True/False when ESPN clearly says who has the ball next; None when it's unclear (no change)."""
-        poss = end.get("_poss_id")
-        if not poss or not self.off_team_id:
-            return None
-        if poss != self.off_team_id:
-            return False
-        return True if "down" in end else None
+    def _ball(self, end):
+        """Who has the ball after a play, as feed_sync takes it: a tracked offense with a down to play (its drive
+        starts or goes on), any other team (the drive on the field ends), or no change when ESPN doesn't say."""
+        team = self.team_ids.get(end.get("_poss_id"))
+        if team is None:
+            return {"offense_ball": None}
+        if team not in self.engine.sides:
+            return {"offense_ball": False}
+        return {"offense_ball": True, "team": team} if "down" in end else {"offense_ball": None}

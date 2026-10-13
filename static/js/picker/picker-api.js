@@ -1,9 +1,11 @@
-// The game picker's HTTP client (docs/design/game-picker.md 2): GET /api/games and GET /api/games/resolve. fetch and
+// The game picker's HTTP client (docs/design/game-picker.md 2): GET /api/games and GET /api/games/resolve, and the
+// models' index, GET /api/callers (restructure-v2.md 11 decision 1: who has a model, and why not). fetch and
 // the timers are injected (core/api.js's rule: both are called bare, since a browser throws "Illegal invocation" when
 // fetch or setTimeout run as a method of another object). A refusal carries the server's own reason; anything else
 // says what happened in plain words. The pasted text only ever travels as an encoded query value.
 
-export const PICKER_ROUTES = Object.freeze({ games: "/api/games", resolve: "/api/games/resolve" });
+export const PICKER_ROUTES = Object.freeze({ games: "/api/games", resolve: "/api/games/resolve",
+  callers: "/api/callers" });
 /** A cold listing fetches every week of the season from ESPN (the server waits at most 15 s for it). */
 export const PICKER_TIMEOUT_MS = 20000;
 const MESSAGE_MAX = 300;
@@ -55,11 +57,12 @@ async function getObject({ fetchImpl, setTimer, clearTimer }, path, slow) {
 
 /**
  * @param {{ fetchImpl: Function, setTimer: Function, clearTimer: Function }} deps
- * @returns {{ games: () => Promise<object>, resolve: (ref: string) => Promise<object> }}
+ * @returns {{ games: () => Promise<object>, callers: () => Promise<object>, resolve: (ref: string) => Promise<object> }}
  */
 export function pickerApi(deps) {
   return {
     games: () => getObject(deps, PICKER_ROUTES.games, "The schedule took too long to load. Try again."),
+    callers: () => getObject(deps, PICKER_ROUTES.callers, "The play-callers' models took too long to load."),
     async resolve(ref) {
       const text = typeof ref === "string" ? ref.trim() : "";
       if (!text) throw new PickerError("Paste an ESPN game link or id first.");

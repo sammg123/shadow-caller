@@ -1,6 +1,9 @@
 // The one keydown listener (ui-architecture.md section 4; restructure-v2.md 2; G4, G5; owner A2). DOM side: it
 // classifies the event target, asks the pure keymap what to do, prevents the default when told, and runs the intent on
 // `actions`.
+// restructure-v2.md 11 item 5: a modal panel keeps its keys. A panel marks its root with data-sc-layer: "panel" (the
+// Ask drawer: a keydown from inside it is its own) or "modal" while it is up (the game picker: every keydown is its
+// own, wherever focus is, until it closes). The panel handles its own Escape; the page's shortcuts stand down.
 import { own } from "./domain.js";
 import { keyContext, normalizeKey, resolveKey } from "./keymap.js";
 
@@ -8,9 +11,26 @@ const TEXT_ROLES = new Set(["textbox", "combobox", "spinbutton"]);
 const ACTIVATABLE_ROLES = new Set(["button", "checkbox", "switch", "menuitem", "tab", "option"]);
 const ACTIVATABLE_INPUTS = new Set(["checkbox", "radio", "button", "submit", "reset", "file", "image"]);
 const IME_KEYCODE = 229;
+/** The attribute a modal panel's root carries, and its two values. */
+export const LAYER_ATTR = "data-sc-layer";
+export const LAYER = Object.freeze({ panel: "panel", modal: "modal" });
+const MODAL_UP = `[${LAYER_ATTR}="${LAYER.modal}"]`;
 
 function attr(node, name) {
   return typeof node.getAttribute === "function" ? String(node.getAttribute(name) ?? "").toLowerCase() : "";
+}
+
+/**
+ * True when a keydown on `node` belongs to a modal panel: `node` is inside one (any data-sc-layer), or a modal one is
+ * up anywhere in `doc` (the game picker, open).
+ * @param {Document | null} doc
+ * @param {Node | null} node
+ */
+export function inLayer(doc, node) {
+  for (let n = node; n && n !== doc; n = n.parentNode) {
+    if (Object.values(LAYER).includes(attr(n, LAYER_ATTR))) return true;
+  }
+  return typeof doc?.querySelector === "function" && doc.querySelector(MODAL_UP) !== null;
 }
 
 /**
@@ -76,6 +96,7 @@ export function attachKeyboard(doc, { store, actions, onError = reportError }) {
       mods: { meta: Boolean(e.metaKey), ctrl: Boolean(e.ctrlKey), alt: Boolean(e.altKey), shift: Boolean(e.shiftKey) },
       composing: Boolean(e.isComposing) || e.keyCode === IME_KEYCODE,
       target: classifyTarget(e.target),
+      layer: inLayer(doc, e.target),
       ctx: keyContext(store.getState()),
     };
     const { intent, prevent } = resolveKey(input);

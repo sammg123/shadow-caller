@@ -20,7 +20,13 @@ export const MASTHEAD = Object.freeze({
   // the full words ride on the plate's tooltip
   whoLabel: (last, team) => `Shadowing ${last} · ${team}`,
   whoTitle: (caller, team) => `Modelling ${caller} (${team} offense)`,
-  game: (away, home) => `${away} at ${home}`,
+  // restructure-v2.md 11 decision 4: tracking both sides, the plate names both callers, away first ({last, caller,
+  // team} each; a side with no name on file reads as its team alone)
+  whoBoth: (a, b) => `Shadowing ${[a, b].map((s) => (s.last ? `${s.last} · ${s.team}` : s.team)).join(" and ")}`,
+  whoBothTitle: (a, b) => `Modelling ${[a, b].map((s) => `${s.caller || "the play-caller"} (${s.team} offense)`)
+    .join(" and ")}`,
+  // "TB at DAL"; at a neutral site "PHI vs JAX", as the game picker and the game's label say it
+  game: (away, home, neutral = false) => `${away} ${neutral === true ? "vs" : "at"} ${home}`,
   gameDetail: (game, detail) => `${game} · ${detail}`,
   viewGroup: "View",
 });
@@ -78,15 +84,31 @@ export const PREDICTION = Object.freeze({
   tallyTop3: "In his top 3",
   recentLabel: "Last 6",
   recentTop3: (rank) => `In his top 3 (#${rank})`,
-  // a call a flag wiped out is graded but has no snap number, so the tally says how its calls split
-  callsNote: (calls, snaps, wiped) => `${calls} calls: ${snaps} snaps and ${wiped} wiped out by `
-    + (wiped === 1 ? "a flag" : "flags"),
+  // a sack or a scramble has no specific play (the called route is unknown), so it is graded on its play type only:
+  // PREVIOUS PLAY says so beside its verdict, and its LAST 6 mark is set apart from the tally's specific-play counts
+  verdictTypeOnly: (verdict) => `${verdict} · play type only`,
+  recentTypeOnly: (verdict) => `${verdict} (play type only)`,
+  // how his calls split, once they and the tally's count differ: a call a flag wiped out is graded but has no snap
+  // number ("59 calls: 55 snaps and 4 wiped out by flags"), and a call graded on its play type only is not in the tally
+  // ("38 calls: 34 snaps and 4 wiped out; 5 graded on play type only": the card keeps it to one line, so the flags go)
+  callsNote: (calls, snaps, wiped, typeOnly = 0) => {
+    const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+    const by = typeOnly ? "" : ` by ${wiped === 1 ? "a flag" : "flags"}`;
+    const parts = [wiped ? `${count(snaps, "snap", "snaps")} and ${wiped} wiped out${by}` : "",
+      typeOnly ? `${typeOnly} graded on play type only` : ""];
+    return `${count(calls, "call", "calls")}: ${parts.filter(Boolean).join("; ")}`;
+  },
   spokenPredicted: (call, pct) => `Predicted ${call}, ${pct}`,
   // v1.5 (G4-1): at the final whistle NEXT CALL shows the score and the way to the full scorecard, which lives in the
   // Model Report (restructure-v2.md section 6; no SHADOW v LEAGUE numbers on the home page)
   finalPlate: "Final",
   finalKey: "Tonight's scorecard",
   finalKeyTitle: "The full scorecard is in the Model Report",
+  // restructure-v2.md 11 decision 4: tracking both sides, the card follows the offense with the ball, so wherever "he"
+  // would leave it open whose call it is (4th down, his previous play, the live region) it names him
+  fourthDownNamed: (last) => `4th down · if ${last} goes for it`,
+  previousNamed: (last) => `${last}'s previous play`,
+  spokenWho: (last) => `Shadowing ${last}.`,
 });
 
 export const SCORECARD = Object.freeze({
@@ -133,7 +155,9 @@ export const TENDENCIES = Object.freeze({
   plotAria: "His pass-run tendency terms with 90 percent intervals",
   moreRun: "more run",
   morePass: "more pass",
-  note: (snaps, games, seasons) => `${snaps} snaps, ${games} games (${seasons}). Filled dots: 90% interval excludes zero.`,
+  note: (snaps, games, seasons) => `${snaps} snaps, ${games} games${seasons ? ` (${seasons})` : ""}. Filled dots: 90% `
+    + "interval excludes zero.",
+  seasonRange: (first, last) => `${first} to ${last}`,
   mixHeading: "His play-type mix vs expected",
   expected: (p) => `exp. ${p}`,
   heldOut: (top1, top3, n) => `Held-out check: his top pick for the specific play was right ${top1} of the time; the actual play was in his top 3 ${top3} of the time (${n} snaps).`,

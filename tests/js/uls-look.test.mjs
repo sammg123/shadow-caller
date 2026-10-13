@@ -69,7 +69,8 @@ test("4b: his predictions are thin dashed lines coloured by rank, #1 amber and #
   assert.ok(contrast(ULS.ledAmber, ULS.ledWarm) > 1.2, "#1 and #2 tell apart");
   assert.ok(plays.shadowPx >= 2 && plays.shadowPx <= 3, "about 2 to 3 px at the 1440x900 wide camera");
   assert.ok(plays.shadowDash[0] <= 0.8 && plays.shadowDash[1] >= 0.35, "short dashes, clear gaps");
-  assert.deepEqual(plays.casing, { color: ULS.nightSky, opacity: 0.55, width: 2.2 }, "a thin dark ring: dashes hold on paint");
+  assert.deepEqual(plays.casing, { color: ULS.nightSky, opacity: 0.9, width: 2.2 },
+    "a thin dark ring: dashes hold on paint and a light midfield logo (shadow-style.test.mjs)");
   assert.deepEqual(plays.last, { core: ULS.lastSlate, edge: ULS.steelEdge }, "the previous play in muted steel");
   for (const c of [plays.last.core, plays.last.edge]) {
     assert.ok(!plays.ranks.includes(c), "the previous play is never amber or warm white");

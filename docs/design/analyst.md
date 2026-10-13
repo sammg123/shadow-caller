@@ -1,10 +1,10 @@
 # The analyst: a local AI that answers questions about the game (phase 4 backend)
 
-Status: **built (backend), not wired.** restructure-v2.md section 7 item 4: a local AI analyst, gpt-oss 20B through
-Ollama, typed questions only, that knows the game, the stats so far, the play-caller and how the model works, and
-answers from real numbers. This file is the contract for the backend: the snapshot it reads, its tools, the system
-prompt, the streaming endpoint, its limits and how answers cite plays. The Ask slide-out (home) and the full chat
-(Model Report) are front-end work for phase 4.
+Status: **wired (2026-10-12).** restructure-v2.md section 7 item 4: a local AI analyst, gpt-oss 20B through Ollama,
+typed questions only, that knows the game, the stats so far, the play-callers and how the model works, and answers
+from real numbers. This file is the contract for the backend: the snapshot it reads, its tools, the system prompt, the
+streaming endpoint, its limits and how answers cite plays. app.py registers it (section 7); the Ask slide-out (home)
+and the full chat (Model Report) are in docs/design/analyst-ui.md.
 
 Files: `analyst_snapshot.py` (the snapshot, and the page's own formatting and grading rules), `analyst_tools.py` (the
 tools, their argument checks and the dispatcher), `analyst.py` (the prompt, the Ollama client, the tool loop, the
@@ -93,8 +93,8 @@ scorecard's two sides; ESPN's numbers carry `espn_`.
 | Tool | Arguments | Returns |
 | --- | --- | --- |
 | `game_situation` | none | Phase, quarter and clock (the engine's estimated clock during his drive, like the scoreboard), score, team names, possession, down and distance, timeouts, ESPN's win probability for both teams, the mode and watch progress; per tracked caller: `next_call` while his offense has the ball (top pick and the next two with chance and league_chance, pass and run chance against the league's, the tilt in the card's words and its points, his habits' pass points, play types with arrows, the memory terms or the opening-script note, the 4th-down note), else a note saying who has the ball; `previous_call` graded; `so_far` (calls, top picks, in top 3, last 6). |
-| `list_plays` | `team`, `his_calls_only`, `down`, `yards_to_go_min`, `yards_to_go_max` (yards to go before the snap), `yards_gained_min`, `quarter`, `half` (1, 2), `field_zone` (own_territory, opponent_territory, red_zone, goal_to_go, backed_up), `play_type` (run, pass, dropback, play_action, screen, rpo, sack, scramble, punt, field_goal, kickoff, penalty, kneel, timeout), `result` (first_down, touchdown, turnover, interception, fumble, explosive, negative, incomplete, scoring, no_play), `verdict` (top_pick, top_3, miss), `tilt` (tilt, lean, tilt_or_lean: his calls where the card's tag fired), `player` (plays whose ESPN text names him, by last name: works in a watch too), `sort` (game_order, surprise, yards, win_prob_swing), `limit` (1 to 30, default 15) | `matched`, `shown`, `totals` over every match (snaps that stood, no-plays, yards and per snap, first downs, touchdowns, turnovers, explosive, negative, pass and run calls with the pass rate, no-plays included; for his calls top picks, top 3, and how many tilts and leans came true), and rows: seq, when (`Q3 2:52`), team, situation, play, side, result, first down, scoring, flag, ESPN's text, and for his calls the grade (verdict, rank, the model's chance on what he called, its top pick, and the tilt or lean with whether it came true). Filtering for play-action, screens or RPOs in an ESPN game adds `data_note`: ESPN's feed can't see them, so tonight's count is unknown, and his usual rates are in `tendencies`. |
-| `play_detail` | `seq` or `when` (`Q3 2:52`) | One play in full: before and after, the play, result, yards, first down, touchdown, turnover, flag, scoring, score after, ESPN's win probability and its swing, ESPN's text; for his calls `model`: pass chance against the league's and his habits' points, the tilt, the top 3 with chance and league_chance, the five play types, the memory terms (or the opening script), `his_last_call_on_this_drive` (the call the memory's last-call terms react to: when, play, result, pass or run, whether it worked) and `memory_read` (the stickiness term in words for that snap: its label says repeat, its sign says which way he went), what he called with its chance, league_chance and both ranks, the verdict. Several plays at one clock: the candidates, to pick by seq. |
+| `list_plays` | `team`, `his_calls_only`, `down`, `yards_to_go_min`, `yards_to_go_max` (yards to go before the snap), `yards_gained_min`, `quarter`, `half` (1, 2), `field_zone` (own_territory, opponent_territory, red_zone, goal_to_go, backed_up), `play_type` (run, pass, dropback, play_action, screen, rpo, sack, scramble, punt, field_goal, kickoff, penalty, kneel, timeout), `result` (first_down, touchdown, turnover, interception, fumble, explosive, negative, incomplete, scoring, no_play), `verdict` (top_pick, top_3, miss), `tilt` (tilt, lean, tilt_or_lean: his calls where the card's tag fired), `player` (plays whose ESPN text names him, by last name: works in a watch too), `sort` (game_order, surprise, yards, win_prob_swing), `limit` (1 to 30, default 15) | `matched`, `shown`, `totals` over every match (snaps that stood, no-plays, yards and per snap, first downs, touchdowns, turnovers, explosive, negative, pass and run calls with the pass rate, no-plays included; for his calls top picks, top 3, and how many tilts and leans came true), and rows: seq, when (`Q3 2:52`), team, situation, play, side, result, first down, scoring, flag, ESPN's text, and for his calls the grade (verdict, `model_rank_of_his_call`: where the play he called stood in the model's list, 1 its top pick, a bigger number a bigger surprise, never a grade of the call; the model's chance on what he called, its top pick, and the tilt or lean with whether it came true). `sort: surprise` lists his least expected calls first, lowest chance first. Filtering for play-action, screens or RPOs in an ESPN game adds `data_note`: ESPN's feed can't see them, so tonight's count is unknown, and his usual rates are in `tendencies`. |
+| `play_detail` | `seq` or `when` (`Q3 2:52`) | One play in full: before and after, the play, result, yards, first down, touchdown, turnover, flag, scoring, score after, ESPN's win probability and its swing, ESPN's text; for his calls `model`: pass chance against the league's and his habits' points, the tilt, the top 3 with chance and league_chance, the five play types, the memory terms (or the opening script), `his_last_call_on_this_drive` (the call the memory's last-call terms react to: when, play, result, pass or run, whether it worked) and `memory_read` (the stickiness term in words for that snap: its label says repeat, its sign says which way he went), what he called with its chance, league_chance and where it stood in each list (`model_rank_of_his_call`, `league_rank_of_his_call`; the prompt defines both, since a bare `rank` read as "13th worst"), the verdict. Several plays at one clock: the candidates, to pick by seq. |
 | `scorecard` | `team`, `split` (none, down, quarter, half) | Shadow v League exactly as the scorecard computes it (`engine.metrics()`, the page's precision and leader rule), the specific play, play type and pass vs run groups, a one-line reading key and the note; with a split, the engine's own `metrics()` on his snaps of each down, quarter or half, with his passes and pass rate there. |
 | `box_score` | none | Both teams: plays, yards, rushing, passing, interceptions, sacks, first downs, 3rd and 4th down, red zone (trips, touchdowns, field goals: a trip is a drive with a snap inside the opponent's 20, flags included, which matches ESPN's count on the saved game), turnovers, penalties, time of possession; `source` says ESPN's or counted from the plays so far. `players`: ESPN's passing (2), rushing (6) and receiving (8) lines, only when ESPN's box score is shown (never in a watch), else `players_note` saying why there are none. |
 | `drives` | `team` | Every drive so far: number, team, start (quarter, clock, spot), plays, yards, time, result, the seqs it spans. |
@@ -110,12 +110,14 @@ the card's words ("Like the league", "Leans pass", "Tilts run"), verdicts in the
 ## 4. The system prompt
 
 Built per question by `analyst.system_prompt(snapshot)` from the app's own settings only (config's game label and team
-abbreviations, the caller's name from his profile, the mode, the watch counters). ESPN text never enters it.
+abbreviations, each tracked caller's name from his profile, the mode, the watch counters). ESPN text never enters it.
+`{callers}` is "Brian Schottenheimer, who calls plays for DAL", or both callers joined by "and" when both sides are
+tracked.
 
 ```
-You are the analyst inside Shadow Play-Caller, a local app that models one offensive play-caller and predicts his next
-call before every snap. In this game it shadows {caller}, who calls plays for {team}. The game: {label} ({away} at
-{home}). {mode sentence}
+You are the analyst inside Shadow Play-Caller, a local app that models the offensive play-callers it tracks and
+predicts each one's next call before his offense snaps. In this game it shadows {callers}. The game: {label} ({away}
+at {home}). {mode sentence}
 
 How to answer:
 - Use the tools for every fact. Every number, play and name in your answer must come from a tool result in this
@@ -226,7 +228,7 @@ Always 200.
   so text from an open `【` waits for its close (at most 60 characters, then it is just text) and a dash ending a
   piece waits for the next one.
 
-## 7. Wiring (app.py, applied later by the integrator)
+## 7. Wiring (app.py, applied 2026-10-12)
 
 ```python
 import analyst_api      # with the other local imports
@@ -234,16 +236,25 @@ import analyst_tools
 
 # after WATCH = watch.Watch(...) and timeline_mode() exist, before the first request (next to the other routes):
 def analyst_snapshot():
-    """The analyst's private copy of the game: copies under LOCK (about 10 ms), derived without it."""
-    return analyst_tools.take_snapshot(engine, feed, LOCK, GAME, mode=timeline_mode, watch=WATCH.snapshot)
+    """The analyst's private copy of the game: copies under LOCK (about 10 ms), derived without it. Every tracked
+    play-caller is read under LOCK with the rest, so a game switch never mixes two games."""
+    with LOCK:
+        raw = analyst_tools.capture(engine, feed, GAME, mode=timeline_mode(), watch=WATCH.snapshot(),
+                                    sides=[(team, engine.models[team].profile) for team in engine.sides])
+    return analyst_tools.build_snapshot(raw)
 
 
 app.register_blueprint(analyst_api.create_blueprint(analyst_snapshot))
 ```
 
+With both sides tracked (restructure-v2.md 11 decision 4) the snapshot holds one caller per tracked side, each with
+his own profile, scorecard (`engine.metrics(team)`), calls and memory; the next call belongs to the offense with the
+ball. The tools that are about one caller (scorecard, tendencies, caller_profile, model_explainer) take a `team` (its
+enum lists the tracked teams) and, left out, pick the caller with the ball; the prompt names both callers.
+
 Blueprint routes run behind the app-level hooks: `own_page_json_only` (64 KB body cap 413, a foreign `Origin` 403, a
 POST that isn't JSON 415), Flask's `TRUSTED_HOSTS` (a rebound DNS name 400), `security_headers`, and the JSON error
-handlers. `tests/test_analyst_api.py` checks all of them against the real app module with exactly these lines, in a
+handlers. `tests/test_analyst_api.py` checks all of them against the real app module (its own registration), in a
 sandboxed subprocess (a temp data folder, offline, Flask's test client, no port). Lock order matches watch.py: LOCK,
 then the watch's own condition inside `WATCH.snapshot`.
 

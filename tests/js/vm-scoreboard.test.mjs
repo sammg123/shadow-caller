@@ -139,3 +139,13 @@ test("isFinal: ESPN's post status, never a hand-entered game (G4-1)", () => {
   assert.equal(isFinal(makePv({ presented: state.final() })), false);
   assert.equal(isFinal(makePv()), false);
 });
+
+test("both sides by hand: the other offense's drive reads from its own side; scores stay the game's", async () => {
+  const { TRACKED } = await import("./both-sides.mjs");
+  const presented = patch(state.tilt(), { tracked: TRACKED, poss: "TB",
+    sit: { ...state.tilt().sit, down: 1, togo: 10, yardline_100: 75 } });
+  const vm = scoreboardVm(makePv({ presented }));
+  assert.deepEqual([vm.poss, team(vm, "TB").poss, team(vm, "DAL").poss], ["TB", true, false]);
+  assert.deepEqual([vm.downText, vm.ballOn, vm.situation], ["1st & 10", "TB 25", "1st & 10 at TB 25"]);
+  assert.deepEqual(vm.teams.map((t) => [t.abbr, t.score]), [["TB", "14"], ["DAL", "0"]]);
+});

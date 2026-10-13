@@ -12,13 +12,22 @@ import { sourceOf } from "./vm-scoreboard.js";
 const finite = (x) => typeof x === "number" && Number.isFinite(x);
 const NO_FACTS = Object.freeze({ los: null, ltg: null, poss: null, ballX: null, ltgX: null });
 
-/** 1. The caller's drive (presented.drive_active): from the strip's situation, attacking +x. */
-function callerSituation(sit, caller) {
-  const ballX = xFromYardline100(caller, sit.yardline_100, caller);
+/** 1. A tracked offense's drive (presented.drive_active): from the engine's situation, which is the offense with the
+ * ball's own (its down, distance and spot). The game's offense attacks +x; with both sides tracked (restructure-v2.md
+ * 11) the other offense's drive is drawn from its own side, attacking -x. */
+function driveSituation(sit, poss, caller) {
+  const ballX = xFromYardline100(poss, sit.yardline_100, caller);
   if (!finite(ballX) || !finite(sit.togo)) return null;
+  const dir = dirOf(poss, caller);
   const goalToGo = sit.togo >= sit.yardline_100;
-  return { ballX, ltgX: goalToGo ? goalX(1) : ballX + sit.togo, dir: 1, poss: caller, kind: "snap", goalToGo,
+  return { ballX, ltgX: goalToGo ? goalX(dir) : ballX + dir * sit.togo, dir, poss, kind: "snap", goalToGo,
     down: sit.down ?? null, togo: sit.togo };
+}
+
+/** The offense on its drive: /api/state's `poss` when it names one of the game's two teams, else the game's offense
+ * (one side tracked, or an older server). */
+function driveTeam(presented, caller, opp) {
+  return presented.poss === opp && opp ? opp : caller;
 }
 
 function lastPost(rows) {
@@ -45,8 +54,10 @@ function espnSituation(tl, caller) {
     togo: row.post.togo };
 }
 
-function situationOf(pv, presented, caller) {
-  if (presented.drive_active && presented.sit) return callerSituation(presented.sit, caller);
+function situationOf(pv, presented, caller, opp) {
+  if (presented.drive_active && presented.sit) {
+    return driveSituation(presented.sit, driveTeam(presented, caller, opp), caller);
+  }
   const tl = pv.tl;
   const status = tl && tl.status;
   if (!status || status.state !== "in" || !finite(status.ball_x) || !status.poss) return null;
@@ -124,7 +135,7 @@ export function fieldVm(pv) {
       legend: FIELD.legend });
   }
   const { offense: caller, opponent: opp } = presented.game;
-  const situation = situationOf(pv, presented, caller);
+  const situation = situationOf(pv, presented, caller, opp);
   const facts = factsOf(situation, caller);
   return freezeDeep({
     situation,

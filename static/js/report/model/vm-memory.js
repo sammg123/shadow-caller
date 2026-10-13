@@ -5,6 +5,7 @@
 import { freezeDeep, signed1 } from "../../model/format.js";
 import { callFacts, callerCalls, leafTable } from "./calls.js";
 import { MEMORY, REPORT } from "./copy.js";
+import { namedPlate } from "./side.js";
 
 const TILT_RE = /^TILT (PASS|RUN)$/;
 const PTS = 100;
@@ -71,7 +72,7 @@ export function memoryVm(pv) {
   const table = leafTable(pv);
   const rows = calls.filter((row) => firedOn(row.pred)).map((row) => memoryRow(row, table));
   const emptyText = rows.length ? "" : calls.length ? MEMORY.noTilts : MEMORY.empty;
-  return freezeDeep({ heading: MEMORY.heading, sub: MEMORY.sub,
+  return freezeDeep({ heading: namedPlate(pv, MEMORY.named, MEMORY.heading), sub: MEMORY.sub,
     labels: { habits: MEMORY.habits, memory: MEMORY.memory, called: MEMORY.called },
     empty: rows.length === 0, emptyText, summary: summaryOf(pv && pv.presented), rows });
 }

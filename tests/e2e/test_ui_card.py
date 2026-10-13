@@ -127,20 +127,36 @@ def expect_next_call(page, s, snap):
     return call
 
 
+def calls_note(log):
+    """How his calls split, counted from his own log rows (every call LAST 6 grades): a call a flag wiped out has no
+    snap number, and a call with no specific play (a sack or a scramble) is graded on its play type only, outside the
+    tally's specific-play counts; "" while his calls, his snaps and the tally's count agree. One line on the card: with
+    the play type said, "by flags" goes."""
+    wiped = sum(1 for r in log if r.get("nullified"))
+    type_only = sum(1 for r in log if r.get("leaf_rank") is None)
+    if not wiped and not type_only:
+        return ""
+
+    def count(n, one, many):
+        return f"{n} {one if n == 1 else many}"
+    by = "" if type_only else " by " + ("a flag" if wiped == 1 else "flags")
+    parts = [f"{count(len(log) - wiped, 'snap', 'snaps')} and {wiped} wiped out{by}" if wiped else "",
+             f"{type_only} graded on play type only" if type_only else ""]
+    return f"{count(len(log), 'call', 'calls')}: " + "; ".join(p for p in parts if p)
+
+
 def expect_last_six(page, s):
-    """LAST 6 and his night so far; once a flag has wiped out a call (graded, no snap number) the tally says how his
-    calls split, so "Snap 55" beside "of 59" needs no guessing."""
+    """LAST 6 and his night so far; once a flag has wiped out a call (graded, no snap number) or a call was graded on
+    its play type only, a note says how his calls split, so "Snap 55" beside "of 59" needs no guessing."""
     g = s["metrics"]["granular"]
     recent = card(page).locator(".sc-recent")
     expect(recent).to_be_visible()
     expect(recent.locator(".sc-recent-dot")).to_have_count(min(6, len(s["log"])))
     assert words(recent.locator(".sc-recent-tally")) == (
         f"Top pick {g['leaf_top1']} of {g['leaf_n']} · In his top 3 {g['leaf_top3']} of {g['leaf_n']}")
-    wiped = sum(1 for r in s["log"] if r.get("nullified") and r.get("leaf_rank") is not None)
-    note = recent.locator(".sc-recent-note")
-    if wiped:
-        expect(note).to_have_text(f"{g['leaf_n']} calls: {g['leaf_n'] - wiped} snaps and {wiped} wiped out by "
-                                  + ("a flag" if wiped == 1 else "flags"))
+    note, text = recent.locator(".sc-recent-note"), calls_note(s["log"])
+    if text:
+        expect(note).to_have_text(text)
     else:
         expect(note).to_be_hidden()
 

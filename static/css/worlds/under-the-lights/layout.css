@@ -154,7 +154,9 @@
     background: var(--uls-steel);
   }
   :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-meta { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-game { grid-area: game; align-self: center; }
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-slot { grid-area: game; align-self: center; }
+  /* Two play-callers tracked (restructure-v2.md 11 decision 4): the plate gives both names room. */
+  :where(#app[data-layout="uls"] .uls-ribbon) .sc-masthead-plate[data-sides="2"] { max-width: clamp(260px, 27vw, 520px); }
   #app[data-layout="uls"] .uls-ribbon > #rg-plays { grid-area: feed; position: relative; min-width: 0; overflow: hidden; }
   :where(#app[data-layout="uls"] .uls-ribbon) .sc-plays {
     position: absolute; inset: 0; display: flex; align-items: center; padding: 0; overflow: hidden;

@@ -120,6 +120,18 @@
 }
 :where(:root[data-world="under-the-lights"]) .rp-drive-row[data-result="TD"] th { color: var(--uls-led-amber); }
 :where(:root[data-world="under-the-lights"]) .rp-call-row:hover { background: var(--uls-led-panel); }
+/* A call brought into view (a drive button, an analyst's cite): its words light amber on the panel's black inside an
+   amber frame for a moment, then snap back (hardware, no fade); a play with no row frames its drive on the chart. */
+:where(:root[data-world="under-the-lights"]) .rp-call-row[data-cited="true"] {
+  outline: 2px solid var(--uls-led-amber);
+  outline-offset: -2px;
+  background: var(--uls-led-panel);
+  color: var(--uls-led-amber);
+}
+:where(:root[data-world="under-the-lights"]) #rp-drives .sc-dc-item[data-cited="true"] {
+  outline: 2px solid var(--uls-led-amber);
+  outline-offset: 2px;
+}
 :where(:root[data-world="under-the-lights"]) .rp-call-row[data-nullified="true"] { color: var(--sc-ink-muted); }
 /* The play he called, lit in its verdict's light where it sits in the model's top 3. */
 :where(:root[data-world="under-the-lights"]) .rp-call-row[data-verdict="top1"] [data-called="true"] .rp-top3-name {

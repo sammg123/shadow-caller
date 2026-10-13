@@ -7,6 +7,8 @@
 // the server landed on (anim/jump). They and play/pause share one lane, so a burst of presses never stacks requests:
 // while one is in flight the newest press waits for it and any press already waiting is dropped. Every action below
 // takes the context `c` that createActions builds.
+// restructure-v2.md 11: the game picker's choice (another game, or the same game with other sides) is one more jump in
+// the lane: POST /api/game/select answers the new track's state, and the field, the timeline and the HUD follow it.
 import { TOASTS } from "../model/copy.js";
 import { placeOf } from "../model/vm-transport.js";
 import { ROUTES } from "./api.js";
@@ -22,6 +24,11 @@ const HELD = Object.freeze(["paused", "done"]);
 const AMBIENTS = Object.freeze(["room", "dark"]);
 const QUIET = Object.freeze({ toastOn: "errors" });
 const JUMP = Object.freeze({ toastOn: "errors", jump: true });
+/** game-picker.md 4: an ESPN event id is digits; a side is a team abbreviation; one side, or both. */
+const EVENT_ID_RE = /^[0-9]{1,12}$/;
+const SIDE_RE = /^[A-Z]{2,4}$/;
+const MAX_SIDES = 2;
+const SELECTION_KEYS = Object.freeze(["event_id", "sides"]);
 
 /** Toast text: model/copy.js is the source. */
 export const ACTION_COPY = Object.freeze({
@@ -178,6 +185,29 @@ function seek(c, idx) {
   return enter(c, "seek", jumpRun(c, ROUTES.seek, { idx }, fits), idx);
 }
 
+/**
+ * The picker's selection as POST /api/game/select takes it (game-picker.md 4): exactly {event_id, sides}, the sides
+ * one or two different team abbreviations (away then home when both); null for anything else, which is never sent.
+ * @param {unknown} selection
+ * @returns {{ event_id: string, sides: string[] } | null}
+ */
+export function selectionBody(selection) {
+  if (!isPlainObject(selection)) return null;
+  const keys = Object.keys(selection);
+  const { event_id: eventId, sides } = selection;
+  if (keys.length !== SELECTION_KEYS.length || !SELECTION_KEYS.every((k) => keys.includes(k))) return null;
+  if (typeof eventId !== "string" || !EVENT_ID_RE.test(eventId) || !Array.isArray(sides)) return null;
+  const valid = sides.length >= 1 && sides.length <= MAX_SIDES && new Set(sides).size === sides.length
+    && sides.every((side) => typeof side === "string" && SIDE_RE.test(side));
+  return valid ? { event_id: eventId, sides: [...sides] } : null;
+}
+
+/** Open the game the picker chose: a jump like opening the page, so the field snaps to where the new track is. */
+function selectGame(c, selection) {
+  const body = selectionBody(selection);
+  return body ? enter(c, "select", () => send(c, ROUTES.select, body, JUMP)) : Promise.resolve();
+}
+
 function togglePlay(c) {
   return enter(c, "toggle", () => {
     const { state } = position(c);
@@ -198,6 +228,7 @@ function playbackActions(c) {
     // which is the watch's idx, so the game jumps to just after that play
     reviewAt: (seq) => seek(c, seq),
     goLive: () => enter(c, "golive", jumpRun(c, ROUTES.golive, {}, (p) => !isLive(p))),
+    selectGame: (selection) => selectGame(c, selection),
     async setSpeed(speed) {
       if (!WATCH_SPEEDS.includes(speed)) return;
       c.dispatch({ type: "prefs/set", key: "watchSpeed", value: speed });

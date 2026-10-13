@@ -7,6 +7,33 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+
+def _throwaway_data_dir():
+    """A test process never defaults to the real data/ (data contract G39). config.py reads SHADOW_DATA_DIR at import,
+    so every app module a test imports lands in this throwaway copy of the read-only inputs unless the test points it
+    somewhere on purpose. The live game, the feed ids, the watch session and the archive are never copied."""
+    import atexit
+    import os
+    import shutil
+    import tempfile
+    if os.environ.get("SHADOW_DATA_DIR"):
+        return
+    real = ROOT / "data"
+    tmp = Path(tempfile.mkdtemp(prefix="shadow-test-data-"))
+    for name in ("play_callers.csv", "play_callers_2024_2026.csv"):
+        if (real / name).is_file():
+            shutil.copy(real / name, tmp / name)
+    (tmp / "espn").mkdir()
+    for saved in (real / "espn").glob("*_final.json"):
+        shutil.copy(saved, tmp / "espn" / saved.name)
+    if (real / "logos").is_dir():
+        shutil.copytree(real / "logos", tmp / "logos")
+    os.environ["SHADOW_DATA_DIR"] = str(tmp)
+    atexit.register(shutil.rmtree, tmp, True)
+
+
+_throwaway_data_dir()
+
 FIXTURES = ROOT / "tests" / "fixtures"
 ESPN_EVENT = "401872980"
 ESPN_FILE = ROOT / "data" / "espn" / f"summary_{ESPN_EVENT}_final.json"

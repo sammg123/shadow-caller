@@ -49,7 +49,7 @@ const entry = (spec) => Object.freeze(spec);
 
 /** Ids index.html provides (5.2, 9.1). A component must never remove one; shell/mount.js checks after each mount. */
 export const SHELL_IDS = Object.freeze(["app", "rg-masthead", "rg-plays", "rg-scoreboard", "rg-field", "rg-call",
-  "heroArea", "rg-drives", "rg-wp", "rg-conn", "rg-boot", "toast", "sc-notices"]);
+  "heroArea", "rg-drives", "rg-wp", "rg-ask", "rg-conn", "rg-boot", "toast", "sc-notices"]);
 
 export const COMPONENTS = Object.freeze([
   entry({ name: "boot-screen", region: "boot", root: "#rg-boot", label: "Loading screen", fallback: "boot",

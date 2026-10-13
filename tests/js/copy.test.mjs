@@ -14,6 +14,8 @@ test("the top bar says who is shadowed and the current game; its keys say what t
   assert.equal(Copy.MASTHEAD.whoLabel("Schottenheimer", "DAL"), "Shadowing Schottenheimer · DAL");
   assert.equal(Copy.MASTHEAD.whoTitle("Brian Schottenheimer", "DAL"), "Modelling Brian Schottenheimer (DAL offense)");
   assert.equal(Copy.MASTHEAD.gameDetail(Copy.MASTHEAD.game("TB", "DAL"), "Final"), "TB at DAL · Final");
+  assert.equal(Copy.MASTHEAD.game("PHI", "JAX", true), "PHI vs JAX", "a neutral site says vs, like the picker");
+  assert.equal(Copy.MASTHEAD.game("PHI", "JAX", false), "PHI at JAX");
   assert.deepEqual([Copy.MASTHEAD.report, Copy.MASTHEAD.settings, Copy.MASTHEAD.cameraTitle],
     ["Model Report", "Settings", "Wide or Blimp (V)"]);
   const W = Copy.WATCH;
@@ -75,6 +77,17 @@ test("the video board's words (G4-1, G4-2, G4-4, G4-6)", () => {
   assert.equal(P.spokenPredicted("Screen", "9 percent"), "Predicted Screen, 9 percent");
   assert.equal(P.recentLabel, "Last 6");
   assert.equal(P.recentTop3(2), "In his top 3 (#2)");
+  // how his calls split: a call a flag wiped out has no snap number, and a sack or a scramble (no specific play) is
+  // graded on its play type only, outside the tally's specific-play counts
+  assert.equal(P.callsNote(59, 55, 4, 0), "59 calls: 55 snaps and 4 wiped out by flags");
+  assert.equal(P.callsNote(4, 3, 1, 1), "4 calls: 3 snaps and 1 wiped out; 1 graded on play type only");
+  assert.equal(P.callsNote(11, 9, 2, 4), "11 calls: 9 snaps and 2 wiped out; 4 graded on play type only",
+    "one line on the card: with the play type said, the flags go");
+  assert.equal(P.callsNote(3, 3, 0, 1), "3 calls: 1 graded on play type only");
+  assert.equal(P.callsNote(2, 1, 1, 0), "2 calls: 1 snap and 1 wiped out by a flag");
+  assert.equal(P.callsNote(1, 1, 0, 1), "1 call: 1 graded on play type only");
+  assert.equal(P.recentTypeOnly("Top pick"), "Top pick (play type only)");
+  assert.equal(P.verdictTypeOnly("Miss"), "Miss · play type only");
   assert.equal(P.previousPlate, "Previous play");
   assert.equal(P.spokenPrevious(34), "Previous play, snap 34:");
   assert.equal(P.spokenPrevious(null), "Previous play:");

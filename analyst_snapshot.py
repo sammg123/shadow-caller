@@ -210,13 +210,20 @@ def dump(snap: Snapshot) -> str:
     return json.dumps(plain(snap), default=plain, sort_keys=True)
 
 
-def capture(engine, feed, game: Mapping, *, mode: str, watch: Mapping | None = None) -> dict:
-    """Under the app's LOCK: private copies of everything the tools read (about 10 ms). Nothing is derived here."""
+def capture(engine, feed, game: Mapping, *, mode: str, watch: Mapping | None = None,
+            sides: list | None = None) -> dict:
+    """Under the app's LOCK: private copies of everything the tools read (about 10 ms). Nothing is derived here.
+    sides: (team, profile) of each tracked play-caller, away then home. Two of them (both sides tracked) each keep
+    his own profile and scorecard (engine.metrics(team)); one is the engine's own, as before."""
     state = copy.deepcopy(engine.state)
-    return {"state": state, "summary": copy.deepcopy(feed.load_summary()), "applied": list(feed.applied),
-            "skipped": list(feed.skipped_ids), "prediction": engine.predict() if state.get("drive_active") else None,
-            "metrics": engine.metrics(), "profile": copy.deepcopy(engine.profile), "game": copy.deepcopy(dict(game)),
-            "mode": mode, "epoch": engine.epoch(), "watch": copy.deepcopy(watch) if watch else None}
+    raw = {"state": state, "summary": copy.deepcopy(feed.load_summary()), "applied": list(feed.applied),
+           "skipped": list(feed.skipped_ids), "prediction": engine.predict() if state.get("drive_active") else None,
+           "metrics": engine.metrics(), "profile": copy.deepcopy(engine.profile), "game": copy.deepcopy(dict(game)),
+           "mode": mode, "epoch": engine.epoch(), "watch": copy.deepcopy(watch) if watch else None}
+    if sides and len(sides) > 1:
+        raw["sides"] = [{"team": team, "profile": copy.deepcopy(dict(profile)), "metrics": engine.metrics(team)}
+                        for team, profile in sides]
+    return raw
 
 
 def take_snapshot(engine, feed, lock, game: Mapping, *, mode: Callable[[], str],
@@ -240,7 +247,7 @@ def build_snapshot(raw: dict) -> Snapshot:
         status=freeze(body["status"]),
         plays=freeze([play_record(r) for r in body["rows"] if r["kind"] != "admin" or is_timeout(r)]),
         drives=freeze(body["drives"]), box=freeze(body["box_espn"] or body["box"]), box_source=body["box_source"],
-        callers=(caller_of(raw),),
+        callers=tuple(side_caller(raw, side) for side in raw["sides"]) if raw.get("sides") else (caller_of(raw),),
         watch=freeze({k: watch.get(k) for k in ("state", "idx", "total")}) if watch else None,
         players=freeze(player_lines(raw["summary"], body.get("team_order") or ())) if body["box_espn"] else None)
 
@@ -278,6 +285,32 @@ def caller_of(raw: dict) -> Caller:
                   prediction=freeze(raw["prediction"]) if raw["prediction"] else None,
                   on_field=bool(state.get("drive_active")), sit=freeze(state["sit"]),
                   memory_parts=freeze(memory_parts(state.get("log") or [], profile)))
+
+
+def side_caller(raw: dict, side: Mapping) -> Caller:
+    """One of the tracked play-callers when both sides are: his rows (the log's rows of his offense), his scorecard and
+    profile, the next call when it is his offense's, and his in-game memory, rebuilt from his own snaps."""
+    state, team, offense = raw["state"], side["team"], raw["game"]["offense"]
+    rows = [r for r in state.get("log") or [] if (r.get("team") or offense) == team]
+    pred = raw["prediction"] if raw["prediction"] and (raw["prediction"].get("team") or offense) == team else None
+    return Caller(name=str(side["profile"].get("caller") or "the play-caller"), team=team,
+                  profile=freeze(side["profile"]), log=freeze(rows), metrics=freeze(side["metrics"]),
+                  prediction=freeze(pred) if pred else None, on_field=pred is not None, sit=freeze(state["sit"]),
+                  memory_parts=freeze(memory_parts(rows, side["profile"])))
+
+
+def caller_for(snap: "Snapshot", team: str | None) -> Caller:
+    """The tracked caller of `team` (checked against the snapshot's callers); left out, the one whose offense has the
+    ball, else the first."""
+    if team is not None:
+        return next(c for c in snap.callers if c.team == team)
+    return next((c for c in snap.callers if c.on_field), snap.callers[0])
+
+
+def based_on(prof: Mapping) -> str:
+    seasons = list(prof.get("seasons") or [])
+    years = f"{seasons[0]} to {seasons[-1]}" if len(seasons) > 1 else ", ".join(map(str, seasons))
+    return f"{int_text(prof.get('n_snaps'))} snaps, {prof.get('n_games')} games ({years})"
 
 
 def is_timeout(row: Mapping) -> bool:
@@ -448,10 +481,13 @@ def his_pct_on(pred: Mapping) -> str | None:
 
 
 def grade(pred: Mapping) -> dict:
-    """A listed call's grade: the verdict, the rank of what he called, the model's chance on it, its top pick."""
+    """A listed call's grade: the verdict, where what he called stood in the model's list (model_rank_of_his_call: 1
+    is its top pick, a bigger number a bigger surprise; never a bare 'rank', which read as '13th worst'), the model's
+    chance on it, its top pick."""
     key, rank = verdict_of(pred)
     top = pred.get("top_leaf")
-    return compact({"verdict": VERDICT_WORDS.get(key or ""), "rank": rank, "model_chance": his_pct_on(pred),
+    return compact({"verdict": VERDICT_WORDS.get(key or ""), "model_rank_of_his_call": rank,
+                    "model_chance": his_pct_on(pred),
                     "model_top_pick": f"{LEAF_NAMES.get(top, top)} {pct(pred.get('top_leaf_p'))}" if top else None,
                     **tilt_call(pred)})
 

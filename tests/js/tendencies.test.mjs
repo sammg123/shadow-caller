@@ -56,7 +56,7 @@ test("each row draws its interval and estimate on the -1.2 to 1.2 axis, with zer
 test("the note, then the mix with his % and exp. X% in family order, then the held-out check (#114, #115)", () => inDoc((doc) => {
   const { root, tend } = setup(doc);
   tend.update(vmOf());
-  assert.equal(text(one(root, ".sc-tend-note")), "1,351 snaps, 21 games (2025–2026). Filled dots: 90% interval excludes zero.");
+  assert.equal(text(one(root, ".sc-tend-note")), "1,351 snaps, 21 games (2025 to 2026). Filled dots: 90% interval excludes zero.");
   const mix = all(one(root, ".sc-tend-mix"), "tr");
   assert.deepEqual(mix.map((tr) => all(tr, "th").concat(all(tr, "td")).map(text)), [
     ["Run", "34%", "exp. 34%"], ["Dropback pass", "43%", "exp. 45%"], ["Play-action", "15%", "exp. 12%"],
@@ -76,3 +76,18 @@ test("a profile without the play-type model hides the mix and the held-out line;
   tend.destroy();
   assert.equal(root.childNodes.length, 0);
 }));
+
+test("the note's seasons: a range only when they run on without a gap, else each one, never a dash", () => {
+  const noteWith = (seasons) => vmOf(patch(state.final(), { profile: { ...state.final().profile, seasons } })).note;
+  const cases = [
+    [[2024, 2025, 2026], " (2024 to 2026)"], [[2026, 2024, 2025], " (2024 to 2026)"], [[2024, 2026], " (2024, 2026)"],
+    [[2022, 2024, 2025, 2026], " (2022, 2024, 2025, 2026)"], [[2026], " (2026)"], [[2025, 2025, 2026], " (2025 to 2026)"],
+    [["2025", "2026"], " (2025 to 2026)"], [[2025, null, 2026], " (2025 to 2026)"],
+    [[], ""], ["2025-2026", ""], [null, ""], [[2025.5, "x"], ""],
+  ];
+  for (const [seasons, says] of cases) {
+    const note = noteWith(seasons);
+    assert.ok(note.startsWith(`1,351 snaps, 21 games${says}. Filled dots`), `${JSON.stringify(seasons)}: ${note}`);
+    assert.ok(!/[\u2013\u2014]/.test(note), "no en or em dash");
+  }
+});

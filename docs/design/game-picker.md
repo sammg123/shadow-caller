@@ -1,17 +1,19 @@
 # The game picker: any 2026 game, either side (phase 2)
 
-Status: **built, not wired.** restructure-v2.md section 7, phase 2. Sam's answers: the 2026 season only; a live game
-opens live, a finished game opens paused at kickoff; pick the side to shadow, or track both sides with separate stats
-(one side by default); he can paste an ESPN game id or address, and the app tells him how to find one. This file is
-the design, the contracts, and the plan for phase 2's per-game state, which is design only: no file outside this
-track was changed.
+Status: **wired (2026-10-12).** restructure-v2.md section 7, phase 2, wired in by section 11. Sam's answers: the 2026
+season only; a live game opens live, a finished game opens paused at kickoff; pick the side to shadow, or track both
+sides with separate stats (one side by default); he can paste an ESPN game id or address, and the app tells him how to
+find one. This file is the design and the contracts: the listing and the picker (sections 1 to 3), per-game state and
+`POST /api/game/select` (section 4, in `tracks.py`, `adopt.py` and `switch.py`), and the wiring as it was applied
+(section 5).
 
 Files: `games.py` (the schedule, the cache, pasted references, the betting line, the play-caller table),
 `games_api.py` (the Flask blueprint), `static/js/picker/` (`picker-vm.js` the pure view model and state machine,
 `picker-api.js` the HTTP client, `picker.js` the DOM side), `static/css/picker/picker.css` (plain, any world),
-`static/css/picker/picker-under-the-lights.css` (the stadium skin, waiting there for its home in the world's folder:
-section 5); tests in `tests/test_games.py`, `tests/test_games_config.py`, `tests/test_games_api.py` and
-`tests/js/picker/`; real ESPN and nflverse answers from 2026-10-10, trimmed, in `tests/fixtures/espn/`.
+`static/css/worlds/under-the-lights/picker/picker.css` (the stadium skin); tests in `tests/test_games.py`,
+`tests/test_games_config.py`, `tests/test_games_api.py` and `tests/js/picker/`; real ESPN and nflverse answers from
+2026-10-10, trimmed, in `tests/fixtures/espn/`. Per-game state: `tracks.py`, `adopt.py`, `switch.py` (tests in
+`tests/test_tracks.py`, `tests/test_adopt.py`, `tests/test_switch.py` and `tests/test_api_tracks.py`).
 
 ## 1. The schedule (games.py)
 
@@ -73,11 +75,11 @@ so Monday night belongs to its week), the first week before the season and the l
 
 ## 2. The calls (games_api.py)
 
-`games_api.create_blueprint(games.default_games())`, registered by app.py. Both calls are read-only GETs. app.py's gate
-is app-wide, so it covers them the moment they are registered: Flask's Host check (`TRUSTED_HOSTS`) refuses a DNS name
-rebound to 127.0.0.1, and `own_page_json_only` lets GET through by design (it guards the calls that change the game).
-`tests/test_games_api.py` checks the Host refusal on the sandboxed app once app.py registers the blueprint (skipped
-until then). Every answer is JSON with `Cache-Control: no-store`.
+`games_api.create_blueprint(games.default_games(has_model=switch.has_built_model))`, registered by app.py. Both calls
+are read-only GETs. app.py's gate is app-wide, so it covers them: Flask's Host check (`TRUSTED_HOSTS`) refuses a DNS
+name rebound to 127.0.0.1, and `own_page_json_only` lets GET through by design (it guards the calls that change the
+game). `tests/test_games_api.py` checks the Host refusal on the sandboxed app. Every answer is JSON with
+`Cache-Control: no-store`.
 
 | Call | Answer |
 | --- | --- |
@@ -110,8 +112,12 @@ non-ASCII digits. **The address is only read, never fetched:** only the digits g
 ```json
 {"game_id": "2026_05_TB_DAL", "label": "Buccaneers at Cowboys, Week 5, Thu Oct 8", "offense": "DAL",
  "opponent": "TB", "offense_is_home": true, "offense_spread": 9.5, "total_line": 49.5, "espn_event": "401872980",
- "line_source": "nflverse", "line_note": null}
+ "line_source": "nflverse", "line_note": null, "neutral": false}
 ```
+
+- `neutral` is ESPN's neutral site (London, Mexico City). It is frozen with the track's config, so the top bar names
+  the game the way the picker and the label do: "PHI vs JAX", never "PHI at JAX" (`tracks.matchup_of`; the page's
+  `MASTHEAD.game`). A config frozen before the flag existed reads "at".
 
 - The line comes from nflverse's schedule (`nflreadpy.load_schedules`, its `espn` column matching ESPN's id), kept in
   `DATA_DIR/nflverse/schedules_2026.json` for an hour. `spread_line` is the home team's margin (positive when home is
@@ -141,27 +147,40 @@ A key for the top bar ("GAME TB at DAL") opens a panel under it:
   side has a model, "Shadow: Schottenheimer (DAL)". While the panel is open it asks for the list again every 30 s.
 - **The chosen game**: its two sides as lamp switches (the team, its play-caller and role, "Model ready.", "No model
   for this play-caller yet." or "Not in the play-caller table yet."); the side with a model is chosen, the home side
-  when both have one; "Track both sides (separate stats)" is off by default and needs a model on both sides; Open this
-  game says how it opens ("Finished: opens paused at kickoff.", "Live: opens live.", "Not started: opens live and
-  follows it from kickoff.") or why it can't ("No play-caller model for either team yet.", "Postponed: nothing to
-  open.").
+  when both have one; "Track both sides (separate stats)" is off by default and needs a model on both sides, and lights
+  both sides while it is on; Open this game says how it opens ("Finished: opens paused at kickoff.", "Live: opens
+  live.", "Not started: opens live and follows it from kickoff.") or why it can't ("No play-caller model for either
+  team yet.", "Postponed: nothing to open.").
+- **Which sides have a model** comes from the models' own index: when the season loads, the picker also reads
+  `GET /api/callers` (app.py: every caller in `models/callers/index.json`, built or not, with the reason when not). A
+  side has a model when its play-caller's entry, by exact name, says `built`; otherwise the side is disabled and its
+  note is the entry's reason, else its error (restructure-v2.md 11 decision 1, the same rule `POST /api/game/select`
+  applies). An index that can't be read never blocks the listing: the listing's own `model` flag then stands.
 - **What it emits:** `onSelect({"event_id": "401872980", "sides": ["DAL"]})`, sides in away-then-home order when both
   are tracked. Phase 2's `POST /api/game/select` takes exactly this body.
 
 **Keyboard.** Escape closes the panel and is spent there (the page's Escape is Go Live; `core/keyboard.js` skips an
-event already handled). Every other keydown inside the panel stops at it, so no page shortcut (Space, Left, Right, 1 to
-4, V) fires inside the picker, its field and its select included. Up and Down walk the games of the open weeks; Tab
+event already handled), from anywhere on the page while it is open. The open panel is a modal layer
+(`data-sc-layer="modal"`), and `core/keyboard.js` stands down while focus is in one, so no page shortcut (Space, Left,
+Right, 1 to 4, V) fires inside the picker, its field and its select included; focus moving outside it closes it. Up and Down walk the games of the open weeks; Tab
 walks everything; the radios keep their own arrows. Opening puts focus on the team filter, picking a game on its title,
 Back on the game it came from, closing on the key. A click outside closes it. Labels are text, through `ui/dom.js`,
 never HTML.
 
-**Mounting** (the home frame, in the top bar's slot, by dynamic import like every component):
+**Mounting** (the home frame, in the top bar's slot, by dynamic import like every component: `main.js` loads
+`picker/picker.js` beside the components and `ui/masthead.js` mounts it in the game slot; one that fails leaves the
+game's plain words and a notice):
 
 ```js
 const { mountPicker } = await import("../picker/picker.js");
 const picker = mountPicker(slot, { label: "TB at DAL", onSelect: (selection) => actions.selectGame(selection) });
 picker.setLabel("DAL at WSH");     // after a switch; picker.open(), picker.close(), picker.destroy(), picker.isOpen()
 ```
+
+The key's words carry the top bar's `#gameLabel` (`data-testid="game-label"`), with the game's full label as their
+tooltip. `actions.selectGame` sends `POST /api/game/select` with exactly the emitted body, as one more jump in the
+playback lane, so the state, the timeline and the field follow the new track without a reload; the masthead sets the
+key's words from the new state on its next render.
 
 `api` (default: this page's server through `picker-api.js`), `timers` and `timeZone` (default: the viewer's) are
 injectable; the node tests use a fake DOM.
@@ -204,10 +223,22 @@ DATA_DIR/games/
   moves.
 - `data/shadow.duckdb`'s `live_log` is keyed by `game_id`; two tracks of one game share it, so `live.py` adds a `track`
   column ("DAL", "DAL+TB") and every insert and `_db_delete_after` filters on it (a reset of one track must never
-  delete the other's rows). Rows from before have `track` NULL and belong to the adopted track.
+  delete the other's rows). Rows from before have `track` NULL: the adopted game as Sam graded it live. No reset,
+  replay or watch ever deletes them (`_db_delete_after` names a track, and NULL is none); the adopted track's own rows
+  go in beside them under its track. Nothing in the app reads `live_log`, so the two never mix.
+- **The archive's safety copy** (`archive_keep.py`). Before a run (a server start: its one engine) first changes what
+  the file held, meaning its shape (the columns above, added to the Oct 8 build's file) or a row another run wrote
+  (a reset or a replay deleting a track's rows from an earlier run), the file is copied once into
+  `DATA_DIR/games/shadow.duckdb.kept-<time>`, checked byte for byte (sha256) against the file, named with its sha256
+  in the server log, and never pruned. New rows need no copy. When the copy can't be made or doesn't check, the run
+  never touches the file: its archive is off until the next start (the server log says so once), and the game files
+  still record every play. So the first page load after the restart keeps the Oct 8 archive whole before it gains
+  its columns.
 
 **Adopting today's game without loss.** On the first start of the phase 2 build, before the engine is made (so before
-anything can write):
+anything can write). Only the server's own start adopts (`python app.py`, which `start.sh` and `scripts/sandbox.py`
+run): importing app.py (a test, a REPL, a tool) never copies anything, since it could copy a game the running app is
+still writing; it opens the current track, or `data/` as before.
 
 1. If `DATA_DIR/live_state.json` exists and `games/index.json` doesn't, read the state's `game` (game_id, offense, the
    lines as played) and the event: `feed_seen.json`'s `_events[game_id]`, else the state's `espn_event`, else
@@ -232,20 +263,26 @@ the full state like the other state calls):
    (400) and have a model (`callers_for`: 409 "No model for TB's play-caller yet."); the track's config is
    `game.json`'s frozen one when the track exists, else `GAMES.game_config(event_id, side)` for each side (409 with
    `line_note` when there is no line).
-3. Under `LOCK`: stop the live feed (`feed.stop()`, `feed.invalidate()`, so a poll in flight lands nowhere); end any
-   watch session the way Go Live does (no restore: the old track's game stays as it was on screen, its backups in its
-   own folder); the old track's files are already saved after every action.
-4. Make or open the track: its folder and `game.json` (written whole); repoint `live.STATE_PATH` and
-   `espn_feed.SEEN_PATH`; set GAME in place (`GAME.clear(); GAME.update(config)`: every module holds that one dict);
-   for phase 2's one side, the engine reloads its state from the new path (`GameEngine._load`, or a fresh game); phase
-   3 loads the side's caller model (`callers.load_caller`, play-caller-models.md 7). `feed.event_id = event_id`,
-   `feed.reload_seen()`, the summary reloaded from `DATA_DIR/espn`; the timeline epoch bumped.
+3. Under `LOCK`, first get the new track ready while the game on screen stays as it is: its `game.json` entry
+   (written whole, its line frozen) and its models (`live.sides_for`: `models/` is read here on the default model). A
+   failure here (409 for a model that won't load) leaves the game on screen untouched, its watch session included.
+   Then leave it: stop the live feed (`feed.stop()`, `feed.invalidate()`, so a poll in flight lands nowhere) and park
+   any watch session (`Watch.leave`: its restore point and its session file stay); the old track's files are already
+   saved after every action.
+4. Open the track: its folder; repoint `live.STATE_PATH` and `espn_feed.SEEN_PATH`; set GAME in place (`GAME.clear();
+   GAME.update(config)`: every module holds that one dict); the engine reloads on the models step 3 loaded (each
+   side's `callers.load_caller` bundle, play-caller-models.md 7, or `models/`) and its state from the new path
+   (`GameEngine._load`, or a fresh game). `feed.event_id = event_id`, `feed.reload_seen()`, the summary reloaded from
+   `DATA_DIR/espn`; the timeline epoch bumped.
 5. Write `index.json`'s `current`, so a restart opens the same track (app.py reads it before making the engine; with no
    index, `config.GAME` is the default as today).
 6. Open it the way phase 1's `POST /api/open` does: a game ESPN says is in progress (or not started yet) goes live; a
    finished one becomes a watch session paused at kickoff (seek 0), whose first rebuild backs the track's game up
    exactly as phase 1 does, so a live-graded game (retags included) is never lost to a replay.
-7. Anything failing in 3 to 6 puts back the old paths and GAME (kept before step 3), and answers 409 or 500 with the
+7. Only now, with nothing left to fail, does the parked session end the way Go Live ends one (`Watch.end_parked`: its
+   session file goes; its game and its backups stay in its own folder). Anything failing in 3 to 6 puts back the old
+   paths, GAME and the engine's models (kept before step 3, so nothing is loaded again), and the parked session
+   exactly as it stood (`Watch.come_back`: where it was, its restore point, its file), and answers 409 or 500 with the
    reason: never a half switch.
 
 **Tracking both sides** follows play-caller-models.md section 7: one engine with one model per offense
@@ -257,27 +294,25 @@ caller (the side with the ball does); the feed applies every play once (one feed
 card follows the offense with the ball (restructure-v2.md 3), the top bar names both callers, and the Model Report shows
 two scorecards. A side with no model is not offered (the picker disables it and says why).
 
-## 5. Wiring (after the restructure lands; none of these files are this track's)
+## 5. Wiring (applied 2026-10-12)
 
-1. **app.py**: `import games, games_api`, then `GAMES = games.default_games()` and
-   `app.register_blueprint(games_api.create_blueprint(GAMES))` at module level, anywhere after `app` is made (the gate
-   is app-wide). The skipped test in `tests/test_games_api.py` then runs.
+1. **app.py**: `GAMES = games.default_games(has_model=switch.has_built_model)` and
+   `app.register_blueprint(games_api.create_blueprint(GAMES))` at module level (the gate is app-wide); the Host-gate
+   test in `tests/test_games_api.py` runs. app.py also serves `GET /api/callers` and `POST /api/game/select` (section 4).
 2. **static/index.html**: `<link rel="stylesheet" href="/static/css/picker/picker.css">` with the component sheets,
    before the world's.
-3. **The stadium skin**: move `static/css/picker/picker-under-the-lights.css` to
-   `static/css/worlds/under-the-lights/picker/picker.css` and add `CSS("picker/picker")` at the end of `world.css` in
-   `static/js/theme/worlds/under-the-lights/index.js` (after `W5_DECK`), then point `tests/js/picker/picker-skin.test.mjs`
-   at the new path. Both steps together: `uls-world.test.mjs` fails on a stylesheet in the world's folder that no page
-   loads, which is why it waits outside it. (Linking it from index.html as it is also works: every rule is scoped to
-   the world.)
-4. **The top bar** (home frame): mount the picker in place of the current game's label (section 3), and call
-   `picker.setLabel(...)` when the game changes. Until phase 2's select exists, `onSelect` can be left out.
-5. **scripts/sandbox.py**: copy `data/play_callers_2024_2026.csv` too when it exists. The scoreboards need nothing:
+3. **The stadium skin** lives at `static/css/worlds/under-the-lights/picker/picker.css`, registered in the world's css
+   list in `static/js/theme/worlds/under-the-lights/index.js` just before `W5_DECK` (the playback row's sheet), not
+   after it: `tests/js/uls-deck.test.mjs` requires the deck's sheet to be the world's last, and the two sheets style
+   nothing in common. `tests/js/picker/picker-skin.test.mjs` points at the new path.
+4. **The top bar** (home frame): the picker sits in place of the current game's label (section 3); the masthead sets
+   its key's words from every state, so they follow a switch.
+5. **scripts/sandbox.py** copies `data/play_callers_2024_2026.csv` too when it exists. The scoreboards need nothing:
    offline, games.py falls back to `tests/fixtures/espn`.
-6. **.gitignore**: add `data/nflverse/` (the schedule's cache) and, with phase 2, `data/games/`. The scoreboard cache
-   is in `data/espn/`, already ignored.
-7. **Phase 3**: `Games(..., has_model=callers.has_model)` in place of `default_games()`'s default (play-caller-models.md
-   7).
+6. **.gitignore** has `data/nflverse/` (the schedule's cache) and `data/games/`. The scoreboard cache is in
+   `data/espn/`, already ignored.
+7. **Phase 3**: the listing's `has_model` hook is `switch.has_built_model`, which reads `models/callers/index.json`
+   (again only when it changes), so every caller with a built bundle shows as modelled (play-caller-models.md 7).
 
 ## 6. Checks run (2026-10-10)
 

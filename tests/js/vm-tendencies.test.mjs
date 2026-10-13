@@ -67,7 +67,7 @@ test("unknown terms are appended alphabetically inside their group, intercept ne
 
 test("the note and headings read like FI 3.8 (#114)", () => {
   const vm = tendenciesVm(makePv({ presented: state.final() }));
-  assert.equal(vm.note, "1,351 snaps, 21 games (2025–2026). Filled dots: 90% interval excludes zero.");
+  assert.equal(vm.note, "1,351 snaps, 21 games (2025 to 2026). Filled dots: 90% interval excludes zero.");
   assert.equal(vm.termsHeading, "Pass vs run terms");
   assert.equal(vm.mixHeading, "His play-type mix vs expected");
 });

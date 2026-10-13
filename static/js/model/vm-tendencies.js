@@ -9,7 +9,6 @@ export const TERM_ORDER = Object.freeze(["early_down", "third_long", "trailing9"
   "last_fail", "explosive_prev", "sack_prev"]);
 const GROUP_ORDER = Object.freeze(["habit", "memory"]);
 const AXIS = Object.freeze({ min: -1.2, max: 1.2 });                              // FI 3.8 clamp
-const SEASON_JOIN = "–";                                                     // "2025–2026"
 const finite = (x) => typeof x === "number" && Number.isFinite(x);
 
 const rankIn = (list, item) => (list.includes(item) ? list.indexOf(item) : list.length);
@@ -54,9 +53,21 @@ function heldOutText(granular) {
   return sp ? TENDENCIES.heldOut(pct(sp.top1_his), pct(sp.top3_his), intText(sp.n)) : "";
 }
 
+/** A season as a whole year: a number, or four digits sent as text; NaN for anything else (null is not 0). */
+const yearOf = (v) => (typeof v === "number" ? v : typeof v === "string" && /^\d{4}$/.test(v) ? Number(v) : NaN);
+
+/** The seasons his model saw: "2024 to 2026" when they run on without a gap, else each one ("2024, 2026"); "" with
+ * none. Whole years only, each once, in order. */
+export function seasonsText(seasons) {
+  const years = [...new Set((Array.isArray(seasons) ? seasons : []).map(yearOf).filter(Number.isInteger))]
+    .sort((a, b) => a - b);
+  if (years.length < 2) return years.length ? String(years[0]) : "";
+  const unbroken = years.every((y, i) => i === 0 || y === years[i - 1] + 1);
+  return unbroken ? TENDENCIES.seasonRange(years[0], years.at(-1)) : years.join(", ");
+}
+
 function noteOf(profile) {
-  const seasons = Array.isArray(profile.seasons) ? profile.seasons.join(SEASON_JOIN) : "";
-  return TENDENCIES.note(intText(profile.n_snaps), profile.n_games, seasons);
+  return TENDENCIES.note(intText(profile.n_snaps), profile.n_games, seasonsText(profile.seasons));
 }
 
 const AXIS_VM = { min: AXIS.min, max: AXIS.max, zero: axisPos(0), left: TENDENCIES.moreRun, right: TENDENCIES.morePass,

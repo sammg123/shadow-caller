@@ -251,6 +251,60 @@ test("a failure after a successful POST surfaces as that error, never as a netwo
   assert.deepEqual(ctx.view().playback, { kind: null, target: null }, "the lane frees itself");
 });
 
+// ---------------------------------------------------------------- restructure-v2.md 11: the game picker
+const SELECT = "/api/game/select";
+
+test("selectGame opens the game the picker chose: exactly {event_id, sides}, through the playback lane, a jump", async () => {
+  const ctx = setup({ state: paused(40), replies: { [SELECT]: landed({ ...paused(0), timeline: pointer(0, "e-new") }) } });
+  const run = ctx.actions.selectGame({ event_id: "401872980", sides: ["TB", "DAL"] });
+  assert.deepEqual(ctx.view().playback, { kind: "select", target: null }, "the bar is loading while it opens");
+  await run;
+  assert.deepEqual(ctx.api.posts, [{ path: SELECT, body: { event_id: "401872980", sides: ["TB", "DAL"] } }]);
+  assert.deepEqual(ctx.store.getState().anim.jump, { epoch: "e-new", n: 0 }, "the field follows the new track");
+  assert.equal(ctx.store.getState().server.watch.idx, 0);
+  assert.equal(toastOf(ctx), null, "quiet: the top bar's label says which game is on");
+  assert.deepEqual(ctx.view().playback, { kind: null, target: null });
+});
+
+test("selectGame waits its turn behind a press in flight, and never stacks behind itself", async () => {
+  let release;
+  const gate = new Promise((r) => { release = r; });
+  const ctx = setup({ state: paused(40), replies: {
+    "/api/watch/seek": async () => { await gate; return landed(paused(9)); },
+    [SELECT]: landed({ ...paused(0), timeline: pointer(0, "e-new") }) } });
+  const seek = ctx.actions.seek(9);
+  const pick = ctx.actions.selectGame({ event_id: "401872980", sides: ["DAL"] });
+  await settle();
+  assert.deepEqual(paths(ctx), ["/api/watch/seek"]);
+  release();
+  await Promise.all([seek, pick]);
+  assert.deepEqual(paths(ctx), ["/api/watch/seek", SELECT]);
+});
+
+test("a refused game says why in the server's words; the game on screen stays", async () => {
+  const reason = "No model for TB's play-caller yet.";
+  const ctx = setup({ state: paused(40), replies: { [SELECT]: { status: 409, body: { error: reason } } } });
+  await ctx.actions.selectGame({ event_id: "401872980", sides: ["TB"] });
+  assert.deepEqual(toastOf(ctx), { id: 1, text: reason, err: true });
+  assert.equal(ctx.store.getState().server.watch.idx, 40, "nothing switched");
+  assert.equal(ctx.store.getState().conn.failures, 0, "the server answered: not a connection failure");
+  const missing = setup({ replies: { [SELECT]: { status: 404, body: { error: "ESPN has no game with id 123." } } } });
+  await missing.actions.selectGame({ event_id: "123", sides: ["DAL"] });
+  assert.equal(toastOf(missing).text, "ESPN has no game with id 123.");
+});
+
+test("a selection that isn't one sends nothing", async () => {
+  const ctx = setup();
+  for (const bad of [null, {}, { event_id: 401872980, sides: ["DAL"] }, { event_id: "40187x", sides: ["DAL"] },
+    { event_id: "401872980" }, { event_id: "401872980", sides: [] }, { event_id: "401872980", sides: ["DAL", "DAL"] },
+    { event_id: "401872980", sides: ["TB", "DAL", "KC"] }, { event_id: "401872980", sides: [7] },
+    { event_id: "401872980", sides: ["dal"] }, { event_id: "401872980", sides: ["DAL"], extra: 1 }]) {
+    await ctx.actions.selectGame(bad);
+  }
+  assert.deepEqual(ctx.api.posts, []);
+  assert.deepEqual(ctx.view().playback, { kind: null, target: null });
+});
+
 // ---------------------------------------------------------------- view
 test("cycleCamera toggles Wide and Blimp (the engine's modes) and remembers the choice", () => {
   const modes = [{ id: "wide", label: "Wide" }, { id: "blimp", label: "Blimp" }];

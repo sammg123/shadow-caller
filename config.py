@@ -34,8 +34,10 @@ STATE_PATH = DATA_DIR / "live_state.json"
 # League seasons used for the caller-blind baseline (2026 = weeks published so far).
 LEAGUE_SEASONS = list(range(2018, 2027))
 
-# Whose brain we are modelling tonight. Snaps are selected through play_callers.csv.
+# Whose brain we are modelling tonight. Snaps are selected through play_callers.csv. His slug names his bundle in
+# models/callers (callers.slugify(CALLER_NAME); play-caller-models.md 7).
 CALLER_NAME = "Brian Schottenheimer"
+CALLER_SLUG = "brian-schottenheimer"
 
 # Tonight's game, from the offense's point of view.
 GAME = {

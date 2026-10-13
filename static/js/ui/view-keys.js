@@ -1,7 +1,7 @@
 // The top bar's view keys (restructure-v2.md 2 and 4; owner: home frame). DOM side, text only. After the playback:
 // the camera (V cycles Wide and Blimp; its window names the mode), the "Model Report" link (ctx.reportHref keeps the
-// page's world), the Ask key (phase 4: hidden until then) and Settings, which opens the world's small settings menu
-// (ctx.settingsId names it; a world without one shows no Settings key).
+// page's world), the Ask key (hidden until the analyst's drawer mounts: shell/analyst.js) and Settings, which opens the
+// world's small settings menu (ctx.settingsId names it; a world without one shows no Settings key).
 import { el, setAttr, setData, setHidden } from "./dom.js";
 import { keycap, setKeyValue } from "./keycap.js";
 
@@ -14,7 +14,9 @@ function build(ctx) {
     cls: "sc-viewkey", data: { testid: "camera-mode" }, on: { click: run("cycleCamera") } });
   const report = keycap({ tag: "a", name: M.report, title: M.reportTitle, cls: ["sc-viewkey", "sc-key-link"],
     attrs: { href: ctx.reportHref || REPORT_HREF }, data: { testid: "model-report" } });
-  const ask = keycap({ name: M.ask, cls: "sc-viewkey", data: { testid: "ask" } });
+  // restructure-v2.md 11: hidden until the analyst's drawer mounts (shell/analyst.js shows it, with "Not ready" in its
+  // value when the analyst can't answer)
+  const ask = keycap({ name: M.ask, value: "", cls: "sc-viewkey", data: { testid: "ask" } });
   setHidden(ask.node, true);
   const settings = keycap({ name: M.settings, title: M.settingsTitle, cls: "sc-viewkey",
     attrs: { "aria-expanded": "false", "aria-controls": ctx.settingsId || null }, data: { testid: "settings-toggle" },

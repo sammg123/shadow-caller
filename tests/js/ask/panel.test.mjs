@@ -5,8 +5,13 @@
 // leaving stops the request, and the status is checked when it matters. Run on the fake DOM (tests/js/fake-dom.mjs).
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mountAsk } from "../../../static/js/ask/panel.js";
+import { STOP_GUARD_MS, mountAsk } from "../../../static/js/ask/panel.js";
+import { attachKeyboard } from "../../../static/js/core/keyboard.js";
+import { initialState, reducer } from "../../../static/js/core/reducer.js";
+import { createStore } from "../../../static/js/core/store.js";
+import { recordingActions } from "../chrome-ctx.mjs";
 import { createDocument, withDocument } from "../fake-dom.mjs";
+import { stateBody } from "../fixtures.mjs";
 import { fakeTimers, flush, jsonResponse, line, statusBody, streamResponse } from "./helpers.mjs";
 
 const QUESTION = "What does he call on 3rd and short?";
@@ -30,7 +35,7 @@ function routedFetch({ status = [statusBody()], ask = [] } = {}) {
   return { fetchImpl, calls, asks: () => calls.filter((c) => c.url === "/api/ask") };
 }
 
-function setup(doc, { layout = "slide", fetch = routedFetch() } = {}) {
+function setup(doc, { layout = "slide", fetch = routedFetch(), clock = { ms: 0 } } = {}) {
   const host = doc.createElement("div");
   host.setAttribute("id", "rg-ask");
   doc.body.appendChild(host);
@@ -40,7 +45,7 @@ function setup(doc, { layout = "slide", fetch = routedFetch() } = {}) {
   const outsider = doc.createElement("button");
   doc.body.appendChild(outsider);
   const timers = fakeTimers();
-  const panel = mountAsk(host, { layout, fetchImpl: fetch.fetchImpl, timers, now: () => 0 });
+  const panel = mountAsk(host, { layout, fetchImpl: fetch.fetchImpl, timers, now: () => clock.ms });
   const root = host.querySelector(".sc-ask");
   const emitted = [];
   const original = root.dispatchEvent.bind(root);
@@ -77,7 +82,8 @@ function docKeydown(doc, target, key, over = {}) {
   return evt;
 }
 
-const click = (node) => node.dispatchEvent({ type: "click", preventDefault() {} });
+/** A click; `detail` is the browser's click count (2 for the second click of a double-click, 0 from a key). */
+const click = (node, detail = 1) => node.dispatchEvent({ type: "click", detail, preventDefault() {} });
 
 function type(t, text) {
   t.input.value = text;
@@ -278,12 +284,14 @@ test("closing while an answer streams stops it: the request is aborted and the t
 
 test("the Stop key stops the answer and the box keeps focus", run(async (doc) => {
   const stream = streamResponse({ end: "hang" });
-  const t = setup(doc, { fetch: routedFetch({ ask: [stream.response] }) });
+  const clock = { ms: 0 };
+  const t = setup(doc, { fetch: routedFetch({ ask: [stream.response] }), clock });
   t.panel.open(t.opener);
   await flush();
   type(t, QUESTION);
   keydown(t.input, "Enter");
   await flush();
+  clock.ms += STOP_GUARD_MS;            // a deliberate Stop, a moment after asking
   click(t.send);
   await flush();
   assert.equal(t.fetch.asks()[0].init.signal.aborted, true);
@@ -291,6 +299,88 @@ test("the Stop key stops the answer and the box keeps focus", run(async (doc) =>
   assert.equal(doc.activeElement, t.input);
   assert.equal(t.root.hidden, false, "Stop keeps the panel open");
 }));
+
+// restructure-v2.md 11 item 5: Ask turns into Stop the moment the question goes, so a double-click used to ask and
+// then stop. The second click of a double-click, or any press on Stop right after asking, is the same press.
+test("a double-click on Ask asks once and never stops the answer it started", run(async (doc) => {
+  const stream = streamResponse({ end: "hang" });
+  const clock = { ms: 1000 };
+  const t = setup(doc, { fetch: routedFetch({ ask: [stream.response] }), clock });
+  t.panel.open(t.opener);
+  await flush();
+  type(t, QUESTION);
+  click(t.send, 1);
+  clock.ms += 120;
+  click(t.send, 2);
+  await flush();
+  assert.equal(t.fetch.asks().length, 1, "one question went out");
+  assert.equal(t.fetch.asks()[0].init.signal.aborted, false, "and it was never stopped");
+  assert.equal(t.q(".sc-ask-turn").getAttribute("data-state"), "asking");
+  assert.equal(t.send.querySelector(".sc-key-name").textContent, "Stop");
+  clock.ms += 200;
+  click(t.send, 1);                      // a slower second press, still part of the same moment
+  await flush();
+  assert.equal(t.fetch.asks()[0].init.signal.aborted, false, `a Stop within ${STOP_GUARD_MS} ms is the same press`);
+  clock.ms += STOP_GUARD_MS;
+  click(t.send, 0);                      // from the keyboard, well after: a real Stop
+  await flush();
+  assert.equal(t.fetch.asks()[0].init.signal.aborted, true);
+  assert.equal(t.q(".sc-ask-turn").getAttribute("data-state"), "stopped");
+}));
+
+test("a double-click on a suggestion asks it once", run(async (doc) => {
+  const stream = streamResponse({ end: "hang" });
+  const t = setup(doc, { fetch: routedFetch({ ask: [stream.response] }) });
+  t.panel.open(t.opener);
+  await flush();
+  const button = t.qa(".sc-ask-suggestion")[0];
+  click(button, 1);
+  click(button, 2);
+  click(t.send, 2);
+  await flush();
+  assert.equal(t.fetch.asks().length, 1);
+  assert.equal(t.fetch.asks()[0].init.signal.aborted, false);
+}));
+
+// The hard rule: shortcuts never fire while the slide-out has focus (core/keyboard.js stands down for a keydown from
+// inside a [data-sc-layer]); the Model Report's embedded chat has no page shortcuts to keep out.
+test("the slide-out keeps its keys: its root is a panel layer; the embedded chat's is not", run((doc) => {
+  const t = setup(doc);
+  assert.equal(t.root.getAttribute("data-sc-layer"), "panel");
+  const host = doc.body.appendChild(doc.createElement("div"));
+  const embedded = mountAsk(host, { layout: "embedded", id: "ask-e", fetchImpl: routedFetch().fetchImpl,
+    timers: fakeTimers() });
+  assert.equal(embedded.root.getAttribute("data-sc-layer"), null);
+  embedded.destroy();
+}));
+
+test("with the drawer focused, the page's keys stand down; Escape there closes it and never goes live",
+  run(async (doc) => {
+    const t = setup(doc, { fetch: routedFetch({ ask: [streamResponse({ chunks: [line(DONE)] }).response] }) });
+    const store = createStore(reducer, initialState());
+    store.dispatch({ type: "state/loaded", body: stateBody({ watch: { state: "paused" } }), origin: "poll", reqSeq: 0,
+      now: 0 });
+    const { actions, calls } = recordingActions();
+    const detach = attachKeyboard(doc, { store, actions });
+    t.panel.open(t.opener);
+    await flush();
+    type(t, QUESTION);
+    keydown(t.input, "Enter");
+    await flush();
+    const inside = [t.q(".sc-ask-cite"), t.qa(".sc-ask-suggestion")[0], t.q(".sc-ask-face"), t.input, t.send];
+    for (const node of inside) {
+      for (const k of [" ", "ArrowLeft", "ArrowRight", "1", "4", "v"]) {
+        assert.equal(docKeydown(doc, node, k).defaultPrevented, false, `${k} stays the control's own`);
+      }
+    }
+    assert.deepEqual(calls, [], "no page shortcut fired from inside the drawer");
+    assert.equal(docKeydown(doc, t.q(".sc-ask-cite"), "Escape").defaultPrevented, true);
+    assert.equal(t.root.hidden, true, "Escape closed the drawer");
+    assert.deepEqual(calls, [], "and never went live");
+    docKeydown(doc, t.outsider, "ArrowLeft");
+    assert.deepEqual(calls, [["stepBack"]], "outside it, the keys are the page's again");
+    detach();
+  }));
 
 test("429: the turn says busy, the status is checked again, and Ask again works once it is free", run(async (doc) => {
   const busy = "The analyst is answering another question. Ask again when it's done.";

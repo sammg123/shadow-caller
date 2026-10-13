@@ -48,9 +48,12 @@ function feedOn(pv) {
   return Boolean(feed && feed.on);
 }
 
-/** loading (the page is opening the game), a watch session's own state, live (following the feed), else idle. */
+/** The page opening its game, or another one from the game picker (restructure-v2.md 11). */
+const OPENING = Object.freeze(["open", "select"]);
+
+/** loading (the page is opening a game), a watch session's own state, live (following the feed), else idle. */
 function stateOf(pv, watch) {
-  if (pv && pv.view && pv.view.playback && pv.view.playback.kind === "open") return "loading";
+  if (pv && pv.view && pv.view.playback && OPENING.includes(pv.view.playback.kind)) return "loading";
   if (watch && isWatchSession(watch.state)) return watch.state;
   return feedOn(pv) ? "live" : "idle";
 }

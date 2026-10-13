@@ -29,6 +29,16 @@ test("games: the season listing, asked for fresh every time", async () => {
   assert.deepEqual([calls[0].init.method, calls[0].init.cache], ["GET", "no-store"]);
 });
 
+// restructure-v2.md 11 decision 1: the models' index says which play-callers have a model, and why not.
+test("callers: the models' index (GET /api/callers), asked for fresh every time", async () => {
+  const body = { callers: [{ name: "Zac Robinson", slug: "zac-robinson", status: "built" }] };
+  const { client, calls } = api({ status: 200, text: JSON.stringify(body) });
+  assert.deepEqual(await client.callers(), body);
+  assert.equal(calls[0].path, PICKER_ROUTES.callers);
+  assert.equal(PICKER_ROUTES.callers, "/api/callers");
+  assert.deepEqual([calls[0].init.method, calls[0].init.cache], ["GET", "no-store"]);
+});
+
 test("resolve: the ref goes in the query, encoded; the answer is the game", async () => {
   const ref = "https://www.espn.com/nfl/game/_/gameId/401872980?a=1&b=2";
   const { client, calls } = api({ status: 200, text: JSON.stringify({ game: { event_id: "401872980" } }) });

@@ -2,8 +2,13 @@
 // styles, the app's own store, reducer and sync (polling /api/version, then /api/state and /api/timeline as they
 // change, so the report follows a game the server keeps playing), the drain that stands in for the field, then every
 // board, each imported on its own so a broken one leaves a visible notice while the rest load. No engine, no
-// three.js, no POST: this page only reads. Timers, fetch and the clock are called bare ("Illegal invocation").
+// three.js, no POST: this page only reads (the analyst's questions are its own POST, docs/design/analyst.md 5).
+// Timers, fetch and the clock are called bare ("Illegal invocation").
+// Both play-callers tracked (restructure-v2.md 11 decision 4): the viewer's pick of whose sections to show rides on
+// the scheduler's extras (pv.sideChoice); a drive button or an analyst's cite switches to that call's caller first,
+// then brings its row into view (report/moves.js, report/model/cite.js, report/ui/reveal.js).
 import { createApi } from "../core/api.js";
+import { presentedTimeline } from "../core/present.js";
 import { initialState, reducer } from "../core/reducer.js";
 import { createStore } from "../core/store.js";
 import { createSync } from "../core/sync.js";
@@ -11,11 +16,13 @@ import { loadModules, mountComponents } from "../shell/mount.js";
 import { createNotices } from "../shell/notices.js";
 import { STORAGE_KEYS, readBootPrefs } from "../shell/prefs.js";
 import { applyRootAttrs, applyTeams, applyWorld, missingWorldTokens, watchMotion } from "../theme/apply.js";
-import { setAttr, setData, setText } from "../ui/dom.js";
+import { setAttr, setData, setHidden, setText } from "../ui/dom.js";
 import { createScheduler } from "../ui/scheduler.js";
 import { REPORT_COMPONENTS, REPORT_IDS } from "./bindings.js";
 import { attachDrain } from "./drain.js";
 import { REPORT_DRIVES_COPY } from "./model/drives.js";
+import { createMoves } from "./moves.js";
+import { createRevealer } from "./ui/reveal.js";
 import { chooseReportWorld, gamecastHref, reportWorld } from "./world.js";
 
 const HEARTBEAT_MS = 250;            // while a retry is pending, so "Retrying in N s" counts down on time
@@ -71,14 +78,14 @@ async function applyReportWorld(doc, boot, notices) {
   return { world, ambient };
 }
 
-// ---------------------------------------------------------------- the drive chart's buttons: to the calls table
-/** A drive of his: bring its first call's row (under its drive's row) into view and give it focus. */
-function showCall(doc, seq, motion) {
-  const row = doc.querySelector(`#rp-calls tr[data-seq="${Number(seq)}"]`);
-  if (!row) return;
-  const driveRow = row.previousElementSibling?.matches(".rp-drive-row") ? row.previousElementSibling : row;
-  driveRow.scrollIntoView({ block: "start", behavior: motion() === "reduced" ? "auto" : "smooth" });
-  row.focus({ preventScroll: true });
+// ---------------------------------------------------------------- whose sections, and the way to one call
+/** report/moves.js on this page's store and DOM; `render` is the scheduler's flush, once it exists. */
+function pageMoves(doc, { core, motion, render }) {
+  const view = () => {
+    const state = core.store.getState();
+    return { presented: state.presented, tl: presentedTimeline(state) };
+  };
+  return createMoves({ reveal: createRevealer(doc, { motion, timers }), view, render });
 }
 
 // ---------------------------------------------------------------- store, sync, boards
@@ -108,18 +115,39 @@ function pageBindings(doc, world) {
   ];
 }
 
-function startScheduler(core, bindings) {
+function startScheduler(core, bindings, extras) {
   const scheduler = createScheduler(core.store, bindings, {
     raf: (fn) => globalThis.requestAnimationFrame(fn),
     cancelRaf: (id) => globalThis.cancelAnimationFrame(id),
     now,
     onError: (err) => core.onError(err),
+    extras,
   });
   scheduler.start();
   globalThis.setInterval(() => {
     if (core.store.getState().conn.retryAt !== null) scheduler.invalidate();
   }, HEARTBEAT_MS);
   return scheduler;
+}
+
+// ---------------------------------------------------------------- the analyst (phase 4)
+/** restructure-v2.md 6 and 7 item 4: the analyst's full chat (docs/design/analyst-ui.md 5); a cite takes the reader
+ * to that call's row. Imported on its own, so a broken analyst leaves a notice and never stops the report. */
+async function mountAnalyst(doc, { notices, revealCall }) {
+  const host = doc.getElementById("rp-analyst");
+  if (!host) return;
+  try {
+    const { mountAsk } = await import("../ask/panel.js");
+    mountAsk(host, { layout: "embedded" });
+  } catch (err) {
+    notices.show("ask", `The analyst couldn't load (${message(err)}).`);
+    return;
+  }
+  setHidden(host, false);
+  host.addEventListener("sc:ask-cite", (e) => {
+    const seq = Number(e && e.detail && e.detail.seq);
+    if (Number.isInteger(seq)) revealCall(seq);
+  });
 }
 
 // ---------------------------------------------------------------- boot
@@ -132,12 +160,17 @@ async function boot() {
   setAttr(doc.getElementById("rp-back"), "href", gamecastHref(globalThis.location?.search ?? ""));
   const core = createCore(prefs, theme, notices, doc);
   const motion = () => core.store.getState().prefs.motion;
-  // no board on this page takes input: a drive picked on the drive chart only scrolls to its first call
-  const actions = Object.freeze({ retryNow: () => core.sync.kick(), reviewAt: (seq) => showCall(doc, seq, motion) });
+  let scheduler = null;
+  const moves = pageMoves(doc, { core, motion, render: () => scheduler?.flush() });
+  // no board on this page takes input into the game: a drive picked on the drive chart only scrolls to its first
+  // call, and the ribbon's switch only picks whose calls the boards show
+  const actions = Object.freeze({ retryNow: () => core.sync.kick(), reviewAt: moves.revealCall,
+    showSide: moves.showSide });
   const ctx = Object.freeze({ actions, engine: () => null, copy: REPORT_DRIVES_COPY });
   const { bindings } = mountComponents(REPORT_COMPONENTS, await modules,
     { doc, ctx, notices, shellIds: REPORT_IDS });
-  startScheduler(core, [...bindings, ...pageBindings(doc, theme.world)]);
+  scheduler = startScheduler(core, [...bindings, ...pageBindings(doc, theme.world)], moves.extras);
+  mountAnalyst(doc, { notices, revealCall: moves.revealCall }).catch(reportError);
   const matchMedia = typeof globalThis.matchMedia === "function" ? (query) => globalThis.matchMedia(query) : undefined;
   watchMotion(matchMedia, (value) => core.store.dispatch({ type: "prefs/set", key: "motion", value }));
   core.sync.start().catch(core.onError);

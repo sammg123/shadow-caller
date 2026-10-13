@@ -140,7 +140,9 @@ class FakeElement extends FakeNode {
   }
 
   dispatchEvent(event) {
-    const evt = { target: this, ...event };
+    // An Event or a CustomEvent keeps its type and detail on its prototype, where a spread can't see them: read them,
+    // so listeners hear a page's own events (the analyst drawer's sc:ask-toggle) as a browser's would.
+    const evt = { target: this, ...event, type: event.type, ...("detail" in event ? { detail: event.detail } : {}) };
     for (const fn of this.listeners.get(evt.type) ?? []) fn(evt);
     return true;
   }

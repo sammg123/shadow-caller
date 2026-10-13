@@ -129,12 +129,19 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sc-space-4) var(--sc-space-5);
 }
-/* At full size the snap count rides on the caption's line, so a pair is only as wide as its two readouts. */
+/* At full size a pair is only as wide as its two readouts: the caption over them and, when the pairs count different
+   snaps (a caller with a sack or a scramble: graded on pass or run and the play type, never on a specific play), each
+   pair's own count on a line of its own under them, so a long caption and its count never run into the next pair or
+   past the board's edge. When every pair counts the same snaps the plate says the count once and no line is kept. */
 :where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-pair {
-  grid-template-areas: "label label label basis" "shadow vs league .";
+  grid-template-areas: "label label label ." "shadow vs league ." "basis basis basis .";
+}
+:where(:root[data-world="under-the-lights"])
+  .sc-scorecard[data-expanded="true"] .sc-card-pairs[data-basis-shared="true"] .sc-card-pair {
+  grid-template-areas: "label label label ." "shadow vs league .";
 }
 :where(:root[data-world="under-the-lights"]) .sc-scorecard[data-expanded="true"] .sc-card-basis {
-  align-self: center;
+  align-self: start;
   padding-bottom: 0;
 }
 :where(:root[data-world="under-the-lights"])

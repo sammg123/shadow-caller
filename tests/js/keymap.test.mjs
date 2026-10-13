@@ -59,6 +59,18 @@ test("the guard: shortcuts never fire inside an inline input or while an IME com
   }
 });
 
+// restructure-v2.md 11 item 5: a modal panel keeps every key while it has focus (the game picker, the Ask drawer), and
+// the picker keeps them all while it is open, wherever focus is; its own handlers (Escape closes it) run first.
+test("a keydown a panel owns (the picker, the Ask drawer) never acts and never prevents, Escape included", () => {
+  for (const key of [" ", "ArrowLeft", "ArrowRight", "1", "2", "3", "4", "V", "Escape"]) {
+    for (const target of ["other", "activatable", "slider"]) {
+      const res = resolveKey({ key: normalizeKey(key), mods: NO_MODS, target, layer: true, ctx: PAUSED });
+      assert.deepEqual(strip(res), NOTHING, `${key} on ${target} inside a panel`);
+    }
+  }
+  assert.deepEqual(intentOf("ArrowLeft", PAUSED), { type: "stepBack" }, "outside every panel the key is the page's");
+});
+
 test("Space on a focused button or switch is the browser's (it activates that control)", () => {
   assert.deepEqual(strip(press(" ", PAUSED, { target: "activatable" })), NOTHING);
   assert.deepEqual(intentOf("ArrowRight", PAUSED, { target: "activatable" }), { type: "stepForward" });

@@ -1,6 +1,7 @@
 // The game picker's view model (docs/design/game-picker.md 3; restructure-v2.md 7, phase 2). Pure: GET /api/games's
-// payload and the panel's own state in, a frozen view out; pickerReduce is the panel's state machine and selectionOf
-// the {event_id, sides} it emits. Kickoff times are the viewer's own (the time zone comes in, never the clock). Every
+// payload, the models' index (GET /api/callers: restructure-v2.md 11 decision 1, who has a model and why not) and the
+// panel's own state in, a frozen view out; pickerReduce is the panel's state machine and selectionOf the {event_id,
+// sides} it emits. Kickoff times are the viewer's own (the time zone comes in, never the clock). Every
 // string is plain text for textContent, in sentence case (a world sets caps in CSS).
 
 export const FIND_ID_HELP = "Open the game on espn.com. The number after gameId/ in the address is the game id.";
@@ -11,7 +12,7 @@ const LAST_REGULATION_QTR = 4;
 const SUFFIXES = new Set(["JR", "JR.", "SR", "SR.", "II", "III", "IV"]);
 
 export const INITIAL = Object.freeze({
-  open: false, loading: false, error: null, data: null, filter: "", expanded: Object.freeze({}),
+  open: false, loading: false, error: null, data: null, index: null, filter: "", expanded: Object.freeze({}),
   chosen: null, side: null, both: false, ref: Object.freeze({ text: "", busy: false, error: null }),
 });
 
@@ -29,30 +30,45 @@ function deepFreeze(value) {
 }
 
 // ---------------------------------------------------------------- the payload, read defensively
-function teamOf(t) {
+const capped = (v) => str(v).trim().slice(0, MESSAGE_MAX) || null;
+
+/**
+ * The models' index (GET /api/callers) as {name: {model, reason}}: a play-caller has a model when his entry is built,
+ * by his name exactly as the play-caller table spells it (callers.has_model's rule, which the server's select follows);
+ * else the reason the index gives (a skipped caller's, a failed build's error). null without a readable index.
+ * @param {unknown} body
+ */
+export function indexOf(body) {
+  if (!isObj(body) || !Array.isArray(body.callers)) return null;
+  return Object.fromEntries(body.callers.filter((c) => isObj(c) && str(c.name)).map((c) => [c.name,
+    { model: c.status === "built", reason: c.status === "built" ? null : capped(c.reason) ?? capped(c.error) }]));
+}
+
+function teamOf(t, index) {
   if (!isObj(t) || !str(t.abbr)) return null;
+  const known = isObj(t.caller) && str(t.caller.name) ? own(index, t.caller.name) : undefined;
   const caller = isObj(t.caller) && str(t.caller.name) ? { name: t.caller.name, role: str(t.caller.role) || null,
-    model: t.caller.model === true } : null;
+    model: known ? known.model : t.caller.model === true, reason: known?.reason ?? capped(t.caller.reason) } : null;
   return { abbr: t.abbr, name: str(t.name) || t.abbr, short: str(t.short) || t.abbr,
     score: Number.isInteger(t.score) ? t.score : null, caller };
 }
 
-/** A game from the payload, or null when it lacks an id or two teams. */
-export function gameOf(g) {
-  const away = teamOf(g?.away);
-  const home = teamOf(g?.home);
+/** A game from the payload (each side's caller as the models' index knows him), or null without an id or two teams. */
+export function gameOf(g, index = null) {
+  const away = teamOf(g?.away, index);
+  const home = teamOf(g?.home, index);
   if (!isObj(g) || !str(g.event_id) || !away || !home) return null;
   return { id: g.event_id, seasonType: g.season_type, week: g.week, kickoff: str(g.kickoff), timeValid: g.time_valid
     !== false, neutral: g.neutral === true, status: str(g.status), detail: str(g.detail), completed: g.completed === true,
   clock: str(g.clock), period: Number.isInteger(g.period) ? g.period : null, away, home, raw: g };
 }
 
-function weeksOf(data) {
+function weeksOf(data, index) {
   const weeks = Array.isArray(data?.weeks) ? data.weeks : [];
   return weeks.filter((w) => isObj(w) && str(w.key)).map((w) => ({
     key: w.key, label: str(w.label) || w.key, detail: str(w.detail), stale: w.stale === true, error: str(w.error),
     current: w.key === data.current || w.current === true,
-    games: (Array.isArray(w.games) ? w.games : []).map(gameOf).filter(Boolean),
+    games: (Array.isArray(w.games) ? w.games : []).map((g) => gameOf(g, index)).filter(Boolean),
   }));
 }
 
@@ -147,15 +163,25 @@ function goHint(g, kind) {
   return kind === "live" ? "Live: opens live." : "Not started: opens live and follows it from kickoff.";
 }
 
+/** Why a side can or can't be shadowed: the model index's own reason when the server sends it (restructure-v2.md 11
+ * decision 1: a side with no built model is disabled and says why). */
+function sideNote(caller) {
+  if (!caller) return "Not in the play-caller table yet.";
+  if (caller.model) return "Model ready.";
+  return caller.reason ?? "No model for this play-caller yet.";
+}
+
+/** One side's switch. `group` names its radio group: one shared group for one side, a group of its own for each side
+ * while both are tracked, so a browser keeps both checked (a group holds one checked radio). */
 function sideVm(t, ui) {
   const model = t.caller?.model === true;
-  const note = !t.caller ? "Not in the play-caller table yet." : model ? "Model ready." : "No model for this play-caller yet.";
   return { abbr: t.abbr, team: t.name, caller: t.caller ? `${t.caller.name}${t.caller.role ? ` (${t.caller.role})` : ""}`
-    : null, model, checked: model && (ui.both || ui.side === t.abbr), disabled: !model || ui.both, note };
+    : null, model, checked: model && (ui.both || ui.side === t.abbr), disabled: !model || ui.both,
+  group: ui.both ? `side-${t.abbr}` : "side", note: sideNote(t.caller) };
 }
 
 function chosenVm(ui, weeks, timeZone) {
-  const g = gameOf(ui.chosen);
+  const g = gameOf(ui.chosen, ui.index);
   if (!g) return null;
   const kind = kindOf(g);
   const week = weeks.find((w) => w.games.some((x) => x.id === g.id))?.label ?? `Week ${g.week}`;
@@ -175,7 +201,7 @@ function chosenVm(ui, weeks, timeZone) {
 
 /** The selection the picker emits for phase 2, {event_id, sides}, or null when nothing can be opened. */
 export function selectionOf(ui) {
-  const g = gameOf(ui?.chosen);
+  const g = gameOf(ui?.chosen, ui?.index);
   if (!g || kindOf(g) === "off") return null;
   const sides = ui.both ? [g.away.abbr, g.home.abbr] : ui.side ? [ui.side] : [];
   return sides.length ? { event_id: g.id, sides } : null;
@@ -183,7 +209,7 @@ export function selectionOf(ui) {
 
 /** The whole panel's view, deep-frozen. */
 export function pickerVm(ui, { timeZone } = {}) {
-  const weeks = weeksOf(ui.data);
+  const weeks = weeksOf(ui.data, ui.index);
   const shown = weeks.map((w) => weekVm(w, ui, timeZone)).filter((w) => !ui.filter || w.games.length);
   const empty = ui.filter && !shown.length ? "No games for that team in this list."
     : ui.data && !weeks.length && !ui.error ? "No games listed yet." : null;
@@ -198,7 +224,7 @@ export function pickerVm(ui, { timeZone } = {}) {
 
 // ---------------------------------------------------------------- the panel's state machine
 function pick(ui, raw) {
-  const g = gameOf(raw);
+  const g = gameOf(raw, ui.index);
   if (!g) return ui;
   const ready = modeled(g);
   const side = ready.includes(g.home.abbr) ? g.home.abbr : ready[0] ?? null;
@@ -206,13 +232,13 @@ function pick(ui, raw) {
 }
 
 function chooseSide(ui, abbr) {
-  const g = gameOf(ui.chosen);
+  const g = gameOf(ui.chosen, ui.index);
   if (!g || ui.both || !modeled(g).includes(abbr)) return ui;
   return { ...ui, side: abbr };
 }
 
 function setBoth(ui, on) {
-  const g = gameOf(ui.chosen);
+  const g = gameOf(ui.chosen, ui.index);
   if (!g || (on && modeled(g).length !== 2)) return ui;
   return { ...ui, both: on };
 }
@@ -221,7 +247,8 @@ const HANDLERS = Object.freeze({
   open: (ui) => ({ ...ui, open: true }),
   close: (ui) => ({ ...ui, open: false, chosen: null, side: null, both: false, ref: { ...ui.ref, busy: false } }),
   loading: (ui) => ({ ...ui, loading: true }),
-  loaded: (ui, a) => ({ ...ui, loading: false, error: null, data: isObj(a.data) ? a.data : null }),
+  loaded: (ui, a) => ({ ...ui, loading: false, error: null, data: isObj(a.data) ? a.data : null,
+    index: indexOf(a.callers) ?? ui.index }),
   loadFailed: (ui, a) => ({ ...ui, loading: false, error: message(a.error) }),
   filter: (ui, a) => ({ ...ui, filter: str(a.team) }),
   toggleWeek: (ui, a) => ({ ...ui, expanded: { ...ui.expanded, [str(a.key)]: a.open === true } }),

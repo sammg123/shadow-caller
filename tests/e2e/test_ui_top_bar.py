@@ -30,7 +30,9 @@ PLAYBACK = ("/api/open", "/api/watch/seek", "/api/watch/back", "/api/watch/forwa
 GONE = ("#entry", "#entryHint", "#manualEntry", "#flagPanel", "#lastPlay", "#kpiArea", "#logArea", "#replayBtn",
         '[data-testid="booth-toggle"]', '[data-testid="scorecard-toggle"]', '[data-testid="review"]',
         'a[href="/api/export.csv"]')
-TYPING = "#app input:not([type=checkbox]), #app textarea, #app select, #app [contenteditable]"
+# restructure-v2.md 1: no input into the game. The game picker's filter and pasted link choose a game (restructure-v2.md
+# 11), so they are not typing into one.
+TYPING = "#app :is(input:not([type=checkbox]), textarea, select, [contenteditable]):not(.sc-picker *)"
 
 
 @pytest.fixture
@@ -95,8 +97,8 @@ def drive_starts(page, n):
 def test_the_top_bar_reads_and_nothing_on_the_page_takes_typing(ui_pages, wsrv):
     """Every control is a labelled key a first-time viewer understands; the count says where the game is; the drives
     and quarters are ticks on the bar (a score only once its play is in: no spoilers at kickoff); the camera says its
-    view; the Model Report is a link; Ask waits for phase 4; and the entry pad, flags, strip, booth and stat board are
-    gone with every input they had."""
+    view; the Model Report is a link; Ask shows once the analyst's status is read (restructure-v2.md 11); and the
+    entry pad, flags, strip, booth and stat board are gone with every input they had."""
     page = ui_pages()
     base = wsrv["base"]
     at_kickoff(page, base)
@@ -124,7 +126,7 @@ def test_the_top_bar_reads_and_nothing_on_the_page_takes_typing(ui_pages, wsrv):
     expect(report).to_contain_text("Model Report")
     assert report.evaluate("e => e.localName") == "a"
     assert report.get_attribute("href").startswith("/report"), report.get_attribute("href")
-    expect(page.locator('[data-testid="ask"]')).to_be_hidden()
+    expect(page.locator('[data-testid="ask"]')).to_be_visible()
     assert page.locator(TYPING).count() == 0, "restructure-v2.md 1: nothing on the page takes typing"
     for gone in GONE:
         assert page.locator(gone).count() == 0, f"{gone} is gone with its feature"

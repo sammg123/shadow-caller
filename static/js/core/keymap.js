@@ -1,9 +1,9 @@
 // The keyboard (restructure-v2.md 2: "Space play/pause, Left/Right step back/forward, 1 to 4 speed, V camera, Escape =
 // Go Live", and no others; ui-architecture.md section 4; owner A2). Pure. resolveKey maps one keydown, already
-// classified by core/keyboard.js, to at most one intent plus whether to preventDefault. Order: the guard (modifiers,
-// IME composition, an inline input: shortcuts never fire there), then a focused slider keeps its own keys (the top
-// bar's progress bar), then the table. Escape takes the topmost layer first: an error toast, the open settings menu,
-// then Go Live.
+// classified by core/keyboard.js, to at most one intent plus whether to preventDefault. Order: the guard (a keydown a
+// modal panel owns, modifiers, IME composition, an inline input: shortcuts never fire there), then a focused slider
+// keeps its own keys (the top bar's progress bar), then the table. Escape takes the topmost layer first: an error
+// toast, the open settings menu, then Go Live. A modal panel (the game picker, the Ask drawer) handles its own Escape.
 import { own } from "./domain.js";
 
 const LEGACY_NAMES = Object.freeze({ Spacebar: "Space", Esc: "Escape", Left: "ArrowLeft", Right: "ArrowRight" });
@@ -63,12 +63,14 @@ function resolveIn(k, target, ctx) {
 
 /**
  * @param {{ key: string, repeat: boolean, mods: { meta: boolean, ctrl: boolean, alt: boolean, shift: boolean },
- *           composing: boolean, target: "text" | "slider" | "activatable" | "other", ctx: object }} input
+ *           composing: boolean, target: "text" | "slider" | "activatable" | "other", layer?: boolean, ctx: object }} input
+ *   layer: the keydown belongs to a modal panel (restructure-v2.md 11 item 5: it came from inside the game picker or
+ *   the Ask drawer, or the picker is open), so it is never the page's
  * @returns {{ intent: object | null, prevent: boolean, mode: string }}
  */
-export function resolveKey({ key, repeat = false, mods = {}, composing = false, target = "other", ctx }) {
+export function resolveKey({ key, repeat = false, mods = {}, composing = false, target = "other", layer = false, ctx }) {
   const done = (res) => ({ ...res, mode: modeOf(ctx) });
-  if (mods.meta || mods.ctrl || mods.alt || composing || target === "text") return done(NOTHING);
+  if (layer || mods.meta || mods.ctrl || mods.alt || composing || target === "text") return done(NOTHING);
   const k = normalizeKey(key);
   if (target === "slider" && SLIDER_KEYS.has(k)) return done(NOTHING);
   const res = resolveIn(k, target, ctx);

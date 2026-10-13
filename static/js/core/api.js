@@ -2,7 +2,10 @@
 // Pure*: no DOM; fetch and the timers are injected so node tests can stub them. Both are called bare: browsers
 // throw "Illegal invocation" when fetch or setTimeout run as a method of another object.
 // GETs resolve with the parsed JSON object. POSTs resolve { status, body } for 200, 400, 409 and 503 (400 bodies are
-// the full state plus `error`; 409 and 503 bodies may hold only `error`); everything else rejects with ApiError.
+// the full state plus `error`; 409 and 503 bodies may hold only `error`), and for any other status whose body says why
+// (a JSON object with an `error`: the game picker's 404 and 500, game-picker.md 4, and the gate's 403, 413 and 415), so
+// the page shows the server's words; everything else (an HTML error page, an answer that says nothing) rejects with
+// ApiError.
 
 export class ApiError extends Error {
   /** @param {"network" | "timeout" | "http" | "bad-json"} kind */
@@ -19,11 +22,13 @@ export class ApiError extends Error {
  * under the server's lock, hence the long POST timeout. */
 export const TIMEOUTS = Object.freeze({ version: 4000, state: 8000, timeline: 8000, post: 30000 });
 
-/** Every POST the page sends: playback only (restructure-v2.md 9). The manual-entry endpoints stay on the server for
- * compatibility, but the page never sends user input into the game (restructure-v2.md 1). */
+/** Every POST the page sends: playback (restructure-v2.md 9) and the game picker's choice of game (restructure-v2.md
+ * 11). The manual-entry endpoints stay on the server for compatibility, but the page never sends user input into the
+ * game (restructure-v2.md 1). */
 export const ROUTES = Object.freeze({
   open: "/api/open", seek: "/api/watch/seek", back: "/api/watch/back", forward: "/api/watch/forward",
   golive: "/api/golive", pause: "/api/watch/pause", resume: "/api/watch/resume", speed: "/api/watch/speed",
+  select: "/api/game/select",
 });
 export const POST_PATHS = Object.freeze(Object.values(ROUTES));
 const POST_OK = Object.freeze([200, 400, 409, 503]);
@@ -72,12 +77,24 @@ async function getJson(deps, path, timeoutMs) {
   return parseObject(res.text, path, res.status);
 }
 
+/** A refusal that says why: a JSON object whose `error` has words in it; null for anything else. */
+function reasonBody(text) {
+  try {
+    const body = JSON.parse(text);
+    return isObjectBody(body) && typeof body.error === "string" && body.error.trim() !== "" ? body : null;
+  } catch {
+    return null;   // an HTML error page: the caller rejects with the status alone
+  }
+}
+
 async function sendPost(deps, path, body, timeoutMs) {
   const init = { method: "POST", cache: "no-store", headers: { ...JSON_HEADERS, "Content-Type": "application/json" },
     body: JSON.stringify(body) };
   const res = await request(deps, path, init, timeoutMs);
-  if (!POST_OK.includes(res.status)) throw readStatusError(path, res);
-  return { status: res.status, body: parseObject(res.text, path, res.status) };
+  if (POST_OK.includes(res.status)) return { status: res.status, body: parseObject(res.text, path, res.status) };
+  const said = reasonBody(res.text);
+  if (said) return { status: res.status, body: said };
+  throw readStatusError(path, res);
 }
 
 /**

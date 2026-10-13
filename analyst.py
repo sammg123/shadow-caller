@@ -20,6 +20,7 @@ from contextlib import suppress
 from dataclasses import dataclass
 
 import analyst_tools as at
+import tracks
 from analyst_snapshot import clean, qtr_text
 
 log = logging.getLogger(__name__)
@@ -60,9 +61,9 @@ MARK_RE = re.compile("[ \t]?\u3010[^\u3010\u3011]*\u3011")    # gpt-oss's source
 MARK_MAX = 60                      # an open mark waits this long for its close before it counts as text
 DASH_TAIL_RE = re.compile("[ \t]*[\u2013\u2014][ \t]*$")     # a dash ending a piece: the next piece decides it
 
-PROMPT = """You are the analyst inside Shadow Play-Caller, a local app that models one offensive play-caller and \
-predicts his next call before every snap. In this game it shadows {callers}. The game: {label} ({away} at {home}). \
-{mode}
+PROMPT = """You are the analyst inside Shadow Play-Caller, a local app that models the offensive play-callers it tracks \
+and predicts each one's next call before his offense snaps. In this game it shadows {callers}. The game: {label} \
+({matchup}). {mode}
 
 How to answer:
 - Use the tools for every fact. Every number, play and name in your answer must come from a tool result in this \
@@ -96,7 +97,10 @@ Words the app uses: Shadow is the play-caller's model; League is the caller-blin
 against. A chance is the model's probability for him; league_chance is the baseline's in the same spot. Top pick: \
 the model's single most likely specific play for him. In his top 3: the play he called was one of its three most \
 likely. Lower log loss is better. The tilt compares his pass chance with the league's in the same spot; a tilt or \
-lean came true (it helped) when he called the way it leaned."""
+lean came true (it helped) when he called the way it leaned. model_rank_of_his_call is where the play he called stood \
+in the model's list before the snap: 1 is its top pick, 13 its 13th most likely. A bigger number means the call \
+surprised the model more, never how good or bad the call was; league_rank_of_his_call is the same in the league \
+baseline's list."""
 MODES = {
     "live": "ESPN's live feed is on: the game is in progress and plays arrive a few seconds after they happen.",
     "watch": "The game is being replayed on screen. You only know it as far as it has been played: never say or "
@@ -283,11 +287,10 @@ def system_prompt(snap: at.Snapshot) -> str:
     """The rules, from the app's own settings only (the game label, the team abbreviations, the caller's name from
     his profile, the mode): ESPN's text never reaches it."""
     game = snap.game
-    off, opp = game["offense"], game["opponent"]
-    home, away = (off, opp) if game.get("offense_is_home") else (opp, off)
+    matchup = tracks.matchup_of(game)                  # 'TB at DAL'; 'PHI vs JAX' at a neutral site
     callers = " and ".join(f"{clean(c.name, 60)}, who calls plays for {c.team}" for c in snap.callers)
-    text = PROMPT.format(callers=callers, label=clean(game.get("label"), 120) or f"{away} at {home}", away=away,
-                         home=home, mode=mode_sentence(snap))
+    text = PROMPT.format(callers=callers, label=clean(game.get("label"), 120) or matchup, matchup=matchup,
+                         mode=mode_sentence(snap))
     return at.defuse(text)
 
 

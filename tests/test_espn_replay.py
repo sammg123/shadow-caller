@@ -245,6 +245,17 @@ def typed(e):
     return copy.deepcopy(e.state)
 
 
+def test_a_foreign_neutral_site_game_is_named_with_vs(summary):
+    """ESPN's neutralSite (London, Mexico City): the reason says vs, the way the picker names that game."""
+    s = foreign(summary)
+    s["header"]["competitions"][0]["neutralSite"] = True
+    with pytest.raises(espn_feed.WrongGame, match=r"^ESPN event 401872111 is NYG vs PHI, not DAL v TB\.$"):
+        espn_feed.check_matchup(s, FOREIGN)
+    s["header"]["competitions"][0]["neutralSite"] = "true"                 # only ESPN's true is a neutral site
+    with pytest.raises(espn_feed.WrongGame, match=r" is NYG at PHI, "):
+        espn_feed.check_matchup(s, FOREIGN)
+
+
 def test_a_foreign_game_is_never_applied_to_the_live_game(make_feed, summary, monkeypatch):
     """G1-2: the live feed checks the teams before it takes a summary. Another matchup stops the feed with the
     reason in its status; the typed game, the applied ids and the summary on screen stay as they were."""

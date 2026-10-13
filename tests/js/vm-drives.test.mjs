@@ -93,3 +93,13 @@ test("each drive knows its first drawn snap", () => {
   assert.equal(early.drives[1].firstSeq, null, "a drive with no drawn row has nothing to show yet");
   assert.ok(!("reviewSeq" in live) && live.drives.every((d) => !("reviewing" in d)), "there is no review mode");
 });
+
+test("both sides tracked: every drive keeps its own team's direction and colour (restructure-v2.md 11)", async () => {
+  const { bothTimeline } = await import("./both-sides.mjs");
+  const body = bothTimeline();
+  assert.ok(body.drives[1].offense_is_caller, "the timeline marks the other offense's drives as caller drives");
+  const vm = drivesVm(makePv({ presented: state.final(), tl: tlOf(body) }));
+  assert.deepEqual(pick(vm.drives[0]), [1, "DAL", true, 1, 30, 100, "TD", true, 9, 70, "4:09"]);
+  assert.deepEqual(pick(vm.drives[1]), [2, "TB", false, -1, 73, 0, "TD", true, 15, 73, "10:58"]);
+  assert.deepEqual(vm.drives.map((d) => d.dir), finalVm().drives.map((d) => d.dir));
+});

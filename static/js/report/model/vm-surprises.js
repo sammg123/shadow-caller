@@ -5,6 +5,7 @@
 import { freezeDeep, pct1 } from "../../model/format.js";
 import { callFacts, callerCalls, leafTable } from "./calls.js";
 import { REPORT, SURPRISES } from "./copy.js";
+import { namedPlate } from "./side.js";
 
 export const SURPRISES_SHOWN = 5;
 
@@ -46,7 +47,7 @@ export function surprisesVm(pv) {
   const calls = callerCalls(pv && pv.tl);
   const rows = lowestFirst(calls).map((row, i) => surpriseRow(row, i + 1, table));
   const emptyText = rows.length ? "" : calls.length ? SURPRISES.noPlayGrades : SURPRISES.empty;
-  return freezeDeep({ heading: SURPRISES.heading, sub: SURPRISES.sub,
+  return freezeDeep({ heading: namedPlate(pv, SURPRISES.named, SURPRISES.heading), sub: SURPRISES.sub,
     labels: { called: SURPRISES.called, modelPick: SURPRISES.modelPick },
     empty: rows.length === 0, emptyText, rows });
 }

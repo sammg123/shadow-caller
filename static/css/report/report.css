@@ -88,6 +88,33 @@
 .rp-status[data-tone="live"] .rp-status-lamp { background: var(--sc-live); }
 .rp-status[data-tone="paused"] .rp-status-lamp { background: var(--sc-warn); }
 .rp-keys { display: flex; flex-wrap: wrap; gap: var(--sc-space-2); margin-inline-start: auto; }
+/* Both play-callers tracked (restructure-v2.md 11 decision 4): the who line is a switch between their sections, a key
+   per caller (his team in the key's window, his last name on its face), the shown one pressed (report/ui/head.js). */
+.rp-sides {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sc-space-1) var(--sc-space-2);
+  min-width: 0;
+}
+.rp-sides[hidden] { display: none; }
+.rp-sides-label { font-weight: var(--sc-weight-strong); }
+.rp-side-keys { display: inline-flex; flex-wrap: wrap; gap: var(--sc-space-1); }
+.rp-ribbon .rp-side-key { min-height: 2rem; padding-inline: var(--sc-space-1) var(--sc-space-2); }
+.rp-side-team {
+  display: inline-grid;
+  place-items: center;
+  min-width: 2.4em;
+  height: 1.5em;
+  padding: 0 0.3em;
+  border: var(--sc-border-w) solid var(--sc-rule-strong);
+  border-radius: var(--sc-radius-s);
+  font-family: var(--sc-font-num);
+  font-size: var(--sc-size-xs);
+  font-weight: var(--sc-weight-strong);
+  line-height: 1;
+}
+.rp-side-key[aria-pressed="true"] .rp-side-team { border-color: currentColor; }
 
 /* The connection banner hangs under the ribbon, so the keys stay in reach while it shows. */
 #rg-conn .sc-conn { inset-block-start: var(--rp-ribbon-h); }
@@ -416,7 +443,22 @@
   letter-spacing: var(--sc-tracking-label);
   text-transform: var(--sc-case-label);
 }
+/* A drive's row and a call's row scroll in clear of the sticky ribbon (report/ui/reveal.js scrolls to either). */
+.rp-drive-row { scroll-margin-top: calc(var(--rp-ribbon-h) + var(--sc-space-4)); }
 .rp-call-row { scroll-margin-top: calc(var(--rp-ribbon-h) + var(--sc-space-6)); }
+/* A call brought into view (a drive button, an analyst's cite) is lit for a moment so the eye finds it after the jump;
+   a play with no row lights its drive on the drive chart instead (report/ui/reveal.js). On and off, no fade. */
+.rp-call-row[data-cited="true"] {
+  outline: calc(var(--sc-border-w) * 2) solid var(--sc-warn);
+  outline-offset: -2px;
+  background: color-mix(in srgb, var(--sc-warn) 16%, transparent);
+}
+/* The number column is right-aligned, so this only widens it: the frame never touches the snap number. */
+.rp-call-row > td:first-child { padding-inline-start: var(--sc-space-2); }
+#rp-drives .sc-dc-item[data-cited="true"] {
+  outline: calc(var(--sc-border-w) * 2) solid var(--sc-warn);
+  outline-offset: 2px;
+}
 .rp-call-row + .rp-call-row { border-block-start: var(--sc-border-w) solid var(--sc-rule); }
 .rp-call-row:focus-visible { outline: var(--sc-focus-w) solid var(--sc-focus); outline-offset: -2px; }
 .rp-call-row :is(td:nth-child(2), td:nth-child(3)) { white-space: nowrap; }

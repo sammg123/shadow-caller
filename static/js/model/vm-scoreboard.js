@@ -117,12 +117,18 @@ function espnBoard(pv, t) {
   };
 }
 
+/** The offense on the engine's drive: /api/state's `poss` when it names the other team (both sides tracked,
+ * restructure-v2.md 11; sit's down, distance and spot are then that offense's own), else the caller's. */
+function driveTeam(p, t) {
+  return p && t.opp && p.poss === t.opp ? t.opp : t.caller;
+}
+
 function manualBoard(pv, t) {
   const p = pv && pv.presented;
   const sit = (p && p.sit) || {};
   const active = Boolean(p && p.drive_active);
-  const scores = t.caller ? { [t.caller]: sit.score_off, [t.opp]: sit.score_opp } : {};
-  const poss = active ? t.caller : null;
+  const scores = t.caller ? { [t.caller]: sit.score_off, [t.opp]: sit.score_opp } : {};   // the game's frame, always
+  const poss = active ? driveTeam(p, t) : null;
   const post = active ? { poss, down: sit.down, togo: sit.togo, yardline_100: sit.yardline_100 } : null;
   return {
     teams: t.order.map((abbr) => teamEntry(abbr, t, { scores, poss, timeouts: {} })),
